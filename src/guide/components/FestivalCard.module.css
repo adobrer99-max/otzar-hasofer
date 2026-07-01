@@ -1,0 +1,32 @@
+.card {
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+  background: var(--bg-raised);
+}
+
+.title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+}
+
+.title h3 {
+  margin: 0;
+  font-size: var(--font-size-lg);
+}
+
+.hebrew {
+  color: var(--accent);
+  font-size: 1rem;
+}
+
+.mechanic {
+  margin-top: var(--space-2);
+  font-size: 0.85rem;
+  color: var(--accent-bright);
+  border-left: 2px solid var(--accent);
+  padding-left: var(--space-2);
+}

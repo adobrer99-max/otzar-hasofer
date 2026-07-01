@@ -1,0 +1,62 @@
+.picker {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.picker select,
+.picker input {
+  background: var(--bg-raised);
+  border: 1px solid var(--border-hairline);
+  color: var(--text);
+  border-radius: var(--radius);
+  padding: var(--space-2);
+}
+
+.picker button {
+  background: var(--bg-raised);
+  border: 1px solid var(--accent);
+  color: var(--accent-bright);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+}
+
+.scrubber {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding: var(--space-2) 0;
+  margin: var(--space-3) 0;
+}
+
+.thumb {
+  flex: 0 0 auto;
+  width: 72px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  cursor: pointer;
+  padding: 4px;
+  position: relative;
+}
+
+.thumb.active {
+  border-color: var(--accent);
+}
+
+.thumb .origin {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  color: var(--accent);
+  font-size: 0.65rem;
+}
+
+.caption {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: var(--space-2);
+}

@@ -1,0 +1,81 @@
+@import "./styles/theme.css";
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-latin);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-latin);
+  font-weight: 500;
+  color: var(--text);
+  letter-spacing: 0.01em;
+}
+
+a {
+  color: var(--accent-bright);
+}
+
+a:hover {
+  color: var(--accent);
+}
+
+.hebrew {
+  font-family: var(--font-hebrew);
+  direction: rtl;
+  unicode-bidi: isolate;
+}
+
+.hairline-rule {
+  border: none;
+  border-top: 1px solid var(--border-hairline);
+  margin: var(--space-4) 0;
+}
+
+.page {
+  max-width: 860px;
+  width: 100%;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-3);
+}
+
+.page-header {
+  border-bottom: 1px solid var(--border-hairline);
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.page-header .kicker {
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.75rem;
+}
+
+.page-header h1 {
+  font-size: var(--font-size-xxl);
+  margin: var(--space-1) 0 0;
+}

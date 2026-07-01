@@ -1,0 +1,45 @@
+.hero {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.glyph {
+  font-family: var(--font-hebrew);
+  font-size: 5rem;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.meta {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: var(--space-2);
+}
+
+.section {
+  margin-bottom: var(--space-4);
+}
+
+.section h3 {
+  color: var(--accent-bright);
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-1);
+}
+
+.sources {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.nav {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-5);
+}

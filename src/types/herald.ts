@@ -1,0 +1,49 @@
+import type { SefirahId } from "./letter";
+
+export type ReadingPath = "brit" | "noach";
+export type Orientation = "upright" | "reversed";
+export type GeographyMode = "land" | "galut";
+
+export interface LetterDraw {
+  letterId: string;
+  orientation: Orientation;
+}
+
+export interface HeraldInputSnapshot {
+  path: ReadingPath;
+  hebrewName?: string;
+  isFirstTime: boolean;
+  palmNotes?: string;
+  /** The three openly drawn letters — the sole source of the visible Herald. */
+  drawnLetters: [LetterDraw, LetterDraw, LetterDraw];
+  /**
+   * Drawn privately by the Scribe; recorded for the Sod/secret record but
+   * deliberately excluded from the rendered Herald, since it stays hidden.
+   */
+  veiledLetter: LetterDraw;
+  middah: SefirahId;
+  geography: {
+    mode: GeographyMode;
+    place?: string;
+  };
+  /** FestivalOverride id, or "ordinary" for a non-festival day. */
+  festivalId: string;
+  reflection?: string;
+}
+
+export interface ParticipantRecord {
+  id: string;
+  displayName: string;
+  hebrewName?: string;
+  path: ReadingPath;
+  createdAt: string;
+}
+
+export interface HeraldLayer {
+  id: string;
+  participantId: string;
+  layerIndex: number;
+  createdAt: string;
+  input: HeraldInputSnapshot;
+  isOrigin: boolean;
+}
