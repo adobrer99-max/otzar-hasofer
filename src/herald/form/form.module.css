@@ -1,0 +1,103 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.field label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.field input[type="text"],
+.field textarea,
+.field select {
+  background: var(--bg-raised);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: var(--space-2);
+  font-family: var(--font-latin);
+  font-size: 1rem;
+}
+
+.field textarea {
+  min-height: 4rem;
+  resize: vertical;
+}
+
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius);
+  overflow: hidden;
+  width: fit-content;
+}
+
+.segmented button {
+  background: var(--bg-raised);
+  color: var(--text-muted);
+  border: none;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  font-family: var(--font-latin);
+}
+
+.segmented button.active {
+  background: var(--accent);
+  color: var(--color-charcoal);
+}
+
+.drawGroup {
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+}
+
+.drawGroup.veiled {
+  border-color: var(--color-blue);
+  background: repeating-linear-gradient(
+    135deg,
+    var(--bg-raised),
+    var(--bg-raised) 10px,
+    var(--bg) 10px,
+    var(--bg) 20px
+  );
+}
+
+.drawRow {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2);
+}
+
+.submit {
+  align-self: flex-start;
+  background: var(--accent);
+  color: var(--color-charcoal);
+  border: none;
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-4);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.submit:hover {
+  background: var(--accent-bright);
+}
+
+.festivalNote {
+  font-size: 0.8rem;
+  color: var(--accent-bright);
+  margin-top: var(--space-1);
+}

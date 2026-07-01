@@ -1,0 +1,25 @@
+.badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-hairline);
+  color: var(--text-muted);
+}
+
+.mother {
+  border-color: var(--color-copper);
+  color: var(--color-copper);
+}
+
+.double {
+  border-color: var(--color-blue-bright);
+  color: var(--color-blue-bright);
+}
+
+.simple {
+  border-color: var(--color-silver);
+  color: var(--color-silver);
+}

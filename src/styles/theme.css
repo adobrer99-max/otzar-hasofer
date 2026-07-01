@@ -1,0 +1,126 @@
+/* Otzar Ha'Sofer visual canon: gold, blue, black, silver, copper — quiet reverence, not spectacle. */
+
+@font-face {
+  font-family: "Frank Ruhl Libre";
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url("/fonts/frank-ruhl-libre-hebrew.woff2") format("woff2");
+  unicode-range: U+0590-05FF, U+FB1D-FB4F, U+200C-2010, U+20AA, U+25CC;
+}
+@font-face {
+  font-family: "Frank Ruhl Libre";
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url("/fonts/frank-ruhl-libre-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+2000-206F, U+2122, U+2212;
+}
+
+@font-face {
+  font-family: "David Libre";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/david-libre-400-hebrew.woff2") format("woff2");
+  unicode-range: U+0590-05FF, U+FB1D-FB4F, U+200C-2010, U+20AA, U+25CC;
+}
+@font-face {
+  font-family: "David Libre";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/david-libre-400-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+2000-206F, U+2122, U+2212;
+}
+@font-face {
+  font-family: "David Libre";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/david-libre-500-hebrew.woff2") format("woff2");
+  unicode-range: U+0590-05FF, U+FB1D-FB4F, U+200C-2010, U+20AA, U+25CC;
+}
+@font-face {
+  font-family: "David Libre";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/david-libre-500-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+2000-206F, U+2122, U+2212;
+}
+@font-face {
+  font-family: "David Libre";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/david-libre-700-hebrew.woff2") format("woff2");
+  unicode-range: U+0590-05FF, U+FB1D-FB4F, U+200C-2010, U+20AA, U+25CC;
+}
+@font-face {
+  font-family: "David Libre";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/david-libre-700-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+2000-206F, U+2122, U+2212;
+}
+
+:root {
+  /* Palette */
+  --color-charcoal: #14171c;
+  --color-charcoal-raised: #1c2027;
+  --color-charcoal-line: #2a2f38;
+  --color-gold: #c9a24b;
+  --color-gold-bright: #e4c579;
+  --color-blue: #1f3a5f;
+  --color-blue-bright: #3f6ea5;
+  --color-silver: #c7ccd4;
+  --color-copper: #c98056;
+  --color-parchment: #ece6d8;
+
+  /* Semantic */
+  --bg: var(--color-charcoal);
+  --bg-raised: var(--color-charcoal-raised);
+  --text: var(--color-parchment);
+  --text-muted: #9aa1ad;
+  --accent: var(--color-gold);
+  --accent-bright: var(--color-gold-bright);
+  --border-hairline: var(--color-charcoal-line);
+
+  /* Typography */
+  --font-latin: "Frank Ruhl Libre", Georgia, "Times New Roman", serif;
+  --font-hebrew: "David Libre", "Frank Ruhl Libre", Georgia, serif;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.75rem;
+  --font-size-xxl: 2.5rem;
+  --line-height: 1.65;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+  --space-5: 2.5rem;
+  --space-6: 4rem;
+
+  --radius: 2px;
+  color-scheme: dark;
+}
+
+[data-festival="tishabav"] {
+  --accent: #7a7a7a;
+  --accent-bright: #9a9a9a;
+}
+[data-festival="purim"] {
+  --accent: var(--color-blue-bright);
+  --accent-bright: #6f9bd1;
+}
+[data-festival="tubishvat"] {
+  --accent: #7a9a5a;
+  --accent-bright: #9cbf7a;
+}
+[data-festival="tubav"] {
+  --accent: var(--color-gold-bright);
+  --accent-bright: #f2dca0;
+}
