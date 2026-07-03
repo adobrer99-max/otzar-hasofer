@@ -1,4 +1,6 @@
 import type { SefirahId } from "./letter";
+import type { SacredTimeSnapshot } from "./sacredTime";
+import type { HebrewDate } from "../data/hebrewCalendar";
 
 export type ReadingPath = "brit" | "noach";
 export type Orientation = "upright" | "reversed";
@@ -29,6 +31,8 @@ export interface HeraldInputSnapshot {
   /** FestivalOverride id, or "ordinary" for a non-festival day. */
   festivalId: string;
   reflection?: string;
+  /** Additive — older stored layers simply lack this. */
+  sacredTime?: SacredTimeSnapshot;
 }
 
 export interface ParticipantRecord {
@@ -37,6 +41,8 @@ export interface ParticipantRecord {
   hebrewName?: string;
   path: ReadingPath;
   createdAt: string;
+  /** The recurring month/day anchor for the Hebrew Birthday / "Annual Treasury Reading". */
+  hebrewBirthDate?: HebrewDate;
 }
 
 export interface HeraldLayer {

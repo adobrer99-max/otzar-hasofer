@@ -14,6 +14,10 @@ export function FestivalCard({ festival }: { festival: FestivalOverride }) {
       </div>
       <p>{festival.description}</p>
       <p className={styles.mechanic}>{festival.ritualMechanic}</p>
+      {festival.gesture && <span className={styles.gesture}>{festival.gesture}</span>}
+      {festival.contemplativeQuestion && (
+        <p className={styles.question}>{festival.contemplativeQuestion}</p>
+      )}
     </article>
   );
 }

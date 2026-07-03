@@ -1,16 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import type { ParticipantRecord, HeraldLayer, ReadingPath } from "../types/herald";
+import type { LifeCycleEvent } from "../types/lifeCycle";
 import {
   listParticipants,
   createParticipant,
   getLayers,
   addLayer,
 } from "../storage/participantsRepo";
+import { listLifeCycleEvents } from "../storage/lifeCycleRepo";
+import { computeSacredTime } from "../data/sacredTime";
 import { ReadingForm } from "./form/ReadingForm";
 import { HeraldCanvas } from "./render/HeraldCanvas";
 import { ParticipantPicker } from "./history/ParticipantPicker";
 import { HistoryScrubber } from "./history/HistoryScrubber";
 import { LayerCaption } from "./history/LayerCaption";
+import { LifeCycleEventsPanel } from "./lifeCycle/LifeCycleEventsPanel";
+import { SacredTimeBanners } from "./lifeCycle/SacredTimeBanners";
 import { exportHeraldSvg } from "./export/exportSvg";
 import { exportHeraldPng } from "./export/exportPng";
 import styles from "./HeraldPage.module.css";
@@ -20,6 +25,7 @@ export function HeraldPage() {
   const [selectedParticipantId, setSelectedParticipantId] = useState<string>();
   const [layers, setLayers] = useState<HeraldLayer[]>([]);
   const [selectedLayerId, setSelectedLayerId] = useState<string>();
+  const [lifeCycleEvents, setLifeCycleEvents] = useState<LifeCycleEvent[]>([]);
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
@@ -30,18 +36,24 @@ export function HeraldPage() {
     if (!selectedParticipantId) {
       setLayers([]);
       setSelectedLayerId(undefined);
+      setLifeCycleEvents([]);
       return;
     }
     getLayers(selectedParticipantId).then((ls) => {
       setLayers(ls);
       setSelectedLayerId(ls.length > 0 ? ls[ls.length - 1].id : undefined);
     });
+    listLifeCycleEvents(selectedParticipantId).then(setLifeCycleEvents);
   }, [selectedParticipantId]);
 
   async function handleCreateParticipant(displayName: string, path: ReadingPath) {
     const record = await createParticipant(displayName, path);
     setParticipants((prev) => [...prev, record].sort((a, b) => a.displayName.localeCompare(b.displayName)));
     setSelectedParticipantId(record.id);
+  }
+
+  function handleParticipantChange(updated: ParticipantRecord) {
+    setParticipants((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
   }
 
   async function handleSubmitReading(input: Parameters<typeof addLayer>[1]) {
@@ -56,6 +68,7 @@ export function HeraldPage() {
   const selectedLayer = selectedIndex >= 0 ? layers[selectedIndex] : undefined;
   const previousInput = selectedIndex > 0 ? layers[selectedIndex - 1].input : undefined;
   const selectedParticipant = participants.find((p) => p.id === selectedParticipantId);
+  const todayHebrewDate = computeSacredTime(new Date(), "land").hebrewDate;
 
   return (
     <div className="page">
@@ -75,6 +88,25 @@ export function HeraldPage() {
         onSelect={setSelectedParticipantId}
         onCreate={handleCreateParticipant}
       />
+
+      {selectedParticipantId && selectedParticipant && (
+        <LifeCycleEventsPanel
+          participant={selectedParticipant}
+          onParticipantChange={handleParticipantChange}
+          events={lifeCycleEvents}
+          onEventsChange={setLifeCycleEvents}
+        />
+      )}
+
+      {selectedParticipantId && selectedParticipant && (
+        <SacredTimeBanners
+          today={todayHebrewDate}
+          participant={selectedParticipant}
+          layers={layers}
+          events={lifeCycleEvents}
+          onSelectLayer={setSelectedLayerId}
+        />
+      )}
 
       {selectedParticipantId ? (
         <div className={styles.layout}>

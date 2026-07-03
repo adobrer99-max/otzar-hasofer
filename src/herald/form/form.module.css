@@ -101,3 +101,35 @@
   color: var(--accent-bright);
   margin-top: var(--space-1);
 }
+
+.sacredTimePanel {
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  background: var(--bg-raised);
+}
+
+.sacredTimeLine {
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.sacredTimeLine .hebrewDate {
+  color: var(--accent-bright);
+  font-family: var(--font-hebrew);
+}
+
+.backdateRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.hebrewNameNote {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
