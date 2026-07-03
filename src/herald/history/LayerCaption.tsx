@@ -2,6 +2,7 @@ import type { HeraldLayer } from "../../types/herald";
 import { festivalsById } from "../../data/festivals";
 import { lettersById } from "../../data/letters";
 import { formatHebrewDateEnglish } from "../../data/hebrewCalendar";
+import { encountersByNumber } from "../../data/encounters";
 import { resolveShoresh } from "../shoresh/resolveShoresh";
 import styles from "./history.module.css";
 
@@ -10,6 +11,7 @@ export function LayerCaption({ layer }: { layer: HeraldLayer }) {
   const drawnLetters = layer.input.drawnLetters.map((d) => lettersById[d.letterId]);
   const shoresh = resolveShoresh(layer.input.drawnLetters.map((d) => d.letterId) as [string, string, string]);
   const sacredTime = layer.input.sacredTime;
+  const encounter = layer.input.encounterNumber ? encountersByNumber[layer.input.encounterNumber] : undefined;
 
   return (
     <div className={styles.caption}>
@@ -19,7 +21,13 @@ export function LayerCaption({ layer }: { layer: HeraldLayer }) {
         {sacredTime && ` (${formatHebrewDateEnglish(sacredTime.hebrewDate)})`}
         {festival.id !== "ordinary" && ` · ${festival.name}`}
         {sacredTime?.omer && ` · Omer day ${sacredTime.omer.day}`}
+        {encounter && ` · Encounter ${encounter.number}: ${encounter.aspect}`}
       </div>
+      {encounter?.number === 7 && (
+        <div className={styles.citation}>
+          Creation is complete; nothing new is made, only lived. Your Herald is revealed.
+        </div>
+      )}
       <div>Drawn: {drawnLetters.map((l) => l?.name).join(", ")}</div>
 
       {shoresh.tier === "root" && (

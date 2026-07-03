@@ -8,6 +8,7 @@ import { Shoresh } from "./guide/pages/Shoresh";
 import { Mizbeach } from "./guide/pages/Mizbeach";
 import { Scribe } from "./guide/pages/Scribe";
 import { SacredTime } from "./guide/pages/SacredTime";
+import { Encounters } from "./guide/pages/Encounters";
 import { VisualCanon } from "./guide/pages/VisualCanon";
 import { HeraldPage } from "./herald/HeraldPage";
 
@@ -24,6 +25,7 @@ export const router = createHashRouter([
       { path: "guide/mizbeach", element: <Mizbeach /> },
       { path: "guide/scribe", element: <Scribe /> },
       { path: "guide/sacred-time", element: <SacredTime /> },
+      { path: "guide/encounters", element: <Encounters /> },
       { path: "guide/visual-canon", element: <VisualCanon /> },
       { path: "herald", element: <HeraldPage /> },
     ],

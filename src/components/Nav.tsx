@@ -8,6 +8,7 @@ const guideLinks = [
   { to: "/guide/mizbeach", label: "The Mizbe'ach" },
   { to: "/guide/scribe", label: "The Scribe" },
   { to: "/guide/sacred-time", label: "Sacred Time" },
+  { to: "/guide/encounters", label: "Seven Encounters" },
   { to: "/guide/visual-canon", label: "Visual Canon" },
 ];
 

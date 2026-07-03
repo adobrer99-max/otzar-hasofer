@@ -111,7 +111,7 @@ export function HeraldPage() {
       {selectedParticipantId ? (
         <div className={styles.layout}>
           <div>
-            <ReadingForm onSubmit={handleSubmitReading} />
+            <ReadingForm onSubmit={handleSubmitReading} readingIndex={layers.length} />
           </div>
           <div className={styles.canvasCol}>
             {selectedLayer ? (

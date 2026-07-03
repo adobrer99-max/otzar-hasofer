@@ -33,6 +33,8 @@ export interface HeraldInputSnapshot {
   reflection?: string;
   /** Additive — older stored layers simply lack this. */
   sacredTime?: SacredTimeSnapshot;
+  /** Which of the Seven Encounters this reading was, by reading count at submit time. Additive; undefined for readings beyond the seventh or predating this feature. */
+  encounterNumber?: number;
 }
 
 export interface ParticipantRecord {

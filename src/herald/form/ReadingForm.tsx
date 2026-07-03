@@ -8,11 +8,13 @@ import type {
 import type { SefirahId } from "../../types/letter";
 import { middot } from "../../data/middot";
 import { computeSacredTime } from "../../data/sacredTime";
+import { getEncounterForReadingIndex } from "../../data/encounters";
 import { PathToggle } from "./PathToggle";
 import { OrientationToggle } from "./OrientationToggle";
 import { LetterPicker } from "./LetterPicker";
 import { FestivalSelect } from "./FestivalSelect";
 import { SacredTimePanel } from "./SacredTimePanel";
+import { EncounterPanel } from "./EncounterPanel";
 import styles from "./form.module.css";
 
 const drawLabels = ["First drawn", "Second drawn", "Third drawn"];
@@ -33,9 +35,11 @@ function parseLocalDateInput(value: string): Date {
 
 export interface ReadingFormProps {
   onSubmit: (input: HeraldInputSnapshot) => void;
+  /** The participant's past-reading count (0 for their very first reading) — drives which Encounter this reading is. */
+  readingIndex: number;
 }
 
-export function ReadingForm({ onSubmit }: ReadingFormProps) {
+export function ReadingForm({ onSubmit, readingIndex }: ReadingFormProps) {
   const [path, setPath] = useState<ReadingPath>("brit");
   const [hebrewName, setHebrewName] = useState("");
   const [isFirstTime, setIsFirstTime] = useState(true);
@@ -105,6 +109,7 @@ export function ReadingForm({ onSubmit }: ReadingFormProps) {
       festivalId,
       reflection: reflection || undefined,
       sacredTime,
+      encounterNumber: getEncounterForReadingIndex(readingIndex)?.number,
     };
     onSubmit(input);
   }
@@ -118,6 +123,8 @@ export function ReadingForm({ onSubmit }: ReadingFormProps) {
         onBackdateEnabledChange={handleBackdateEnabledChange}
         onBackdateValueChange={handleBackdateValueChange}
       />
+
+      <EncounterPanel readingIndex={readingIndex} />
 
       <div className={styles.field}>
         <label>Path</label>
