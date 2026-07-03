@@ -141,3 +141,7 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Vendored third-party lexicon source (large, public domain, re-downloadable —
+# see scripts/build-shorashim.mjs). Only the generated src/data output is committed.
+data-sources/openscriptures/

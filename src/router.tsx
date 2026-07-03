@@ -4,6 +4,7 @@ import { Home } from "./guide/pages/Home";
 import { Foundations } from "./guide/pages/Foundations";
 import { LettersIndex } from "./guide/pages/LettersIndex";
 import { LetterChapter } from "./guide/pages/LetterChapter";
+import { Shoresh } from "./guide/pages/Shoresh";
 import { Mizbeach } from "./guide/pages/Mizbeach";
 import { Scribe } from "./guide/pages/Scribe";
 import { SacredTime } from "./guide/pages/SacredTime";
@@ -19,6 +20,7 @@ export const router = createHashRouter([
       { path: "guide/foundations", element: <Foundations /> },
       { path: "guide/letters", element: <LettersIndex /> },
       { path: "guide/letters/:id", element: <LetterChapter /> },
+      { path: "guide/shoresh", element: <Shoresh /> },
       { path: "guide/mizbeach", element: <Mizbeach /> },
       { path: "guide/scribe", element: <Scribe /> },
       { path: "guide/sacred-time", element: <SacredTime /> },

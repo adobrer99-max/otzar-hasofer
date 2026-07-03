@@ -1,8 +1,8 @@
 import type { HeraldInputSnapshot } from "../../types/herald";
 import { lettersById } from "../../data/letters";
 import { festivalsById } from "../../data/festivals";
-import { findLetterPair } from "../../data/letterPairs";
-import { computeDivisions } from "./divisions";
+import { resolveShoresh } from "../shoresh/resolveShoresh";
+import { computeDivisions, type Division } from "./divisions";
 import {
   SHIELD,
   SHIELD_PATH,
@@ -241,6 +241,17 @@ function FestivalMotif({ motif, center }: { motif?: string; center: { x: number;
   }
 }
 
+/** Tier IV (Shoresh Nistar) treatment — a deliberate, distinct mark, not an empty result. */
+function ShoreshNistarMark({ center }: { center: { x: number; y: number } }) {
+  return (
+    <g stroke="var(--color-silver)" strokeWidth={1.25} fill="none" opacity={0.6}>
+      <path d={`M ${center.x - 14} ${center.y - 40} L ${center.x - 4} ${center.y - 30}`} strokeDasharray="2 4" />
+      <path d={`M ${center.x + 14} ${center.y - 40} L ${center.x + 4} ${center.y - 30}`} strokeDasharray="2 4" />
+      <circle cx={center.x} cy={center.y - 20} r={3} fill="var(--color-silver)" stroke="none" />
+    </g>
+  );
+}
+
 function OrnamentalBorder({ layerCount, color }: { layerCount: number; color: string }) {
   const density = Math.min(10 + layerCount * 2, 40);
   const points = perimeterPoints(density);
@@ -272,13 +283,32 @@ export function HeraldLayerContent({
   const accentColor = festival.heraldAccent?.accentColor ?? "var(--color-gold)";
   const center = shieldCenter();
 
-  const pairMatches = [];
-  for (let i = 0; i < divisions.length; i++) {
-    for (let j = i + 1; j < divisions.length; j++) {
-      const pair = findLetterPair(divisions[i].letterId, divisions[j].letterId);
-      if (pair) pairMatches.push({ a: divisions[i], b: divisions[j], pair });
-    }
+  const shoresh = resolveShoresh(input.drawnLetters.map((d) => d.letterId) as [string, string, string]);
+
+  function findDivision(letterId: string): Division | undefined {
+    return divisions.find((d) => d.letterId === letterId);
   }
+
+  // Tier I/II ("root"/"name"): a solid, confident chain connecting every
+  // division. Tier III ("related"): only the specific two-letter-root
+  // correspondences get the lighter, tentative bezier (reordered-root and
+  // gematria signals aren't tied to visual positions, so they're
+  // caption-only). Tier IV: no lines — see ShoreshNistarMark instead.
+  const confidentChain =
+    (shoresh.tier === "root" || shoresh.tier === "name") && divisions.length > 1
+      ? divisions.slice(1).map((division, i) => [divisions[i], division] as const)
+      : [];
+  const tentativePairs =
+    shoresh.tier === "related"
+      ? shoresh.correspondences
+          .filter((c) => c.kind === "two-letter-root")
+          .map((c) => {
+            const a = findDivision(c.letters[0]);
+            const b = findDivision(c.letters[1]);
+            return a && b ? { a, b, key: c.label } : undefined;
+          })
+          .filter((x): x is { a: Division; b: Division; key: string } => x !== undefined)
+      : [];
 
   return (
     <g clipPath="url(#herald-shield-clip)">
@@ -288,13 +318,29 @@ export function HeraldLayerContent({
 
       <TreeOfLife middah={input.middah} />
 
-      {pairMatches.map(({ a, b, pair }) => {
+      {confidentChain.map(([a, b]) => {
         const ax = bandX(a.band).center;
         const bx = bandX(b.band).center;
         const y = BAND_TOP - 30;
         return (
           <path
-            key={pair.id}
+            key={`${a.letterId}-${b.letterId}`}
+            d={`M ${ax} ${y} Q ${(ax + bx) / 2} ${y - 30}, ${bx} ${y}`}
+            fill="none"
+            stroke="var(--color-gold-bright)"
+            strokeWidth={2.5}
+            strokeLinecap="round"
+          />
+        );
+      })}
+
+      {tentativePairs.map(({ a, b, key }) => {
+        const ax = bandX(a.band).center;
+        const bx = bandX(b.band).center;
+        const y = BAND_TOP - 30;
+        return (
+          <path
+            key={key}
             d={`M ${ax} ${y} Q ${(ax + bx) / 2} ${y - 30}, ${bx} ${y}`}
             fill="none"
             stroke="var(--color-gold-bright)"
@@ -304,6 +350,8 @@ export function HeraldLayerContent({
           />
         );
       })}
+
+      {shoresh.tier === "hidden" && <ShoreshNistarMark center={center} />}
 
       {divisions.map((division) => {
         const letter = lettersById[division.letterId];

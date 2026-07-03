@@ -4,6 +4,7 @@ import styles from "./Nav.module.css";
 const guideLinks = [
   { to: "/guide/foundations", label: "Foundations" },
   { to: "/guide/letters", label: "The Twenty-Two Letters" },
+  { to: "/guide/shoresh", label: "Shoresh" },
   { to: "/guide/mizbeach", label: "The Mizbe'ach" },
   { to: "/guide/scribe", label: "The Scribe" },
   { to: "/guide/sacred-time", label: "Sacred Time" },

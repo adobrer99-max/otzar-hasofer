@@ -3,18 +3,23 @@ import type { LetterCard } from "../types/letter";
 /**
  * The 22 letters of the Derekh Eretz deck.
  *
+ * Content source: the project's Round 2 planning document, which gives each
+ * letter a Translation/Root, one Eternal Principle, and (for most letters) a
+ * contemplative Question. Reversed orientation is intentionally NOT a
+ * distinct per-letter text — it's a single shared "turned inward" framing
+ * (see `reversedFraming.ts`), applied uniformly regardless of which letter
+ * is drawn.
+ *
  * Editorial note (per the project's "Hierarchy of Sources"):
  * - `gematria` and `classification` (Mother/Double/Simple) are fixed,
  *   canonical values from Sefer Yetzirah — not open to authorial discretion.
  * - `element` / `astrological` follow the standard Sefer Yetzirah scheme
  *   (3 Mothers -> elements, 7 Doubles -> classical planets, 12 Simples ->
- *   zodiac signs / months), but manuscript traditions vary on some details
- *   (e.g. which Double maps to which planet). Review against the project's
- *   own source hierarchy before treating these as final.
- * - `keyword`, `uprightMeaning`, `reversedMeaning`, `hebrewRoot`, and
- *   `scribeNotes` are first-draft editorial/interpretive content written in
- *   the Scribe's voice. Treat these as a starting draft to rewrite, not
- *   finished copy — they are the one place authorial choice fully applies.
+ *   zodiac signs / months); manuscript traditions vary on some details —
+ *   review against the project's own source hierarchy before treating as final.
+ * - `translationRoot`, `eternalPrinciple`, `question`, `keyword`,
+ *   `hebrewRoot`, and `scribeNotes` are the Scribe's authored/curated
+ *   content, transcribed from the planning document.
  */
 export const letters: LetterCard[] = [
   {
@@ -27,11 +32,10 @@ export const letters: LetterCard[] = [
     classification: "Mother",
     element: "Air",
     sefirahOrPath: "Keter / the silent breath beneath speech",
-    keyword: "Breath, Unity, the Silent Beginning",
-    uprightMeaning:
-      "Aleph is the mute letter that carries no sound of its own, yet stands first. It names the breath before a word is spoken — the unity behind multiplicity, the still point from which a reading begins. Upright, Aleph asks the participant to notice what precedes their story: the quiet, undivided self beneath the roles they carry.",
-    reversedMeaning:
-      "Reversed, Aleph can signal a silence that has become avoidance — a person so identified with stillness that they have stopped speaking their truth at all, or a beginning perpetually deferred.",
+    keyword: "The Silent Genesis",
+    translationRoot: "Awe/Wonder (פלא), Chief (אלוף), or school of learning/teacher (אולפנה).",
+    eternalPrinciple:
+      "The silent genesis. The unity that precedes duality. The paradox of the Divine breath containing all potential before a sound is ever made.",
     hebrewRoot: "אלף (alef) — to learn, to be tamed/yoked; also 'thousand'.",
     traditionalSources: ["Sefer Yetzirah 3:1–2", "Talmud, Shabbat 104a"],
   },
@@ -45,11 +49,11 @@ export const letters: LetterCard[] = [
     classification: "Double",
     astrological: "Saturn (Shabtai)",
     sefirahOrPath: "Chochmah / the house that holds",
-    keyword: "Dwelling, Blessing / Wisdom and Folly",
-    uprightMeaning:
-      "Bet means 'house' — the first act of creation, in which Torah itself begins (Bereshit). Upright, Bet speaks of a dwelling being built: a household, a body of learning, a stable container in which a life can be lived and blessed.",
-    reversedMeaning:
-      "As one of the seven doubles, Bet carries the pair wisdom/folly. Reversed, it can mark a house divided — instability at home, or wisdom curdled into cleverness without depth.",
+    keyword: "The Container",
+    translationRoot: "House, Tent.",
+    eternalPrinciple:
+      "The container. The beginning of duality and creation. The necessity of boundaries to hold space for something new to dwell.",
+    question: "What are you currently building to hold or protect what is sacred?",
     hebrewRoot: "בית (bayit) — house; בְּרָכָה (berakhah) — blessing.",
     traditionalSources: ["Sefer Yetzirah 4:1–3", "Genesis 1:1 (Bereshit)"],
   },
@@ -63,11 +67,11 @@ export const letters: LetterCard[] = [
     classification: "Double",
     astrological: "Jupiter (Tzedek)",
     sefirahOrPath: "Chesed / the giver who runs toward",
-    keyword: "Giving, Wealth and Poverty",
-    uprightMeaning:
-      "Gimel is read as gomel — one who bestows kindness, running (as its shape suggests a leg in motion) toward the one in need. Upright, it speaks of generosity, abundance shared rather than hoarded.",
-    reversedMeaning:
-      "Gimel's classical pair is wealth/poverty. Reversed, it can mark a scarcity mindset, withheld generosity, or wealth accumulated without any outward motion of the hand.",
+    keyword: "Movement and Pursuit",
+    translationRoot: "Camel, Bridge, Weaning, or to Give.",
+    eternalPrinciple:
+      "Movement and pursuit. The active, kinetic energy required to cross a vast expanse or deliver sustenance to what is lacking.",
+    question: "What gap are you being called to bridge? Who or what requires your active pursuit?",
     hebrewRoot: "גמל (gamal) — to give fully, to wean/repay.",
     traditionalSources: ["Sefer Yetzirah 4:1–3", "Talmud, Shabbat 104a"],
   },
@@ -81,11 +85,11 @@ export const letters: LetterCard[] = [
     classification: "Double",
     astrological: "Mars (Ma'adim)",
     sefirahOrPath: "Gevurah / the door and the poor",
-    keyword: "The Door, Life and Death",
-    uprightMeaning:
-      "Dalet means 'door' — and also echoes dal, the poor one who stands at it. Upright, Dalet marks a threshold: a door opening, a request made, an entrance into a new stage of a story.",
-    reversedMeaning:
-      "Dalet's pair is life/death. Reversed, the door may be shut rather than opened — a refusal to receive, or a threshold the participant cannot yet cross.",
+    keyword: "Receptivity and Humility",
+    translationRoot: "Door, Threshold, or Poor.",
+    eternalPrinciple:
+      "Receptivity and humility. The state of having nothing of one's own, which is the necessary prerequisite for receiving through the door of understanding.",
+    question: "Where must you lower yourself in order to pass through the next door?",
     hebrewRoot: "דל (dal) — poor, low; דלת (delet) — door.",
     traditionalSources: ["Sefer Yetzirah 4:1–3"],
   },
@@ -99,11 +103,11 @@ export const letters: LetterCard[] = [
     classification: "Simple",
     astrological: "Aries (Tleh) / Nisan",
     sefirahOrPath: "Chochmah's outward breath",
-    keyword: "Revelation, Speech, Sight",
-    uprightMeaning:
-      "Heh is breath made audible — the sound of revelation, the letter added to Avram and Sarai's names at their covenant. Upright, Heh speaks of something hidden becoming seen: insight breaking into speech.",
-    reversedMeaning:
-      "Reversed, Heh can mark revelation withheld or premature — words spoken before their season, or a truth the participant still cannot bring themselves to say aloud.",
+    keyword: "The Divine Breath",
+    translationRoot: "Breath, Window, or Revelation.",
+    eternalPrinciple:
+      "The divine breath of expression. The effortless exhalation that brings thought into physical reality. The present moment.",
+    question: "What is currently seeking expression or breath in your life?",
     hebrewRoot: "הנה (hineh) — behold, here.",
     traditionalSources: ["Sefer Yetzirah 5:1", "Genesis 17:5,15"],
   },
@@ -117,11 +121,11 @@ export const letters: LetterCard[] = [
     classification: "Simple",
     astrological: "Taurus (Shor) / Iyar",
     sefirahOrPath: "Tiferet's connecting beam",
-    keyword: "The Hook, Connection",
-    uprightMeaning:
-      "Vav means 'hook' or 'nail' — the letter that joins one clause to the next, one soul to another. Upright, it speaks of connection formed: a covenant, a relationship, a link between past and present.",
-    reversedMeaning:
-      "Reversed, Vav can mark a broken link — estrangement, a connection strained or severed, or a person caught between two things without joining either.",
+    keyword: "Connection and Continuity",
+    translationRoot: "Hook, Peg, or Axis.",
+    eternalPrinciple:
+      "Connection and continuity. The vertical axis that binds heaven to earth, and the conjunction (\"and\") that links the past to the future.",
+    question: "What disparate pieces of your life or history are you being asked to bind together?",
     hebrewRoot: "וו (vav) — hook, peg (Exodus 27:10).",
     traditionalSources: ["Sefer Yetzirah 5:1", "Exodus 26:32"],
   },
@@ -135,11 +139,11 @@ export const letters: LetterCard[] = [
     classification: "Simple",
     astrological: "Gemini (Teomim) / Sivan",
     sefirahOrPath: "Netzach's edge",
-    keyword: "The Weapon, Sustenance, Sabbath",
-    uprightMeaning:
-      "Zayin resembles a sword or a crowned letter, and shares a root with mazon, sustenance. Upright, it speaks of provision won through struggle, and of the rest (Shabbat, the seventh) that struggle is for.",
-    reversedMeaning:
-      "Reversed, Zayin can mark conflict without rest — striving that has become combative, or provision hoarded as a weapon rather than shared as sustenance.",
+    keyword: "Sustenance Through Effort",
+    translationRoot: "Sword, Weapon, or Crown.",
+    eternalPrinciple:
+      "Sustenance through effort, boundaries, and defense. The sword that divides and cuts away, but also the crown of rest (Shabbat) that crowns the week.",
+    question: "What boundary must be fiercely protected so that you may finally rest?",
     hebrewRoot: "מזון (mazon) — sustenance; זין (zayin) — weapon.",
     traditionalSources: ["Sefer Yetzirah 5:1"],
   },
@@ -153,11 +157,11 @@ export const letters: LetterCard[] = [
     classification: "Simple",
     astrological: "Cancer (Sartan) / Tammuz",
     sefirahOrPath: "Netzach-Hod's enclosure",
-    keyword: "The Fence, Grace, Enclosure",
-    uprightMeaning:
-      "Chet forms an enclosure, a fenced-in space — chesed's grace held within a boundary, life (chai) protected. Upright, it speaks of a household or self held safely within healthy limits.",
-    reversedMeaning:
-      "Reversed, Chet's fence can become a wall — grace withheld behind rigid boundaries, or a protection that has curdled into isolation.",
+    keyword: "Sanctuary and Life Force",
+    translationRoot: "Fence, Enclosure, or Life.",
+    eternalPrinciple:
+      "Sanctuary and the life force. The protective enclosure that separates the cultivated garden from the chaotic wilderness.",
+    question: "What requires a fence around it so that it may properly live and grow?",
     hebrewRoot: "חי (chai) — life; חן (chen) — grace.",
     traditionalSources: ["Sefer Yetzirah 5:1"],
   },
@@ -171,11 +175,11 @@ export const letters: LetterCard[] = [
     classification: "Simple",
     astrological: "Leo (Aryeh) / Av",
     sefirahOrPath: "Hod's hidden good",
-    keyword: "The Hidden Good",
-    uprightMeaning:
-      "Tet's curved, enclosing shape is said to hide the good (tov) within it — the Midrash notes tov is spelled with tet though the word appears before the letter exists, hinting at a goodness present before it is visible. Upright, Tet speaks of a good quality still forming beneath the surface.",
-    reversedMeaning:
-      "Reversed, Tet can mark a goodness so hidden it has become inaccessible even to the participant themselves — potential unrecognized, kept turned inward.",
+    keyword: "Concealed Good",
+    translationRoot: "Basket, Coiled Serpent, or Mud/Clay.",
+    eternalPrinciple:
+      "Introversion, gestation, and concealed good. The state of a seed in the earth or a child in the womb, where profound transformation occurs in absolute darkness.",
+    question: "What truth is currently gestating in the dark, waiting for the proper time to emerge?",
     hebrewRoot: "טוב (tov) — good.",
     traditionalSources: ["Sefer Yetzirah 5:1", "Midrash Rabbah, Genesis 1:10"],
   },
@@ -189,11 +193,11 @@ export const letters: LetterCard[] = [
     classification: "Simple",
     astrological: "Virgo (Betulah) / Elul",
     sefirahOrPath: "Chochmah's point",
-    keyword: "The Point, the Hand, the Seed",
-    uprightMeaning:
-      "Yod is the smallest letter — a single point, said to contain all the others folded within it, and the letter of the Divine Name most associated with the hand (yad). Upright, it speaks of a small beginning that carries the whole of what will unfold.",
-    reversedMeaning:
-      "Reversed, Yod can mark a beginning made too small to notice, or a seed the participant is reluctant to plant — potential deferred rather than begun.",
+    keyword: "The Infinite Point",
+    translationRoot: "Hand, Point, or Thrust.",
+    eternalPrinciple:
+      "The infinite point. The seed of all things, total concentration, and ultimate humility. The spark from which all other letters are drawn.",
+    question: "What is the absolute, irreducible essence of the matter at hand?",
     hebrewRoot: "יד (yad) — hand.",
     traditionalSources: ["Sefer Yetzirah 5:1", "Talmud, Menachot 29a"],
   },
@@ -207,11 +211,11 @@ export const letters: LetterCard[] = [
     classification: "Double",
     astrological: "Sun (Chamah)",
     sefirahOrPath: "Netzach / the open palm",
-    keyword: "The Palm, Crown and Servitude",
-    uprightMeaning:
-      "Kaf is the open palm — kaf yad — that both holds and releases. Upright, it speaks of capacity: the hand cupped to receive blessing, or extended in service to another.",
-    reversedMeaning:
-      "Kaf's classical pair is crown/servitude. Reversed, the open hand can close into a fist of control, or a person may find themselves serving without dignity rather than by choice.",
+    keyword: "Actualized Potential",
+    translationRoot: "Palm of the hand, Crown, or To Bend.",
+    eternalPrinciple:
+      "Actualized potential and the act of holding. The cupped hand that receives the spark of the Yud and shapes it into action.",
+    question: "What are you currently holding, and is your hand open to receive or closed in a fist?",
     hebrewRoot: "כף (kaf) — palm, sole; also a measuring spoon.",
     traditionalSources: ["Sefer Yetzirah 4:1–3"],
   },
@@ -225,11 +229,11 @@ export const letters: LetterCard[] = [
     classification: "Simple",
     astrological: "Libra (Moznayim) / Tishrei",
     sefirahOrPath: "Tiferet's ascent",
-    keyword: "The Teaching, the Ascent",
-    uprightMeaning:
-      "Lamed rises above the other letters in its written form, and shares a root with limud, study. Upright, it speaks of learning that lifts a person upward — a teaching taken in and embodied.",
-    reversedMeaning:
-      "Reversed, Lamed can mark knowledge that has stayed abstract — study disconnected from practice, or an ascent attempted without the ground of real learning beneath it.",
+    keyword: "Aspiration and Learning",
+    translationRoot: "Goad, Teaching, or Heart (Lev).",
+    eternalPrinciple:
+      "Aspiration and learning. The only letter to break through the upper ceiling of the alphabet. The mind reaches upward in study, driven by the heart.",
+    question: "Toward what higher understanding is your heart currently reaching?",
     hebrewRoot: "למד (lamad) — to learn/teach.",
     traditionalSources: ["Sefer Yetzirah 5:1", "Talmud, Shabbat 104a"],
   },
@@ -243,11 +247,11 @@ export const letters: LetterCard[] = [
     classification: "Mother",
     element: "Water",
     sefirahOrPath: "Binah / the deep",
-    keyword: "Water, the Deep, Concealment",
-    uprightMeaning:
-      "Mem is water, mayim — the element of what flows and what conceals (the closed final-mem holds a hidden pool of meaning within it). Upright, it speaks of depth: feeling, memory, and the quiet interior life beneath a person's surface.",
-    reversedMeaning:
-      "Reversed, Mem's waters can become stagnant or overwhelming — feeling that has turned to flood, or depths the participant has sealed off entirely from view.",
+    keyword: "The Flow of Time",
+    translationRoot: "Water, Womb, or From.",
+    eternalPrinciple:
+      "The flow of time, the unconscious, and the revealer of secrets. The mother of all things, moving continuously and washing away the stagnant.",
+    question: "What must you allow to wash over you, and what must you let flow away?",
     hebrewRoot: "מים (mayim) — water.",
     traditionalSources: ["Sefer Yetzirah 3:1–2"],
   },
@@ -261,11 +265,11 @@ export const letters: LetterCard[] = [
     classification: "Simple",
     astrological: "Scorpio (Akrav) / Cheshvan",
     sefirahOrPath: "Malchut's faithfulness",
-    keyword: "The Fish, Faithfulness, Falling and Rising",
-    uprightMeaning:
-      "Nun shares a root with faithfulness (ne'eman) and with the fish (nun) that moves unseen through deep water. Upright, it speaks of quiet endurance — a faithfulness that persists beneath the surface of visible events.",
-    reversedMeaning:
-      "Reversed, Nun marks a fall not yet followed by a rising — the Psalmist's 'falling' verse missing from the alphabetic acrostic of Ashrei, tradition says, precisely where Nun's line would be. It can mark a person caught mid-fall, still awaiting support.",
+    keyword: "Moving Through the Depths",
+    translationRoot: "Fish, Soul, or To Fall.",
+    eternalPrinciple:
+      "Moving through the depths. The falling of the soul into the physical world, and the navigation of the dark, fluid environments of life.",
+    question: "Where are you falling, and can you trust the environment to hold you?",
     hebrewRoot: "נאמן (ne'eman) — faithful; נפילה (nefilah) — falling.",
     traditionalSources: ["Sefer Yetzirah 5:1", "Talmud, Berakhot 4b"],
   },
@@ -279,11 +283,11 @@ export const letters: LetterCard[] = [
     classification: "Simple",
     astrological: "Sagittarius (Keshet) / Kislev",
     sefirahOrPath: "Yesod's support",
-    keyword: "The Support, the Closed Circle",
-    uprightMeaning:
-      "Samech is a closed circle — the letter of support (someich), holding up what would otherwise fall, per the Psalm 'the Lord supports all who fall.' Upright, it speaks of steady, often invisible support underneath a person's life.",
-    reversedMeaning:
-      "Reversed, Samech's circle can become confinement rather than support — a closed loop with no opening, or support so total it prevents a person's own growth.",
+    keyword: "Unbreakable Support",
+    translationRoot: "Support, Pillar, or Prop.",
+    eternalPrinciple:
+      "The endless cycle and unbreakable support. The closed loop that catches those who fall (the preceding Nun) and provides an absolute, divine boundary.",
+    question: "Upon what foundational support are you leaning in this season?",
     hebrewRoot: "סומך (someich) — one who supports.",
     traditionalSources: ["Sefer Yetzirah 5:1", "Psalm 145:14"],
   },
@@ -297,11 +301,11 @@ export const letters: LetterCard[] = [
     classification: "Simple",
     astrological: "Capricorn (Gedi) / Tevet",
     sefirahOrPath: "Binah's sight",
-    keyword: "The Eye, Perception",
-    uprightMeaning:
-      "Ayin means 'eye' — the letter of sight and of the 70 faces of Torah, echoed in the number of nations and of the elders who saw Sinai. Upright, it speaks of clear perception: seeing a situation as it truly is, from more than one face.",
-    reversedMeaning:
-      "Reversed, Ayin can mark distorted or narrowed sight — a single perspective mistaken for the whole, or an evil eye of envy clouding what could otherwise be seen plainly.",
+    keyword: "Vision and Perspective",
+    translationRoot: "Eye, Wellspring, or Color.",
+    eternalPrinciple:
+      "Vision and perspective. Seeing beyond the superficial layer of reality to the hidden wellsprings of truth beneath.",
+    question: "What are you looking at but failing to truly see?",
     hebrewRoot: "עין (ayin) — eye, also 'spring/source'.",
     traditionalSources: ["Sefer Yetzirah 5:1", "Midrash Rabbah, Numbers 13:15"],
   },
@@ -315,11 +319,11 @@ export const letters: LetterCard[] = [
     classification: "Double",
     astrological: "Venus (Nogah)",
     sefirahOrPath: "Hod's mouth",
-    keyword: "The Mouth, Grace and Ugliness",
-    uprightMeaning:
-      "Peh means 'mouth' — the organ of speech that, per the doc's core philosophy, does not predict but illuminates. Upright, it speaks of honest, well-formed speech: words that open a path rather than close one.",
-    reversedMeaning:
-      "Peh's classical pair is beauty/ugliness. Reversed, it can mark speech turned harsh or silence where words are needed — a mouth closed against its own truth.",
+    keyword: "The Power of Expression",
+    translationRoot: "Mouth, Speech, or Opening.",
+    eternalPrinciple:
+      "The power of expression and the inner point. Speech as the mechanism that brings the invisible (thought/breath) into the visible world.",
+    question: "What truth must finally be spoken aloud to make it real?",
     hebrewRoot: "פה (peh) — mouth.",
     traditionalSources: ["Sefer Yetzirah 4:1–3"],
   },
@@ -333,11 +337,11 @@ export const letters: LetterCard[] = [
     classification: "Simple",
     astrological: "Aquarius (D'li) / Shevat",
     sefirahOrPath: "Yesod-Malchut's uprightness",
-    keyword: "The Righteous One, Uprightness",
-    uprightMeaning:
-      "Tzadi shares its root with tzaddik, the righteous one whose bent form (like a person stooping to lift another) is said to describe humility in service of others. Upright, it speaks of integrity quietly practiced rather than proclaimed.",
-    reversedMeaning:
-      "Reversed, Tzadi can mark righteousness performed rather than lived — rigid self-righteousness, or a person unable to bend toward another's need.",
+    keyword: "Righteousness Through Humility",
+    translationRoot: "Righteous (Tzadik), Fishhook, or To Hunt.",
+    eternalPrinciple:
+      "Righteousness through humility. The archetype of the servant who bends their knee to carry the burden of others, pulling hidden sparks out of the depths.",
+    question: "Where are you being asked to yield, bend, or lower yourself for the sake of another?",
     hebrewRoot: "צדיק (tzaddik) — righteous one; צדק (tzedek) — justice.",
     traditionalSources: ["Sefer Yetzirah 5:1"],
   },
@@ -351,11 +355,11 @@ export const letters: LetterCard[] = [
     classification: "Simple",
     astrological: "Pisces (Dagim) / Adar",
     sefirahOrPath: "Malchut's holiness or its shadow",
-    keyword: "Holiness or its Shadow",
-    uprightMeaning:
-      "Kuf's descending leg is said to reach toward kedushah (holiness) on one side and kelipah (the husk/shadow) on the other — the letter of a choice between two similar-sounding paths. Upright, it speaks of a person choosing the sacred reading of their own story.",
-    reversedMeaning:
-      "Reversed, Kuf marks the shadow side of that same choice — a pattern repeated compulsively (kof, 'ape', mimicking rather than originating), or holiness mistaken for its counterfeit.",
+    keyword: "Paradox and Descent",
+    translationRoot: "Monkey, Eye of a Needle, or Holiness.",
+    eternalPrinciple:
+      "Paradox and descent. The ability of holiness to descend beneath the baseline of the physical world (the only letter besides final letters to drop below the line) to elevate what is trapped there.",
+    question: "What dark or broken space are you being called to descend into in order to bring light?",
     hebrewRoot: "קדוש (kadosh) — holy; קוף (kof) — monkey/imitator.",
     traditionalSources: ["Sefer Yetzirah 5:1"],
   },
@@ -369,11 +373,11 @@ export const letters: LetterCard[] = [
     classification: "Double",
     astrological: "Mercury (Kokhav)",
     sefirahOrPath: "Chochmah's head",
-    keyword: "The Head, Peace and War",
-    uprightMeaning:
-      "Resh means 'head' — the letter of rosh, the beginning and the leading part, as in Rosh Hashanah. Upright, it speaks of clear-headed leadership: a person stepping into responsibility for their own direction.",
-    reversedMeaning:
-      "Resh's classical pair is peace/war. Reversed, it can mark a mind at war with itself, or leadership exercised without the peace (shalom) that should crown it — also echoed in rasha, the wicked one, a head turned from its own good.",
+    keyword: "The Intellect and the Mind",
+    translationRoot: "Head, Beginning, or Poor.",
+    eternalPrinciple:
+      "The intellect and the mind. The curvature of thought, which unlike the Dalet, lacks the projecting point of stability and can easily slip into poverty of spirit.",
+    question: "Where is your intellect creating a curve that prevents you from seeing straight ahead?",
     hebrewRoot: "ראש (rosh) — head; רש (rash) — poor/wicked.",
     traditionalSources: ["Sefer Yetzirah 4:1–3"],
   },
@@ -387,11 +391,11 @@ export const letters: LetterCard[] = [
     classification: "Mother",
     element: "Fire",
     sefirahOrPath: "Ruach HaKodesh / the consuming and purifying flame",
-    keyword: "Fire, Transformation",
-    uprightMeaning:
-      "Shin is fire, esh — the element of transformation, and the letter inscribed on the tefillin and mezuzah as a name of the Divine. Upright, it speaks of purifying, energizing change: a reading catalyzing real movement in a person's life.",
-    reversedMeaning:
-      "Reversed, Shin's fire can consume rather than refine — burnout, destructive anger, or change forced faster than a person can integrate it.",
+    keyword: "Transformation and Consuming Passion",
+    translationRoot: "Tooth, Fire, or Change/Year (Shanah).",
+    eternalPrinciple:
+      "Transformation and consuming passion. The divine fire that purifies, breaks down the old, and prepares the soil for the new. The harmony of three pillars uniting at one root.",
+    question: "What must you allow the fire of this moment to consume and transform?",
     hebrewRoot: "אש (esh) — fire; שלום (shalom) shares its first letter.",
     traditionalSources: ["Sefer Yetzirah 3:1–2"],
   },
@@ -405,11 +409,11 @@ export const letters: LetterCard[] = [
     classification: "Double",
     astrological: "Moon (Levanah)",
     sefirahOrPath: "Malchut's seal",
-    keyword: "The Mark, Dominion and Servitude",
-    uprightMeaning:
-      "Tav is the last letter — the mark or seal (as in Ezekiel's tav placed on the foreheads of the righteous), the completion of the alphabet's journey from Aleph's silent breath. Upright, it speaks of a covenant sealed, a truth marked as complete and carried forward.",
-    reversedMeaning:
-      "Tav's classical pair is dominion/servitude. Reversed, it can mark an ending forced or premature — a seal placed before the truth it marks has actually been integrated.",
+    keyword: "The Seal of Creation",
+    translationRoot: "Sign, Mark, or Truth (Emet).",
+    eternalPrinciple:
+      "The destination and the seal of creation. Absolute truth, which stands on two solid legs, representing the final conclusion of a process.",
+    question: "What absolute truth is currently leaving its permanent mark upon your life?",
     hebrewRoot: "תו (tav) — mark, sign; אמת (emet) ends with tav.",
     traditionalSources: ["Sefer Yetzirah 4:1–3", "Ezekiel 9:4"],
   },

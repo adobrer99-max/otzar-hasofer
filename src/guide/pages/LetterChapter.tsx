@@ -1,6 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import { letters, lettersById } from "../../data/letters";
 import { ClassificationBadge } from "../components/ClassificationBadge";
+import { ReversedFraming, REVERSED_FRAMING_LABEL } from "../components/ReversedFraming";
 import styles from "./LetterChapter.module.css";
 
 export function LetterChapter() {
@@ -40,12 +41,24 @@ export function LetterChapter() {
       </div>
 
       <div className={styles.section}>
-        <h3>Upright</h3>
-        <p>{letter.uprightMeaning}</p>
+        <h3>Translation / Root</h3>
+        <p>{letter.translationRoot}</p>
       </div>
       <div className={styles.section}>
-        <h3>Reversed</h3>
-        <p>{letter.reversedMeaning}</p>
+        <h3>Eternal Principle</h3>
+        <p>{letter.eternalPrinciple}</p>
+      </div>
+      {letter.question && (
+        <div className={styles.section}>
+          <h3>The Question</h3>
+          <p>
+            <em>{letter.question}</em>
+          </p>
+        </div>
+      )}
+      <div className={styles.section}>
+        <h3>{REVERSED_FRAMING_LABEL}</h3>
+        <ReversedFraming letter={letter} />
       </div>
       {letter.hebrewRoot && (
         <div className={styles.section}>
