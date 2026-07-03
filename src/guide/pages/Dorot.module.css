@@ -1,0 +1,57 @@
+.pillars {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.pillar {
+  border: 1px solid var(--rule);
+  padding: var(--space-3);
+}
+
+.pillarName {
+  color: var(--accent-bright);
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-2);
+}
+
+.houseLinks {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.houseKind {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  display: block;
+}
+
+.card {
+  margin-bottom: var(--space-4);
+}
+
+.card h3 {
+  margin-bottom: var(--space-1);
+}
+
+.cardMeta {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: var(--space-1);
+}
+
+.firstDraftNote {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.nav {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-5);
+}

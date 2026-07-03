@@ -49,4 +49,6 @@
 
 .heraldLink {
   margin-left: auto;
+  display: flex;
+  gap: var(--space-3);
 }

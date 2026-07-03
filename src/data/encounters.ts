@@ -13,10 +13,16 @@ import type { Encounter } from "../types/encounter";
  * gives only themes/aspect with no quoted question, so these are
  * first-draft editorial content authored in the same voice — treat as a
  * starting point to rewrite, same posture as the 22 letters' content.
+ *
+ * `sefirah` follows the established kabbalistic correspondence of the seven
+ * days of Creation to the seven lower Sefirot in order (Chesed through
+ * Malchut) — the newer doc says each Encounter "carries a primary Sefirotic
+ * emphasis" through which the Derekh Ha'Dorot Houses gradually open.
  */
 export const encounters: Encounter[] = [
   {
     number: 1,
+    sefirah: "chesed",
     name: "First",
     aspect: "Light",
     themes: "Awareness, beginnings, what seeks illumination.",
@@ -24,6 +30,7 @@ export const encounters: Encounter[] = [
   },
   {
     number: 2,
+    sefirah: "gevurah",
     name: "Second",
     aspect: "Separation — the waters above, the waters below",
     themes: "Boundaries, distinctions, sacred order, competing obligations.",
@@ -32,6 +39,7 @@ export const encounters: Encounter[] = [
   },
   {
     number: 3,
+    sefirah: "tiferet",
     name: "Third",
     aspect: "Dry Land",
     themes: "Roots, growth, fruitfulness.",
@@ -39,6 +47,7 @@ export const encounters: Encounter[] = [
   },
   {
     number: 4,
+    sefirah: "netzach",
     name: "Fourth",
     aspect: "Luminaries / Sacred Time",
     themes: "Rhythm, calling, seasons, vocation, recurring patterns.",
@@ -46,6 +55,7 @@ export const encounters: Encounter[] = [
   },
   {
     number: 5,
+    sefirah: "hod",
     name: "Fifth",
     aspect: "Living Creatures",
     themes: "Relationships, movement, abundance, community.",
@@ -53,6 +63,7 @@ export const encounters: Encounter[] = [
   },
   {
     number: 6,
+    sefirah: "yesod",
     name: "Sixth",
     aspect: "Humanity",
     themes: "Btzelem Elohim, responsibility, stewardship.",
@@ -60,6 +71,7 @@ export const encounters: Encounter[] = [
   },
   {
     number: 7,
+    sefirah: "malchut",
     name: "Seventh",
     aspect: "Shabbat",
     themes: "Creation is complete. Nothing new is made. Only lived.",

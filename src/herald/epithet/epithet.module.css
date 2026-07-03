@@ -1,0 +1,41 @@
+.panel {
+  border: 1px solid var(--accent);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.title {
+  color: var(--accent-bright);
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-2);
+}
+
+.proposal {
+  font-style: italic;
+  margin-bottom: var(--space-2);
+}
+
+.note {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.row {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.row input {
+  flex: 1;
+  min-width: 220px;
+}
+
+.sealed {
+  color: var(--accent-bright);
+  font-style: italic;
+  margin-bottom: var(--space-3);
+}

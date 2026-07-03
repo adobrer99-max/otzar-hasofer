@@ -1,4 +1,6 @@
 import type { HeraldLayer } from "../../types/herald";
+import type { CommentaryRecord } from "../../types/commentary";
+import { rootKeyFor } from "../../types/commentary";
 import { festivalsById } from "../../data/festivals";
 import { lettersById } from "../../data/letters";
 import { formatHebrewDateEnglish } from "../../data/hebrewCalendar";
@@ -6,12 +8,26 @@ import { encountersByNumber } from "../../data/encounters";
 import { resolveShoresh } from "../shoresh/resolveShoresh";
 import styles from "./history.module.css";
 
-export function LayerCaption({ layer }: { layer: HeraldLayer }) {
+export function LayerCaption({
+  layer,
+  epithet,
+  commentaries,
+}: {
+  layer: HeraldLayer;
+  epithet?: string;
+  /** All known commentaries — this caption surfaces the ones on this reading's root. */
+  commentaries?: CommentaryRecord[];
+}) {
   const festival = festivalsById[layer.input.festivalId] ?? festivalsById.ordinary;
   const drawnLetters = layer.input.drawnLetters.map((d) => lettersById[d.letterId]);
-  const shoresh = resolveShoresh(layer.input.drawnLetters.map((d) => d.letterId) as [string, string, string]);
+  const drawnIds = layer.input.drawnLetters.map((d) => d.letterId) as [string, string, string];
+  const shoresh = resolveShoresh(drawnIds);
   const sacredTime = layer.input.sacredTime;
   const encounter = layer.input.encounterNumber ? encountersByNumber[layer.input.encounterNumber] : undefined;
+  const readingRootKey = rootKeyFor(drawnIds);
+  const rootCommentaries = (commentaries ?? []).filter(
+    (c) => c.subject.kind === "root" && c.subject.rootKey === readingRootKey,
+  );
 
   return (
     <div className={styles.caption}>
@@ -26,6 +42,11 @@ export function LayerCaption({ layer }: { layer: HeraldLayer }) {
       {encounter?.number === 7 && (
         <div className={styles.citation}>
           Creation is complete; nothing new is made, only lived. Your Herald is revealed.
+        </div>
+      )}
+      {epithet && (
+        <div>
+          <strong>Heraldic Epithet:</strong> <em>{epithet}</em>
         </div>
       )}
       <div>Drawn: {drawnLetters.map((l) => l?.name).join(", ")}</div>
@@ -63,6 +84,22 @@ export function LayerCaption({ layer }: { layer: HeraldLayer }) {
           exactly as received, and the participant is invited to live with them, trusting that
           understanding may emerge through future readings, sacred time, personal experience, or
           continued study.
+        </div>
+      )}
+
+      {rootCommentaries.length > 0 && (
+        <div>
+          <strong>Received commentaries on this root:</strong>
+          <ul>
+            {rootCommentaries.map((c) => (
+              <li key={c.id}>
+                {c.title ?? `Commentary of ${c.author}`}{" "}
+                <span className={styles.citation}>
+                  ({c.author}, {formatHebrewDateEnglish(c.hebrewDate)})
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

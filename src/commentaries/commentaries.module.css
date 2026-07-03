@@ -1,0 +1,85 @@
+.filters {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3);
+}
+
+.entry {
+  border: 1px solid var(--rule);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.entryHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
+.entryTitle {
+  color: var(--accent-bright);
+  font-weight: 600;
+}
+
+.entryMeta {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.seedBadge {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 0 var(--space-1);
+}
+
+.body p {
+  margin-bottom: var(--space-2);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.form {
+  border: 1px solid var(--rule);
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.formRow {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.formRow > * {
+  flex: 1;
+  min-width: 160px;
+}
+
+.form textarea {
+  min-height: 10rem;
+  font-family: inherit;
+}
+
+.inlineSection {
+  margin-top: var(--space-3);
+}
+
+.inlineSection h3 {
+  color: var(--accent-bright);
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-1);
+}

@@ -8,6 +8,8 @@ import {
   addLayer,
 } from "../storage/participantsRepo";
 import { listLifeCycleEvents } from "../storage/lifeCycleRepo";
+import { listAllCommentaries } from "../storage/commentariesRepo";
+import type { CommentaryRecord } from "../types/commentary";
 import { computeSacredTime } from "../data/sacredTime";
 import { ReadingForm } from "./form/ReadingForm";
 import { HeraldCanvas } from "./render/HeraldCanvas";
@@ -15,6 +17,7 @@ import { ParticipantPicker } from "./history/ParticipantPicker";
 import { HistoryScrubber } from "./history/HistoryScrubber";
 import { LayerCaption } from "./history/LayerCaption";
 import { LifeCycleEventsPanel } from "./lifeCycle/LifeCycleEventsPanel";
+import { EpithetPanel } from "./epithet/EpithetPanel";
 import { SacredTimeBanners } from "./lifeCycle/SacredTimeBanners";
 import { exportHeraldSvg } from "./export/exportSvg";
 import { exportHeraldPng } from "./export/exportPng";
@@ -26,10 +29,12 @@ export function HeraldPage() {
   const [layers, setLayers] = useState<HeraldLayer[]>([]);
   const [selectedLayerId, setSelectedLayerId] = useState<string>();
   const [lifeCycleEvents, setLifeCycleEvents] = useState<LifeCycleEvent[]>([]);
+  const [commentaries, setCommentaries] = useState<CommentaryRecord[]>([]);
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
     listParticipants().then(setParticipants);
+    listAllCommentaries().then(setCommentaries);
   }, []);
 
   useEffect(() => {
@@ -69,6 +74,10 @@ export function HeraldPage() {
   const previousInput = selectedIndex > 0 ? layers[selectedIndex - 1].input : undefined;
   const selectedParticipant = participants.find((p) => p.id === selectedParticipantId);
   const todayHebrewDate = computeSacredTime(new Date(), "land").hebrewDate;
+  const sealedEpithet = selectedParticipant?.heraldicEpithet;
+  /** The Epithet belongs to the seventh reading onward — earlier layers show the pre-revelation Herald. */
+  const epithetForSelectedLayer =
+    sealedEpithet && selectedLayer && selectedLayer.layerIndex >= 6 ? sealedEpithet.text : undefined;
 
   return (
     <div className="page">
@@ -114,6 +123,13 @@ export function HeraldPage() {
             <ReadingForm onSubmit={handleSubmitReading} readingIndex={layers.length} />
           </div>
           <div className={styles.canvasCol}>
+            {selectedParticipant && layers.length >= 7 && !sealedEpithet && (
+              <EpithetPanel
+                participant={selectedParticipant}
+                layers={layers}
+                onParticipantChange={handleParticipantChange}
+              />
+            )}
             {selectedLayer ? (
               <>
                 <HeraldCanvas
@@ -123,8 +139,13 @@ export function HeraldPage() {
                   layerCount={selectedLayer.layerIndex}
                   displayName={selectedParticipant?.displayName}
                   createdAt={selectedLayer.createdAt}
+                  epithet={epithetForSelectedLayer}
                 />
-                <LayerCaption layer={selectedLayer} />
+                <LayerCaption
+                  layer={selectedLayer}
+                  epithet={epithetForSelectedLayer}
+                  commentaries={commentaries}
+                />
                 <div className={styles.exportRow}>
                   <button
                     type="button"

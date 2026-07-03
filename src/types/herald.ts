@@ -37,6 +37,17 @@ export interface HeraldInputSnapshot {
   encounterNumber?: number;
 }
 
+/**
+ * The honorific received from the Treasury at the seventh reading. The
+ * Treasury proposes (`derivedText`, kept even if reworded), the Scribe may
+ * reword, and sealing is permanent.
+ */
+export interface HeraldicEpithet {
+  text: string;
+  derivedText: string;
+  sealedAt: string;
+}
+
 export interface ParticipantRecord {
   id: string;
   displayName: string;
@@ -45,6 +56,8 @@ export interface ParticipantRecord {
   createdAt: string;
   /** The recurring month/day anchor for the Hebrew Birthday / "Annual Treasury Reading". */
   hebrewBirthDate?: HebrewDate;
+  /** Additive — participants who have not reached their seventh reading simply lack this. */
+  heraldicEpithet?: HeraldicEpithet;
 }
 
 export interface HeraldLayer {

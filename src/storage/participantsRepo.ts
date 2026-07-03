@@ -46,6 +46,23 @@ export async function setHebrewBirthDate(
   return updated;
 }
 
+export async function setHeraldicEpithet(
+  participantId: string,
+  text: string,
+  derivedText: string,
+): Promise<ParticipantRecord> {
+  const db = await getDb();
+  const record = await db.get("participants", participantId);
+  if (!record) throw new Error(`Participant ${participantId} not found`);
+  if (record.heraldicEpithet) return record; // sealing is permanent — never overwrite
+  const updated: ParticipantRecord = {
+    ...record,
+    heraldicEpithet: { text, derivedText, sealedAt: new Date().toISOString() },
+  };
+  await db.put("participants", updated);
+  return updated;
+}
+
 export async function getLayers(participantId: string): Promise<HeraldLayer[]> {
   const db = await getDb();
   const layers = await db.getAllFromIndex("heraldLayers", "by-participant", participantId);
