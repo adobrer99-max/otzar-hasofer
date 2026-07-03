@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 export function Foundations() {
   return (
     <div className="page">
@@ -74,6 +76,11 @@ export function Foundations() {
         <strong>Derekh Galut</strong> — horizontal, practical, communal: a
         fifty-six card deck still under development, whose symbolic content
         must emerge from Jewish tradition rather than arbitrary invention.
+      </p>
+      <p>
+        When three Derekh Eretz letters are drawn together, they are read as
+        a potential Hebrew root — see{" "}
+        <Link to="/guide/shoresh">Shoresh — The Root of the Reading</Link>.
       </p>
 
       <h2>Discovery Rather than Invention</h2>

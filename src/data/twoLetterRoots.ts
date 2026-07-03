@@ -1,14 +1,15 @@
-import type { LetterPair } from "../types/letter";
+import type { TwoLetterRoot } from "../types/letter";
 
 /**
- * A starter set of two-letter Hebrew roots and their traditional meanings,
- * used to detect when two of a reading's three drawn letters form a
- * meaningful pair. This is a genuinely large linguistic-research task
- * (up to C(22,2) = 231 possible pairs) — this file is a curated starting
- * set, not an exhaustive table. Expand as the Scribe's own practice
- * surfaces more resonant pairings.
+ * A starter set of two-letter Hebrew roots and their traditional meanings.
+ * This is one of several signals feeding Tier III ("Related Correspondence")
+ * of the Shoresh hierarchy in `src/herald/shoresh/resolveShoresh.ts` — on its
+ * own it is not a full root, just an "avenue of contemplation." This is a
+ * genuinely large linguistic-research task (up to C(22,2) = 231 possible
+ * pairs) — this file is a curated starting set, not an exhaustive table.
+ * Expand as the Scribe's own practice surfaces more resonant pairings.
  */
-export const letterPairs: LetterPair[] = [
+export const twoLetterRoots: TwoLetterRoot[] = [
   {
     id: "aleph-bet",
     letters: ["aleph", "bet"],
@@ -137,11 +138,11 @@ function pairKey(a: string, b: string): string {
   return [a, b].sort().join("+");
 }
 
-export const letterPairsByKey: Record<string, LetterPair> = Object.fromEntries(
-  letterPairs.map((pair) => [pairKey(pair.letters[0], pair.letters[1]), pair]),
+export const twoLetterRootsByKey: Record<string, TwoLetterRoot> = Object.fromEntries(
+  twoLetterRoots.map((pair) => [pairKey(pair.letters[0], pair.letters[1]), pair]),
 );
 
-export function findLetterPair(a: string, b: string): LetterPair | undefined {
+export function findTwoLetterRoot(a: string, b: string): TwoLetterRoot | undefined {
   if (a === b) return undefined;
-  return letterPairsByKey[pairKey(a, b)];
+  return twoLetterRootsByKey[pairKey(a, b)];
 }
