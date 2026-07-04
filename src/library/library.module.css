@@ -57,6 +57,60 @@
   letter-spacing: 0.1em;
 }
 
+/* A Book's page anchors the bookmark ribbon. */
+.bookPage {
+  position: relative;
+}
+
+.ribbon {
+  position: absolute;
+  top: -12px;
+  right: 32px;
+  width: 26px;
+  min-height: 168px;
+  background: linear-gradient(180deg, var(--color-copper), #8f5232);
+  box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.45);
+  /* Swallowtail notch cut into the bottom edge. */
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 84%, 0 100%);
+  z-index: 2;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  padding-top: var(--space-3);
+}
+
+/* A thin gold seam down the ribbon. */
+.ribbon::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-0.5px);
+  background: var(--color-gold-bright);
+  opacity: 0.55;
+}
+
+.ribbonLabel {
+  writing-mode: vertical-rl;
+  color: var(--color-gold-bright);
+  font-family: var(--font-latin);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  max-height: 150px;
+  overflow: hidden;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+}
+
+@media (max-width: 640px) {
+  .ribbon {
+    display: none;
+  }
+}
+
 .cards {
   display: grid;
   gap: var(--space-3);

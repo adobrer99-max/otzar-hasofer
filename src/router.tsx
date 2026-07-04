@@ -37,7 +37,7 @@ export const router = createHashRouter([
       { path: "herald", element: <HeraldPage /> },
       { path: "commentaries", element: <CommentariesPage /> },
       { path: "sefarim", element: <LibraryPage /> },
-      { path: "sefarim/:id", element: <SeferPage /> },
+      { path: "sefarim/:id/:entryId?", element: <SeferPage /> },
     ],
   },
 ]);

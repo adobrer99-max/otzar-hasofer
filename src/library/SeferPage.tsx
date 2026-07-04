@@ -1,11 +1,24 @@
 import { Link, Navigate, useParams } from "react-router-dom";
 import { sefarimById } from "../data/sefarim";
+import { shorashim } from "../data/shorashim.generated";
+import { lettersById } from "../data/letters";
 import { HaShorashimBook } from "./HaShorashimBook";
 import { BalaganBook } from "./BalaganBook";
 import { VocabularyTreasuryBook } from "./VocabularyTreasuryBook";
+import { BookmarkRibbon } from "./BookmarkRibbon";
+import styles from "./library.module.css";
+
+/** The ribbon's stamp: the open root's letter names when reading one, else the Book's name. */
+function ribbonLabel(seferTitle: string, entryId?: string): string {
+  if (entryId) {
+    const entry = shorashim.find((e) => e.id === entryId);
+    if (entry) return entry.letters.map((l) => lettersById[l]?.name ?? l).join("–");
+  }
+  return seferTitle;
+}
 
 export function SeferPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id, entryId } = useParams<{ id: string; entryId?: string }>();
   const sefer = id ? sefarimById[id] : undefined;
 
   if (!sefer) {
@@ -23,13 +36,15 @@ export function SeferPage() {
   }
 
   return (
-    <div className="page">
+    <div className={`page ${styles.bookPage}`}>
+      <BookmarkRibbon label={ribbonLabel(sefer.title, entryId)} />
+
       <div className="page-header">
         <div className="kicker">{sefer.hebrewName} · {sefer.subtitle}</div>
         <h1>{sefer.title}</h1>
       </div>
 
-      {sefer.kind === "pardes-browse" && <HaShorashimBook />}
+      {sefer.kind === "pardes-browse" && <HaShorashimBook entryId={entryId} />}
       {sefer.kind === "balagan" && <BalaganBook />}
       {sefer.kind === "explainer" && <VocabularyTreasuryBook />}
       {sefer.kind === "forthcoming" && (

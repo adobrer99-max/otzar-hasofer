@@ -1,9 +1,13 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { shorashim, type ShoreshEntry } from "../data/shorashim.generated";
 import { lettersById } from "../data/letters";
 import { rootKeyFor } from "../types/commentary";
 import { PardesEntry } from "./PardesEntry";
 import styles from "./library.module.css";
+
+/** Roots are deep-linkable: the open root lives in the URL, so a refresh or a shared link lands on it. */
+const BASE = "/sefarim/hashorashim";
 
 /** The three radicals as Hebrew glyphs, written right-to-left. */
 function rootGlyphs(entry: ShoreshEntry): string {
@@ -16,9 +20,8 @@ function rootNames(entry: ShoreshEntry): string {
 
 const MAX_RESULTS = 40;
 
-export function HaShorashimBook() {
+export function HaShorashimBook({ entryId }: { entryId?: string }) {
   const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState<string>();
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -33,15 +36,24 @@ export function HaShorashimBook() {
       .slice(0, MAX_RESULTS);
   }, [query]);
 
-  const selected = selectedId ? shorashim.find((e) => e.id === selectedId) : undefined;
+  const selected = entryId ? shorashim.find((e) => e.id === entryId) : undefined;
+
+  if (entryId && !selected) {
+    return (
+      <div>
+        <p>No root by that name is in the lexicon.</p>
+        <p>
+          <Link to={BASE}>← Back to the roots</Link>
+        </p>
+      </div>
+    );
+  }
 
   if (selected) {
     return (
       <div>
         <p>
-          <button type="button" onClick={() => setSelectedId(undefined)}>
-            ← Back to the roots
-          </button>
+          <Link to={BASE}>← Back to the roots</Link>
         </p>
         <h2>
           {rootNames(selected)}{" "}
@@ -112,11 +124,7 @@ export function HaShorashimBook() {
       <div className={styles.cards}>
         {results.map((entry) => (
           <div key={entry.id} className={styles.card}>
-            <button
-              type="button"
-              onClick={() => setSelectedId(entry.id)}
-              style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "start" }}
-            >
+            <Link to={`${BASE}/${entry.id}`}>
               <span className={styles.cardMeta} style={{ marginInlineStart: 0 }}>
                 {rootGlyphs(entry)}
               </span>{" "}
@@ -124,7 +132,7 @@ export function HaShorashimBook() {
               <span style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>
                 ({entry.transliteration})
               </span>
-            </button>
+            </Link>
             <p>{entry.gloss}</p>
           </div>
         ))}
