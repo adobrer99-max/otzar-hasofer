@@ -1,12 +1,21 @@
-import type { HeraldLayer } from "../../types/herald";
+import { Link } from "react-router-dom";
+import type { HeraldLayer, DorotDrawRole } from "../../types/herald";
 import type { CommentaryRecord } from "../../types/commentary";
 import { rootKeyFor } from "../../types/commentary";
 import { festivalsById } from "../../data/festivals";
 import { lettersById } from "../../data/letters";
+import { dorotCardsById, dorotHousesById } from "../../data/dorot";
 import { formatHebrewDateEnglish } from "../../data/hebrewCalendar";
 import { encountersByNumber } from "../../data/encounters";
 import { resolveShoresh } from "../shoresh/resolveShoresh";
 import styles from "./history.module.css";
+
+const DOROT_ROLE_LABELS: Record<DorotDrawRole, string> = {
+  "beneath-first": "Beneath the First drawn",
+  "beneath-second": "Beneath the Second drawn",
+  "beneath-third": "Beneath the Third drawn",
+  council: "The Council of Sefirot",
+};
 
 export function LayerCaption({
   layer,
@@ -27,6 +36,11 @@ export function LayerCaption({
   const readingRootKey = rootKeyFor(drawnIds);
   const rootCommentaries = (commentaries ?? []).filter(
     (c) => c.subject.kind === "root" && c.subject.rootKey === readingRootKey,
+  );
+  const dorotDraws = layer.input.dorotDraws ?? [];
+  const drawnCardIds = new Set(dorotDraws.map((d) => d.cardId));
+  const dorotCommentaries = (commentaries ?? []).filter(
+    (c) => c.subject.kind === "dorot-card" && drawnCardIds.has(c.subject.cardId),
   );
 
   return (
@@ -92,6 +106,53 @@ export function LayerCaption({
           <strong>Received commentaries on this root:</strong>
           <ul>
             {rootCommentaries.map((c) => (
+              <li key={c.id}>
+                {c.title ?? `Commentary of ${c.author}`}{" "}
+                <span className={styles.citation}>
+                  ({c.author}, {formatHebrewDateEnglish(c.hebrewDate)})
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {dorotDraws.length > 0 && (
+        <div>
+          <strong>From Derekh Ha'Dorot:</strong>
+          <ul>
+            {dorotDraws.map((draw) => {
+              const card = dorotCardsById[draw.cardId];
+              const house = card ? dorotHousesById[card.houseId] : undefined;
+              if (!card || !house) {
+                return <li key={`${draw.role}-${draw.cardId}`}>{draw.cardId}</li>;
+              }
+              return (
+                <li key={`${draw.role}-${draw.cardId}`}>
+                  {DOROT_ROLE_LABELS[draw.role]}:{" "}
+                  <Link to={`/guide/dorot/${house.id}`}>
+                    {card.title} (House of {house.figure})
+                  </Link>
+                  {(card.humanPractice ?? card.coreEnergy) && (
+                    <span className={styles.citation}> — {card.humanPractice ?? card.coreEnergy}</span>
+                  )}
+                  {card.question && (
+                    <div>
+                      <em>{card.question}</em>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {dorotCommentaries.length > 0 && (
+        <div>
+          <strong>Received commentaries on the drawn cards:</strong>
+          <ul>
+            {dorotCommentaries.map((c) => (
               <li key={c.id}>
                 {c.title ?? `Commentary of ${c.author}`}{" "}
                 <span className={styles.citation}>

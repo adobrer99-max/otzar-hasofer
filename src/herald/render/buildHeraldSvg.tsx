@@ -1,7 +1,9 @@
-import type { HeraldInputSnapshot } from "../../types/herald";
+import type { HeraldInputSnapshot, DorotDraw } from "../../types/herald";
+import type { SefirahId } from "../../types/letter";
 import type { HeraldForm } from "../synthesis/deriveHeraldForm";
 import { lettersById } from "../../data/letters";
 import { festivalsById } from "../../data/festivals";
+import { dorotCardsById, dorotHousesById } from "../../data/dorot";
 import { resolveShoresh } from "../shoresh/resolveShoresh";
 import { computeDivisions, type Division } from "./divisions";
 
@@ -229,6 +231,49 @@ function FestivalMotif({ motif, center }: { motif?: string; center: { x: number;
   }
 }
 
+/** The seven lower Pillars, Chesed→Malchut, giving each Dorot mark its slot on the base axis. */
+const PILLAR_SLOTS: SefirahId[] = ["chesed", "gevurah", "tiferet", "netzach", "hod", "yesod", "malchut"];
+
+/** Maps drawn Derekh Ha'Dorot cards to their Houses' Sefirot (draw order preserved). */
+export function dorotSefirotOf(draws: DorotDraw[] | undefined): SefirahId[] {
+  return (draws ?? [])
+    .map((d) => {
+      const card = dorotCardsById[d.cardId];
+      return card ? dorotHousesById[card.houseId]?.sefirah : undefined;
+    })
+    .filter((s): s is SefirahId => s !== undefined);
+}
+
+/**
+ * Small copper marks near the shield's base — one diamond per Derekh
+ * Ha'Dorot card drawn, placed on a 7-slot Chesed→Malchut axis by its
+ * House's Pillar, stacking upward when several cards share a Pillar.
+ * "No decorative element is arbitrary; every mark reflects a lived
+ * relationship within the Treasury."
+ */
+function DorotBaseMarks({ sefirot }: { sefirot: SefirahId[] }) {
+  if (sefirot.length === 0) return null;
+  const center = shieldCenter();
+  const baseY = SHIELD.shoulder + 90;
+  const slotSpacing = 38;
+  const seen = new Map<SefirahId, number>();
+  return (
+    <g stroke="var(--color-copper)" strokeWidth={1.25} fill="var(--color-copper)" fillOpacity={0.35}>
+      {sefirot.map((sefirah, i) => {
+        const slot = PILLAR_SLOTS.indexOf(sefirah);
+        if (slot < 0) return null;
+        const stack = seen.get(sefirah) ?? 0;
+        seen.set(sefirah, stack + 1);
+        const x = center.x + (slot - 3) * slotSpacing;
+        const y = baseY - stack * 14;
+        return (
+          <path key={`${sefirah}-${i}`} d={`M ${x} ${y - 5} L ${x + 5} ${y} L ${x} ${y + 5} L ${x - 5} ${y} Z`} />
+        );
+      })}
+    </g>
+  );
+}
+
 /** Tier IV (Shoresh Nistar) treatment — a deliberate, distinct mark, not an empty result. */
 function ShoreshNistarMark({ center }: { center: { x: number; y: number } }) {
   return (
@@ -269,6 +314,8 @@ interface HeraldFigureProps {
   accentColor: string;
   ornamentDensity: number;
   shoresh: ShoreshResult;
+  /** Sefirot of the Houses whose cards were drawn from Derekh Ha'Dorot — base marks. */
+  dorotSefirot?: SefirahId[];
 }
 
 /**
@@ -286,6 +333,7 @@ function HeraldFigure({
   accentColor,
   ornamentDensity,
   shoresh,
+  dorotSefirot = [],
 }: HeraldFigureProps) {
   const center = shieldCenter();
 
@@ -380,6 +428,7 @@ function HeraldFigure({
         );
       })}
 
+      <DorotBaseMarks sefirot={dorotSefirot} />
       <GeographyAccent mode={geography} />
       {festivalMotifs.map((motif) => (
         <FestivalMotif key={motif} motif={motif} center={center} />
@@ -410,6 +459,7 @@ export function HeraldLayerContent({
       accentColor={festival.heraldAccent?.accentColor ?? "var(--color-gold)"}
       ornamentDensity={Math.min(10 + layerCount * 2, 40)}
       shoresh={resolveShoresh(input.drawnLetters.map((d) => d.letterId) as [string, string, string])}
+      dorotSefirot={dorotSefirotOf(input.dorotDraws)}
     />
   );
 }
@@ -432,6 +482,7 @@ export function HeraldSynthesisContent({ form }: { form: HeraldForm }) {
       accentColor={form.accentColor}
       ornamentDensity={form.ornamentDensity}
       shoresh={resolveShoresh(form.charges.map((c) => c.letterId) as [string, string, string])}
+      dorotSefirot={form.dorotSefirot}
     />
   );
 }

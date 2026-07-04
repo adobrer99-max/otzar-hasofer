@@ -56,6 +56,21 @@ export function Dorot() {
         transformative.
       </p>
 
+      <h2>Drawn in the Reading</h2>
+      <p>
+        The second deck is not only read about — it is drawn. In Galut, three
+        Ha'Dorot cards are laid <em>beneath</em> the three open letters,
+        grounding the eternal principles in lived history. On Sukkot the
+        Scribe additionally performs the <strong>Council of Sefirot</strong>,
+        drawing one card to shift the conversation directly into the divine
+        emotional spectrum. And on Tisha B'Av the 22 Letters are locked
+        entirely — the Galut deck is drawn even in Jerusalem. Each drawn card
+        leaves a small copper mark near the base of the reading's Herald, set
+        on the Chesed-to-Malchut axis of its House's Pillar. (Tu Bishvat's
+        vertical four-card spread and Tu B'Av's paired reading are not yet
+        built.)
+      </p>
+
       <h2>Unfolding Through the Seven Encounters</h2>
       <p>
         The second deck should unfold gradually. Because each of a

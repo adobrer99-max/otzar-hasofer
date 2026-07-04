@@ -105,4 +105,43 @@ describe("deriveHeraldForm", () => {
   it("throws on an empty history", () => {
     expect(() => deriveHeraldForm([])).toThrow();
   });
+
+  it("accretes distinct Dorot pillars from drawn cards, first-seven only", () => {
+    const withDraws = seven.map((l, i) => ({
+      ...l,
+      input: {
+        ...l.input,
+        dorotDraws:
+          i === 0
+            ? [
+                { cardId: "abraham-1", role: "beneath-first" as const },
+                { cardId: "sarah-2", role: "beneath-second" as const }, // same pillar (chesed)
+                { cardId: "isaac-3", role: "beneath-third" as const }, // gevurah
+              ]
+            : i === 1
+              ? [{ cardId: "ruth-4", role: "council" as const }] // malchut
+              : undefined,
+      },
+    }));
+    const form = deriveHeraldForm(withDraws);
+    expect(form.dorotSefirot).toEqual(["chesed", "gevurah", "malchut"]);
+
+    // An 8th reading's draws never join the accretion.
+    const eighth = {
+      ...layer(7, ["resh", "shin", "tav"], "hod"),
+      input: {
+        ...layer(7, ["resh", "shin", "tav"], "hod").input,
+        dorotDraws: [{ cardId: "moses-1", role: "council" as const }],
+      },
+    };
+    expect(deriveHeraldForm([...withDraws, eighth]).dorotSefirot).toEqual([
+      "chesed",
+      "gevurah",
+      "malchut",
+    ]);
+  });
+
+  it("yields an empty dorotSefirot for histories without draws (existing data unchanged)", () => {
+    expect(deriveHeraldForm(seven).dorotSefirot).toEqual([]);
+  });
 });

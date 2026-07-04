@@ -1,6 +1,7 @@
 import type { HeraldLayer, LetterDraw, GeographyMode } from "../../types/herald";
 import type { SefirahId } from "../../types/letter";
 import { festivalsById } from "../../data/festivals";
+import { dorotCardsById, dorotHousesById } from "../../data/dorot";
 import { getEncounterForReadingIndex } from "../../data/encounters";
 import { dominant } from "./dominant";
 
@@ -34,6 +35,8 @@ export interface HeraldForm {
   geography: GeographyMode;
   /** Distinct festival accent motifs encountered, first-occurrence order, capped. */
   festivalMotifs: string[];
+  /** Distinct Pillars of Derekh Ha'Dorot cards drawn across the readings, first-occurrence order. */
+  dorotSefirot: SefirahId[];
   /** The dominant encountered festival's accent color, or gold when none. */
   accentColor: string;
   /** Ornament density — denser as the Herald completes. */
@@ -103,6 +106,16 @@ export function deriveHeraldForm(layers: HeraldLayer[]): HeraldForm {
     if (motif && !festivalMotifs.includes(motif)) festivalMotifs.push(motif);
     if (festivalMotifs.length >= MAX_FESTIVAL_MOTIFS) break;
   }
+  // Accreted Derekh Ha'Dorot pillars — the Houses whose cards were drawn.
+  const dorotSefirot: SefirahId[] = [];
+  for (const l of readings) {
+    for (const draw of l.input.dorotDraws ?? []) {
+      const card = dorotCardsById[draw.cardId];
+      const sefirah = card ? dorotHousesById[card.houseId]?.sefirah : undefined;
+      if (sefirah && !dorotSefirot.includes(sefirah)) dorotSefirot.push(sefirah);
+    }
+  }
+
   const dominantFestivalId = festivals.length
     ? dominant(festivals.map((f) => f!.id))
     : undefined;
@@ -118,6 +131,7 @@ export function deriveHeraldForm(layers: HeraldLayer[]): HeraldForm {
     dominantMiddah,
     geography,
     festivalMotifs,
+    dorotSefirot,
     accentColor,
     ornamentDensity: Math.min(10 + readingCount * 3, 40),
   };
