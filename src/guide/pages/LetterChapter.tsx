@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { letters, lettersById } from "../../data/letters";
 import { ClassificationBadge } from "../components/ClassificationBadge";
 import { ReversedFraming, REVERSED_FRAMING_LABEL } from "../components/ReversedFraming";
+import { CommentarySection } from "../../commentaries/CommentarySection";
 import styles from "./LetterChapter.module.css";
 
 export function LetterChapter() {
@@ -75,6 +76,8 @@ export function LetterChapter() {
       <p className={styles.sources}>
         Sources: {letter.traditionalSources.join("; ")}
       </p>
+
+      <CommentarySection subject={{ kind: "letter", letterId: letter.id }} />
 
       <div className={styles.nav}>
         <Link to={`/guide/letters/${prev.id}`}>

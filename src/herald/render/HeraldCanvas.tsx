@@ -12,10 +12,17 @@ export interface HeraldCanvasProps {
   layerCount: number;
   displayName?: string;
   createdAt?: string;
+  /**
+   * The participant's sealed Heraldic Epithet — pass only when the displayed
+   * layer is the seventh reading or later; earlier layers show the
+   * pre-revelation Herald. Rendering stays deterministic: absent epithet
+   * yields output identical to before this prop existed.
+   */
+  epithet?: string;
 }
 
 export const HeraldCanvas = forwardRef<SVGSVGElement, HeraldCanvasProps>(function HeraldCanvas(
-  { input, previous, layerCount, displayName, createdAt },
+  { input, previous, layerCount, displayName, createdAt, epithet },
   ref,
 ) {
   const festival = festivalsById[input.festivalId] ?? festivalsById.ordinary;
@@ -41,6 +48,19 @@ export const HeraldCanvas = forwardRef<SVGSVGElement, HeraldCanvasProps>(functio
 
       <HeraldLayerContent input={input} layerCount={layerCount} />
 
+      {epithet && (
+        <text
+          x={center.x}
+          y={VIEWBOX_HEIGHT - 64}
+          textAnchor="middle"
+          fontFamily="var(--font-latin)"
+          fontSize={14}
+          fontStyle="italic"
+          fill="var(--color-gold)"
+        >
+          {epithet}
+        </text>
+      )}
       {captionName && (
         <text
           x={center.x}

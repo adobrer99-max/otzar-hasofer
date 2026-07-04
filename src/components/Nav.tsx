@@ -5,9 +5,11 @@ const guideLinks = [
   { to: "/guide/foundations", label: "Foundations" },
   { to: "/guide/letters", label: "The Twenty-Two Letters" },
   { to: "/guide/shoresh", label: "Shoresh" },
+  { to: "/guide/dorot", label: "Derekh Ha'Dorot" },
   { to: "/guide/mizbeach", label: "The Mizbe'ach" },
   { to: "/guide/scribe", label: "The Scribe" },
   { to: "/guide/sacred-time", label: "Sacred Time" },
+  { to: "/guide/encounters", label: "Seven Encounters" },
   { to: "/guide/visual-canon", label: "Visual Canon" },
 ];
 
@@ -32,6 +34,9 @@ export function Nav() {
           ))}
         </ul>
         <div className={styles.heraldLink}>
+          <NavLink to="/commentaries" className={linkClass}>
+            Commentaries
+          </NavLink>
           <NavLink to="/herald" className={linkClass}>
             The Herald
           </NavLink>

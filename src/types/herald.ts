@@ -1,4 +1,6 @@
 import type { SefirahId } from "./letter";
+import type { SacredTimeSnapshot } from "./sacredTime";
+import type { HebrewDate } from "../data/hebrewCalendar";
 
 export type ReadingPath = "brit" | "noach";
 export type Orientation = "upright" | "reversed";
@@ -29,6 +31,21 @@ export interface HeraldInputSnapshot {
   /** FestivalOverride id, or "ordinary" for a non-festival day. */
   festivalId: string;
   reflection?: string;
+  /** Additive — older stored layers simply lack this. */
+  sacredTime?: SacredTimeSnapshot;
+  /** Which of the Seven Encounters this reading was, by reading count at submit time. Additive; undefined for readings beyond the seventh or predating this feature. */
+  encounterNumber?: number;
+}
+
+/**
+ * The honorific received from the Treasury at the seventh reading. The
+ * Treasury proposes (`derivedText`, kept even if reworded), the Scribe may
+ * reword, and sealing is permanent.
+ */
+export interface HeraldicEpithet {
+  text: string;
+  derivedText: string;
+  sealedAt: string;
 }
 
 export interface ParticipantRecord {
@@ -37,6 +54,10 @@ export interface ParticipantRecord {
   hebrewName?: string;
   path: ReadingPath;
   createdAt: string;
+  /** The recurring month/day anchor for the Hebrew Birthday / "Annual Treasury Reading". */
+  hebrewBirthDate?: HebrewDate;
+  /** Additive — participants who have not reached their seventh reading simply lack this. */
+  heraldicEpithet?: HeraldicEpithet;
 }
 
 export interface HeraldLayer {

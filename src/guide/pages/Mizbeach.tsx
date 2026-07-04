@@ -1,4 +1,20 @@
+import { useRef, useState } from "react";
+import type { GeographyMode } from "../../types/herald";
+import { computeSacredTime } from "../../data/sacredTime";
+import { MizbeachCanvas } from "../../mizbeach/MizbeachCanvas";
+import { MizbeachCentralPanel } from "../../mizbeach/render/centralPanel";
+import { SacredTimePanel } from "../../herald/form/SacredTimePanel";
+import { exportHeraldSvg } from "../../herald/export/exportSvg";
+import { exportHeraldPng } from "../../herald/export/exportPng";
+import { VIEWBOX_SIZE } from "../../mizbeach/render/mizbeachGeometry";
+import styles from "./Mizbeach.module.css";
+
 export function Mizbeach() {
+  const [geography, setGeography] = useState<GeographyMode>("land");
+  const [revealHidden, setRevealHidden] = useState(false);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const sacredTime = computeSacredTime(new Date(), geography);
+
   return (
     <div className="page">
       <div className="page-header">
@@ -10,10 +26,82 @@ export function Mizbeach() {
       </p>
       <p>
         The Mizbe'ach is a dual-sided charcoal leather ritual folio — the
-        physical geometry a reading unfolds across. This page is reference
-        only; the folio itself is a physical object, not something rendered
-        by this app.
+        physical geometry a reading unfolds across. The renderings below are
+        a live digital reference: the ring mandala reflects today's actual
+        Hebrew date, moon phase, and any active festival, using the same
+        Sacred Time engine that drives the Herald's reading form.
       </p>
+
+      <h2>The Central Panel</h2>
+      <p>
+        Hand Anchor, Three Gates, Three Wells, Veiled Anchor, and Tree of
+        Life, in the order a reading moves through them.
+      </p>
+      <div className={styles.canvasWrap}>
+        <MizbeachCentralPanel />
+      </div>
+
+      <h2>The Ring Mandala</h2>
+      <p>
+        The Mazalot, Moon, Solar Month/Holiday, and Parsha rings, the
+        Sabbath Core, the PaRDeS corners, the Shivat HaMinim border, and the
+        Mizrach vector — described in full below the diagram.
+      </p>
+      <div className={styles.controls}>
+        <div className={styles.segmented}>
+          <button
+            type="button"
+            className={geography === "land" ? styles.active : undefined}
+            onClick={() => setGeography("land")}
+          >
+            Land
+          </button>
+          <button
+            type="button"
+            className={geography === "galut" ? styles.active : undefined}
+            onClick={() => setGeography("galut")}
+          >
+            Galut
+          </button>
+        </div>
+        <button type="button" onClick={() => setRevealHidden((r) => !r)}>
+          {revealHidden ? "Conceal the Hidden Layer" : "Reveal the Hidden Layer (Or HaGanuz)"}
+        </button>
+      </div>
+
+      <div className={styles.canvasWrap}>
+        <MizbeachCanvas ref={svgRef} sacredTime={sacredTime} revealHidden={revealHidden} />
+      </div>
+
+      <div className={styles.exportRow}>
+        <button
+          type="button"
+          onClick={() => svgRef.current && exportHeraldSvg(svgRef.current, "mizbeach.svg")}
+        >
+          Download SVG
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            svgRef.current &&
+            exportHeraldPng(svgRef.current, "mizbeach.png", "print", {
+              width: VIEWBOX_SIZE,
+              height: VIEWBOX_SIZE,
+            })
+          }
+        >
+          Download PNG
+        </button>
+      </div>
+
+      <SacredTimePanel
+        snapshot={sacredTime}
+        backdateEnabled={false}
+        backdateValue=""
+        onBackdateEnabledChange={() => {}}
+        onBackdateValueChange={() => {}}
+        showBackdate={false}
+      />
 
       <h2>Hand Anchor</h2>
       <p>
@@ -22,11 +110,15 @@ export function Mizbeach() {
         Lev, and Rosh lines.
       </p>
 
-      <h2>Three Gates</h2>
+      <h2>The Corners — PaRDeS</h2>
       <p>
-        Peshat · Remez · Drash — the Simple, the Hinted, the Sought. Each
-        gate reflects a mode of revelation through which a drawn letter can
-        be read.
+        Peshat · Remez · Drash · Sod — the Simple, the Hinted, the Sought,
+        the Lived. Each corner of the folio marks one interpretive layer
+        through which a drawn letter can be read: the letter as it is, the
+        witness of tradition, the Scribe's faithful commentary, and finally
+        the participant's own lived experience — the same four tiers the
+        Treasury's <a href="/commentaries">Commentaries</a> space is built
+        around.
       </p>
 
       <h2>Three Wells</h2>
@@ -43,21 +135,38 @@ export function Mizbeach() {
         participant-facing Herald.
       </p>
 
-      <h2>Tree of Life</h2>
+      <h2>The Hidden Layer — Or HaGanuz</h2>
       <p>
-        The spine of existence. Seven lower Sefirot rooted in holiness; all
-        paths return here. The dominant middah drawn in a reading is
-        reflected on this tree in the participant's Herald.
+        The spine of existence, etched in UV ink on the physical folio and
+        invisible until revealed. The digital folio above hides it the same
+        way — use "Reveal the Hidden Layer" to see the ten Sefirot. The
+        dominant middah drawn in a reading is reflected on this same tree in
+        the participant's Herald.
       </p>
 
-      <h2>Two Ritual Cyclewheels</h2>
+      <h2>The Rings</h2>
       <p>
-        Time and return. The Cycle of the Year tracks the lunar/weekly/Omer
-        rhythm and the festival calendar; the Cycle of the Moon tracks lunar
-        phase and archetype/tekufot. (Known pending changes to the physical
-        rings — making them mechanical/movable, and adding a weekly-Shabbat
-        ring and a daily-holiday ring — are physical-design work, not
-        something this software addresses.)
+        Reading outward to inward: the <strong>Ring of the Mazalot</strong>{" "}
+        (the cosmic climate — the zodiac sign of the current Hebrew month),
+        the <strong>Ring of the Moon</strong> (the lunar pulse — the
+        traditional eight-phase cycle, new through waning crescent), the{" "}
+        <strong>Ring of the Solar Month/Holiday</strong>{" "}
+        (the temporal season — the current Hebrew month, or an active
+        festival's gesture when one is underway), and the{" "}
+        <strong>Ring of the Parsha</strong> (the narrative context — the
+        weekly Torah portion; not yet tracked, for the same reason the
+        reference guide's Sacred Time page gives: a homegrown implementation
+        without a GPL-licensed dependency is nontrivial). At the center, the{" "}
+        <strong>Sabbath Core</strong> marks whether today is Shabbat — the
+        point of stillness all the rings turn around.
+      </p>
+
+      <h2>Border and Vector</h2>
+      <p>
+        The border traces the <strong>Shivat HaMinim</strong> — the seven
+        species of Deuteronomy 8:8, the fruits of the covenant. A small
+        arrow at the top marks <strong>Mizrach</strong>, facing Jerusalem —
+        a fixed reference symbol here, not a computed compass bearing.
       </p>
 
       <h2>Heraldry</h2>

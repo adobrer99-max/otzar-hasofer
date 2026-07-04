@@ -30,3 +30,21 @@
   border-left: 2px solid var(--accent);
   padding-left: var(--space-2);
 }
+
+.gesture {
+  display: inline-block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius);
+  padding: 2px 8px;
+  margin-top: var(--space-2);
+}
+
+.question {
+  margin-top: var(--space-2);
+  font-style: italic;
+  font-size: 0.9rem;
+}
