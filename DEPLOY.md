@@ -27,18 +27,23 @@ out of the box once one one-time account step is done.
 2. Select the `otzar-hasofer` GitHub repository and choose the branch to
    deploy. Build settings should auto-detect from `wrangler.jsonc`: build
    command `npm run build`, deploy command `npx wrangler deploy`.
-3. **One-time step — register a `*.workers.dev` subdomain**: the first
-   deploy attempt will fail with a message like *"You need to register a
-   workers.dev subdomain before publishing"* and print a dashboard link
-   (`https://dash.cloudflare.com/<account-id>/workers/onboarding`). Open
-   it, pick a subdomain name, and re-run the deploy (retry the failed
-   build, or push any commit). This is a one-time, account-level action —
-   every deploy after it succeeds without further prompts, because
-   `wrangler.jsonc` already sets `workers_dev: true`.
-4. You'll get a `<name>.<your-subdomain>.workers.dev` URL. Add a custom
-   domain whenever ready — either add a `routes` array to `wrangler.jsonc`
-   (see the comment in that file) or attach one in the dashboard under the
-   Worker's **Settings → Domains & Routes** (HTTPS is automatic either way).
+3. **Give the Worker somewhere to publish.** `wrangler deploy` needs either
+   a registered `*.workers.dev` subdomain or a custom domain attached —
+   without one, the first deploy fails with *"You need to register a
+   workers.dev subdomain before publishing"*. Pick one:
+   - **Custom domain (what this deployment uses)**: attach your domain
+     under the Worker's **Domains & Routes** tab in the dashboard, then add
+     matching entries to `wrangler.jsonc`'s `routes` array (`{ "pattern":
+     "yourdomain.com", "custom_domain": true }`) so CI deploys know about
+     it too — a dashboard-only attachment isn't visible to the committed
+     config. Set `workers_dev: false` once a custom domain is in place.
+   - **`*.workers.dev` subdomain**: open the onboarding link Cloudflare
+     prints in the failed build's log (`https://dash.cloudflare.com/<account-id>/workers/onboarding`),
+     pick a subdomain, and re-run the deploy. Keep `workers_dev: true` in
+     `wrangler.jsonc` for this path.
+   Either way this is a one-time step — once the config matches what's
+   attached in the dashboard, every deploy after it succeeds without
+   further prompts.
 
 Notes:
 - The free tier has unlimited bandwidth and permits commercial use.
