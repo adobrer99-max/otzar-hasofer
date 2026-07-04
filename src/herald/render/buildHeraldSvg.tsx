@@ -13,6 +13,7 @@ import {
   TREE_OF_LIFE_PATHS,
   FLOURISH_UNIT_PATH,
   shieldCenter,
+  shieldBorderPoints,
 } from "./heraldGeometry";
 
 const BAND_TOP = SHIELD.top + 150;
@@ -22,37 +23,6 @@ function bandX(band: [number, number]): { start: number; end: number; center: nu
   const start = SHIELD.left + band[0] * width;
   const end = SHIELD.left + band[1] * width;
   return { start, end, center: (start + end) / 2 };
-}
-
-function perimeterPoints(count: number) {
-  const left = SHIELD.left + 15;
-  const right = SHIELD.right - 15;
-  const top = SHIELD.top + 15;
-  const bottom = SHIELD.point - 25;
-  const width = right - left;
-  const height = bottom - top;
-  const perimeter = 2 * (width + height);
-  const points: { x: number; y: number }[] = [];
-  for (let i = 0; i < count; i++) {
-    const d = (i / count) * perimeter;
-    let x: number;
-    let y: number;
-    if (d < width) {
-      x = left + d;
-      y = top;
-    } else if (d < width + height) {
-      x = right;
-      y = top + (d - width);
-    } else if (d < 2 * width + height) {
-      x = right - (d - width - height);
-      y = bottom;
-    } else {
-      x = left;
-      y = bottom - (d - 2 * width - height);
-    }
-    points.push({ x, y });
-  }
-  return points;
 }
 
 function DivisionDividers({ bands }: { bands: [number, number][] }) {
@@ -271,7 +241,7 @@ function ShoreshNistarMark({ center }: { center: { x: number; y: number } }) {
 }
 
 function OrnamentalBorder({ density, color }: { density: number; color: string }) {
-  const points = perimeterPoints(density);
+  const points = shieldBorderPoints(density);
   return (
     <g stroke={color} fill={color} opacity={0.85}>
       {points.map((p, i) => (
