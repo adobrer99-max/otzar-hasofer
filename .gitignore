@@ -145,3 +145,6 @@ vite.config.ts.timestamp-*
 # Vendored third-party lexicon source (large, public domain, re-downloadable —
 # see scripts/build-shorashim.mjs). Only the generated src/data output is committed.
 data-sources/openscriptures/
+
+# Wrangler local state/cache (Cloudflare Workers deploy — see wrangler.jsonc, DEPLOY.md)
+.wrangler/

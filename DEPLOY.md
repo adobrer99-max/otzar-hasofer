@@ -2,33 +2,54 @@
 
 The app is a static Vite build (`npm run build` → `dist/`) with hash routing,
 so any static host serves it with zero special configuration. This guide
-covers the recommended setup: **Cloudflare Pages** for hosting and
-(optionally) **Supabase** for the Scribes' Cloud — accounts with private,
-cross-device sync.
+covers the recommended setup: **Cloudflare** for hosting (via Workers with
+static assets — the current unified successor to the classic "Pages"
+product) and (optionally) **Supabase** for the Scribes' Cloud — accounts
+with private, cross-device sync.
 
 Both halves are independent: you can host the site with no Supabase project
 at all, and the app runs fully local in each visitor's browser, exactly as it
 always has. The cloud is enabled purely by setting two environment variables
 at build time.
 
-## 1. Host on Cloudflare Pages
+## 1. Host on Cloudflare
+
+Connecting a Git repo through Cloudflare's dashboard today provisions a
+**Worker with static assets**, not the older classic Pages product — it
+still serves this static build for free with a custom domain and HTTPS, it
+just deploys via `wrangler` instead of a plain asset upload. This repo
+already ships the config that flow needs (`wrangler.jsonc`), so it works
+out of the box once one one-time account step is done.
 
 1. Create a free Cloudflare account and open **Workers & Pages → Create →
-   Pages → Connect to Git**.
-2. Select the `otzar-hasofer` GitHub repository and choose the production
-   branch. (If your work lives on a feature branch, either select it directly
-   or merge it to your default branch first — Pages can build from any
-   branch.)
-3. Build settings: framework preset **None** (or Vite), build command
-   `npm run build`, output directory `dist`.
-4. Deploy. You'll get a `*.pages.dev` URL immediately; add a custom domain
-   under **Custom domains** whenever ready (HTTPS is automatic).
+   Connect to Git** (or **Import a repository**, depending on the current
+   dashboard wording).
+2. Select the `otzar-hasofer` GitHub repository and choose the branch to
+   deploy. Build settings should auto-detect from `wrangler.jsonc`: build
+   command `npm run build`, deploy command `npx wrangler deploy`.
+3. **One-time step — register a `*.workers.dev` subdomain**: the first
+   deploy attempt will fail with a message like *"You need to register a
+   workers.dev subdomain before publishing"* and print a dashboard link
+   (`https://dash.cloudflare.com/<account-id>/workers/onboarding`). Open
+   it, pick a subdomain name, and re-run the deploy (retry the failed
+   build, or push any commit). This is a one-time, account-level action —
+   every deploy after it succeeds without further prompts, because
+   `wrangler.jsonc` already sets `workers_dev: true`.
+4. You'll get a `<name>.<your-subdomain>.workers.dev` URL. Add a custom
+   domain whenever ready — either add a `routes` array to `wrangler.jsonc`
+   (see the comment in that file) or attach one in the dashboard under the
+   Worker's **Settings → Domains & Routes** (HTTPS is automatic either way).
 
 Notes:
 - The free tier has unlimited bandwidth and permits commercial use.
 - `public/_headers` ships security headers (including a CSP that allows the
-  Supabase origin); Pages applies it automatically.
-- Hash routing means no SPA-fallback/redirect rules are needed.
+  Supabase origin); Workers static assets applies it automatically.
+- Hash routing + `assets.not_found_handling: "single-page-application"` in
+  `wrangler.jsonc` means no separate SPA-fallback configuration is needed.
+- To test the Workers runtime locally before pushing: `npm run
+  preview:wrangler` (builds, then runs `wrangler dev`). Plain `npm run
+  preview` (Vite's own static preview) is still available for a faster,
+  non-Workers local check.
 
 ## 2. Enable the Scribes' Cloud (optional — Supabase)
 
@@ -43,10 +64,10 @@ syncs privately across their devices.
    tables, their row-level-security policies (each row readable/writable
    only by its owning Scribe), timestamps, and indexes.
 3. In **Authentication → URL Configuration**, set the **Site URL** to your
-   deployed URL (the `*.pages.dev` URL or your custom domain) and add it to
-   the **Redirect URLs** list — magic-link emails redirect there.
-4. In Cloudflare Pages → your project → **Settings → Environment
-   variables**, add (for Production, and Preview if you like):
+   deployed URL (the `*.workers.dev` URL or your custom domain) and add it
+   to the **Redirect URLs** list — magic-link emails redirect there.
+4. In the Cloudflare dashboard → your Worker → **Settings → Variables and
+   Secrets**, add two build-time variables:
    - `VITE_SUPABASE_URL` = the Project URL
    - `VITE_SUPABASE_ANON_KEY` = the anon/public key
 5. Re-deploy (retry the latest deployment or push a commit). The Account
