@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import type { CommentaryRecord, CommentarySubject } from "../types/commentary";
 import {
   listAllCommentaries,
@@ -73,7 +74,9 @@ export function CommentariesPage() {
         commentary. This is the Drash shelf: marginal notes, unresolved
         questions, variant traditions, corrections, and respectful
         disagreements, kept alongside the received commentaries and
-        preserved locally like everything else in the Treasury.
+        preserved locally like everything else in the Treasury. Commentaries
+        also appear inline on the <Link to="/guide/letters">letter</Link> and{" "}
+        <Link to="/guide/dorot">Ha'Dorot</Link> pages they belong to.
       </p>
 
       <h2>{editing ? "Edit commentary" : "Add a commentary"}</h2>

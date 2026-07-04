@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import type { GeographyMode } from "../../types/herald";
 import { computeSacredTime } from "../../data/sacredTime";
 import { MizbeachCanvas } from "../../mizbeach/MizbeachCanvas";
@@ -48,10 +49,11 @@ export function Mizbeach() {
         Mizrach vector — described in full below the diagram.
       </p>
       <div className={styles.controls}>
-        <div className={styles.segmented}>
+        <div className={styles.segmented} role="group" aria-label="Geography — Land or Galut">
           <button
             type="button"
             className={geography === "land" ? styles.active : undefined}
+            aria-pressed={geography === "land"}
             onClick={() => setGeography("land")}
           >
             Land
@@ -59,12 +61,17 @@ export function Mizbeach() {
           <button
             type="button"
             className={geography === "galut" ? styles.active : undefined}
+            aria-pressed={geography === "galut"}
             onClick={() => setGeography("galut")}
           >
             Galut
           </button>
         </div>
-        <button type="button" onClick={() => setRevealHidden((r) => !r)}>
+        <button
+          type="button"
+          aria-pressed={revealHidden}
+          onClick={() => setRevealHidden((r) => !r)}
+        >
           {revealHidden ? "Conceal the Hidden Layer" : "Reveal the Hidden Layer (Or HaGanuz)"}
         </button>
       </div>
@@ -117,7 +124,7 @@ export function Mizbeach() {
         through which a drawn letter can be read: the letter as it is, the
         witness of tradition, the Scribe's faithful commentary, and finally
         the participant's own lived experience — the same four tiers the
-        Treasury's <a href="/commentaries">Commentaries</a> space is built
+        Treasury's <Link to="/commentaries">Commentaries</Link> space is built
         around.
       </p>
 
@@ -154,9 +161,10 @@ export function Mizbeach() {
         (the temporal season — the current Hebrew month, or an active
         festival's gesture when one is underway), and the{" "}
         <strong>Ring of the Parsha</strong> (the narrative context — the
-        weekly Torah portion; not yet tracked, for the same reason the
-        reference guide's Sacred Time page gives: a homegrown implementation
-        without a GPL-licensed dependency is nontrivial). At the center, the{" "}
+        weekly Torah portion; not yet tracked, for the same reason the{" "}
+        <Link to="/guide/sacred-time">Sacred Time</Link> page gives: a
+        homegrown implementation without a GPL-licensed dependency is
+        nontrivial). At the center, the{" "}
         <strong>Sabbath Core</strong> marks whether today is Shabbat — the
         point of stillness all the rings turn around.
       </p>
@@ -173,8 +181,8 @@ export function Mizbeach() {
       <p>
         The Mizbe'ach's most sacred responsibility, digitally, is the
         creation and stewardship of each participant's Living Herald — see{" "}
-        <a href="/guide/visual-canon">Visual Canon</a> and use{" "}
-        <a href="/herald">the Herald generator</a> to create one.
+        <Link to="/guide/visual-canon">Visual Canon</Link> and use{" "}
+        <Link to="/herald">the Herald generator</Link> to create one.
       </p>
     </div>
   );

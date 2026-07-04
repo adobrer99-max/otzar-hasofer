@@ -29,14 +29,25 @@ export const HeraldCanvas = forwardRef<SVGSVGElement, HeraldCanvasProps>(functio
   const center = shieldCenter();
   const captionName = input.path === "brit" && input.hebrewName ? input.hebrewName : displayName;
 
+  const label = [
+    captionName ? `Herald of ${captionName}` : "Herald",
+    epithet,
+    festival.id !== "ordinary" ? festival.name : undefined,
+  ]
+    .filter(Boolean)
+    .join(" — ");
+
   return (
     <svg
       ref={ref}
       viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
       xmlns="http://www.w3.org/2000/svg"
+      role="img"
+      aria-label={label}
       data-festival={festival.id === "ordinary" ? undefined : festival.id}
       style={{ width: "100%", height: "auto", background: "var(--color-charcoal)" }}
     >
+      <title>{label}</title>
       <HeraldSvgDefs />
       <rect x={0} y={0} width={VIEWBOX_WIDTH} height={VIEWBOX_HEIGHT} fill="var(--color-charcoal)" />
 

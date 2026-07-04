@@ -1,0 +1,34 @@
+.section {
+  margin-top: var(--space-5);
+}
+
+.sectionTitle {
+  color: var(--accent-bright);
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-3);
+}
+
+.doorList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.doorList li {
+  border: 1px solid var(--border-hairline);
+  padding: var(--space-3);
+}
+
+.doorList a {
+  font-size: 1.05rem;
+}
+
+.doorList p {
+  margin: var(--space-1) 0 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}

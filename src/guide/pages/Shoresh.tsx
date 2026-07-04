@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 export function Shoresh() {
   return (
     <div className="page">
@@ -64,6 +66,13 @@ export function Shoresh() {
         The veiled fourth letter, drawn privately by the Scribe, is never
         included in this process — it holds the Sod (secret) layer of the
         reading and stays hidden even from the Herald.
+      </p>
+
+      <hr className="hairline-rule" />
+      <p>
+        See the <Link to="/guide/letters">Twenty-Two Letters</Link> this root
+        is built from, and use <Link to="/herald">the Herald</Link>, where the
+        Shoresh hierarchy is resolved automatically for each reading.
       </p>
     </div>
   );

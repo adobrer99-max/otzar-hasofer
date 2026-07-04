@@ -6,7 +6,7 @@
 }
 
 .pillar {
-  border: 1px solid var(--rule);
+  border: 1px solid var(--border-hairline);
   padding: var(--space-3);
 }
 

@@ -6,7 +6,7 @@
 }
 
 .entry {
-  border: 1px solid var(--rule);
+  border: 1px solid var(--border-hairline);
   padding: var(--space-3);
   margin-bottom: var(--space-3);
 }
@@ -49,7 +49,7 @@
 }
 
 .form {
-  border: 1px solid var(--rule);
+  border: 1px solid var(--border-hairline);
   padding: var(--space-3);
   margin-bottom: var(--space-4);
   display: grid;

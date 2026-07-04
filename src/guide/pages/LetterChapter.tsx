@@ -79,6 +79,13 @@ export function LetterChapter() {
 
       <CommentarySection subject={{ kind: "letter", letterId: letter.id }} />
 
+      <p className={styles.sources}>
+        See also: <Link to="/guide/shoresh">Shoresh</Link> — how three drawn
+        letters become the root of a reading — and{" "}
+        <Link to="/guide/dorot">Derekh Ha'Dorot</Link>, where the letters'
+        eternal principles are lived out in history.
+      </p>
+
       <div className={styles.nav}>
         <Link to={`/guide/letters/${prev.id}`}>
           ← {prev.glyph} {prev.name}

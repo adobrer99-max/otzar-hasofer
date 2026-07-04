@@ -247,8 +247,11 @@ export function MizbeachCentralPanel() {
     <svg
       viewBox={`0 0 ${width} ${height}`}
       xmlns="http://www.w3.org/2000/svg"
+      role="img"
+      aria-label="The Mizbe'ach central panel — the Hand Anchor, the Three Gates (Peshat, Remez, Drash), the Three Wells (Torah, Nevi'im, Ketuvim), the Veiled Anchor, and the Tree of Life."
       style={{ width: "100%", height: "auto", background: "var(--color-charcoal)" }}
     >
+      <title>The Mizbe'ach central panel</title>
       <rect x={0} y={0} width={width} height={height} fill="var(--color-charcoal)" />
       <text
         x={width / 2}
