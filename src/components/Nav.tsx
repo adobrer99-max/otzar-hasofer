@@ -48,6 +48,9 @@ export function Nav() {
           <NavLink to="/herald" className={linkClass}>
             The Herald
           </NavLink>
+          <NavLink to="/account" className={linkClass}>
+            Account
+          </NavLink>
         </div>
       </div>
     </nav>

@@ -73,6 +73,8 @@ export interface ParticipantRecord {
   hebrewBirthDate?: HebrewDate;
   /** Additive — participants who have not reached their seventh reading simply lack this. */
   heraldicEpithet?: HeraldicEpithet;
+  /** Set on mutation (birthday/epithet), for cloud-sync ordering. Additive; falls back to createdAt. */
+  updatedAt?: string;
 }
 
 export interface HeraldLayer {

@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "otzar-hasofer613",
+  "compatibility_date": "2026-07-04",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "directory": "dist",
+    "not_found_handling": "single-page-application"
+  },
+  // Publishes behind the custom domain attached in the dashboard's Worker →
+  // Domains & Routes tab. workers_dev is off since this deployment doesn't
+  // use a *.workers.dev URL — see DEPLOY.md for how to add one back later.
+  "workers_dev": false,
+  "routes": [
+    { "pattern": "otzarhasofer.net", "custom_domain": true },
+    { "pattern": "home.otzarhasofer.net", "custom_domain": true }
+  ]
+}

@@ -1,4 +1,5 @@
 import { getDb } from "./db";
+import { enqueueSync } from "./syncQueue";
 import type { LifeCycleEvent } from "../types/lifeCycle";
 import { hebrewDateFromGregorian } from "../data/hebrewCalendar";
 
@@ -37,10 +38,12 @@ export async function addYahrzeit(
     createdAt: new Date().toISOString(),
   };
   await db.put("lifeCycleEvents", event);
+  await enqueueSync("lifeCycleEvents", event.id, "put");
   return event;
 }
 
 export async function deleteLifeCycleEvent(id: string): Promise<void> {
   const db = await getDb();
   await db.delete("lifeCycleEvents", id);
+  await enqueueSync("lifeCycleEvents", id, "delete");
 }
