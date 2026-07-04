@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "otzar-hasofer613",
+  "name": "otzar-hasofer1",
   "compatibility_date": "2026-07-04",
   "compatibility_flags": ["nodejs_compat"],
   "observability": {
