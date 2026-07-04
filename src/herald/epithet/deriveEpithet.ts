@@ -1,32 +1,12 @@
 import type { HeraldLayer } from "../../types/herald";
 import type { SefirahId } from "../../types/letter";
 import { sefirahHonorifics, letterEmblems, DEFAULT_HONORIFIC } from "../../data/epithets";
+import { dominant } from "../synthesis/dominant";
 
 export interface DerivedEpithet {
   text: string;
   dominantLetterId: string;
   dominantMiddah: SefirahId;
-}
-
-/**
- * Picks the most frequent value in a sequence; ties are broken by which
- * value reached that count first in sequence order — fully deterministic,
- * no wall-clock or randomness.
- */
-function dominant<T extends string>(sequence: T[]): T {
-  const counts = new Map<T, number>();
-  let best: T = sequence[0];
-  let bestCount = 0;
-  for (const value of sequence) {
-    const count = (counts.get(value) ?? 0) + 1;
-    counts.set(value, count);
-    // Strictly greater: an equal count reached later never displaces the earlier value.
-    if (count > bestCount) {
-      best = value;
-      bestCount = count;
-    }
-  }
-  return best;
 }
 
 /**
