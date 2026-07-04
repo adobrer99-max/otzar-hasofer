@@ -1,6 +1,20 @@
 import type { HebrewDate, DayOfWeek } from "../data/hebrewCalendar";
 
-export type LunarPhase = "new" | "waxing" | "full" | "waning";
+/**
+ * The traditional eight-phase lunar cycle (New → Waxing Crescent → First
+ * Quarter → Waxing Gibbous → Full → Waning Gibbous → Last Quarter → Waning
+ * Crescent) — thematic, derived from day-of-month buckets only, not
+ * ephemeris-accurate (see `computeLunarPhase` in `sacredTime.ts`).
+ */
+export type LunarPhase =
+  | "new"
+  | "waxingCrescent"
+  | "firstQuarter"
+  | "waxingGibbous"
+  | "full"
+  | "waningGibbous"
+  | "lastQuarter"
+  | "waningCrescent";
 
 export interface SacredTimeSnapshot {
   /** ISO date (no time) this snapshot was computed for. */

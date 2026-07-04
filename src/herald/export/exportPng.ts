@@ -20,10 +20,12 @@ export async function exportHeraldPng(
   svg: SVGSVGElement,
   filename: string,
   resolution: "screen" | "print" = "print",
+  /** Source viewBox dimensions — defaults to the Herald shield's; pass the actual viewBox for other renderers (e.g. the Mizbe'ach's square canvas). */
+  sourceSize: { width: number; height: number } = { width: VIEWBOX_WIDTH, height: VIEWBOX_HEIGHT },
 ) {
   const scale = resolution === "print" ? 3 : 1.5;
-  const width = VIEWBOX_WIDTH * scale;
-  const height = VIEWBOX_HEIGHT * scale;
+  const width = sourceSize.width * scale;
+  const height = sourceSize.height * scale;
 
   const svgString = serializeResolvedSvg(svg);
   const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });

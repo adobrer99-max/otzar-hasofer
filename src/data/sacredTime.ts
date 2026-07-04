@@ -47,11 +47,16 @@ function computeRoshChodesh(hebrewDate: HebrewDate): { days: 1 | 2 } | undefined
   return undefined;
 }
 
-function computeLunarPhase(day: number): SacredTimeSnapshot["lunarPhase"] {
+/** Thematic day-of-month buckets over a 29-30 day Hebrew month — not ephemeris-accurate. Exported for direct boundary testing. */
+export function computeLunarPhase(day: number): SacredTimeSnapshot["lunarPhase"] {
   if (day <= 2) return "new";
-  if (day >= 14 && day <= 16) return "full";
-  if (day < 14) return "waxing";
-  return "waning";
+  if (day <= 5) return "waxingCrescent";
+  if (day <= 9) return "firstQuarter";
+  if (day <= 13) return "waxingGibbous";
+  if (day <= 16) return "full";
+  if (day <= 20) return "waningGibbous";
+  if (day <= 24) return "lastQuarter";
+  return "waningCrescent";
 }
 
 /** Rank used only to order simultaneous festival matches, most-specific first. Lower sorts first. */

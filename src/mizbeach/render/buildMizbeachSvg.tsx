@@ -1,0 +1,437 @@
+import type { SacredTimeSnapshot, LunarPhase } from "../../types/sacredTime";
+import type { JewishMonthName } from "../../data/hebrewCalendar";
+import { mazalotRing } from "../../data/mazalot";
+import { festivalsById } from "../../data/festivals";
+import {
+  TREE_OF_LIFE_NODES,
+  TREE_OF_LIFE_PATHS,
+  FLOURISH_UNIT_PATH,
+} from "../../herald/render/heraldGeometry";
+import {
+  CENTER,
+  RINGS,
+  SABBATH_CORE_RADIUS,
+  CORNER_POINTS,
+  polarToCartesian,
+  describeArcPath,
+  segmentAngles,
+  circlePerimeterPoints,
+} from "./mizbeachGeometry";
+
+/** Adar splits into AdarI/AdarII in leap years — both fold onto the ring's single "Adar" slice, matching `festivals.ts`'s own `resolveAdar` convention. */
+function foldMonth(month: JewishMonthName): JewishMonthName {
+  return month === "AdarI" || month === "AdarII" ? "Adar" : month;
+}
+
+function RingSegments({
+  radius,
+  thickness,
+  count,
+  activeIndex,
+  renderLabel,
+  fontFamily = "var(--font-latin)",
+}: {
+  radius: number;
+  thickness: number;
+  count: number;
+  activeIndex: number;
+  renderLabel: (index: number) => string;
+  fontFamily?: string;
+}) {
+  return (
+    <g>
+      {Array.from({ length: count }).map((_, i) => {
+        const [start, end] = segmentAngles(count, i);
+        const isActive = i === activeIndex;
+        const midAngle = (start + end) / 2;
+        const labelPos = polarToCartesian(CENTER.x, CENTER.y, radius, midAngle);
+        return (
+          <g key={i}>
+            <path
+              d={describeArcPath(CENTER.x, CENTER.y, radius, start + 1, end - 1)}
+              fill="none"
+              stroke={isActive ? "var(--color-gold)" : "var(--color-charcoal-line)"}
+              strokeWidth={thickness}
+              opacity={isActive ? 0.9 : 0.4}
+            />
+            <text
+              x={labelPos.x}
+              y={labelPos.y}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontFamily={fontFamily}
+              fontSize={11}
+              fill={isActive ? "var(--color-charcoal)" : "var(--text-muted)"}
+            >
+              {renderLabel(i)}
+            </text>
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+function MazalotRing({ activeMonth }: { activeMonth: JewishMonthName }) {
+  const activeIndex = mazalotRing.findIndex((e) => e.month === foldMonth(activeMonth));
+  return (
+    <RingSegments
+      radius={RINGS.mazalot.radius}
+      thickness={RINGS.mazalot.thickness}
+      count={12}
+      activeIndex={activeIndex}
+      renderLabel={(i) => mazalotRing[i].zodiacHebrew}
+    />
+  );
+}
+
+/**
+ * The traditional eight-phase lunar cycle. Hebrew labels here are a
+ * first-draft editorial set (not a verified transcription of any specific
+ * source) — flagged for the same reason as other first-draft content in
+ * this project (letter meanings, epithet honorifics): meant to be
+ * corrected/replaced, not treated as authoritative.
+ */
+const MOON_PHASES: { id: LunarPhase; label: string; hebrew: string }[] = [
+  { id: "new", label: "New", hebrew: "ראש חודש" },
+  { id: "waxingCrescent", label: "Waxing Crescent", hebrew: "חידוש" },
+  { id: "firstQuarter", label: "First Quarter", hebrew: "רביע ראשון" },
+  { id: "waxingGibbous", label: "Waxing Gibbous", hebrew: "גידול" },
+  { id: "full", label: "Full", hebrew: "מלא" },
+  { id: "waningGibbous", label: "Waning Gibbous", hebrew: "מיעוט" },
+  { id: "lastQuarter", label: "Last Quarter", hebrew: "רביע אחרון" },
+  { id: "waningCrescent", label: "Waning Crescent", hebrew: "נסתר" },
+];
+
+function MoonRing({ phase }: { phase: LunarPhase }) {
+  const activeIndex = MOON_PHASES.findIndex((p) => p.id === phase);
+  return (
+    <RingSegments
+      radius={RINGS.moon.radius}
+      thickness={RINGS.moon.thickness}
+      count={MOON_PHASES.length}
+      activeIndex={activeIndex}
+      renderLabel={(i) => MOON_PHASES[i].hebrew}
+      fontFamily="var(--font-hebrew)"
+    />
+  );
+}
+
+function SolarMonthRing({
+  activeMonth,
+  activeFestivalIds,
+}: {
+  activeMonth: JewishMonthName;
+  activeFestivalIds: string[];
+}) {
+  // Angle-aligned with the Mazalot ring's 12 slices — same month order, so a
+  // given slice of the folio always names the same Hebrew month across
+  // both rings.
+  const months = mazalotRing.map((e) => e.month);
+  const activeIndex = months.findIndex((m) => m === foldMonth(activeMonth));
+  const primaryFestival = activeFestivalIds
+    .map((id) => festivalsById[id])
+    .find((f) => f && f.id !== "ordinary" && f.id !== "shabbat");
+  return (
+    <RingSegments
+      radius={RINGS.solarMonth.radius}
+      thickness={RINGS.solarMonth.thickness}
+      count={12}
+      activeIndex={activeIndex}
+      renderLabel={(i) => (i === activeIndex && primaryFestival ? primaryFestival.gesture ?? primaryFestival.name : months[i])}
+    />
+  );
+}
+
+/** The Parsha (weekly Torah portion) ring is stubbed — see the project's existing, documented deferral of parsha tracking. */
+function ParshaRing() {
+  const topLabel = polarToCartesian(CENTER.x, CENTER.y, RINGS.parsha.radius, 0);
+  return (
+    <g>
+      <circle
+        cx={CENTER.x}
+        cy={CENTER.y}
+        r={RINGS.parsha.radius}
+        fill="none"
+        stroke="var(--color-charcoal-line)"
+        strokeWidth={RINGS.parsha.thickness}
+        opacity={0.3}
+      />
+      <text
+        x={topLabel.x}
+        y={topLabel.y}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontFamily="var(--font-latin)"
+        fontSize={10}
+        fontStyle="italic"
+        fill="var(--text-muted)"
+      >
+        Parsha — not yet tracked
+      </text>
+    </g>
+  );
+}
+
+function SabbathCore({
+  isShabbat,
+  omerDay,
+  roshChodesh,
+}: {
+  isShabbat: boolean;
+  omerDay?: number;
+  roshChodesh?: boolean;
+}) {
+  const supplementary = [omerDay ? `Omer day ${omerDay}` : undefined, roshChodesh ? "Rosh Chodesh" : undefined]
+    .filter((x): x is string => Boolean(x))
+    .join(" · ");
+  return (
+    <g>
+      <circle
+        cx={CENTER.x}
+        cy={CENTER.y}
+        r={SABBATH_CORE_RADIUS}
+        fill={isShabbat ? "var(--color-gold)" : "none"}
+        stroke={isShabbat ? "var(--color-gold-bright)" : "var(--color-silver)"}
+        strokeWidth={2}
+        opacity={isShabbat ? 0.9 : 0.6}
+      />
+      <text
+        x={CENTER.x}
+        y={CENTER.y - (isShabbat ? 10 : 0)}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontFamily="var(--font-latin)"
+        fontSize={14}
+        fill={isShabbat ? "var(--color-charcoal)" : "var(--text-muted)"}
+      >
+        {isShabbat ? "Shabbat" : "Ordinary Time"}
+      </text>
+      {isShabbat && (
+        <text
+          x={CENTER.x}
+          y={CENTER.y + 8}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fontFamily="var(--font-latin)"
+          fontSize={9}
+          fill="var(--color-charcoal)"
+        >
+          Point of Stillness
+        </text>
+      )}
+      {supplementary && (
+        <text
+          x={CENTER.x}
+          y={CENTER.y + (isShabbat ? 24 : 16)}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fontFamily="var(--font-latin)"
+          fontSize={9}
+          fill={isShabbat ? "var(--color-charcoal)" : "var(--text-muted)"}
+        >
+          {supplementary}
+        </text>
+      )}
+    </g>
+  );
+}
+
+const PARDES_CORNERS: { key: keyof typeof CORNER_POINTS; title: string; subtitle: string }[] = [
+  { key: "peshat", title: "Peshat", subtitle: "The Simple" },
+  { key: "remez", title: "Remez", subtitle: "The Hinted" },
+  { key: "drash", title: "Drash", subtitle: "The Sought" },
+  { key: "sod", title: "Sod", subtitle: "The Lived" },
+];
+
+function PardesCorners() {
+  return (
+    <g>
+      {PARDES_CORNERS.map(({ key, title, subtitle }) => {
+        const point = CORNER_POINTS[key];
+        return (
+          <g key={key}>
+            <text
+              x={point.x}
+              y={point.y}
+              textAnchor="middle"
+              fontFamily="var(--font-hebrew)"
+              fontSize={17}
+              fill="var(--color-gold)"
+            >
+              {title}
+            </text>
+            <text
+              x={point.x}
+              y={point.y + 15}
+              textAnchor="middle"
+              fontFamily="var(--font-latin)"
+              fontSize={9}
+              fill="var(--text-muted)"
+            >
+              {subtitle}
+            </text>
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+/** The seven species of Deuteronomy 8:8 — "the Fruits of the Covenant." */
+const SHIVAT_HAMINIM = ["Wheat", "Barley", "Grape", "Fig", "Pomegranate", "Olive", "Date"];
+
+function ShivatHaminimBorder() {
+  const speciesPoints = circlePerimeterPoints(7, RINGS.border.radius);
+  // 28 = 7 * 4, so every 4th point of this finer ring lands exactly on a
+  // species point above — filtering those out leaves 3 plain flourish
+  // ticks evenly spaced between each pair of species.
+  const flourishPoints = circlePerimeterPoints(28, RINGS.border.radius).filter((_, i) => i % 4 !== 0);
+  return (
+    <g>
+      <circle
+        cx={CENTER.x}
+        cy={CENTER.y}
+        r={RINGS.border.radius}
+        fill="none"
+        stroke="var(--color-charcoal-line)"
+        strokeWidth={1}
+      />
+      <g stroke="var(--color-gold)" fill="var(--color-gold)" opacity={0.6}>
+        {flourishPoints.map((p, i) => (
+          <path
+            key={i}
+            d={FLOURISH_UNIT_PATH}
+            transform={`translate(${p.x}, ${p.y}) rotate(${p.angle})`}
+            strokeWidth={0.75}
+            fillOpacity={0.15}
+          />
+        ))}
+      </g>
+      {speciesPoints.map((p, i) => (
+        <text
+          key={i}
+          x={p.x}
+          y={p.y}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fontFamily="var(--font-latin)"
+          fontSize={9}
+          fill="var(--color-gold-bright)"
+        >
+          {SHIVAT_HAMINIM[i]}
+        </text>
+      ))}
+    </g>
+  );
+}
+
+/**
+ * The Or HaGanuz ("hidden light") — UV-etched Sefirot on the physical
+ * folio, invisible until revealed. Reuses the Herald's Tree of Life
+ * geometry rather than authoring a second layout; absent entirely unless
+ * `revealed`, not just dimmed, to match the physical UV-ink concept.
+ */
+function HiddenSefirotLayer({ revealed }: { revealed: boolean }) {
+  if (!revealed) return null;
+  const boxSize = 2 * (RINGS.parsha.radius - RINGS.parsha.thickness);
+  const originX = CENTER.x - boxSize / 2;
+  const originY = CENTER.y - boxSize / 2;
+  const pos = (id: string) => {
+    const node = TREE_OF_LIFE_NODES.find((n) => n.id === id)!;
+    return { x: originX + node.x * boxSize, y: originY + node.y * boxSize };
+  };
+  return (
+    <g opacity={0.9}>
+      {TREE_OF_LIFE_PATHS.map(([a, b]) => {
+        const pa = pos(a);
+        const pb = pos(b);
+        return (
+          <line
+            key={`${a}-${b}`}
+            x1={pa.x}
+            y1={pa.y}
+            x2={pb.x}
+            y2={pb.y}
+            stroke="var(--color-blue-bright)"
+            strokeWidth={0.75}
+            opacity={0.5}
+          />
+        );
+      })}
+      {TREE_OF_LIFE_NODES.map((node) => {
+        const p = pos(node.id);
+        return (
+          <circle
+            key={node.id}
+            cx={p.x}
+            cy={p.y}
+            r={6}
+            fill="var(--color-blue-bright)"
+            stroke="var(--color-silver)"
+            strokeWidth={1}
+            opacity={0.85}
+          />
+        );
+      })}
+    </g>
+  );
+}
+
+/** Fixed reference symbol — not a computed compass bearing (would need geolocation, out of scope). */
+function MizrachVector() {
+  const tipY = CENTER.y - RINGS.border.radius - 8;
+  const baseY = tipY + 16;
+  return (
+    <g>
+      <path
+        d={`M ${CENTER.x} ${baseY} L ${CENTER.x} ${tipY} M ${CENTER.x - 6} ${tipY + 6} L ${CENTER.x} ${tipY} L ${CENTER.x + 6} ${tipY + 6}`}
+        stroke="var(--color-copper)"
+        strokeWidth={2}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <text
+        x={CENTER.x}
+        y={tipY - 8}
+        textAnchor="middle"
+        fontFamily="var(--font-hebrew)"
+        fontSize={16}
+        fill="var(--color-copper)"
+      >
+        מזרח
+      </text>
+    </g>
+  );
+}
+
+export function MizbeachSvgContent({
+  sacredTime,
+  revealHidden,
+}: {
+  sacredTime: SacredTimeSnapshot;
+  revealHidden: boolean;
+}) {
+  const isShabbat = sacredTime.activeFestivalIds.includes("shabbat");
+  return (
+    <g>
+      <MazalotRing activeMonth={sacredTime.hebrewDate.month} />
+      <MoonRing phase={sacredTime.lunarPhase} />
+      <SolarMonthRing
+        activeMonth={sacredTime.hebrewDate.month}
+        activeFestivalIds={sacredTime.activeFestivalIds}
+      />
+      <ParshaRing />
+      <SabbathCore
+        isShabbat={isShabbat}
+        omerDay={sacredTime.omer?.day}
+        roshChodesh={Boolean(sacredTime.roshChodesh)}
+      />
+      <HiddenSefirotLayer revealed={revealHidden} />
+      <ShivatHaminimBorder />
+      <PardesCorners />
+      <MizrachVector />
+    </g>
+  );
+}

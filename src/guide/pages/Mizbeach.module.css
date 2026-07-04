@@ -1,0 +1,41 @@
+.canvasWrap {
+  max-width: 480px;
+  margin: 0 auto var(--space-4);
+}
+
+.controls {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-3);
+}
+
+.controls .segmented {
+  display: inline-flex;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.controls .segmented button {
+  background: var(--bg-raised);
+  color: var(--text-muted);
+  border: none;
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  font-family: var(--font-latin);
+}
+
+.controls .segmented button.active {
+  background: var(--accent);
+  color: var(--color-charcoal);
+}
+
+.exportRow {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: center;
+  margin-bottom: var(--space-4);
+}

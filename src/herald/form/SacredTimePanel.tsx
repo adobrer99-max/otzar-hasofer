@@ -9,6 +9,8 @@ export interface SacredTimePanelProps {
   backdateValue: string;
   onBackdateEnabledChange: (enabled: boolean) => void;
   onBackdateValueChange: (value: string) => void;
+  /** Set false to omit the backdate control entirely — for live-only, read-only displays. Defaults to true. */
+  showBackdate?: boolean;
 }
 
 export function SacredTimePanel({
@@ -17,6 +19,7 @@ export function SacredTimePanel({
   backdateValue,
   onBackdateEnabledChange,
   onBackdateValueChange,
+  showBackdate = true,
 }: SacredTimePanelProps) {
   const primaryFestival = snapshot.activeFestivalIds[0];
   const festival = primaryFestival ? festivalsById[primaryFestival] : undefined;
@@ -32,23 +35,25 @@ export function SacredTimePanel({
         {snapshot.roshChodesh && " · Rosh Chodesh"}
         {festival && festival.id !== "ordinary" && ` · ${festival.name}`}
       </div>
-      <div className={styles.backdateRow}>
-        <label>
-          <input
-            type="checkbox"
-            checked={backdateEnabled}
-            onChange={(e) => onBackdateEnabledChange(e.target.checked)}
-          />{" "}
-          Backdate this reading
-        </label>
-        {backdateEnabled && (
-          <input
-            type="date"
-            value={backdateValue}
-            onChange={(e) => onBackdateValueChange(e.target.value)}
-          />
-        )}
-      </div>
+      {showBackdate && (
+        <div className={styles.backdateRow}>
+          <label>
+            <input
+              type="checkbox"
+              checked={backdateEnabled}
+              onChange={(e) => onBackdateEnabledChange(e.target.checked)}
+            />{" "}
+            Backdate this reading
+          </label>
+          {backdateEnabled && (
+            <input
+              type="date"
+              value={backdateValue}
+              onChange={(e) => onBackdateValueChange(e.target.value)}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }

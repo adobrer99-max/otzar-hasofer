@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeSacredTime } from "./sacredTime";
+import { computeSacredTime, computeLunarPhase } from "./sacredTime";
 
 describe("computeSacredTime", () => {
   it("computes the correct Omer day (2 Iyyar 5786 = Omer day 17)", () => {
@@ -59,5 +59,26 @@ describe("computeSacredTime", () => {
   it("is deterministic for the same input", () => {
     const date = new Date(2026, 3, 19);
     expect(computeSacredTime(date, "land")).toEqual(computeSacredTime(date, "land"));
+  });
+});
+
+describe("computeLunarPhase", () => {
+  it("covers all eight phases across the boundaries of a 30-day month", () => {
+    expect(computeLunarPhase(1)).toBe("new");
+    expect(computeLunarPhase(2)).toBe("new");
+    expect(computeLunarPhase(3)).toBe("waxingCrescent");
+    expect(computeLunarPhase(5)).toBe("waxingCrescent");
+    expect(computeLunarPhase(6)).toBe("firstQuarter");
+    expect(computeLunarPhase(9)).toBe("firstQuarter");
+    expect(computeLunarPhase(10)).toBe("waxingGibbous");
+    expect(computeLunarPhase(13)).toBe("waxingGibbous");
+    expect(computeLunarPhase(14)).toBe("full");
+    expect(computeLunarPhase(16)).toBe("full");
+    expect(computeLunarPhase(17)).toBe("waningGibbous");
+    expect(computeLunarPhase(20)).toBe("waningGibbous");
+    expect(computeLunarPhase(21)).toBe("lastQuarter");
+    expect(computeLunarPhase(24)).toBe("lastQuarter");
+    expect(computeLunarPhase(25)).toBe("waningCrescent");
+    expect(computeLunarPhase(30)).toBe("waningCrescent");
   });
 });
