@@ -11,6 +11,19 @@ export interface LetterDraw {
   orientation: Orientation;
 }
 
+/**
+ * Why a Derekh Ha'Dorot card was drawn: the three "beneath" roles are the
+ * Galut cards laid beneath the three open letters (also used for Tisha
+ * B'Av's forced draws); "council" is Sukkot's Council of Sefirot.
+ */
+export type DorotDrawRole = "beneath-first" | "beneath-second" | "beneath-third" | "council";
+
+export interface DorotDraw {
+  /** A stable Derekh Ha'Dorot card id, e.g. "abraham-1" … "ruth-16". */
+  cardId: string;
+  role: DorotDrawRole;
+}
+
 export interface HeraldInputSnapshot {
   path: ReadingPath;
   hebrewName?: string;
@@ -35,6 +48,8 @@ export interface HeraldInputSnapshot {
   sacredTime?: SacredTimeSnapshot;
   /** Which of the Seven Encounters this reading was, by reading count at submit time. Additive; undefined for readings beyond the seventh or predating this feature. */
   encounterNumber?: number;
+  /** Cards drawn from Derekh Ha'Dorot in this reading. Additive — readings predating this feature simply lack it. */
+  dorotDraws?: DorotDraw[];
 }
 
 /**

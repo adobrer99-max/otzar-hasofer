@@ -25,6 +25,11 @@ export function Nav() {
           אוצר הסופר
         </NavLink>
         <ul className={styles.links}>
+          <li>
+            <NavLink to="/" end className={linkClass}>
+              The Treasury
+            </NavLink>
+          </li>
           {guideLinks.map((link) => (
             <li key={link.to}>
               <NavLink to={link.to} className={linkClass}>
@@ -34,6 +39,9 @@ export function Nav() {
           ))}
         </ul>
         <div className={styles.heraldLink}>
+          <NavLink to="/sefarim" className={linkClass}>
+            The Sefarim
+          </NavLink>
           <NavLink to="/commentaries" className={linkClass}>
             Commentaries
           </NavLink>

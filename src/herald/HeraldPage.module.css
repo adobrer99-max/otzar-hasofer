@@ -38,3 +38,13 @@
   color: var(--text-muted);
   font-style: italic;
 }
+
+.synthesisCaption {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-top: var(--space-2);
+}
+
+.synthesisCaption strong {
+  color: var(--accent-bright);
+}

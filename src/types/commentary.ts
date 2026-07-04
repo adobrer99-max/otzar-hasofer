@@ -8,7 +8,21 @@ import type { HebrewDate } from "../data/hebrewCalendar";
 export type CommentarySubject =
   | { kind: "letter"; letterId: string }
   | { kind: "dorot-card"; cardId: string }
-  | { kind: "root"; rootKey: string };
+  | { kind: "root"; rootKey: string }
+  | { kind: "balagan"; category: BalaganCategory };
+
+/**
+ * The sections of Balagan HaOtzar (גניזת האוצר) — the scribe's genizah, per
+ * the doc: marginal notes, unresolved questions, branching traditions,
+ * corrections, discarded hypotheses, and respectful disagreements.
+ */
+export type BalaganCategory =
+  | "marginal-notes"
+  | "unresolved-questions"
+  | "variant-traditions"
+  | "corrections"
+  | "discarded-hypotheses"
+  | "respectful-disagreements";
 
 /** The canonical key for a root subject: three letter ids in root (as-drawn) order. */
 export function rootKeyFor(letterIds: [string, string, string]): string {
@@ -24,6 +38,8 @@ export function subjectKeyFor(subject: CommentarySubject): string {
       return `dorot-card:${subject.cardId}`;
     case "root":
       return `root:${subject.rootKey}`;
+    case "balagan":
+      return `balagan:${subject.category}`;
   }
 }
 

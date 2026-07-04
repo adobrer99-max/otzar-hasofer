@@ -1,0 +1,140 @@
+.shelf {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: stretch;
+  padding-bottom: var(--space-3);
+  border-bottom: 3px solid var(--accent);
+  margin: var(--space-4) 0 var(--space-2);
+}
+
+.spine {
+  position: relative;
+  flex: 0 0 auto;
+  width: 92px;
+  min-height: 300px;
+  border: 1px solid var(--border-hairline);
+  border-radius: 2px 2px 0 0;
+  padding: var(--space-3) var(--space-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  text-decoration: none;
+  color: var(--color-charcoal);
+  box-shadow: inset -6px 0 12px rgba(0, 0, 0, 0.35), 2px 2px 6px rgba(0, 0, 0, 0.4);
+  transition: transform 0.12s ease;
+}
+
+.spine:hover {
+  transform: translateY(-6px);
+}
+
+.spineHebrew {
+  writing-mode: vertical-rl;
+  font-family: var(--font-hebrew);
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.spineTitle {
+  writing-mode: vertical-rl;
+  font-family: var(--font-latin);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+}
+
+.forthcoming {
+  opacity: 0.55;
+}
+
+.forthcomingTag {
+  writing-mode: vertical-rl;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* A Book's page anchors the bookmark ribbon. */
+.bookPage {
+  position: relative;
+}
+
+.ribbon {
+  position: absolute;
+  top: -12px;
+  right: 32px;
+  width: 26px;
+  min-height: 168px;
+  background: linear-gradient(180deg, var(--color-copper), #8f5232);
+  box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.45);
+  /* Swallowtail notch cut into the bottom edge. */
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 84%, 0 100%);
+  z-index: 2;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  padding-top: var(--space-3);
+}
+
+/* A thin gold seam down the ribbon. */
+.ribbon::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-0.5px);
+  background: var(--color-gold-bright);
+  opacity: 0.55;
+}
+
+.ribbonLabel {
+  writing-mode: vertical-rl;
+  color: var(--color-gold-bright);
+  font-family: var(--font-latin);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  max-height: 150px;
+  overflow: hidden;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+}
+
+@media (max-width: 640px) {
+  .ribbon {
+    display: none;
+  }
+}
+
+.cards {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.card {
+  border: 1px solid var(--border-hairline);
+  padding: var(--space-3);
+}
+
+.card a {
+  font-size: 1.05rem;
+}
+
+.cardMeta {
+  font-family: var(--font-hebrew);
+  color: var(--accent-bright);
+  font-size: 0.95rem;
+  margin-inline-start: var(--space-2);
+}
+
+.card p {
+  margin: var(--space-1) 0 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}

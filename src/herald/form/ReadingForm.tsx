@@ -4,6 +4,7 @@ import type {
   LetterDraw,
   ReadingPath,
   GeographyMode,
+  DorotDraw,
 } from "../../types/herald";
 import type { SefirahId } from "../../types/letter";
 import { middot } from "../../data/middot";
@@ -15,6 +16,8 @@ import { LetterPicker } from "./LetterPicker";
 import { FestivalSelect } from "./FestivalSelect";
 import { SacredTimePanel } from "./SacredTimePanel";
 import { EncounterPanel } from "./EncounterPanel";
+import { DorotDrawPanel, firstCardOfHouse } from "./DorotDrawPanel";
+import { resolveDorotMechanic } from "../dorot/dorotMechanics";
 import styles from "./form.module.css";
 
 const drawLabels = ["First drawn", "Second drawn", "Third drawn"];
@@ -58,9 +61,20 @@ export function ReadingForm({ onSubmit, readingIndex }: ReadingFormProps) {
   const [reflection, setReflection] = useState("");
   const [backdateEnabled, setBackdateEnabled] = useState(false);
   const [backdateValue, setBackdateValue] = useState(todayInputValue());
+  const defaultCard = firstCardOfHouse("house-abraham");
+  const [beneathEnabled, setBeneathEnabled] = useState(true);
+  const [beneathCards, setBeneathCards] = useState<[string, string, string]>([
+    defaultCard,
+    defaultCard,
+    defaultCard,
+  ]);
+  const [councilEnabled, setCouncilEnabled] = useState(true);
+  const [councilCard, setCouncilCard] = useState(defaultCard);
 
   const effectiveDate = backdateEnabled ? parseLocalDateInput(backdateValue) : new Date();
   const sacredTime = computeSacredTime(effectiveDate, geoMode);
+  const dorotMechanic = resolveDorotMechanic(festivalId, geoMode);
+  const lettersLocked = dorotMechanic.beneath === "forced-tishabav";
 
   // Auto-detected sacred time is the primary path — it seeds the festival
   // selection whenever the effective date changes, but a manual override
@@ -97,6 +111,20 @@ export function ReadingForm({ onSubmit, readingIndex }: ReadingFormProps) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const dorotDraws: DorotDraw[] = [];
+    if (
+      dorotMechanic.beneath === "forced-tishabav" ||
+      (dorotMechanic.beneath === "galut" && beneathEnabled)
+    ) {
+      dorotDraws.push(
+        { cardId: beneathCards[0], role: "beneath-first" },
+        { cardId: beneathCards[1], role: "beneath-second" },
+        { cardId: beneathCards[2], role: "beneath-third" },
+      );
+    }
+    if (dorotMechanic.council && councilEnabled) {
+      dorotDraws.push({ cardId: councilCard, role: "council" });
+    }
     const input: HeraldInputSnapshot = {
       path,
       hebrewName: path === "brit" ? hebrewName || undefined : undefined,
@@ -110,6 +138,7 @@ export function ReadingForm({ onSubmit, readingIndex }: ReadingFormProps) {
       reflection: reflection || undefined,
       sacredTime,
       encounterNumber: getEncounterForReadingIndex(readingIndex)?.number,
+      dorotDraws: dorotDraws.length > 0 ? dorotDraws : undefined,
     };
     onSubmit(input);
   }
@@ -179,7 +208,7 @@ export function ReadingForm({ onSubmit, readingIndex }: ReadingFormProps) {
       </div>
 
       {drawnLetters.map((draw, index) => (
-        <div className={styles.drawGroup} key={index}>
+        <div className={`${styles.drawGroup} ${lettersLocked ? styles.lettersLocked : ""}`} key={index}>
           <div className={styles.drawRow}>
             <LetterPicker
               label={drawLabels[index]}
@@ -194,7 +223,9 @@ export function ReadingForm({ onSubmit, readingIndex }: ReadingFormProps) {
         </div>
       ))}
 
-      <div className={`${styles.drawGroup} ${styles.veiled}`}>
+      <div
+        className={`${styles.drawGroup} ${styles.veiled} ${lettersLocked ? styles.lettersLocked : ""}`}
+      >
         <div className={styles.drawRow}>
           <LetterPicker
             label="Veiled letter (sealed — the Sod, kept from the Herald)"
@@ -207,6 +238,25 @@ export function ReadingForm({ onSubmit, readingIndex }: ReadingFormProps) {
           />
         </div>
       </div>
+
+      <DorotDrawPanel
+        mechanic={dorotMechanic}
+        readingIndex={readingIndex}
+        beneathEnabled={beneathEnabled}
+        onBeneathEnabledChange={setBeneathEnabled}
+        beneathCards={beneathCards}
+        onBeneathCardChange={(index, cardId) =>
+          setBeneathCards((prev) => {
+            const next = [...prev] as [string, string, string];
+            next[index] = cardId;
+            return next;
+          })
+        }
+        councilEnabled={councilEnabled}
+        onCouncilEnabledChange={setCouncilEnabled}
+        councilCard={councilCard}
+        onCouncilCardChange={setCouncilCard}
+      />
 
       <div className={styles.field}>
         <label htmlFor="middah">Dominant Middah</label>

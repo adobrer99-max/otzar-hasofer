@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { festivals } from "../../data/festivals";
 import { FestivalCard } from "../components/FestivalCard";
 
@@ -21,7 +22,9 @@ export function SacredTime() {
         applicable), and Rosh Chodesh are computed automatically for every
         reading. (Weekly Torah portion is not yet tracked in this build.)
         Each festival below overrides part of the standard practice, and the
-        same override lightly tints the Herald generated on that day.
+        same override lightly tints the Herald generated on that day. See
+        today's immediate time rendered on the{" "}
+        <Link to="/guide/mizbeach">Mizbe'ach's living rings</Link>.
       </p>
       {festivals.map((festival) => (
         <FestivalCard key={festival.id} festival={festival} />

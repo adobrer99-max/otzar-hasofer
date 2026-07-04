@@ -164,3 +164,68 @@
   border-left: 2px solid var(--accent);
   padding-left: var(--space-2);
 }
+
+.dorotPanel {
+  border: 1px solid var(--color-copper);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  background: var(--bg-raised);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.dorotTitle {
+  font-size: 0.95rem;
+  color: var(--color-copper);
+}
+
+.dorotNote {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.dorotRow {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.dorotRow label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dorotRow select {
+  background: var(--bg-raised);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: var(--space-2);
+  font-family: var(--font-latin);
+  font-size: 0.95rem;
+  max-width: 300px;
+}
+
+.dorotToggle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.lockNote {
+  font-size: 0.85rem;
+  color: var(--accent-bright);
+  border-left: 2px solid var(--color-copper);
+  padding-left: var(--space-2);
+}
+
+/* Tisha B'Av: the 22-Letter deck is ritually locked — de-emphasize, never disable. */
+.lettersLocked {
+  opacity: 0.55;
+}

@@ -13,8 +13,21 @@ import { subjectKeyFor } from "../types/commentary";
  */
 
 const hehSubject = { kind: "letter", letterId: "heh" } as const;
+const balaganOpeningSubject = { kind: "balagan", category: "unresolved-questions" } as const;
 
 export const seedCommentaries: CommentaryRecord[] = [
+  {
+    id: "seed-balagan-opening",
+    subject: balaganOpeningSubject,
+    subjectKey: subjectKeyFor(balaganOpeningSubject),
+    title: "On keeping a genizah at all",
+    author: "The First Scribe",
+    hebrewDate: { year: 5786, month: "Tammuz", day: 17 },
+    createdAt: "2026-07-02T00:00:00.000Z",
+    body: `A worn or damaged sacred text is not discarded but laid in the genizah, held in honor until it can be buried. The Treasury keeps this book in the same spirit: a thought that no longer serves the reading is not deleted but set here, so that the path not taken is not forgotten and a later Scribe may find in it what we could not.
+
+What belongs here that we would otherwise be tempted to throw away?`,
+  },
   {
     id: "seed-heh-ot-haneshema",
     subject: hehSubject,

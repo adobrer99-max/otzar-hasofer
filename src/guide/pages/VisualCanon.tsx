@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import styles from "./VisualCanon.module.css";
 
 const swatches = [
@@ -54,6 +55,14 @@ export function VisualCanon() {
       <p>
         No decorative element is arbitrary; every mark reflects a lived
         relationship within the Treasury.
+      </p>
+
+      <hr className="hairline-rule" />
+      <p>
+        This canon governs the look of both{" "}
+        <Link to="/herald">the Herald</Link> and the live{" "}
+        <Link to="/guide/mizbeach">Mizbe'ach</Link> — gold linework upon a
+        charcoal field.
       </p>
     </div>
   );

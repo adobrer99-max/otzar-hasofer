@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 export function Scribe() {
   return (
     <div className="page">
@@ -33,6 +35,14 @@ export function Scribe() {
         alone, but to both together — the "71st Face." Hold questions more
         than answers; the letters illuminate paths the soul has already
         walked, they do not predict new ones.
+      </p>
+
+      <hr className="hairline-rule" />
+      <p>
+        See also <Link to="/guide/sacred-time">Sacred Time</Link>, which
+        locates every reading in the Jewish calendar, and{" "}
+        <Link to="/herald">the Herald</Link>, where the reading's ritual flow
+        is carried out and its sigil created.
       </p>
     </div>
   );

@@ -13,6 +13,7 @@ import type { CommentaryRecord } from "../types/commentary";
 import { computeSacredTime } from "../data/sacredTime";
 import { ReadingForm } from "./form/ReadingForm";
 import { HeraldCanvas } from "./render/HeraldCanvas";
+import { deriveHeraldForm } from "./synthesis/deriveHeraldForm";
 import { ParticipantPicker } from "./history/ParticipantPicker";
 import { HistoryScrubber } from "./history/HistoryScrubber";
 import { LayerCaption } from "./history/LayerCaption";
@@ -46,7 +47,7 @@ export function HeraldPage() {
     }
     getLayers(selectedParticipantId).then((ls) => {
       setLayers(ls);
-      setSelectedLayerId(ls.length > 0 ? ls[ls.length - 1].id : undefined);
+      setSelectedLayerId(undefined); // default to the synthesized Herald headline
     });
     listLifeCycleEvents(selectedParticipantId).then(setLifeCycleEvents);
   }, [selectedParticipantId]);
@@ -63,10 +64,10 @@ export function HeraldPage() {
 
   async function handleSubmitReading(input: Parameters<typeof addLayer>[1]) {
     if (!selectedParticipantId) return;
-    const layer = await addLayer(selectedParticipantId, input);
+    await addLayer(selectedParticipantId, input);
     const refreshed = await getLayers(selectedParticipantId);
     setLayers(refreshed);
-    setSelectedLayerId(layer.id);
+    setSelectedLayerId(undefined); // show the updated synthesis forming
   }
 
   const selectedIndex = layers.findIndex((l) => l.id === selectedLayerId);
@@ -79,6 +80,17 @@ export function HeraldPage() {
   const epithetForSelectedLayer =
     sealedEpithet && selectedLayer && selectedLayer.layerIndex >= 6 ? sealedEpithet.text : undefined;
 
+  // The headline Herald is the synthesis of the first seven readings; a
+  // selected layer (via the scrubber/banner) shows that one reading instead.
+  const heraldForm = layers.length ? deriveHeraldForm(layers) : undefined;
+  const viewingSynthesis = !selectedLayer && !!heraldForm;
+  const synthesisStatus = heraldForm
+    ? heraldForm.revealed
+      ? "The Herald, revealed"
+      : `The Herald, forming — ${heraldForm.readingCount} of 7`
+    : "";
+  const synthesisEpithet = heraldForm?.revealed ? sealedEpithet?.text : undefined;
+
   return (
     <div className="page">
       <div className="page-header">
@@ -86,9 +98,10 @@ export function HeraldPage() {
         <h1>The Living Herald</h1>
       </div>
       <p>
-        The Herald is created from the three openly drawn letters at the
-        close of a reading. It is never overwritten — each new reading adds
-        a layer, accumulating like marginalia across a manuscript.
+        The Herald forms across a participant's first seven readings — the
+        unfolding order of Creation — and is revealed at the seventh. It is
+        never overwritten: each reading is also kept on its own below, the
+        biography of how the Herald came to be.
       </p>
 
       <ParticipantPicker
@@ -130,22 +143,43 @@ export function HeraldPage() {
                 onParticipantChange={handleParticipantChange}
               />
             )}
-            {selectedLayer ? (
+            {heraldForm ? (
               <>
-                <HeraldCanvas
-                  ref={svgRef}
-                  input={selectedLayer.input}
-                  previous={previousInput}
-                  layerCount={selectedLayer.layerIndex}
-                  displayName={selectedParticipant?.displayName}
-                  createdAt={selectedLayer.createdAt}
-                  epithet={epithetForSelectedLayer}
-                />
-                <LayerCaption
-                  layer={selectedLayer}
-                  epithet={epithetForSelectedLayer}
-                  commentaries={commentaries}
-                />
+                {viewingSynthesis ? (
+                  <HeraldCanvas
+                    ref={svgRef}
+                    form={heraldForm}
+                    displayName={selectedParticipant?.displayName}
+                    hebrewName={selectedParticipant?.hebrewName}
+                    path={selectedParticipant?.path}
+                    status={synthesisStatus}
+                    epithet={synthesisEpithet}
+                  />
+                ) : (
+                  <HeraldCanvas
+                    ref={svgRef}
+                    input={selectedLayer!.input}
+                    previous={previousInput}
+                    layerCount={selectedLayer!.layerIndex}
+                    displayName={selectedParticipant?.displayName}
+                    createdAt={selectedLayer!.createdAt}
+                    epithet={epithetForSelectedLayer}
+                  />
+                )}
+                {viewingSynthesis ? (
+                  <p className={styles.synthesisCaption}>
+                    <strong>{synthesisStatus}.</strong>{" "}
+                    {heraldForm.revealed
+                      ? "Formed from the participant's first seven readings — the unfolding order of Creation. It is now fixed; later readings are kept as history but do not change it."
+                      : "The Herald forms across the first seven readings; each new reading resolves it further. Select a reading below to view it on its own."}
+                  </p>
+                ) : (
+                  <LayerCaption
+                    layer={selectedLayer!}
+                    epithet={epithetForSelectedLayer}
+                    commentaries={commentaries}
+                  />
+                )}
                 <div className={styles.exportRow}>
                   <button
                     type="button"
@@ -169,14 +203,17 @@ export function HeraldPage() {
                 <h3>History</h3>
                 <HistoryScrubber
                   layers={layers}
+                  form={heraldForm}
                   selectedId={selectedLayerId}
+                  synthesisSelected={viewingSynthesis}
                   onSelect={setSelectedLayerId}
+                  onSelectSynthesis={() => setSelectedLayerId(undefined)}
                 />
               </>
             ) : (
               <p className={styles.empty}>
                 No Herald yet for this participant. Fill out the reading form
-                to create their Origin Herald.
+                to begin — the Herald forms across the first seven readings.
               </p>
             )}
           </div>

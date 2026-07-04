@@ -1,8 +1,13 @@
-import type { HeraldInputSnapshot } from "../../types/herald";
+import type { HeraldInputSnapshot, DorotDraw } from "../../types/herald";
+import type { SefirahId } from "../../types/letter";
+import type { HeraldForm } from "../synthesis/deriveHeraldForm";
 import { lettersById } from "../../data/letters";
 import { festivalsById } from "../../data/festivals";
+import { dorotCardsById, dorotHousesById } from "../../data/dorot";
 import { resolveShoresh } from "../shoresh/resolveShoresh";
 import { computeDivisions, type Division } from "./divisions";
+
+type ShoreshResult = ReturnType<typeof resolveShoresh>;
 import {
   SHIELD,
   SHIELD_PATH,
@@ -10,6 +15,7 @@ import {
   TREE_OF_LIFE_PATHS,
   FLOURISH_UNIT_PATH,
   shieldCenter,
+  shieldBorderPoints,
 } from "./heraldGeometry";
 
 const BAND_TOP = SHIELD.top + 150;
@@ -19,37 +25,6 @@ function bandX(band: [number, number]): { start: number; end: number; center: nu
   const start = SHIELD.left + band[0] * width;
   const end = SHIELD.left + band[1] * width;
   return { start, end, center: (start + end) / 2 };
-}
-
-function perimeterPoints(count: number) {
-  const left = SHIELD.left + 15;
-  const right = SHIELD.right - 15;
-  const top = SHIELD.top + 15;
-  const bottom = SHIELD.point - 25;
-  const width = right - left;
-  const height = bottom - top;
-  const perimeter = 2 * (width + height);
-  const points: { x: number; y: number }[] = [];
-  for (let i = 0; i < count; i++) {
-    const d = (i / count) * perimeter;
-    let x: number;
-    let y: number;
-    if (d < width) {
-      x = left + d;
-      y = top;
-    } else if (d < width + height) {
-      x = right;
-      y = top + (d - width);
-    } else if (d < 2 * width + height) {
-      x = right - (d - width - height);
-      y = bottom;
-    } else {
-      x = left;
-      y = bottom - (d - 2 * width - height);
-    }
-    points.push({ x, y });
-  }
-  return points;
 }
 
 function DivisionDividers({ bands }: { bands: [number, number][] }) {
@@ -77,12 +52,19 @@ function DivisionDividers({ bands }: { bands: [number, number][] }) {
   );
 }
 
-function TreeOfLife({ middah }: { middah: string }) {
+/**
+ * The Tree of Life. `dominant` is the brightest/largest node; every id in
+ * `lit` glows gold (smaller than the dominant); the rest stay hollow silver.
+ * A single reading passes `lit=[middah], dominant=middah` (one lit node);
+ * the synthesis lights one node per Encounter, completing the lower Tree.
+ */
+function TreeOfLife({ lit, dominant }: { lit: string[]; dominant: string }) {
   const center = shieldCenter();
   const boxWidth = 170;
   const boxHeight = 210;
   const originX = center.x - boxWidth / 2;
   const originY = SHIELD.shoulder - boxHeight - 10;
+  const litSet = new Set(lit);
 
   const pos = (id: string) => {
     const node = TREE_OF_LIFE_NODES.find((n) => n.id === id)!;
@@ -109,16 +91,24 @@ function TreeOfLife({ middah }: { middah: string }) {
       })}
       {TREE_OF_LIFE_NODES.map((node) => {
         const p = pos(node.id);
-        const isActive = node.id === middah;
+        const isDominant = node.id === dominant;
+        const isLit = litSet.has(node.id);
         return (
           <circle
             key={node.id}
             cx={p.x}
             cy={p.y}
-            r={isActive ? 8 : 4}
-            fill={isActive ? "var(--color-gold)" : "none"}
-            stroke={isActive ? "var(--color-gold-bright)" : "var(--color-silver)"}
-            strokeWidth={isActive ? 2 : 1}
+            r={isDominant ? 8 : isLit ? 6 : 4}
+            fill={isDominant ? "var(--color-gold)" : isLit ? "var(--color-gold)" : "none"}
+            fillOpacity={isDominant ? 1 : isLit ? 0.55 : 1}
+            stroke={
+              isDominant
+                ? "var(--color-gold-bright)"
+                : isLit
+                  ? "var(--color-gold)"
+                  : "var(--color-silver)"
+            }
+            strokeWidth={isDominant ? 2 : isLit ? 1.5 : 1}
           />
         );
       })}
@@ -241,6 +231,49 @@ function FestivalMotif({ motif, center }: { motif?: string; center: { x: number;
   }
 }
 
+/** The seven lower Pillars, Chesed→Malchut, giving each Dorot mark its slot on the base axis. */
+const PILLAR_SLOTS: SefirahId[] = ["chesed", "gevurah", "tiferet", "netzach", "hod", "yesod", "malchut"];
+
+/** Maps drawn Derekh Ha'Dorot cards to their Houses' Sefirot (draw order preserved). */
+export function dorotSefirotOf(draws: DorotDraw[] | undefined): SefirahId[] {
+  return (draws ?? [])
+    .map((d) => {
+      const card = dorotCardsById[d.cardId];
+      return card ? dorotHousesById[card.houseId]?.sefirah : undefined;
+    })
+    .filter((s): s is SefirahId => s !== undefined);
+}
+
+/**
+ * Small copper marks near the shield's base — one diamond per Derekh
+ * Ha'Dorot card drawn, placed on a 7-slot Chesed→Malchut axis by its
+ * House's Pillar, stacking upward when several cards share a Pillar.
+ * "No decorative element is arbitrary; every mark reflects a lived
+ * relationship within the Treasury."
+ */
+function DorotBaseMarks({ sefirot }: { sefirot: SefirahId[] }) {
+  if (sefirot.length === 0) return null;
+  const center = shieldCenter();
+  const baseY = SHIELD.shoulder + 90;
+  const slotSpacing = 38;
+  const seen = new Map<SefirahId, number>();
+  return (
+    <g stroke="var(--color-copper)" strokeWidth={1.25} fill="var(--color-copper)" fillOpacity={0.35}>
+      {sefirot.map((sefirah, i) => {
+        const slot = PILLAR_SLOTS.indexOf(sefirah);
+        if (slot < 0) return null;
+        const stack = seen.get(sefirah) ?? 0;
+        seen.set(sefirah, stack + 1);
+        const x = center.x + (slot - 3) * slotSpacing;
+        const y = baseY - stack * 14;
+        return (
+          <path key={`${sefirah}-${i}`} d={`M ${x} ${y - 5} L ${x + 5} ${y} L ${x} ${y + 5} L ${x - 5} ${y} Z`} />
+        );
+      })}
+    </g>
+  );
+}
+
 /** Tier IV (Shoresh Nistar) treatment — a deliberate, distinct mark, not an empty result. */
 function ShoreshNistarMark({ center }: { center: { x: number; y: number } }) {
   return (
@@ -252,9 +285,8 @@ function ShoreshNistarMark({ center }: { center: { x: number; y: number } }) {
   );
 }
 
-function OrnamentalBorder({ layerCount, color }: { layerCount: number; color: string }) {
-  const density = Math.min(10 + layerCount * 2, 40);
-  const points = perimeterPoints(density);
+function OrnamentalBorder({ density, color }: { density: number; color: string }) {
+  const points = shieldBorderPoints(density);
   return (
     <g stroke={color} fill={color} opacity={0.85}>
       {points.map((p, i) => (
@@ -270,20 +302,40 @@ function OrnamentalBorder({ layerCount, color }: { layerCount: number; color: st
   );
 }
 
-/** Renders one Herald "layer" as an SVG group — no ghosting inside; the caller composites history. */
-export function HeraldLayerContent({
-  input,
-  layerCount,
-}: {
-  input: HeraldInputSnapshot;
-  layerCount: number;
-}) {
-  const divisions = computeDivisions(input.drawnLetters);
-  const festival = festivalsById[input.festivalId] ?? festivalsById.ordinary;
-  const accentColor = festival.heraldAccent?.accentColor ?? "var(--color-gold)";
-  const center = shieldCenter();
+interface HeraldFigureProps {
+  divisions: Division[];
+  /** Tree nodes that glow; empty for none. */
+  litSefirot: string[];
+  /** The brightest/largest Tree node. */
+  dominantSefirah: string;
+  geography: "land" | "galut";
+  /** Zero or more accreted festival accent motifs. */
+  festivalMotifs: string[];
+  accentColor: string;
+  ornamentDensity: number;
+  shoresh: ShoreshResult;
+  /** Sefirot of the Houses whose cards were drawn from Derekh Ha'Dorot — base marks. */
+  dorotSefirot?: SefirahId[];
+}
 
-  const shoresh = resolveShoresh(input.drawnLetters.map((d) => d.letterId) as [string, string, string]);
+/**
+ * The shared low-level Herald figure. Both a single reading and the
+ * synthesis-of-seven render through this, differing only in the derived
+ * inputs above — so the shield, dividers, Tree, Shoresh chains, glyphs,
+ * accents, and border geometry stay identical across both paths.
+ */
+function HeraldFigure({
+  divisions,
+  litSefirot,
+  dominantSefirah,
+  geography,
+  festivalMotifs,
+  accentColor,
+  ornamentDensity,
+  shoresh,
+  dorotSefirot = [],
+}: HeraldFigureProps) {
+  const center = shieldCenter();
 
   function findDivision(letterId: string): Division | undefined {
     return divisions.find((d) => d.letterId === letterId);
@@ -316,7 +368,7 @@ export function HeraldLayerContent({
 
       <DivisionDividers bands={divisions.map((d) => d.band)} />
 
-      <TreeOfLife middah={input.middah} />
+      <TreeOfLife lit={litSefirot} dominant={dominantSefirah} />
 
       {confidentChain.map(([a, b]) => {
         const ax = bandX(a.band).center;
@@ -376,11 +428,62 @@ export function HeraldLayerContent({
         );
       })}
 
-      <GeographyAccent mode={input.geography.mode} />
-      <FestivalMotif motif={festival.heraldAccent?.motif} center={center} />
-      <OrnamentalBorder layerCount={layerCount} color={accentColor} />
+      <DorotBaseMarks sefirot={dorotSefirot} />
+      <GeographyAccent mode={geography} />
+      {festivalMotifs.map((motif) => (
+        <FestivalMotif key={motif} motif={motif} center={center} />
+      ))}
+      <OrnamentalBorder density={ornamentDensity} color={accentColor} />
       <path d={SHIELD_PATH} fill="none" stroke={accentColor} strokeWidth={2.5} />
     </g>
+  );
+}
+
+/** Renders one reading's Herald as an SVG group — no ghosting inside; the caller composites history. */
+export function HeraldLayerContent({
+  input,
+  layerCount,
+}: {
+  input: HeraldInputSnapshot;
+  layerCount: number;
+}) {
+  const festival = festivalsById[input.festivalId] ?? festivalsById.ordinary;
+  const motif = festival.heraldAccent?.motif;
+  return (
+    <HeraldFigure
+      divisions={computeDivisions(input.drawnLetters)}
+      litSefirot={[input.middah]}
+      dominantSefirah={input.middah}
+      geography={input.geography.mode}
+      festivalMotifs={motif ? [motif] : []}
+      accentColor={festival.heraldAccent?.accentColor ?? "var(--color-gold)"}
+      ornamentDensity={Math.min(10 + layerCount * 2, 40)}
+      shoresh={resolveShoresh(input.drawnLetters.map((d) => d.letterId) as [string, string, string])}
+      dorotSefirot={dorotSefirotOf(input.dorotDraws)}
+    />
+  );
+}
+
+/**
+ * Renders the Herald as the synthesis of a participant's first seven
+ * readings (see `deriveHeraldForm`) — the dominant letters as charges, the
+ * completing Tree of Life, and accreted accents. The dominant three letters
+ * are resolved as a Shoresh too, so a confident chain draws when they spell
+ * a root — the word the seven readings together speak.
+ */
+export function HeraldSynthesisContent({ form }: { form: HeraldForm }) {
+  return (
+    <HeraldFigure
+      divisions={computeDivisions(form.charges)}
+      litSefirot={form.litSefirot}
+      dominantSefirah={form.dominantMiddah}
+      geography={form.geography}
+      festivalMotifs={form.festivalMotifs}
+      accentColor={form.accentColor}
+      ornamentDensity={form.ornamentDensity}
+      shoresh={resolveShoresh(form.charges.map((c) => c.letterId) as [string, string, string])}
+      dorotSefirot={form.dorotSefirot}
+    />
   );
 }
 

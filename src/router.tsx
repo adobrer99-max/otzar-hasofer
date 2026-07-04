@@ -14,6 +14,8 @@ import { Encounters } from "./guide/pages/Encounters";
 import { VisualCanon } from "./guide/pages/VisualCanon";
 import { HeraldPage } from "./herald/HeraldPage";
 import { CommentariesPage } from "./commentaries/CommentariesPage";
+import { LibraryPage } from "./library/LibraryPage";
+import { SeferPage } from "./library/SeferPage";
 
 export const router = createHashRouter([
   {
@@ -34,6 +36,8 @@ export const router = createHashRouter([
       { path: "guide/visual-canon", element: <VisualCanon /> },
       { path: "herald", element: <HeraldPage /> },
       { path: "commentaries", element: <CommentariesPage /> },
+      { path: "sefarim", element: <LibraryPage /> },
+      { path: "sefarim/:id/:entryId?", element: <SeferPage /> },
     ],
   },
 ]);
