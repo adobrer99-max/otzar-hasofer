@@ -1,4 +1,5 @@
 import { getDb } from "./db";
+import { enqueueSync } from "./syncQueue";
 import type { CommentaryRecord, CommentarySubject } from "../types/commentary";
 import { subjectKeyFor } from "../types/commentary";
 import { seedCommentaries, isSeedCommentary } from "../data/seedCommentaries";
@@ -48,6 +49,7 @@ export async function addCommentary(input: {
     body: input.body,
   };
   await db.put("commentaries", record);
+  await enqueueSync("commentaries", record.id, "put");
   return record;
 }
 
@@ -66,6 +68,7 @@ export async function updateCommentary(
     updatedAt: new Date().toISOString(),
   };
   await db.put("commentaries", updated);
+  await enqueueSync("commentaries", updated.id, "put");
   return updated;
 }
 
@@ -73,4 +76,5 @@ export async function deleteCommentary(id: string): Promise<void> {
   if (isSeedCommentary(id)) throw new Error("Received commentaries cannot be deleted.");
   const db = await getDb();
   await db.delete("commentaries", id);
+  await enqueueSync("commentaries", id, "delete");
 }

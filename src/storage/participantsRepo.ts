@@ -1,4 +1,5 @@
 import { getDb } from "./db";
+import { enqueueSync } from "./syncQueue";
 import type {
   ParticipantRecord,
   HeraldLayer,
@@ -31,6 +32,7 @@ export async function createParticipant(
     createdAt: new Date().toISOString(),
   };
   await db.put("participants", record);
+  await enqueueSync("participants", record.id, "put");
   return record;
 }
 
@@ -41,8 +43,9 @@ export async function setHebrewBirthDate(
   const db = await getDb();
   const record = await db.get("participants", participantId);
   if (!record) throw new Error(`Participant ${participantId} not found`);
-  const updated: ParticipantRecord = { ...record, hebrewBirthDate };
+  const updated: ParticipantRecord = { ...record, hebrewBirthDate, updatedAt: new Date().toISOString() };
   await db.put("participants", updated);
+  await enqueueSync("participants", updated.id, "put");
   return updated;
 }
 
@@ -58,8 +61,10 @@ export async function setHeraldicEpithet(
   const updated: ParticipantRecord = {
     ...record,
     heraldicEpithet: { text, derivedText, sealedAt: new Date().toISOString() },
+    updatedAt: new Date().toISOString(),
   };
   await db.put("participants", updated);
+  await enqueueSync("participants", updated.id, "put");
   return updated;
 }
 
@@ -90,5 +95,6 @@ export async function addLayer(
     isOrigin: layerIndex === 0,
   };
   await db.put("heraldLayers", layer);
+  await enqueueSync("heraldLayers", layer.id, "put");
   return layer;
 }

@@ -12,6 +12,7 @@
     "data:shorashim": "node scripts/build-shorashim.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.110.0",
     "idb": "^8.0.0",
     "jewish-date": "^2.0.23",
     "react": "^19.2.7",

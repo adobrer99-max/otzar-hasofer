@@ -1,0 +1,52 @@
+.panel {
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  background: var(--bg-raised);
+  margin-top: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 480px;
+}
+
+.panel input[type="email"] {
+  background: var(--bg);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: var(--space-2);
+  font-family: var(--font-latin);
+  font-size: 1rem;
+}
+
+.statusLine {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.statusLine strong {
+  color: var(--accent-bright);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.privacy {
+  border-inline-start: 2px solid var(--accent);
+  padding-inline-start: var(--space-3);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.error {
+  color: var(--color-copper);
+  font-size: 0.9rem;
+}
+
+.sent {
+  color: var(--accent-bright);
+}

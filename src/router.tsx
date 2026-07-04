@@ -16,6 +16,7 @@ import { HeraldPage } from "./herald/HeraldPage";
 import { CommentariesPage } from "./commentaries/CommentariesPage";
 import { LibraryPage } from "./library/LibraryPage";
 import { SeferPage } from "./library/SeferPage";
+import { AccountPage } from "./cloud/AccountPage";
 
 export const router = createHashRouter([
   {
@@ -38,6 +39,7 @@ export const router = createHashRouter([
       { path: "commentaries", element: <CommentariesPage /> },
       { path: "sefarim", element: <LibraryPage /> },
       { path: "sefarim/:id/:entryId?", element: <SeferPage /> },
+      { path: "account", element: <AccountPage /> },
     ],
   },
 ]);
