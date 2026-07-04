@@ -1,0 +1,55 @@
+.entry {
+  margin-top: var(--space-4);
+}
+
+.primaryHebrew {
+  font-family: var(--font-hebrew);
+  direction: rtl;
+  unicode-bidi: isolate;
+  font-size: 2.5rem;
+  color: var(--accent-bright);
+  line-height: 1.2;
+  margin-bottom: var(--space-3);
+}
+
+.tier {
+  border-inline-start: 2px solid var(--accent);
+  padding-inline-start: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.tierLabel {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.tierHebrew {
+  font-family: var(--font-hebrew);
+  direction: rtl;
+  unicode-bidi: isolate;
+  color: var(--accent-bright);
+  font-size: 1.15rem;
+}
+
+.tierName {
+  color: var(--accent);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.tierGloss {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.sod {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.sod ul {
+  font-style: normal;
+}

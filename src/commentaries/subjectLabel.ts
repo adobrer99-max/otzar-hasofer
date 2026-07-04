@@ -1,6 +1,7 @@
 import type { CommentarySubject } from "../types/commentary";
 import { lettersById } from "../data/letters";
 import { dorotCardsById, dorotHousesById } from "../data/dorot";
+import { balaganSectionByCategory } from "../data/balagan";
 
 /** Human-readable label + in-app link target for a commentary's subject. */
 export function subjectLabel(subject: CommentarySubject): { label: string; to?: string } {
@@ -26,6 +27,13 @@ export function subjectLabel(subject: CommentarySubject): { label: string; to?: 
         .map((id) => lettersById[id]?.name ?? id)
         .join("–");
       return { label: `Root — ${names}`, to: "/guide/shoresh" };
+    }
+    case "balagan": {
+      const section = balaganSectionByCategory[subject.category];
+      return {
+        label: `Balagan HaOtzar — ${section?.label ?? subject.category}`,
+        to: "/sefarim/balagan",
+      };
     }
   }
 }

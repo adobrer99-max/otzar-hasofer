@@ -17,8 +17,11 @@ interface CommentaryFormProps {
   onCancelEdit?: () => void;
 }
 
+/** The subject kinds this generic form can pick. Balagan HaOtzar notes are authored in their own book, not here. */
+type PickableKind = "letter" | "dorot-card" | "root";
+
 export function CommentaryForm({ editing, onSubmit, onCancelEdit }: CommentaryFormProps) {
-  const [kind, setKind] = useState<CommentarySubject["kind"]>("letter");
+  const [kind, setKind] = useState<PickableKind>("letter");
   const [letterId, setLetterId] = useState(letters[0].id);
   const [houseId, setHouseId] = useState(dorotHouses[0].id);
   const [cardId, setCardId] = useState(cardsByHouse(dorotHouses[0].id)[0].id);
@@ -85,7 +88,7 @@ export function CommentaryForm({ editing, onSubmit, onCancelEdit }: CommentaryFo
             Subject
             <select
               value={kind}
-              onChange={(e) => setKind(e.target.value as CommentarySubject["kind"])}
+              onChange={(e) => setKind(e.target.value as PickableKind)}
               aria-label="Commentary subject kind"
             >
               <option value="letter">A Letter</option>

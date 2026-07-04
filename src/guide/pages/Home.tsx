@@ -62,6 +62,11 @@ const practiceDoors: Door[] = [
     blurb: "Create a participant's living heraldic sigil at the close of a reading — with Shoresh resolution, Sacred Time, and the Heraldic Epithet earned at the seventh reading.",
   },
   {
+    to: "/sefarim",
+    label: "The Shelf of Sefarim",
+    blurb: "The Beit Midrash — the Book of Roots, the Vocabulary Treasury, and Balagan HaOtzar (the scribe's genizah), each read and written through the four tiers of PaRDeS.",
+  },
+  {
     to: "/commentaries",
     label: "Commentaries",
     blurb: "The Drash tier — received and ongoing commentaries on the letters, the Ha'Dorot cards, and the roots.",

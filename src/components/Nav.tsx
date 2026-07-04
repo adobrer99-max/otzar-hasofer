@@ -39,6 +39,9 @@ export function Nav() {
           ))}
         </ul>
         <div className={styles.heraldLink}>
+          <NavLink to="/sefarim" className={linkClass}>
+            The Sefarim
+          </NavLink>
           <NavLink to="/commentaries" className={linkClass}>
             Commentaries
           </NavLink>
