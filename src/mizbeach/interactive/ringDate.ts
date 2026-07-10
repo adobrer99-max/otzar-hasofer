@@ -51,6 +51,12 @@ export function stepDay(date: Date, delta: number): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate() + delta);
 }
 
+/** Set the effective date to a chosen day-of-Hebrew-month (1-based, clamped) — the moon ring's grain. */
+export function setDayOfMonth(date: Date, day: number): Date {
+  const hd = hebrewDateFromGregorian(date);
+  return fromHebrew(hd.year, hd.month, Math.max(1, day));
+}
+
 /** Set the effective date to a chosen Mazalot/Solar-month slice (0..11), same day-of-month, clamped. */
 export function setMonthSlice(date: Date, sliceIndex: number): Date {
   const hd = hebrewDateFromGregorian(date);
