@@ -1,6 +1,7 @@
 import type { HeraldInputSnapshot, DorotDraw, LetterDraw } from "../../types/herald";
 import type { SefirahId } from "../../types/letter";
 import type { HeraldForm } from "../synthesis/deriveHeraldForm";
+import type { CovenantalForm } from "../covenant/deriveCovenantalForm";
 import { lettersById } from "../../data/letters";
 import { festivalsById } from "../../data/festivals";
 import { dorotCardsById, dorotHousesById } from "../../data/dorot";
@@ -659,6 +660,32 @@ export function HeraldSynthesisContent({ form }: { form: HeraldForm }) {
       ornamentDensity={form.ornamentDensity}
       shoresh={resolveShoresh(form.charges.map((c) => c.letterId) as [string, string, string])}
       dorotSefirot={form.dorotSefirot}
+    />
+  );
+}
+
+/**
+ * The Covenantal Herald — the marriage impalement. Per pale, the heraldic
+ * convention for a married couple's arms: partner A's dominant letter on
+ * the dexter half, partner B's on the sinister. The Tree lights both
+ * partners' Sefirot, and the recorded Sheva Brachot days accrete as base
+ * marks on the same Chesed→Malchut axis the Dorot draws use.
+ */
+export function HeraldCovenantContent({ form }: { form: CovenantalForm }) {
+  const divisions: Division[] = [
+    { letterId: form.dexterCharge.letterId, orientation: form.dexterCharge.orientation, count: 1, drawOrder: 0, band: [0, 0.5] },
+    { letterId: form.sinisterCharge.letterId, orientation: form.sinisterCharge.orientation, count: 1, drawOrder: 1, band: [0.5, 1] },
+  ];
+  return (
+    <HeraldFigure
+      divisions={divisions}
+      litSefirot={form.litSefirot}
+      dominantSefirah={form.dominantMiddah}
+      geography={form.geography}
+      festivalMotifs={[]}
+      accentColor={form.bothRevealed ? "var(--color-gold-bright)" : "var(--color-gold)"}
+      ornamentDensity={form.ornamentDensity}
+      dorotSefirot={form.shevaBrachotLit}
     />
   );
 }

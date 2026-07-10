@@ -1,9 +1,14 @@
 import { useState } from "react";
 import type { ParticipantRecord } from "../../types/herald";
-import type { LifeCycleEvent } from "../../types/lifeCycle";
+import type { LifeCycleEvent, LifeCycleEventType } from "../../types/lifeCycle";
+import { LIFE_CYCLE_EVENT_LABELS } from "../../types/lifeCycle";
 import { hebrewDateFromGregorian, formatHebrewDateEnglish } from "../../data/hebrewCalendar";
-import { setHebrewBirthDate } from "../../storage/participantsRepo";
-import { addYahrzeit, deleteLifeCycleEvent, listLifeCycleEvents } from "../../storage/lifeCycleRepo";
+import { setHebrewBirthDate, setHebrewName } from "../../storage/participantsRepo";
+import {
+  addLifeCycleEvent,
+  deleteLifeCycleEvent,
+  listLifeCycleEvents,
+} from "../../storage/lifeCycleRepo";
 import styles from "./lifeCycle.module.css";
 
 export interface LifeCycleEventsPanelProps {
@@ -13,6 +18,14 @@ export interface LifeCycleEventsPanelProps {
   onEventsChange: (events: LifeCycleEvent[]) => void;
 }
 
+function eventSummary(event: LifeCycleEvent): string {
+  const label = LIFE_CYCLE_EVENT_LABELS[event.type] ?? event.type;
+  if (event.type === "yahrzeit") {
+    return `${label} — ${event.relation}: ${event.personName}`;
+  }
+  return label;
+}
+
 export function LifeCycleEventsPanel({
   participant,
   onParticipantChange,
@@ -20,11 +33,15 @@ export function LifeCycleEventsPanel({
   onEventsChange,
 }: LifeCycleEventsPanelProps) {
   const [birthDateInput, setBirthDateInput] = useState("");
+  const [eventType, setEventType] = useState<LifeCycleEventType>("yahrzeit");
   const [relation, setRelation] = useState("");
   const [personName, setPersonName] = useState("");
-  const [passingDate, setPassingDate] = useState("");
+  const [eventDate, setEventDate] = useState("");
   const [notes, setNotes] = useState("");
   const [adarRule, setAdarRule] = useState<"adarI" | "adarII" | undefined>(undefined);
+  const [sponsoringCommunity, setSponsoringCommunity] = useState("");
+  const [beitDin, setBeitDin] = useState("");
+  const [hebrewNameReceived, setHebrewNameReceived] = useState("");
 
   async function handleSetBirthDate() {
     if (!birthDateInput) return;
@@ -34,21 +51,34 @@ export function LifeCycleEventsPanel({
     setBirthDateInput("");
   }
 
-  async function handleAddYahrzeit() {
-    if (!relation || !personName || !passingDate) return;
-    await addYahrzeit(participant.id, {
-      relation,
-      personName,
-      gregorianDateOfEvent: passingDate,
+  const isYahrzeit = eventType === "yahrzeit";
+  const isConversion = eventType === "conversion";
+  const canAdd = eventDate && (!isYahrzeit || (relation && personName));
+
+  async function handleAddEvent() {
+    if (!canAdd) return;
+    await addLifeCycleEvent(participant.id, {
+      type: eventType,
+      relation: isYahrzeit ? relation : undefined,
+      personName: isYahrzeit ? personName : undefined,
+      gregorianDateOfEvent: eventDate,
       notes: notes || undefined,
       adarRule,
+      sponsoringCommunity: isConversion ? sponsoringCommunity || undefined : undefined,
+      beitDin: isConversion ? beitDin || undefined : undefined,
     });
+    if (isConversion && hebrewNameReceived && !participant.hebrewName) {
+      onParticipantChange(await setHebrewName(participant.id, hebrewNameReceived));
+    }
     onEventsChange(await listLifeCycleEvents(participant.id));
     setRelation("");
     setPersonName("");
-    setPassingDate("");
+    setEventDate("");
     setNotes("");
     setAdarRule(undefined);
+    setSponsoringCommunity("");
+    setBeitDin("");
+    setHebrewNameReceived("");
   }
 
   async function handleDelete(id: string) {
@@ -56,8 +86,8 @@ export function LifeCycleEventsPanel({
     onEventsChange(events.filter((e) => e.id !== id));
   }
 
-  const isAdarAnchor = passingDate
-    ? hebrewDateFromGregorian(new Date(passingDate)).month === "Adar"
+  const isAdarAnchor = eventDate
+    ? hebrewDateFromGregorian(new Date(eventDate)).month === "Adar"
     : false;
 
   return (
@@ -78,13 +108,13 @@ export function LifeCycleEventsPanel({
         </div>
       )}
 
-      <h3>Yahrzeits</h3>
+      <h3>Life-Cycle Events</h3>
       {events.length > 0 && (
         <ul className={styles.eventList}>
           {events.map((event) => (
             <li key={event.id}>
               <span>
-                {event.relation}: {event.personName} — {formatHebrewDateEnglish(event.hebrewDate)}
+                {eventSummary(event)} — {formatHebrewDateEnglish(event.hebrewDate)}
                 {event.notes && ` (${event.notes})`}
               </span>
               <button type="button" onClick={() => handleDelete(event.id)}>
@@ -95,24 +125,86 @@ export function LifeCycleEventsPanel({
         </ul>
       )}
       <div className={styles.row}>
-        <input
-          type="text"
-          placeholder="Relation (parent, spouse, ...)"
-          value={relation}
-          onChange={(e) => setRelation(e.target.value)}
-        />
-        <input
-          type="text"
-          placeholder="Name"
-          value={personName}
-          onChange={(e) => setPersonName(e.target.value)}
-        />
-        <input
-          type="date"
-          value={passingDate}
-          onChange={(e) => setPassingDate(e.target.value)}
-        />
+        <select
+          value={eventType}
+          onChange={(e) => setEventType(e.target.value as LifeCycleEventType)}
+          aria-label="Event type"
+        >
+          {(Object.keys(LIFE_CYCLE_EVENT_LABELS) as LifeCycleEventType[]).map((type) => (
+            <option key={type} value={type}>
+              {LIFE_CYCLE_EVENT_LABELS[type]}
+            </option>
+          ))}
+        </select>
+        <input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
       </div>
+      {isYahrzeit && (
+        <div className={styles.row}>
+          <input
+            type="text"
+            placeholder="Relation (parent, spouse, ...)"
+            value={relation}
+            onChange={(e) => setRelation(e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="Name"
+            value={personName}
+            onChange={(e) => setPersonName(e.target.value)}
+          />
+        </div>
+      )}
+      {isConversion && (
+        <>
+          <p className={styles.note}>
+            The Herald is grafted. Like Ruth. Nothing erased — everything is redeemed. The
+            Treasury records the moment; the earlier chapters remain exactly as written.
+          </p>
+          <div className={styles.row}>
+            <input
+              type="text"
+              placeholder="Sponsoring community (optional)"
+              value={sponsoringCommunity}
+              onChange={(e) => setSponsoringCommunity(e.target.value)}
+            />
+            <input
+              type="text"
+              placeholder="Beit Din (optional, private)"
+              value={beitDin}
+              onChange={(e) => setBeitDin(e.target.value)}
+            />
+          </div>
+          {!participant.hebrewName && (
+            <div className={styles.row}>
+              <input
+                type="text"
+                className="hebrew"
+                dir="rtl"
+                placeholder="Hebrew name received (optional)"
+                value={hebrewNameReceived}
+                onChange={(e) => setHebrewNameReceived(e.target.value)}
+              />
+            </div>
+          )}
+        </>
+      )}
+      {eventType === "aliyah" && (
+        <p className={styles.note}>
+          A beautiful threshold. The Herald changes; the geography changes; the ritual
+          changes. From the next reading on, the Galut cards cease to matter.
+        </p>
+      )}
+      {eventType === "bris" && (
+        <p className={styles.note}>
+          The parents receive the reading. The Herald begins; the Treasury opens; the child's
+          first page is created. No conclusions. Only blessing.
+        </p>
+      )}
+      {eventType === "bar-bat-mitzvah" && (
+        <p className={styles.note}>
+          The participant conducts their first reading with a Scribe. Not alone. Together.
+        </p>
+      )}
       {isAdarAnchor && (
         <div className={styles.row}>
           <label className={styles.note}>
@@ -134,8 +226,8 @@ export function LifeCycleEventsPanel({
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
         />
-        <button type="button" onClick={handleAddYahrzeit}>
-          Add Yahrzeit
+        <button type="button" onClick={handleAddEvent} disabled={!canAdd}>
+          Add {LIFE_CYCLE_EVENT_LABELS[eventType]}
         </button>
       </div>
     </div>

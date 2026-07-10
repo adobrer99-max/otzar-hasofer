@@ -1,6 +1,6 @@
 import { getDb } from "./db";
 import { enqueueSync } from "./syncQueue";
-import type { LifeCycleEvent } from "../types/lifeCycle";
+import type { LifeCycleEvent, LifeCycleEventType } from "../types/lifeCycle";
 import { hebrewDateFromGregorian } from "../data/hebrewCalendar";
 
 function uuid(): string {
@@ -13,6 +13,42 @@ export async function listLifeCycleEvents(participantId: string): Promise<LifeCy
   return events.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
+export interface LifeCycleEventInput {
+  type: LifeCycleEventType;
+  relation?: string;
+  personName?: string;
+  gregorianDateOfEvent: string;
+  notes?: string;
+  adarRule?: "adarI" | "adarII";
+  sponsoringCommunity?: string;
+  beitDin?: string;
+}
+
+export async function addLifeCycleEvent(
+  participantId: string,
+  input: LifeCycleEventInput,
+): Promise<LifeCycleEvent> {
+  const db = await getDb();
+  const hebrewDate = hebrewDateFromGregorian(new Date(input.gregorianDateOfEvent));
+  const event: LifeCycleEvent = {
+    id: uuid(),
+    participantId,
+    type: input.type,
+    relation: input.relation,
+    personName: input.personName,
+    hebrewDate,
+    gregorianDateOfEvent: input.gregorianDateOfEvent,
+    adarRule: input.adarRule,
+    sponsoringCommunity: input.sponsoringCommunity,
+    beitDin: input.beitDin,
+    notes: input.notes,
+    createdAt: new Date().toISOString(),
+  };
+  await db.put("lifeCycleEvents", event);
+  await enqueueSync("lifeCycleEvents", event.id, "put");
+  return event;
+}
+
 export async function addYahrzeit(
   participantId: string,
   input: {
@@ -23,23 +59,7 @@ export async function addYahrzeit(
     adarRule?: "adarI" | "adarII";
   },
 ): Promise<LifeCycleEvent> {
-  const db = await getDb();
-  const hebrewDate = hebrewDateFromGregorian(new Date(input.gregorianDateOfEvent));
-  const event: LifeCycleEvent = {
-    id: uuid(),
-    participantId,
-    type: "yahrzeit",
-    relation: input.relation,
-    personName: input.personName,
-    hebrewDate,
-    gregorianDateOfEvent: input.gregorianDateOfEvent,
-    adarRule: input.adarRule,
-    notes: input.notes,
-    createdAt: new Date().toISOString(),
-  };
-  await db.put("lifeCycleEvents", event);
-  await enqueueSync("lifeCycleEvents", event.id, "put");
-  return event;
+  return addLifeCycleEvent(participantId, { type: "yahrzeit", ...input });
 }
 
 export async function deleteLifeCycleEvent(id: string): Promise<void> {

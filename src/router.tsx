@@ -13,6 +13,7 @@ import { SacredTime } from "./guide/pages/SacredTime";
 import { Encounters } from "./guide/pages/Encounters";
 import { VisualCanon } from "./guide/pages/VisualCanon";
 import { HeraldPage } from "./herald/HeraldPage";
+import { CovenantPage } from "./herald/covenant/CovenantPage";
 import { CommentariesPage } from "./commentaries/CommentariesPage";
 import { LibraryPage } from "./library/LibraryPage";
 import { SeferPage } from "./library/SeferPage";
@@ -36,6 +37,7 @@ export const router = createHashRouter([
       { path: "guide/encounters", element: <Encounters /> },
       { path: "guide/visual-canon", element: <VisualCanon /> },
       { path: "herald", element: <HeraldPage /> },
+      { path: "covenant", element: <CovenantPage /> },
       { path: "commentaries", element: <CommentariesPage /> },
       { path: "sefarim", element: <LibraryPage /> },
       { path: "sefarim/:id/:entryId?", element: <SeferPage /> },

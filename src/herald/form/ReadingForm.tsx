@@ -42,13 +42,24 @@ function parseLocalDateInput(value: string): Date {
   return new Date(year, month - 1, day);
 }
 
+export interface RitualNotes {
+  /** First reading after an Aliyah: "today your reading begins with the Letters Alone." */
+  lettersAlone?: boolean;
+  /** A Bris was recorded and this is the child's first page. */
+  bris?: boolean;
+  /** First reading after a Bar/Bat Mitzvah — conducted together. */
+  barBatMitzvah?: boolean;
+}
+
 export interface ReadingFormProps {
   onSubmit: (input: HeraldInputSnapshot) => void;
   /** The participant's past-reading count (0 for their very first reading) — drives which Encounter this reading is. */
   readingIndex: number;
+  /** Soft life-cycle framing lines — guidance, never restrictions. */
+  ritualNotes?: RitualNotes;
 }
 
-export function ReadingForm({ onSubmit, readingIndex }: ReadingFormProps) {
+export function ReadingForm({ onSubmit, readingIndex, ritualNotes }: ReadingFormProps) {
   const [path, setPath] = useState<ReadingPath>("brit");
   const [hebrewName, setHebrewName] = useState("");
   const [isFirstTime, setIsFirstTime] = useState(true);
@@ -164,6 +175,24 @@ export function ReadingForm({ onSubmit, readingIndex }: ReadingFormProps) {
       />
 
       <EncounterPanel readingIndex={readingIndex} />
+
+      {ritualNotes?.lettersAlone && (
+        <p className={styles.hebrewNameNote}>
+          Today your reading begins with the Letters alone. The geography has changed; the
+          Galut cards cease to matter.
+        </p>
+      )}
+      {ritualNotes?.bris && (
+        <p className={styles.hebrewNameNote}>
+          The parents receive this reading. The Herald begins; the Treasury opens; the child's
+          first page is created. No conclusions. Only blessing.
+        </p>
+      )}
+      {ritualNotes?.barBatMitzvah && (
+        <p className={styles.hebrewNameNote}>
+          The participant conducts this reading with the Scribe. Not alone. Together.
+        </p>
+      )}
 
       <div className={styles.field}>
         <label>Path</label>

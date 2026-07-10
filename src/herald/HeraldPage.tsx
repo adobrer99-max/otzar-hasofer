@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import type { ParticipantRecord, HeraldLayer, ReadingPath } from "../types/herald";
 import type { LifeCycleEvent } from "../types/lifeCycle";
 import {
@@ -91,6 +92,20 @@ export function HeraldPage() {
     : "";
   const synthesisEpithet = heraldForm?.revealed ? sealedEpithet?.text : undefined;
 
+  // Soft life-cycle framing for the next reading: shown from when the event
+  // is recorded until a reading is made after it (Bris frames the child's
+  // very first page instead). Guidance, never a restriction.
+  const firstReadingSince = (type: LifeCycleEvent["type"]) => {
+    const event = lifeCycleEvents.find((e) => e.type === type);
+    if (!event) return false;
+    return !layers.some((l) => l.createdAt > event.createdAt);
+  };
+  const ritualNotes = {
+    lettersAlone: firstReadingSince("aliyah"),
+    bris: layers.length === 0 && lifeCycleEvents.some((e) => e.type === "bris"),
+    barBatMitzvah: firstReadingSince("bar-bat-mitzvah"),
+  };
+
   return (
     <div className="page">
       <div className="page-header">
@@ -101,7 +116,8 @@ export function HeraldPage() {
         The Herald forms across a participant's first seven readings — the
         unfolding order of Creation — and is revealed at the seventh. It is
         never overwritten: each reading is also kept on its own below, the
-        biography of how the Herald came to be.
+        biography of how the Herald came to be. At marriage, two Heralds
+        join in a shared <Link to="/covenant">Covenantal Herald</Link>.
       </p>
 
       <ParticipantPicker
@@ -133,7 +149,11 @@ export function HeraldPage() {
       {selectedParticipantId ? (
         <div className={styles.layout}>
           <div>
-            <ReadingForm onSubmit={handleSubmitReading} readingIndex={layers.length} />
+            <ReadingForm
+              onSubmit={handleSubmitReading}
+              readingIndex={layers.length}
+              ritualNotes={ritualNotes}
+            />
           </div>
           <div className={styles.canvasCol}>
             {selectedParticipant && layers.length >= 7 && !sealedEpithet && (

@@ -82,3 +82,21 @@ create trigger commentaries_updated_at
   before update on public.commentaries
   for each row execute function public.set_updated_at();
 create index commentaries_owner_updated on public.commentaries (owner_id, updated_at);
+
+-- ————— unions —————
+-- Added after the first four tables shipped (the Covenantal Herald).
+-- Existing deployments: run just this block — it is independent of the rest.
+create table public.unions (
+  id uuid primary key,
+  owner_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  data jsonb not null,
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+alter table public.unions enable row level security;
+create policy "own rows" on public.unions
+  for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+create trigger unions_updated_at
+  before update on public.unions
+  for each row execute function public.set_updated_at();
+create index unions_owner_updated on public.unions (owner_id, updated_at);

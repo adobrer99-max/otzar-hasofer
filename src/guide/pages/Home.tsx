@@ -62,6 +62,11 @@ const practiceDoors: Door[] = [
     blurb: "Create a participant's living heraldic sigil at the close of a reading — with Shoresh resolution, Sacred Time, and the Heraldic Epithet earned at the seventh reading.",
   },
   {
+    to: "/covenant",
+    label: "The Covenantal Herald",
+    blurb: "At marriage, a shared Herald is created — derived from both partners' Treasuries and grown through the seven blessings of the Sheva Brachot.",
+  },
+  {
     to: "/sefarim",
     label: "The Shelf of Sefarim",
     blurb: "The Beit Midrash — the Book of Roots, the Vocabulary Treasury, and Balagan HaOtzar (the scribe's genizah), each read and written through the four tiers of PaRDeS.",

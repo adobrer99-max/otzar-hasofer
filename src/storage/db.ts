@@ -2,10 +2,11 @@ import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import type { ParticipantRecord, HeraldLayer } from "../types/herald";
 import type { LifeCycleEvent } from "../types/lifeCycle";
 import type { CommentaryRecord } from "../types/commentary";
+import type { UnionRecord } from "../types/union";
 
 /** One pending outbox entry for the Scribes' Cloud sync (see src/cloud/sync.ts). */
 export interface SyncQueueEntry {
-  store: "participants" | "heraldLayers" | "lifeCycleEvents" | "commentaries";
+  store: "participants" | "heraldLayers" | "lifeCycleEvents" | "commentaries" | "unions";
   id: string;
   op: "put" | "delete";
 }
@@ -30,6 +31,11 @@ interface OtzarHaSoferDB extends DBSchema {
     value: CommentaryRecord;
     indexes: { "by-subject": string };
   };
+  /** Marriages — each links two participants; see the Covenantal Herald. */
+  unions: {
+    key: string;
+    value: UnionRecord;
+  };
   /** Outbox of local changes awaiting a push to the Scribes' Cloud. */
   syncQueue: {
     key: number;
@@ -46,7 +52,7 @@ let dbPromise: Promise<IDBPDatabase<OtzarHaSoferDB>> | undefined;
 
 export function getDb() {
   if (!dbPromise) {
-    dbPromise = openDB<OtzarHaSoferDB>("otzar-hasofer", 4, {
+    dbPromise = openDB<OtzarHaSoferDB>("otzar-hasofer", 5, {
       upgrade(db, oldVersion) {
         if (oldVersion < 1) {
           db.createObjectStore("participants", { keyPath: "id" });
@@ -64,6 +70,9 @@ export function getDb() {
         if (oldVersion < 4) {
           db.createObjectStore("syncQueue", { autoIncrement: true });
           db.createObjectStore("syncState");
+        }
+        if (oldVersion < 5) {
+          db.createObjectStore("unions", { keyPath: "id" });
         }
       },
     });

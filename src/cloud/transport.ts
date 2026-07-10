@@ -6,6 +6,7 @@ export const REMOTE_TABLES: Record<SyncQueueEntry["store"], string> = {
   heraldLayers: "herald_layers",
   lifeCycleEvents: "life_cycle_events",
   commentaries: "commentaries",
+  unions: "unions",
 };
 
 export const SYNC_STORES = Object.keys(REMOTE_TABLES) as SyncQueueEntry["store"][];

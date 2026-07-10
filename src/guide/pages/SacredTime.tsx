@@ -32,24 +32,31 @@ export function SacredTime() {
 
       <h2>Personal Time</h2>
       <p>
-        <strong>Hebrew Birthday</strong> and <strong>Yahrzeit</strong> are
-        tracked per participant — set a Hebrew Birthday and record Yahrzeits
-        (for parents, grandparents, a spouse, children) on the Herald page.
-        When a reading falls on one of these recurring dates, the Treasury
-        surfaces past readings from the same date in previous years.
-      </p>
-      <p>
-        Not yet tracked in this build: wedding anniversary (Hebrew), Bar/Bat
-        Mitzvah anniversary, Bris anniversary, conversion anniversary, and
-        Aliyah anniversary.
+        <strong>Hebrew Birthday</strong>, <strong>Yahrzeit</strong>,{" "}
+        <strong>wedding anniversary</strong>, <strong>Bar/Bat Mitzvah</strong>,{" "}
+        <strong>Bris</strong>, <strong>conversion</strong>, and{" "}
+        <strong>Aliyah</strong> are tracked per participant on the Herald
+        page. When a reading falls on one of these recurring Hebrew dates,
+        the Treasury surfaces past readings from the same date in previous
+        years. Each carries its own framing: a Bris opens the child's first
+        page ("no conclusions, only blessing"); a conversion is a grafting —
+        like Ruth, nothing erased; after an Aliyah the reading begins with
+        the Letters alone, and the Galut cards cease to matter.
       </p>
 
       <h2>Covenantal Time</h2>
       <p>
-        Not yet tracked in this build: the seven days following marriage
-        (Sheva Brachot), the thirty days of mourning (Shloshim), the first
-        year of mourning, Yizkor seasons, and the pilgrimage festivals as a
-        distinct covenantal layer.
+        Marriage creates a shared Herald — the{" "}
+        <Link to="/covenant">Covenantal Herald</Link> — and the seven days of
+        Sheva Brachot that follow are one unfolding reading, each day
+        illuminating another Sefirah, Chesed through Malchut.
+      </p>
+      <p>
+        <strong>Yizkor</strong>: no reading is done. Just reflection and
+        remembrance. The thirty days of mourning (Shloshim), the first year
+        of mourning, and the pilgrimage festivals as a distinct covenantal
+        layer remain reference practice, held by the Scribe rather than
+        computed by the Treasury.
       </p>
     </div>
   );

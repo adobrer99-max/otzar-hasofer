@@ -1,0 +1,72 @@
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: var(--space-lg, 2rem);
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel {
+  border: 1px solid var(--border-hairline);
+  padding: 1rem 1.25rem;
+  margin: 1rem 0;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  margin: 0.5rem 0;
+}
+
+.unionList {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+}
+
+.unionList li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.dayList {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+}
+
+.dayList li {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.dayTitle {
+  font-weight: 600;
+  color: var(--color-gold);
+}
+
+.recorded {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.note {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.exportRow {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}

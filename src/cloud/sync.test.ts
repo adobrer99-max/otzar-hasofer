@@ -16,7 +16,7 @@ function makeLocal(seed?: {
   state?: Record<string, unknown>;
 }) {
   const stores = new Map<string, Map<string, Rec>>();
-  for (const name of ["participants", "heraldLayers", "lifeCycleEvents", "commentaries"]) {
+  for (const name of ["participants", "heraldLayers", "lifeCycleEvents", "commentaries", "unions"]) {
     stores.set(name, new Map((seed?.stores?.[name as SyncQueueEntry["store"]] ?? []).map((r) => [r.id, r])));
   }
   let queue: SyncQueueEntry[] = [...(seed?.queue ?? [])];
@@ -166,6 +166,22 @@ describe("runSync", () => {
     };
     await runSync(adapter, transport);
     expect(stores.get("commentaries")!.get("c1")!.body).toBe("local edit");
+  });
+
+  it("syncs the unions store like any other (push queued, apply pulled)", async () => {
+    const { adapter, stores } = makeLocal({
+      stores: { unions: [{ id: "u1", partnerAId: "a", partnerBId: "b" }] },
+      queue: [{ store: "unions", id: "u1", op: "put" }],
+      state: { initialPushDone: true },
+    });
+    const { transport, pushedRecords } = makeTransport({
+      records: [
+        { store: "unions", id: "u2", data: { id: "u2", partnerAId: "c", partnerBId: "d" } },
+      ],
+    });
+    await runSync(adapter, transport);
+    expect(pushedRecords.map((r) => r.store)).toEqual(["unions"]);
+    expect(stores.get("unions")!.has("u2")).toBe(true);
   });
 
   it("is idempotent when there is nothing to do", async () => {

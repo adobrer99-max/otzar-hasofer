@@ -49,6 +49,25 @@ export async function setHebrewBirthDate(
   return updated;
 }
 
+/**
+ * Records a Hebrew name the participant received — most often at
+ * conversion, where "the Herald is grafted. Like Ruth. Nothing erased":
+ * the name is added, never replacing what came before, and existing
+ * readings/layers stay exactly as they were.
+ */
+export async function setHebrewName(
+  participantId: string,
+  hebrewName: string,
+): Promise<ParticipantRecord> {
+  const db = await getDb();
+  const record = await db.get("participants", participantId);
+  if (!record) throw new Error(`Participant ${participantId} not found`);
+  const updated: ParticipantRecord = { ...record, hebrewName, updatedAt: new Date().toISOString() };
+  await db.put("participants", updated);
+  await enqueueSync("participants", updated.id, "put");
+  return updated;
+}
+
 export async function setHeraldicEpithet(
   participantId: string,
   text: string,
