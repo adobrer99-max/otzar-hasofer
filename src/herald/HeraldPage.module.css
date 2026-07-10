@@ -25,13 +25,24 @@
   background: var(--bg-raised);
   border: 1px solid var(--border-hairline);
   color: var(--text);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-3);
+  min-height: 44px;
   cursor: pointer;
+  transition: border-color 140ms ease;
 }
 
 .exportRow button:hover {
   border-color: var(--accent);
+}
+
+/* The rendered Herald sits on a gold-ruled plate. */
+.canvasCol > .heraldFrame {
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  line-height: 0;
 }
 
 .empty {

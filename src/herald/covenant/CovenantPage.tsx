@@ -97,7 +97,7 @@ export function CovenantPage() {
   const center = shieldCenter();
 
   return (
-    <div className="page">
+    <div className="page page--wide">
       <div className="page-header">
         <div className="kicker">Covenantal Time</div>
         <h1>The Covenantal Herald</h1>

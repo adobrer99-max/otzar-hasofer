@@ -32,6 +32,31 @@ export function VisualCanon() {
         ))}
       </div>
 
+      <h2>Two Grounds — Charcoal & Vellum</h2>
+      <p>
+        The Treasury is read on either of two grounds, chosen with the
+        sun/moon seal in the header. The <strong>charcoal field</strong> is
+        the default — gold linework on deep slate, the manuscript by
+        candlelight. The <strong>vellum ground</strong> is its daylight
+        counterpart — ink-brown letters on warm parchment, gold kept as the
+        accent. The five brand colours never change between them; only the
+        page around them does. Crucially, the Herald and the Mizbe'ach always
+        keep their charcoal field in either mode — an illuminated plate set
+        upon the page, never re-tinted, because "gold linework upon a charcoal
+        field" is intrinsic to what they are.
+      </p>
+
+      <h2>Ornament</h2>
+      <p>
+        A small, restrained vocabulary carries the illuminated feeling without
+        spectacle: the <strong>illuminated initial</strong> (a letter set
+        large in gold to open a passage), the <strong>decorated rule</strong>{" "}
+        (a hairline centred on a single gold lozenge), the hairline gold
+        frame, and the escutcheon sigil drawn from the Herald's own geometry.
+        Every one is quiet, and every one is structural — never applied for
+        decoration's sake alone.
+      </p>
+
       <h2>Typography</h2>
       <p>
         Latin text is set in <span style={{ fontFamily: "var(--font-latin)" }}>Frank Ruhl Libre</span>,

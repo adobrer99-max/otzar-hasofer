@@ -121,7 +121,7 @@ export function HeraldPage() {
   };
 
   return (
-    <div className="page">
+    <div className="page page--wide">
       <div className="page-header">
         <div className="kicker">The Herald</div>
         <h1>The Living Herald</h1>
@@ -181,7 +181,7 @@ export function HeraldPage() {
               <>
                 {viewingSynthesis ? (
                   <div
-                    className={justRevealed ? styles.revealed : undefined}
+                    className={`${styles.heraldFrame} ${justRevealed ? styles.revealed : ""}`}
                     onAnimationEnd={() => setJustRevealed(false)}
                   >
                     <HeraldCanvas
@@ -195,15 +195,17 @@ export function HeraldPage() {
                     />
                   </div>
                 ) : (
-                  <HeraldCanvas
-                    ref={svgRef}
-                    input={selectedLayer!.input}
-                    previous={previousInput}
-                    layerCount={selectedLayer!.layerIndex}
-                    displayName={selectedParticipant?.displayName}
-                    createdAt={selectedLayer!.createdAt}
-                    epithet={epithetForSelectedLayer}
-                  />
+                  <div className={styles.heraldFrame}>
+                    <HeraldCanvas
+                      ref={svgRef}
+                      input={selectedLayer!.input}
+                      previous={previousInput}
+                      layerCount={selectedLayer!.layerIndex}
+                      displayName={selectedParticipant?.displayName}
+                      createdAt={selectedLayer!.createdAt}
+                      epithet={epithetForSelectedLayer}
+                    />
+                  </div>
                 )}
                 {viewingSynthesis ? (
                   <p className={styles.synthesisCaption}>

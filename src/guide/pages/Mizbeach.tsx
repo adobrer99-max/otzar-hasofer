@@ -17,7 +17,7 @@ export function Mizbeach() {
   const sacredTime = computeSacredTime(new Date(), geography);
 
   return (
-    <div className="page">
+    <div className="page page--wide">
       <div className="page-header">
         <div className="kicker">Guidebook 04</div>
         <h1>The Mizbe'ach</h1>
