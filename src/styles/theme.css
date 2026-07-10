@@ -67,7 +67,15 @@
 }
 
 :root {
-  /* Palette */
+  /*
+   * ——— Brand constants (theme-INDEPENDENT) ———
+   * The five-colour Visual Canon. These are the Herald/Mizbe'ach SVG
+   * renderers' direct inputs and the fixed identity of the work — they never
+   * change between light and dark, so the Herald keeps its "gold linework
+   * upon a charcoal field" in both themes (and the renderer determinism /
+   * export stay byte-identical). Re-skin the page chrome via the *semantic*
+   * tokens below, never these.
+   */
   --color-charcoal: #14171c;
   --color-charcoal-raised: #1c2027;
   --color-charcoal-line: #2a2f38;
@@ -79,24 +87,17 @@
   --color-copper: #c98056;
   --color-parchment: #ece6d8;
 
-  /* Semantic */
-  --bg: var(--color-charcoal);
-  --bg-raised: var(--color-charcoal-raised);
-  --text: var(--color-parchment);
-  --text-muted: #9aa1ad;
-  --accent: var(--color-gold);
-  --accent-bright: var(--color-gold-bright);
-  --border-hairline: var(--color-charcoal-line);
-
-  /* Typography */
+  /* Typography (theme-independent) */
   --font-latin: "Frank Ruhl Libre", Georgia, "Times New Roman", serif;
   --font-hebrew: "David Libre", "Frank Ruhl Libre", Georgia, serif;
   --font-size-base: 1rem;
   --font-size-lg: 1.25rem;
   --font-size-xl: 1.75rem;
-  --font-size-xxl: 2.5rem;
+  --font-size-xxl: clamp(1.9rem, 1.3rem + 2.6vw, 2.5rem);
+  --font-size-display: clamp(2.4rem, 1.4rem + 4.4vw, 3.6rem);
   --line-height: 1.65;
 
+  /* Spacing */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 1rem;
@@ -104,23 +105,93 @@
   --space-5: 2.5rem;
   --space-6: 4rem;
 
+  /* Radii */
   --radius: 2px;
-  color-scheme: dark;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  /*
+   * Layout: the reading measure (.page) stays ~860px for prose; tool pages
+   * (.page--wide: Herald, Mizbe'ach, Sefarim, Covenant) open to --measure.
+   * Breakpoint convention used throughout: 640 (phone→tablet), 900
+   * (tablet→desktop / nav collapse), 1200 (wide). CSS can't read vars in
+   * @media, so these are documented here and used as literals.
+   */
+  --measure: 62rem;
 }
 
+/* ——— Semantic tokens: dark (default) — the charcoal field ——— */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: var(--color-charcoal);
+  --bg-raised: var(--color-charcoal-raised);
+  --bg-sunken: #0f1216;
+  --text: var(--color-parchment);
+  --text-muted: #9aa1ad;
+  --accent: var(--color-gold);
+  --accent-bright: var(--color-gold-bright);
+  --border-hairline: var(--color-charcoal-line);
+  --focus-ring: var(--color-gold-bright);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 12px 34px rgba(0, 0, 0, 0.5);
+  --header-bg: rgba(20, 23, 28, 0.82);
+}
+
+/* ——— Semantic tokens: light — the vellum ground ——— */
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4efe2;
+  --bg-raised: #ece5d3;
+  --bg-sunken: #e4dcc6;
+  --text: #2a2318;
+  --text-muted: #6f6650;
+  --accent: #a9812f;
+  --accent-bright: #8a6820;
+  --border-hairline: #cdbf9d;
+  --focus-ring: #a9812f;
+  --shadow-sm: 0 1px 2px rgba(70, 55, 25, 0.12);
+  --shadow-md: 0 6px 18px rgba(70, 55, 25, 0.14);
+  --shadow-lg: 0 16px 38px rgba(70, 55, 25, 0.16);
+  --header-bg: rgba(244, 239, 226, 0.85);
+}
+
+/*
+ * Festival accent overrides re-map only the accent pair, so they compose
+ * with either theme. Tuned to stay legible on both the charcoal and vellum
+ * grounds. The attribute lives on the Herald/Mizbe'ach SVG container; the
+ * page theme lives on <html>, so the two never conflict.
+ */
 [data-festival="tishabav"] {
   --accent: #7a7a7a;
   --accent-bright: #9a9a9a;
+}
+[data-theme="light"] [data-festival="tishabav"] {
+  --accent: #6b6b6b;
+  --accent-bright: #565656;
 }
 [data-festival="purim"] {
   --accent: var(--color-blue-bright);
   --accent-bright: #6f9bd1;
 }
+[data-theme="light"] [data-festival="purim"] {
+  --accent: #315480;
+  --accent-bright: #24405f;
+}
 [data-festival="tubishvat"] {
   --accent: #7a9a5a;
   --accent-bright: #9cbf7a;
 }
+[data-theme="light"] [data-festival="tubishvat"] {
+  --accent: #5c7a3e;
+  --accent-bright: #45602c;
+}
 [data-festival="tubav"] {
   --accent: var(--color-gold-bright);
   --accent-bright: #f2dca0;
+}
+[data-theme="light"] [data-festival="tubav"] {
+  --accent: #a9812f;
+  --accent-bright: #8a6820;
 }

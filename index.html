@@ -7,6 +7,24 @@
     <meta name="theme-color" content="#14171c" />
     <meta name="description" content="Otzar Ha'Sofer — the Treasury: a digital companion and reference guide for the Scribe's reading, including the Herald generator." />
     <title>Otzar Ha'Sofer — The Treasury</title>
+    <script>
+      // Set the theme before first paint so there is no flash. Saved choice
+      // wins; otherwise follow the OS preference. Default is the charcoal dark.
+      (function () {
+        try {
+          var saved = localStorage.getItem("otzar-theme");
+          var prefersLight =
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: light)").matches;
+          var theme = saved || (prefersLight ? "light" : "dark");
+          document.documentElement.setAttribute("data-theme", theme);
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute("content", theme === "light" ? "#f4efe2" : "#14171c");
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
