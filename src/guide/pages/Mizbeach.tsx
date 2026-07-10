@@ -161,10 +161,9 @@ export function Mizbeach() {
         (the temporal season — the current Hebrew month, or an active
         festival's gesture when one is underway), and the{" "}
         <strong>Ring of the Parsha</strong> (the narrative context — the
-        weekly Torah portion; not yet tracked, for the same reason the{" "}
-        <Link to="/guide/sacred-time">Sacred Time</Link> page gives: a
-        homegrown implementation without a GPL-licensed dependency is
-        nontrivial). At the center, the{" "}
+        weekly Torah portion, computed live by the Treasury's own engine;
+        see the <Link to="/guide/sacred-time">Sacred Time</Link> page's
+        note on cross-checking a published luach). At the center, the{" "}
         <strong>Sabbath Core</strong> marks whether today is Shabbat — the
         point of stillness all the rings turn around.
       </p>
