@@ -11,7 +11,8 @@ import { resolveDorotMechanic } from "../../herald/dorot/dorotMechanics";
 import { resolveShoresh } from "../../herald/shoresh/resolveShoresh";
 import { MizbeachCentralPanel } from "../render/centralPanel";
 import { MizbeachCanvas } from "../MizbeachCanvas";
-import { CENTRAL_PANEL, RINGS, CENTER, VIEWBOX_SIZE, segmentAngles } from "../render/mizbeachGeometry";
+import { CENTRAL_PANEL, RINGS, CENTER, VIEWBOX_SIZE, segmentAngles, polarToCartesian } from "../render/mizbeachGeometry";
+import { sliceCenterAngle } from "./zones";
 import { CENTRAL_ZONES, FOURTH_ZONE, wedgePath, type Zone } from "./zones";
 import { setMonthSlice, setDayOfMonth, monthSliceIndex } from "./ringDate";
 import type { MizbeachReadingState } from "./reading";
@@ -198,6 +199,7 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
             thickness={RINGS.mazalot.thickness}
             count={12}
             valueNow={monthSlice}
+            knobAngle={sliceCenterAngle(12, monthSlice)}
             onPointer={(e) => ringPointer("month", e)}
             onStep={(delta) => onChange({ effectiveDate: setMonthSlice(state.effectiveDate, monthSlice + delta) })}
           />
@@ -208,6 +210,7 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
             count={8}
             valueNow={dayNow - 1}
             valueMax={29}
+            knobAngle={((dayNow - 1) / 29) * 360}
             onPointer={(e) => ringPointer("day", e)}
             onStep={(delta) => onChange({ effectiveDate: setDayOfMonth(state.effectiveDate, dayNow + delta) })}
           />
@@ -320,6 +323,7 @@ function TurnableRing({
   count,
   valueNow,
   valueMax,
+  knobAngle,
   onPointer,
   onStep,
 }: {
@@ -329,9 +333,11 @@ function TurnableRing({
   count: number;
   valueNow: number;
   valueMax?: number;
+  knobAngle: number;
   onPointer: (e: React.PointerEvent<SVGGElement>) => void;
   onStep: (delta: number) => void;
 }) {
+  const knob = polarToCartesian(CENTER.x, CENTER.y, radius, knobAngle);
   return (
     <g
       className={styles.ring}
@@ -354,6 +360,7 @@ function TurnableRing({
       {Array.from({ length: count }, (_, i) => (
         <path key={i} d={wedgePath(radius, thickness, ...segmentAngles(count, i))} className={styles.ringWedge} />
       ))}
+      <circle cx={knob.x} cy={knob.y} r={7} className={styles.ringKnob} />
     </g>
   );
 }

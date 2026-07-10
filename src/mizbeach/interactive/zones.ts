@@ -26,8 +26,8 @@ export interface Zone {
 }
 
 const { columnX, handY, gatesY, wellsY, bottomRowY, width } = CENTRAL_PANEL;
-/** The three openly-drawn letters sit in their own row between the Hand Anchor and the Gates. */
-const LETTERS_Y = Math.round((handY + gatesY) / 2);
+/** The three openly-drawn letters sit in their own row between the Hand Anchor and the Gates, clear of the arch tops. */
+const LETTERS_Y = Math.round(handY + (gatesY - handY) * 0.42);
 
 const GATE_LABELS = ["Peshat — the Simple", "Remez — the Hinted", "Drash — the Sought"];
 const WELL_LABELS = ["Torah", "Nevi'im", "Ketuvim"];
@@ -43,8 +43,8 @@ export const CENTRAL_ZONES: Zone[] = [
       index: i,
       cx: columnX[i],
       cy: LETTERS_Y,
-      w: 96,
-      h: 110,
+      w: 88,
+      h: 88,
       label: LETTER_LABELS[i],
     }),
   ),

@@ -39,25 +39,34 @@
 .zoneRect {
   fill: transparent;
   stroke: var(--color-gold);
-  stroke-width: 1.25;
-  stroke-dasharray: 4 5;
-  opacity: 0.35;
-  transition: opacity 140ms ease, fill 140ms ease;
+  stroke-width: 1;
+  stroke-dasharray: 3 5;
+  opacity: 0.3;
+  transition: opacity 140ms ease, fill 140ms ease, stroke-width 140ms ease;
 }
 .zone:hover .zoneRect,
 .zone:focus-visible .zoneRect {
-  opacity: 0.9;
-  fill: color-mix(in srgb, var(--color-gold) 10%, transparent);
+  opacity: 0.95;
+  fill: color-mix(in srgb, var(--color-gold) 12%, transparent);
 }
 .zone:focus-visible {
   outline: none;
 }
 .zone:focus-visible .zoneRect {
-  stroke-width: 2;
+  stroke-width: 1.75;
 }
 .zoneFilled .zoneRect {
   stroke-dasharray: none;
-  opacity: 0.55;
+  opacity: 0.5;
+  fill: color-mix(in srgb, var(--color-gold) 8%, transparent);
+}
+
+/* ——— turn knob on a ring's current value ——— */
+.ringKnob {
+  fill: var(--color-gold-bright);
+  stroke: var(--color-charcoal);
+  stroke-width: 1.5;
+  pointer-events: none;
 }
 
 /* ——— turnable rings ——— */
