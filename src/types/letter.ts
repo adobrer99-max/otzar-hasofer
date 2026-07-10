@@ -15,6 +15,19 @@ export type SefirahId =
   | "yesod"
   | "malchut";
 
+/**
+ * The physical card's artwork, once scanned — drop the file under
+ * `public/art/` and fill this field on the data entry. Purely additive:
+ * entries without it render exactly as before.
+ */
+export interface CardArt {
+  /** Path under public/, e.g. "/art/letters/aleph.jpg". */
+  src: string;
+  alt: string;
+  /** e.g. the illustrator's name. */
+  credit?: string;
+}
+
 export interface LetterCard {
   id: string;
   order: number;
@@ -36,6 +49,8 @@ export interface LetterCard {
   hebrewRoot?: string;
   traditionalSources: string[];
   scribeNotes?: string;
+  /** The physical card's artwork, when available. */
+  art?: CardArt;
 }
 
 export interface TwoLetterRoot {

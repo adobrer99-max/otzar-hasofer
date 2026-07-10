@@ -46,6 +46,34 @@ describe("HeraldLayerContent determinism", () => {
   });
 });
 
+describe("the hidden Hebrew-name geometry", () => {
+  const named = sampleInput; // carries hebrewName "דוד"
+  const unnamed: HeraldInputSnapshot = { ...sampleInput, hebrewName: undefined };
+
+  it("renders deterministically with a name present", () => {
+    expect(render(named, 0)).toBe(render(named, 0));
+  });
+
+  it("weaves the name into the border — different names, stably different output", () => {
+    const otherName: HeraldInputSnapshot = { ...sampleInput, hebrewName: "רות" };
+    expect(render(named, 0)).not.toBe(render(otherName, 0));
+    expect(render(otherName, 0)).toBe(render(otherName, 0));
+  });
+
+  it("leaves the border untouched when there is no name (output as before the feature)", () => {
+    // Border flourishes must carry translate-only transforms — the name's
+    // rotation phase appears only when a name is present.
+    const unnamedFlourishes = render(unnamed, 0).match(/translate\([^"]*\) rotate/g) ?? [];
+    expect(unnamedFlourishes).toHaveLength(0);
+    const namedFlourishes = render(named, 0).match(/translate\([^"]*\) rotate/g) ?? [];
+    expect(namedFlourishes.length).toBeGreaterThan(0);
+  });
+
+  it("never displays the name itself", () => {
+    expect(render(named, 0)).not.toContain("דוד");
+  });
+});
+
 describe("the Etz Chaim spread (Tu Bishvat)", () => {
   const etzChaimInput: HeraldInputSnapshot = {
     ...sampleInput,

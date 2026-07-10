@@ -15,6 +15,7 @@ import { computeSacredTime } from "../data/sacredTime";
 import { ReadingForm } from "./form/ReadingForm";
 import { HeraldCanvas } from "./render/HeraldCanvas";
 import { deriveHeraldForm } from "./synthesis/deriveHeraldForm";
+import { resolveShoresh } from "./shoresh/resolveShoresh";
 import { ParticipantPicker } from "./history/ParticipantPicker";
 import { HistoryScrubber } from "./history/HistoryScrubber";
 import { LayerCaption } from "./history/LayerCaption";
@@ -32,6 +33,8 @@ export function HeraldPage() {
   const [selectedLayerId, setSelectedLayerId] = useState<string>();
   const [lifeCycleEvents, setLifeCycleEvents] = useState<LifeCycleEvent[]>([]);
   const [commentaries, setCommentaries] = useState<CommentaryRecord[]>([]);
+  const [justRevealed, setJustRevealed] = useState(false);
+  const wasRevealed = useRef(false);
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
@@ -49,6 +52,8 @@ export function HeraldPage() {
     getLayers(selectedParticipantId).then((ls) => {
       setLayers(ls);
       setSelectedLayerId(undefined); // default to the synthesized Herald headline
+      wasRevealed.current = ls.length >= 7; // already revealed: shown at rest
+      setJustRevealed(false);
     });
     listLifeCycleEvents(selectedParticipantId).then(setLifeCycleEvents);
   }, [selectedParticipantId]);
@@ -67,6 +72,10 @@ export function HeraldPage() {
     if (!selectedParticipantId) return;
     await addLayer(selectedParticipantId, input);
     const refreshed = await getLayers(selectedParticipantId);
+    // The reveal at the seventh: a one-time animation when this submission
+    // crosses the threshold (session-only — reloading shows it at rest).
+    if (!wasRevealed.current && refreshed.length >= 7) setJustRevealed(true);
+    wasRevealed.current = refreshed.length >= 7;
     setLayers(refreshed);
     setSelectedLayerId(undefined); // show the updated synthesis forming
   }
@@ -91,6 +100,11 @@ export function HeraldPage() {
       : `The Herald, forming — ${heraldForm.readingCount} of 7`
     : "";
   const synthesisEpithet = heraldForm?.revealed ? sealedEpithet?.text : undefined;
+  // The Word of the Life — when the dominant letters themselves spell a
+  // root or name, the seven readings together speak a word.
+  const lifeShoresh = heraldForm
+    ? resolveShoresh(heraldForm.charges.map((c) => c.letterId) as [string, string, string])
+    : undefined;
 
   // Soft life-cycle framing for the next reading: shown from when the event
   // is recorded until a reading is made after it (Bris frames the child's
@@ -166,15 +180,20 @@ export function HeraldPage() {
             {heraldForm ? (
               <>
                 {viewingSynthesis ? (
-                  <HeraldCanvas
-                    ref={svgRef}
-                    form={heraldForm}
-                    displayName={selectedParticipant?.displayName}
-                    hebrewName={selectedParticipant?.hebrewName}
-                    path={selectedParticipant?.path}
-                    status={synthesisStatus}
-                    epithet={synthesisEpithet}
-                  />
+                  <div
+                    className={justRevealed ? styles.revealed : undefined}
+                    onAnimationEnd={() => setJustRevealed(false)}
+                  >
+                    <HeraldCanvas
+                      ref={svgRef}
+                      form={heraldForm}
+                      displayName={selectedParticipant?.displayName}
+                      hebrewName={selectedParticipant?.hebrewName}
+                      path={selectedParticipant?.path}
+                      status={synthesisStatus}
+                      epithet={synthesisEpithet}
+                    />
+                  </div>
                 ) : (
                   <HeraldCanvas
                     ref={svgRef}
@@ -192,6 +211,20 @@ export function HeraldPage() {
                     {heraldForm.revealed
                       ? "Formed from the participant's first seven readings — the unfolding order of Creation. It is now fixed; later readings are kept as history but do not change it."
                       : "The Herald forms across the first seven readings; each new reading resolves it further. Select a reading below to view it on its own."}
+                    {lifeShoresh?.tier === "root" && (
+                      <>
+                        {" "}
+                        <strong>The Word of the Life:</strong> {lifeShoresh.word} —{" "}
+                        {lifeShoresh.gloss}
+                      </>
+                    )}
+                    {lifeShoresh?.tier === "name" && (
+                      <>
+                        {" "}
+                        <strong>The Word of the Life:</strong> {lifeShoresh.name} —{" "}
+                        {lifeShoresh.gloss}
+                      </>
+                    )}
                   </p>
                 ) : (
                   <LayerCaption

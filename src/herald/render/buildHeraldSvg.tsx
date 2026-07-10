@@ -7,6 +7,7 @@ import { festivalsById } from "../../data/festivals";
 import { dorotCardsById, dorotHousesById } from "../../data/dorot";
 import { resolveShoresh } from "../shoresh/resolveShoresh";
 import { computeDivisions, type Division } from "./divisions";
+import { nameSeedOf, flourishRotation } from "./nameGeometry";
 
 type ShoreshResult = ReturnType<typeof resolveShoresh>;
 import {
@@ -286,7 +287,16 @@ function ShoreshNistarMark({ center }: { center: { x: number; y: number } }) {
   );
 }
 
-function OrnamentalBorder({ density, color }: { density: number; color: string }) {
+function OrnamentalBorder({
+  density,
+  color,
+  nameSeed,
+}: {
+  density: number;
+  color: string;
+  /** The hidden Hebrew-name encoding — a subtle per-flourish rotation phase. Absent: byte-identical to before. */
+  nameSeed?: number;
+}) {
   const points = shieldBorderPoints(density);
   return (
     <g stroke={color} fill={color} opacity={0.85}>
@@ -294,7 +304,11 @@ function OrnamentalBorder({ density, color }: { density: number; color: string }
         <path
           key={i}
           d={FLOURISH_UNIT_PATH}
-          transform={`translate(${p.x}, ${p.y})`}
+          transform={
+            nameSeed === undefined
+              ? `translate(${p.x}, ${p.y})`
+              : `translate(${p.x}, ${p.y}) rotate(${flourishRotation(nameSeed, i)})`
+          }
           strokeWidth={0.75}
           fillOpacity={0.15}
         />
@@ -318,6 +332,8 @@ interface HeraldFigureProps {
   shoresh?: ShoreshResult;
   /** Sefirot of the Houses whose cards were drawn from Derekh Ha'Dorot — base marks. */
   dorotSefirot?: SefirahId[];
+  /** The hidden Hebrew-name encoding, woven into the border. See nameGeometry.ts. */
+  nameSeed?: number;
 }
 
 /**
@@ -336,6 +352,7 @@ function HeraldFigure({
   ornamentDensity,
   shoresh,
   dorotSefirot = [],
+  nameSeed,
 }: HeraldFigureProps) {
   const center = shieldCenter();
 
@@ -435,7 +452,7 @@ function HeraldFigure({
       {festivalMotifs.map((motif) => (
         <FestivalMotif key={motif} motif={motif} center={center} />
       ))}
-      <OrnamentalBorder density={ornamentDensity} color={accentColor} />
+      <OrnamentalBorder density={ornamentDensity} color={accentColor} nameSeed={nameSeed} />
       <path d={SHIELD_PATH} fill="none" stroke={accentColor} strokeWidth={2.5} />
     </g>
   );
@@ -599,6 +616,7 @@ export function HeraldLayerContent({
     accentColor: festival.heraldAccent?.accentColor ?? "var(--color-gold)",
     ornamentDensity: Math.min(10 + layerCount * 2, 40),
     dorotSefirot: dorotSefirotOf(input.dorotDraws),
+    nameSeed: nameSeedOf(input.hebrewName),
   };
 
   if (spread === "etz-chaim") {

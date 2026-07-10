@@ -41,6 +41,17 @@ export function LetterChapter() {
         </div>
       </div>
 
+      {letter.art && (
+        <figure style={{ margin: "1rem 0", maxWidth: 360 }}>
+          <img src={letter.art.src} alt={letter.art.alt} style={{ maxWidth: "100%", height: "auto" }} />
+          {letter.art.credit && (
+            <figcaption style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>
+              {letter.art.credit}
+            </figcaption>
+          )}
+        </figure>
+      )}
+
       <div className={styles.section}>
         <h3>Translation / Root</h3>
         <p>{letter.translationRoot}</p>

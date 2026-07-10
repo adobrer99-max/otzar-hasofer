@@ -65,6 +65,16 @@ export function DorotHouse() {
             <h3>
               {card.index}. {card.title}
             </h3>
+            {card.art && (
+              <figure style={{ margin: "0.5rem 0", maxWidth: 280 }}>
+                <img src={card.art.src} alt={card.art.alt} style={{ maxWidth: "100%", height: "auto" }} />
+                {card.art.credit && (
+                  <figcaption style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>
+                    {card.art.credit}
+                  </figcaption>
+                )}
+              </figure>
+            )}
             {card.title !== card.episode && (
               <div className={styles.cardMeta}>The Episode: {card.episode}</div>
             )}

@@ -48,3 +48,28 @@
 .synthesisCaption strong {
   color: var(--accent-bright);
 }
+
+/* The reveal at the seventh reading — one slow breath, honored only when
+   the viewer hasn't asked for reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .revealed {
+    animation: herald-reveal 2.4s ease-out 1;
+  }
+
+  @keyframes herald-reveal {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+      filter: brightness(1.6);
+    }
+    60% {
+      opacity: 1;
+      filter: brightness(1.15);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+      filter: brightness(1);
+    }
+  }
+}
