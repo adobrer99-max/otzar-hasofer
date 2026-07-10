@@ -19,12 +19,15 @@ export function SacredTime() {
       <h2>Immediate Time</h2>
       <p>
         Day of the week, Hebrew date, lunar phase, the Omer count (when
-        applicable), and Rosh Chodesh are computed automatically for every
-        reading. (Weekly Torah portion is not yet tracked in this build.)
-        Each festival below overrides part of the standard practice, and the
-        same override lightly tints the Herald generated on that day. See
-        today's immediate time rendered on the{" "}
-        <Link to="/guide/mizbeach">Mizbe'ach's living rings</Link>.
+        applicable), Rosh Chodesh, and the week's Torah portion (parsha —
+        including doubled portions and the Land/Galut schedule differences)
+        are computed automatically for every reading. Each festival below
+        overrides part of the standard practice, and the same override
+        lightly tints the Herald generated on that day. See today's
+        immediate time rendered on the{" "}
+        <Link to="/guide/mizbeach">Mizbe'ach's living rings</Link>. As with
+        the rest of Sacred Time, cross-check the computed parsha against a
+        published luach before relying on it for real ritual use.
       </p>
       {festivals.map((festival) => (
         <FestivalCard key={festival.id} festival={festival} />

@@ -143,8 +143,12 @@ function SolarMonthRing({
   );
 }
 
-/** The Parsha (weekly Torah portion) ring is stubbed — see the project's existing, documented deferral of parsha tracking. */
-function ParshaRing() {
+/**
+ * The Parsha ring — the Narrative Context. Live: names the week's Torah
+ * portion (see `src/data/parsha.ts`); muted when the week's Shabbat carries
+ * a festival reading instead.
+ */
+function ParshaRing({ label }: { label?: string }) {
   const topLabel = polarToCartesian(CENTER.x, CENTER.y, RINGS.parsha.radius, 0);
   return (
     <g>
@@ -153,9 +157,9 @@ function ParshaRing() {
         cy={CENTER.y}
         r={RINGS.parsha.radius}
         fill="none"
-        stroke="var(--color-charcoal-line)"
+        stroke={label ? "var(--color-gold)" : "var(--color-charcoal-line)"}
         strokeWidth={RINGS.parsha.thickness}
-        opacity={0.3}
+        opacity={label ? 0.5 : 0.3}
       />
       <text
         x={topLabel.x}
@@ -164,10 +168,10 @@ function ParshaRing() {
         dominantBaseline="middle"
         fontFamily="var(--font-latin)"
         fontSize={10}
-        fontStyle="italic"
-        fill="var(--text-muted)"
+        fontStyle={label ? undefined : "italic"}
+        fill={label ? "var(--color-gold)" : "var(--text-muted)"}
       >
-        Parsha — not yet tracked
+        {label ? `Parashat ${label}` : "Parsha — the festival reads this week"}
       </text>
     </g>
   );
@@ -422,7 +426,7 @@ export function MizbeachSvgContent({
         activeMonth={sacredTime.hebrewDate.month}
         activeFestivalIds={sacredTime.activeFestivalIds}
       />
-      <ParshaRing />
+      <ParshaRing label={sacredTime.parsha?.label} />
       <SabbathCore
         isShabbat={isShabbat}
         omerDay={sacredTime.omer?.day}

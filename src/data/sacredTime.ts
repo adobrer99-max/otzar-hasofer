@@ -22,6 +22,7 @@ function toLocalIsoDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 import { festivals } from "./festivals";
+import { computeParsha } from "./parsha";
 
 const OMER_START = { month: "Nisan" as const, day: 16 };
 const OMER_LENGTH = 49;
@@ -90,6 +91,8 @@ export function computeSacredTime(date: Date, geography: GeographyMode): SacredT
     .sort((a, b) => specificity(a.dateRule!, geography) - specificity(b.dateRule!, geography))
     .map((f) => f.id);
 
+  const parshaWeek = computeParsha(date, geography);
+
   return {
     gregorianDate: toLocalIsoDate(date),
     hebrewDate,
@@ -98,5 +101,12 @@ export function computeSacredTime(date: Date, geography: GeographyMode): SacredT
     roshChodesh: computeRoshChodesh(hebrewDate),
     omer: computeOmer(hebrewDate, date),
     activeFestivalIds,
+    parsha: parshaWeek
+      ? {
+          ids: parshaWeek.parshiyot.map((p) => p.id),
+          label: parshaWeek.label,
+          shabbat: parshaWeek.shabbat,
+        }
+      : undefined,
   };
 }
