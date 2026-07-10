@@ -2,6 +2,7 @@ import type { CommentarySubject } from "../types/commentary";
 import { lettersById } from "../data/letters";
 import { dorotCardsById, dorotHousesById } from "../data/dorot";
 import { balaganSectionByCategory } from "../data/balagan";
+import { liturgiesById } from "../data/liturgies";
 
 /** Human-readable label + in-app link target for a commentary's subject. */
 export function subjectLabel(subject: CommentarySubject): { label: string; to?: string } {
@@ -33,6 +34,13 @@ export function subjectLabel(subject: CommentarySubject): { label: string; to?: 
       return {
         label: `Balagan HaOtzar — ${section?.label ?? subject.category}`,
         to: "/sefarim/balagan",
+      };
+    }
+    case "liturgy": {
+      const liturgy = liturgiesById[subject.liturgyId];
+      return {
+        label: `Liturgy — ${liturgy?.title ?? subject.liturgyId}`,
+        to: `/sefarim/hatefillot/${subject.liturgyId}`,
       };
     }
   }

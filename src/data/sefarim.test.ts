@@ -22,13 +22,23 @@ describe("the shelf of Sefarim", () => {
     }
   });
 
-  it("uses only known kinds and includes the three rich books + three stubs", () => {
-    const known = new Set(["pardes-browse", "balagan", "explainer", "external-link", "forthcoming"]);
+  it("uses only known kinds and includes the five rich books + two link spines", () => {
+    const known = new Set([
+      "pardes-browse",
+      "balagan",
+      "explainer",
+      "liturgy",
+      "dikduk",
+      "external-link",
+      "forthcoming",
+    ]);
     for (const s of sefarim) expect(known.has(s.kind), s.kind).toBe(true);
+    expect(sefarim).toHaveLength(7);
     expect(sefarimById["hashorashim"].kind).toBe("pardes-browse");
     expect(sefarimById["balagan"].kind).toBe("balagan");
     expect(sefarimById["vocabulary-treasury"].kind).toBe("explainer");
-    expect(sefarimById["hadikduk"].kind).toBe("forthcoming");
+    expect(sefarimById["hatefillot"].kind).toBe("liturgy");
+    expect(sefarimById["hadikduk"].kind).toBe("dikduk");
   });
 });
 
@@ -38,5 +48,11 @@ describe("subjectKeyFor — balagan", () => {
     expect(new Set(keys).size).toBe(balaganSections.length);
     expect(keys.every((k) => k.startsWith("balagan:"))).toBe(true);
     expect(subjectKeyFor({ kind: "balagan", category: "corrections" })).toBe("balagan:corrections");
+  });
+});
+
+describe("subjectKeyFor — liturgy", () => {
+  it("keys liturgies under the liturgy namespace by stable id", () => {
+    expect(subjectKeyFor({ kind: "liturgy", liturgyId: "havdalah" })).toBe("liturgy:havdalah");
   });
 });

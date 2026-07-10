@@ -9,7 +9,8 @@ export type CommentarySubject =
   | { kind: "letter"; letterId: string }
   | { kind: "dorot-card"; cardId: string }
   | { kind: "root"; rootKey: string }
-  | { kind: "balagan"; category: BalaganCategory };
+  | { kind: "balagan"; category: BalaganCategory }
+  | { kind: "liturgy"; liturgyId: string };
 
 /**
  * The sections of Balagan HaOtzar (גניזת האוצר) — the scribe's genizah, per
@@ -40,6 +41,8 @@ export function subjectKeyFor(subject: CommentarySubject): string {
       return `root:${subject.rootKey}`;
     case "balagan":
       return `balagan:${subject.category}`;
+    case "liturgy":
+      return `liturgy:${subject.liturgyId}`;
   }
 }
 

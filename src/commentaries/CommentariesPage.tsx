@@ -18,6 +18,8 @@ const filters: { value: KindFilter; label: string }[] = [
   { value: "letter", label: "Letters" },
   { value: "dorot-card", label: "Derekh Ha'Dorot" },
   { value: "root", label: "Roots" },
+  { value: "liturgy", label: "Liturgies" },
+  { value: "balagan", label: "Balagan" },
 ];
 
 export function CommentariesPage() {

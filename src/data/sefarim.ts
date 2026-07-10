@@ -13,6 +13,10 @@ export type SeferKind =
   | "balagan"
   /** A page that teaches the PaRDeS format itself, with a live worked example. */
   | "explainer"
+  /** Sefer HaTefillot — the liturgies by occasion, each a PaRDeS page. */
+  | "liturgy"
+  /** Sefer HaDikduk — the grammar of the roots, over the real lexicon. */
+  | "dikduk"
   /** A spine that links out to existing reference-guide/app content. */
   | "external-link"
   /** Named in the doc but not yet built — shows a "forthcoming" panel. */
@@ -85,14 +89,24 @@ export const sefarim: SeferMeta[] = [
     target: "/commentaries",
   },
   {
+    id: "hatefillot",
+    title: "Sefer HaTefillot",
+    hebrewName: "ספר התפילות",
+    subtitle: "The Book of Liturgies",
+    description:
+      "The liturgies of the practice by occasion — Shabbat, holidays, fasts, festivals, and the events of a life — each read through the four tiers, with the Scribe's own Drash addable.",
+    spineColor: "var(--color-blue)",
+    kind: "liturgy",
+  },
+  {
     id: "hadikduk",
     title: "Sefer HaDikduk",
     hebrewName: "ספר הדקדוק",
     subtitle: "The Book of Grammar",
     description:
-      "The grammar of the roots — weak and guttural and doubled roots, defective and full spellings, irregular forms. Named in the doc; its content is not yet transcribed.",
-    spineColor: "var(--color-charcoal-line)",
-    kind: "forthcoming",
+      "The grammar of the roots — the classical weak-radical categories (guttural, hollow, geminate, first-Nun, third-Heh...) applied to the Treasury's own lexicon, every category opening onto real roots.",
+    spineColor: "var(--color-silver)",
+    kind: "dikduk",
   },
 ];
 
