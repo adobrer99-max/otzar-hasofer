@@ -2,6 +2,8 @@
 
 A digital companion and reference guide for the Otzar Ha'Sofer physical folio and Derekh Eretz (22-letter) deck. Not a fortune-telling tool — a reference for the Scribe during a reading, plus a generator for each participant's **Herald**, a procedurally-rendered heraldic sigil built from the three letters drawn in their reading.
 
+The interface is an illuminated-manuscript design that reads on two grounds — the default **charcoal field** (gold linework on deep slate) and a light **vellum** parchment mode, toggled by the sun/moon seal in the header and remembered per browser. The Herald and Mizbe'ach always keep their charcoal field in either mode, an illuminated plate set upon the page. A sticky header (with a grouped "The Guide" menu) collapses to a mobile drawer, and every surface is responsive down to the phone — a companion in the Scribe's pocket.
+
 ## What's here
 
 - **Reference guide** (`/guide/*`) — Foundations, all 22 Hebrew letters (one chapter each), Shoresh (the root/Nikkudot mechanic), Derekh Ha'Dorot (the second deck: 7 patriarchal Houses of 8 fully-drafted episode cards plus 7 matriarchal Houses of 16 episodes — 168 entries embodying lived biblical history, unfolding pillar-by-pillar through the Seven Encounters), the Scribe's ritual steps, Sacred Time (festival overrides plus Immediate/Personal/Covenantal time), the Seven Encounters of Bereshit, and the Visual Canon.
