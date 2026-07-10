@@ -15,6 +15,7 @@ const columns = [
     title: "The Living Practice",
     links: [
       { to: "/herald", label: "The Herald" },
+      { to: "/mizbeach", label: "The Mizbe'ach" },
       { to: "/covenant", label: "The Covenant" },
       { to: "/sefarim", label: "The Sefarim" },
       { to: "/commentaries", label: "Commentaries" },

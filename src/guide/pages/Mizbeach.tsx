@@ -26,6 +26,11 @@ export function Mizbeach() {
         <em>"The cards are the words. The Mizbe'ach is the sentence."</em>
       </p>
       <p>
+        This page explains the folio. To <strong>conduct a reading on it</strong> — placing
+        the letters and the veiled anchor on the surface and turning the rings — open{" "}
+        <Link to="/mizbeach">the interactive Mizbe'ach →</Link>
+      </p>
+      <p>
         The Mizbe'ach is a dual-sided charcoal leather ritual folio — the
         physical geometry a reading unfolds across. The renderings below are
         a live digital reference: the ring mandala reflects today's actual

@@ -64,6 +64,11 @@ const practiceDoors: Door[] = [
     blurb: "Create a participant's living heraldic sigil at the close of a reading — with Shoresh resolution, Sacred Time, and the Heraldic Epithet earned at the seventh reading.",
   },
   {
+    to: "/mizbeach",
+    label: "The Mizbe'ach",
+    blurb: "Conduct a reading on the folio itself — place the letters and the veiled anchor on the surface, turn the rings to the sacred time, and seal the Herald.",
+  },
+  {
     to: "/covenant",
     label: "The Covenantal Herald",
     blurb: "At marriage, a shared Herald is created — derived from both partners' Treasuries and grown through the seven blessings of the Sheva Brachot.",
