@@ -17,13 +17,14 @@ const guideLinks = [
 
 const practiceLinks = [
   { to: "/herald", label: "The Herald" },
+  { to: "/mizbeach", label: "The Mizbe'ach" },
   { to: "/covenant", label: "The Covenant" },
   { to: "/sefarim", label: "The Sefarim" },
   { to: "/commentaries", label: "Commentaries" },
 ];
 
-/** The top-level product surfaces shown directly in the desktop bar. */
-const primaryLinks = practiceLinks.filter((l) => l.to !== "/covenant");
+/** The top-level product surfaces shown directly in the desktop bar (the rest live in Home/drawer). */
+const primaryLinks = practiceLinks.filter((l) => l.to !== "/covenant" && l.to !== "/mizbeach");
 
 function linkClass({ isActive }: { isActive: boolean }) {
   return isActive ? styles.active : undefined;

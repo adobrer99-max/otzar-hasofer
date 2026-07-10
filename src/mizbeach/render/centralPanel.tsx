@@ -241,6 +241,44 @@ function SmallTreeOfLife({ x, y }: { x: number; y: number }) {
   );
 }
 
+/** The three letter positions between the Hand Anchor and the Gates — faint on the folio until a reading places its letters. */
+function LetterSlots() {
+  const { columnX, handY, gatesY } = CENTRAL_PANEL;
+  const y = Math.round(handY + (gatesY - handY) * 0.42);
+  return (
+    <g>
+      {columnX.map((x, i) => (
+        <g key={i}>
+          <rect
+            x={x - 44}
+            y={y - 44}
+            width={88}
+            height={88}
+            rx={8}
+            fill="none"
+            stroke="var(--color-gold)"
+            strokeWidth={1}
+            strokeDasharray="2 6"
+            opacity={0.28}
+          />
+          <circle cx={x} cy={y} r={2.5} fill="var(--color-gold)" opacity={0.4} />
+        </g>
+      ))}
+      <text
+        x={CENTRAL_PANEL.width / 2}
+        y={y + 62}
+        textAnchor="middle"
+        fontFamily="var(--font-latin)"
+        fontSize={11}
+        fill="var(--color-silver)"
+        opacity={0.7}
+      >
+        The Three Letters
+      </text>
+    </g>
+  );
+}
+
 export function MizbeachCentralPanel() {
   const { width, height, topBanner, bottomRowY, bottomBanner } = CENTRAL_PANEL;
   return (
@@ -264,6 +302,7 @@ export function MizbeachCentralPanel() {
         דע לפני מי אתה עומד
       </text>
       <HandAnchor />
+      <LetterSlots />
       <ThreeGates />
       <ThreeWells />
       <VeiledAnchor x={CENTRAL_PANEL.columnX[0] + 60} y={bottomRowY} />

@@ -1,0 +1,56 @@
+.reference {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-top: calc(-1 * var(--space-2));
+}
+
+.empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.ringControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+.stepGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.dateField {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.errors {
+  margin-top: var(--space-3);
+}
+.errors ul {
+  margin: var(--space-1) 0 0;
+  padding-inline-start: var(--space-4);
+}
+
+.sealRow {
+  margin-top: var(--space-4);
+}
+
+.result {
+  margin-top: var(--space-5);
+  border-top: 1px solid var(--border-hairline);
+  padding-top: var(--space-4);
+}
+.resultCanvas {
+  max-width: 340px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  line-height: 0;
+}

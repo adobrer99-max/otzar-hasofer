@@ -1,0 +1,187 @@
+.surface {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .surface {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panelWrap,
+.ringsWrap {
+  position: relative;
+  width: 100%;
+}
+.panelWrap :global(svg),
+.ringsWrap :global(svg) {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* The interaction layer sits pixel-aligned over the (unchanged) render. */
+.overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* ——— central-panel zones ——— */
+.zone {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.zoneRect {
+  fill: transparent;
+  stroke: var(--color-gold);
+  stroke-width: 1;
+  stroke-dasharray: 3 5;
+  opacity: 0.3;
+  transition: opacity 140ms ease, fill 140ms ease, stroke-width 140ms ease;
+}
+.zone:hover .zoneRect,
+.zone:focus-visible .zoneRect {
+  opacity: 0.95;
+  fill: color-mix(in srgb, var(--color-gold) 12%, transparent);
+}
+.zone:focus-visible {
+  outline: none;
+}
+.zone:focus-visible .zoneRect {
+  stroke-width: 1.75;
+}
+.zoneFilled .zoneRect {
+  stroke-dasharray: none;
+  opacity: 0.5;
+  fill: color-mix(in srgb, var(--color-gold) 8%, transparent);
+}
+
+/* ——— turn knob on a ring's current value ——— */
+.ringKnob {
+  fill: var(--color-gold-bright);
+  stroke: var(--color-charcoal);
+  stroke-width: 1.5;
+  pointer-events: none;
+}
+
+/* ——— turnable rings ——— */
+.ring {
+  pointer-events: auto;
+  cursor: grab;
+}
+.ring:active {
+  cursor: grabbing;
+}
+.ringWedge {
+  fill: transparent;
+  stroke: transparent;
+}
+.ring:hover .ringWedge,
+.ring:focus-visible .ringWedge {
+  fill: color-mix(in srgb, var(--color-gold) 8%, transparent);
+}
+.ring:focus-visible {
+  outline: none;
+}
+
+/* ——— readout / interpretation ——— */
+.readout {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--border-hairline);
+  padding-top: var(--space-3);
+}
+.timeLine {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+.interpret {
+  margin: var(--space-2) 0 0;
+}
+.interpretHint {
+  margin: var(--space-2) 0 0;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ——— placement popover ——— */
+.popoverBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: color-mix(in srgb, var(--color-charcoal) 55%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+}
+.popover {
+  position: relative;
+  width: min(24rem, 100%);
+  background: var(--bg-raised);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.popoverTitle {
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.75rem;
+}
+.popoverClose {
+  position: absolute;
+  top: var(--space-2);
+  inset-inline-end: var(--space-2);
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.popoverClose:hover {
+  color: var(--accent-bright);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+.popoverActions {
+  display: flex;
+  gap: var(--space-2);
+}
+.middahList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.middahOption {
+  text-align: start;
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  cursor: pointer;
+}
+.middahOption:hover {
+  border-color: var(--accent);
+}
+.middahActive {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
