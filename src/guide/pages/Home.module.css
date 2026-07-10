@@ -1,34 +1,139 @@
-.section {
+.home {
+  padding-top: var(--space-6);
+}
+
+/* ——— Hero ——— */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: var(--space-6);
+  align-items: center;
+}
+.heroText {
+  min-width: 0;
+}
+.kicker {
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.78rem;
+}
+.heroTitle {
+  font-size: var(--font-size-display);
+  line-height: 1.05;
+  margin: var(--space-2) 0 0;
+}
+.epigraph {
+  font-style: italic;
+  font-size: var(--font-size-lg);
+  color: var(--text);
+  margin: var(--space-4) 0 0;
+  padding-inline-start: var(--space-3);
+  border-inline-start: 2px solid var(--accent);
+  max-width: 40ch;
+}
+.lede {
+  color: var(--text-muted);
+  margin: var(--space-4) 0 0;
+  max-width: 52ch;
+}
+.heroCtas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
   margin-top: var(--space-5);
 }
-
-.sectionTitle {
+.ctaPrimary,
+.ctaGhost {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  font-size: var(--font-size-base);
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+.ctaPrimary {
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: var(--color-charcoal);
+  font-weight: 500;
+}
+.ctaPrimary:hover {
+  background: var(--accent-bright);
+  border-color: var(--accent-bright);
+  color: var(--color-charcoal);
+}
+.ctaGhost {
+  background: transparent;
+  border: 1px solid var(--border-hairline);
+  color: var(--text);
+}
+.ctaGhost:hover {
+  border-color: var(--accent);
   color: var(--accent-bright);
-  font-size: 0.95rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: var(--space-3);
+}
+.heroSigil {
+  justify-self: center;
+  width: 100%;
+  max-width: 300px;
+}
+.heroSigil svg {
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(var(--shadow-lg));
 }
 
-.doorList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* ——— Doorway sections ——— */
+.section {
+  margin-top: var(--space-6);
+}
+.sectionTitle {
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.8rem;
+  margin-bottom: var(--space-4);
+}
+.doorGrid {
   display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
   gap: var(--space-3);
 }
-
-.doorList li {
-  border: 1px solid var(--border-hairline);
-  padding: var(--space-3);
+.doorLink {
+  text-decoration: none;
+  color: inherit;
 }
-
-.doorList a {
-  font-size: 1.05rem;
+.doorLabel {
+  display: block;
+  color: var(--accent-bright);
+  font-size: var(--font-size-lg);
 }
-
-.doorList p {
-  margin: var(--space-1) 0 0;
-  font-size: 0.9rem;
+.doorBlurb {
   color: var(--text-muted);
+  font-size: 0.92rem;
+  margin: var(--space-2) 0 0;
+}
+
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
+    gap: var(--space-5);
+    text-align: center;
+  }
+  .epigraph,
+  .lede {
+    margin-inline: auto;
+  }
+  .heroCtas {
+    justify-content: center;
+  }
+  .heroSigil {
+    grid-row: 1;
+    max-width: 220px;
+  }
 }
