@@ -18,9 +18,15 @@ import { SacredTimePanel } from "./SacredTimePanel";
 import { EncounterPanel } from "./EncounterPanel";
 import { DorotDrawPanel, firstCardOfHouse } from "./DorotDrawPanel";
 import { resolveDorotMechanic } from "../dorot/dorotMechanics";
+import { resolveSpread } from "../spreads/resolveSpread";
 import styles from "./form.module.css";
 
 const drawLabels = ["First drawn", "Second drawn", "Third drawn"];
+const etzChaimLabels = [
+  "The Roots — Assiyah (first drawn)",
+  "The Trunk — Yetzirah (second drawn)",
+  "The Branches — Briyah (third drawn)",
+];
 
 function emptyDraw(): LetterDraw {
   return { letterId: "aleph", orientation: "upright" };
@@ -53,6 +59,7 @@ export function ReadingForm({ onSubmit, readingIndex }: ReadingFormProps) {
     emptyDraw(),
   ]);
   const [veiledLetter, setVeiledLetter] = useState<LetterDraw>(emptyDraw());
+  const [fourthLetter, setFourthLetter] = useState<LetterDraw>(emptyDraw());
   const [middah, setMiddah] = useState<SefirahId>("tiferet");
   const [geoMode, setGeoMode] = useState<GeographyMode>("land");
   const [place, setPlace] = useState("");
@@ -75,6 +82,7 @@ export function ReadingForm({ onSubmit, readingIndex }: ReadingFormProps) {
   const sacredTime = computeSacredTime(effectiveDate, geoMode);
   const dorotMechanic = resolveDorotMechanic(festivalId, geoMode);
   const lettersLocked = dorotMechanic.beneath === "forced-tishabav";
+  const spread = resolveSpread(festivalId);
 
   // Auto-detected sacred time is the primary path — it seeds the festival
   // selection whenever the effective date changes, but a manual override
@@ -132,6 +140,8 @@ export function ReadingForm({ onSubmit, readingIndex }: ReadingFormProps) {
       palmNotes: palmNotes || undefined,
       drawnLetters,
       veiledLetter,
+      fourthLetter: spread === "etz-chaim" ? fourthLetter : undefined,
+      spread: spread === "triadic" ? undefined : spread,
       middah,
       geography: { mode: geoMode, place: place || undefined },
       festivalId,
@@ -207,11 +217,26 @@ export function ReadingForm({ onSubmit, readingIndex }: ReadingFormProps) {
         />
       </div>
 
+      {spread === "etz-chaim" && (
+        <p className={styles.hebrewNameNote}>
+          Tu Bishvat — the Etz Chaim. The standard spread gives way to the Vertical Four-Card
+          Draw: roots, trunk, branches, and fruit, one for each of the Four Worlds. The PaRDeS
+          framework — the Orchard itself — takes precedence over the Shoresh this day.
+        </p>
+      )}
+      {spread === "yichud" && (
+        <p className={styles.hebrewNameNote}>
+          Tu B'Av — the Yichud. The veiled anchor is unveiled, for this day is about
+          transparency and the lifting of veils. Four letters, two pairs; the reading looks
+          only for synthesis — between each letter in the pair, and between each pair.
+        </p>
+      )}
+
       {drawnLetters.map((draw, index) => (
         <div className={`${styles.drawGroup} ${lettersLocked ? styles.lettersLocked : ""}`} key={index}>
           <div className={styles.drawRow}>
             <LetterPicker
-              label={drawLabels[index]}
+              label={spread === "etz-chaim" ? etzChaimLabels[index] : drawLabels[index]}
               value={draw.letterId}
               onChange={(letterId) => updateDraw(index, { letterId })}
             />
@@ -223,12 +248,34 @@ export function ReadingForm({ onSubmit, readingIndex }: ReadingFormProps) {
         </div>
       ))}
 
+      {spread === "etz-chaim" && (
+        <div className={styles.drawGroup}>
+          <div className={styles.drawRow}>
+            <LetterPicker
+              label="The Fruit — Atzilut (fourth drawn)"
+              value={fourthLetter.letterId}
+              onChange={(letterId) => setFourthLetter((v) => ({ ...v, letterId }))}
+            />
+            <OrientationToggle
+              value={fourthLetter.orientation}
+              onChange={(orientation) => setFourthLetter((v) => ({ ...v, orientation }))}
+            />
+          </div>
+        </div>
+      )}
+
       <div
         className={`${styles.drawGroup} ${styles.veiled} ${lettersLocked ? styles.lettersLocked : ""}`}
       >
         <div className={styles.drawRow}>
           <LetterPicker
-            label="Veiled letter (sealed — the Sod, kept from the Herald)"
+            label={
+              spread === "etz-chaim"
+                ? "The Fifth Card — Olam Ha'Ba, the world to come (sealed)"
+                : spread === "yichud"
+                  ? "The Unveiled Anchor — drawn openly, rendered this day"
+                  : "Veiled letter (sealed — the Sod, kept from the Herald)"
+            }
             value={veiledLetter.letterId}
             onChange={(letterId) => setVeiledLetter((v) => ({ ...v, letterId }))}
           />

@@ -144,4 +144,29 @@ describe("deriveHeraldForm", () => {
   it("yields an empty dorotSefirot for histories without draws (existing data unchanged)", () => {
     expect(deriveHeraldForm(seven).dorotSefirot).toEqual([]);
   });
+
+  it("counts an Etz Chaim reading's fourth letter (the Fruit) toward the charges", () => {
+    // "gimel" appears once among the open triples; three Fruit draws lift it
+    // to 4, past bet's 3 — so the fourth letter demonstrably counts.
+    const withFruit = seven.slice(0, 3).map((l) => ({
+      ...l,
+      input: {
+        ...l.input,
+        spread: "etz-chaim" as const,
+        fourthLetter: d("gimel"),
+      },
+    }));
+    const form = deriveHeraldForm(withFruit);
+    expect(form.charges[0].letterId).toBe("gimel");
+  });
+
+  it("never counts the veiled slot toward the charges, even on a Yichud reading", () => {
+    const yichud = seven.slice(0, 2).map((l) => ({
+      ...l,
+      input: { ...l.input, spread: "yichud" as const },
+    }));
+    const form = deriveHeraldForm(yichud);
+    // "tav" is every reading's veiled letter; it must never become a charge.
+    expect(form.charges.some((c) => c.letterId === "tav")).toBe(false);
+  });
 });

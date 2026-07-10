@@ -69,8 +69,14 @@ export function deriveHeraldForm(layers: HeraldLayer[]): HeraldForm {
     .slice(0, HERALD_READINGS);
   const readingCount = readings.length;
 
-  // Charges — the dominant letters across every open draw.
-  const allDraws = readings.flatMap((l) => l.input.drawnLetters);
+  // Charges — the dominant letters across every open draw. The Etz Chaim
+  // spread's fourth letter (the Fruit) is an open card and counts; a Yichud
+  // reading's unveiled anchor stays out — it remains the veiled slot, drawn
+  // openly only within its own reading's render.
+  const allDraws = readings.flatMap((l) => [
+    ...l.input.drawnLetters,
+    ...(l.input.fourthLetter ? [l.input.fourthLetter] : []),
+  ]);
   const orientationOf = new Map<string, LetterDraw["orientation"]>();
   for (const d of allDraws) {
     if (!orientationOf.has(d.letterId)) orientationOf.set(d.letterId, d.orientation);

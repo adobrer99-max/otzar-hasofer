@@ -66,9 +66,12 @@ export function Dorot() {
         emotional spectrum. And on Tisha B'Av the 22 Letters are locked
         entirely — the Galut deck is drawn even in Jerusalem. Each drawn card
         leaves a small copper mark near the base of the reading's Herald, set
-        on the Chesed-to-Malchut axis of its House's Pillar. (Tu Bishvat's
-        vertical four-card spread and Tu B'Av's paired reading are not yet
-        built.)
+        on the Chesed-to-Malchut axis of its House's Pillar. Two festival
+        spreads reshape the letters themselves: on Tu Bishvat the reading
+        becomes the Etz Chaim — a vertical four-card draw through the Four
+        Worlds, with a fifth card sealed for the world to come — and on
+        Tu B'Av the veiled anchor is unveiled and the four letters are read
+        as two pairs, seeking only synthesis.
       </p>
 
       <h2>Unfolding Through the Seven Encounters</h2>
