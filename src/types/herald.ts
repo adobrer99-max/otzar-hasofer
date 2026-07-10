@@ -24,6 +24,16 @@ export interface DorotDraw {
   role: DorotDrawRole;
 }
 
+/**
+ * Which spread the reading used. Absent/"triadic" is the standard reading
+ * (three open letters plus the veiled anchor). "etz-chaim" is Tu Bishvat's
+ * Vertical Four-Card Draw (roots/trunk/branches/fruit ↔ the Four Worlds,
+ * plus a fifth sealed card for the world to come). "yichud" is Tu B'Av's
+ * unification reading, where the veiled anchor is drawn openly and the four
+ * letters are read as two pairs seeking synthesis.
+ */
+export type SpreadKind = "triadic" | "etz-chaim" | "yichud";
+
 export interface HeraldInputSnapshot {
   path: ReadingPath;
   hebrewName?: string;
@@ -34,8 +44,20 @@ export interface HeraldInputSnapshot {
   /**
    * Drawn privately by the Scribe; recorded for the Sod/secret record but
    * deliberately excluded from the rendered Herald, since it stays hidden.
+   * Two spread-specific reinterpretations of this slot: on Tu Bishvat
+   * ("etz-chaim") it holds the fifth card — Olam Ha'Ba, the world to come —
+   * still sealed, still unrendered; on Tu B'Av ("yichud") the anchor is
+   * unveiled and this letter is, exceptionally, drawn openly and rendered.
    */
   veiledLetter: LetterDraw;
+  /**
+   * Etz Chaim (Tu Bishvat) only: the fourth open card — the Fruit / Atzilut.
+   * `drawnLetters` then hold roots/trunk/branches (Assiyah/Yetzirah/Briyah).
+   * Additive — readings predating this feature simply lack it.
+   */
+  fourthLetter?: LetterDraw;
+  /** Additive — absent means "triadic", the standard spread. */
+  spread?: SpreadKind;
   middah: SefirahId;
   geography: {
     mode: GeographyMode;

@@ -37,15 +37,25 @@ export function SacredTimeBanners({
     });
   }
 
-  for (const event of events.filter((e) => e.type === "yahrzeit")) {
-    if (sameMonthDay(today, event.hebrewDate)) {
-      const years = today.year - event.hebrewDate.year;
-      banners.push({
-        key: event.id,
-        title: `Today is the ${years > 0 ? `${years}${ordinalSuffix(years)} ` : ""}Yahrzeit of ${event.personName} (${event.relation}).`,
-        pastLayers: findLayersOnRecurringHebrewDate(layers, event.hebrewDate),
-      });
-    }
+  for (const event of events) {
+    if (!sameMonthDay(today, event.hebrewDate)) continue;
+    const years = today.year - event.hebrewDate.year;
+    const nth = years > 0 ? `${years}${ordinalSuffix(years)} ` : "";
+    const since = years > 0 ? `${years} year${years === 1 ? "" : "s"}` : "the day";
+    const name = participant.displayName;
+    const titles: Record<typeof event.type, string> = {
+      yahrzeit: `Today is the ${nth}Yahrzeit of ${event.personName} (${event.relation}).`,
+      "wedding-anniversary": `Today is ${name}'s ${nth}Hebrew wedding anniversary.`,
+      "bar-bat-mitzvah": `Today marks ${since} since ${name}'s Bar/Bat Mitzvah — the first reading conducted together.`,
+      bris: `Today is the ${nth}anniversary of ${name}'s Bris — the covenant remembered. No conclusions; only blessing.`,
+      conversion: `Today marks ${since} since ${name} was grafted into the covenant — nothing erased, everything redeemed.`,
+      aliyah: `Today marks ${since} since ${name}'s Aliyah — the day the reading began with the Letters alone.`,
+    };
+    banners.push({
+      key: event.id,
+      title: titles[event.type],
+      pastLayers: findLayersOnRecurringHebrewDate(layers, event.hebrewDate),
+    });
   }
 
   if (banners.length === 0) return null;

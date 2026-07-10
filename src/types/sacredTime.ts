@@ -28,4 +28,10 @@ export interface SacredTimeSnapshot {
   omer?: { day: number };
   /** FestivalOverride ids active on this date, most-specific first. */
   activeFestivalIds: string[];
+  /**
+   * The week's Torah portion(s), read on this week's Shabbat. Absent when
+   * that Shabbat carries a festival reading instead — and on snapshots
+   * stored before this field existed (additive). Geography-dependent.
+   */
+  parsha?: { ids: string[]; label: string; shabbat: string };
 }

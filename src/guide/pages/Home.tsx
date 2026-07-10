@@ -1,4 +1,6 @@
 import { Link } from "react-router-dom";
+import { Card, DecoratedRule } from "../../components/ui";
+import { HeroSigil } from "./HeroSigil";
 import styles from "./Home.module.css";
 
 interface Door {
@@ -62,6 +64,11 @@ const practiceDoors: Door[] = [
     blurb: "Create a participant's living heraldic sigil at the close of a reading — with Shoresh resolution, Sacred Time, and the Heraldic Epithet earned at the seventh reading.",
   },
   {
+    to: "/covenant",
+    label: "The Covenantal Herald",
+    blurb: "At marriage, a shared Herald is created — derived from both partners' Treasuries and grown through the seven blessings of the Sheva Brachot.",
+  },
+  {
     to: "/sefarim",
     label: "The Shelf of Sefarim",
     blurb: "The Beit Midrash — the Book of Roots, the Vocabulary Treasury, and Balagan HaOtzar (the scribe's genizah), each read and written through the four tiers of PaRDeS.",
@@ -73,54 +80,62 @@ const practiceDoors: Door[] = [
   },
 ];
 
-function DoorList({ doors }: { doors: Door[] }) {
+function DoorGrid({ doors }: { doors: Door[] }) {
   return (
-    <ul className={styles.doorList}>
+    <div className={styles.doorGrid}>
       {doors.map((door) => (
-        <li key={door.to}>
-          <Link to={door.to}>{door.label}</Link>
-          <p>{door.blurb}</p>
-        </li>
+        <Link key={door.to} to={door.to} className={styles.doorLink}>
+          <Card interactive>
+            <span className={styles.doorLabel}>{door.label}</span>
+            <p className={styles.doorBlurb}>{door.blurb}</p>
+          </Card>
+        </Link>
       ))}
-    </ul>
+    </div>
   );
 }
 
 export function Home() {
   return (
-    <div className="page">
-      <div className="page-header">
-        <div className="kicker">The Treasury</div>
-        <h1>Otzar Ha'Sofer</h1>
-      </div>
-      <p>
-        <em>
-          "The Scribe does not reveal destiny. The Scribe guides the neshama
-          of the person seeking it."
-        </em>
-      </p>
-      <p>
-        This companion is a reference and a working tool for the Otzar
-        Ha'Sofer practice — not a fortune-telling tool. Use it alongside the
-        physical Mizbe'ach and Derekh Eretz deck: read the guide to learn the
-        system, and use the living tools to conduct a reading and tend each
-        participant's Herald over time.
-      </p>
+    <div className={`page page--wide ${styles.home}`}>
+      <section className={styles.hero}>
+        <div className={styles.heroText}>
+          <div className={styles.kicker}>The Treasury of the Scribe</div>
+          <h1 className={styles.heroTitle}>Otzar Ha'Sofer</h1>
+          <p className={styles.epigraph}>
+            "The Scribe does not reveal destiny. The Scribe guides the neshama of the person
+            seeking it."
+          </p>
+          <p className={styles.lede}>
+            A reference and a working companion for the Otzar Ha'Sofer practice — never a
+            fortune-telling tool. Read the guide to learn the system; use the living tools to
+            conduct a reading and tend each participant's Herald over time.
+          </p>
+          <div className={styles.heroCtas}>
+            <Link to="/guide/foundations" className={styles.ctaPrimary}>
+              Enter the Guide
+            </Link>
+            <Link to="/herald" className={styles.ctaGhost}>
+              Begin a Reading
+            </Link>
+          </div>
+        </div>
+        <div className={styles.heroSigil}>
+          <HeroSigil />
+        </div>
+      </section>
 
-      <div className={styles.section}>
+      <DecoratedRule />
+
+      <section className={styles.section}>
         <div className={styles.sectionTitle}>The Reference Guide</div>
-        <DoorList doors={guideDoors} />
-      </div>
+        <DoorGrid doors={guideDoors} />
+      </section>
 
-      <div className={styles.section}>
+      <section className={styles.section}>
         <div className={styles.sectionTitle}>The Living Practice</div>
-        <DoorList doors={practiceDoors} />
-      </div>
-
-      <hr className="hairline-rule" />
-      <p>
-        <Link to="/guide/foundations">Begin with the Foundations →</Link>
-      </p>
+        <DoorGrid doors={practiceDoors} />
+      </section>
     </div>
   );
 }

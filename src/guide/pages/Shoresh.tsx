@@ -23,6 +23,14 @@ export function Shoresh() {
 
       <h2>The Hierarchy of Interpretation</h2>
       <p>The Scribe follows a disciplined order of interpretation:</p>
+      <p>
+        <em>
+          One exception: on Tu Bishvat, when the reading becomes the Etz
+          Chaim's vertical draw through the Four Worlds, the PaRDeS framework
+          — the Orchard itself — takes absolute precedence, and no Shoresh is
+          resolved.
+        </em>
+      </p>
 
       <h3>I. Canonical Root</h3>
       <p>

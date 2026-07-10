@@ -46,6 +46,87 @@ describe("HeraldLayerContent determinism", () => {
   });
 });
 
+describe("the hidden Hebrew-name geometry", () => {
+  const named = sampleInput; // carries hebrewName "דוד"
+  const unnamed: HeraldInputSnapshot = { ...sampleInput, hebrewName: undefined };
+
+  it("renders deterministically with a name present", () => {
+    expect(render(named, 0)).toBe(render(named, 0));
+  });
+
+  it("weaves the name into the border — different names, stably different output", () => {
+    const otherName: HeraldInputSnapshot = { ...sampleInput, hebrewName: "רות" };
+    expect(render(named, 0)).not.toBe(render(otherName, 0));
+    expect(render(otherName, 0)).toBe(render(otherName, 0));
+  });
+
+  it("leaves the border untouched when there is no name (output as before the feature)", () => {
+    // Border flourishes must carry translate-only transforms — the name's
+    // rotation phase appears only when a name is present.
+    const unnamedFlourishes = render(unnamed, 0).match(/translate\([^"]*\) rotate/g) ?? [];
+    expect(unnamedFlourishes).toHaveLength(0);
+    const namedFlourishes = render(named, 0).match(/translate\([^"]*\) rotate/g) ?? [];
+    expect(namedFlourishes.length).toBeGreaterThan(0);
+  });
+
+  it("never displays the name itself", () => {
+    expect(render(named, 0)).not.toContain("דוד");
+  });
+});
+
+describe("the Etz Chaim spread (Tu Bishvat)", () => {
+  const etzChaimInput: HeraldInputSnapshot = {
+    ...sampleInput,
+    festivalId: "tubishvat",
+    spread: "etz-chaim",
+    fourthLetter: { letterId: "dalet", orientation: "upright" },
+  };
+
+  it("renders deterministically", () => {
+    expect(render(etzChaimInput, 0)).toBe(render(etzChaimInput, 0));
+  });
+
+  it("renders all four open letters, stacked as the Four Worlds", () => {
+    const markup = render(etzChaimInput, 0);
+    expect(markup).toContain("א");
+    expect(markup).toContain("ב");
+    expect(markup).toContain("מ");
+    expect(markup).toContain("ד"); // the Fruit
+    expect(markup).toContain("Atzilut");
+    expect(markup).toContain("Assiyah");
+  });
+
+  it("keeps the fifth card (Olam Ha'Ba, in the veiled slot) sealed and unrendered", () => {
+    const markup = render(etzChaimInput, 0);
+    expect(markup).not.toContain("ש");
+  });
+});
+
+describe("the Yichud spread (Tu B'Av)", () => {
+  const yichudInput: HeraldInputSnapshot = {
+    ...sampleInput,
+    festivalId: "tubav",
+    spread: "yichud",
+  };
+
+  it("renders deterministically", () => {
+    expect(render(yichudInput, 0)).toBe(render(yichudInput, 0));
+  });
+
+  it("unveils the anchor — its glyph is rendered this one spread", () => {
+    const markup = render(yichudInput, 0);
+    expect(markup).toContain("ש"); // the unveiled anchor
+    expect(markup).toContain("The Unveiled Anchor");
+  });
+
+  it("does not change the ordinary triadic render", () => {
+    // The same input without the spread field must render as it always has.
+    const markup = render(sampleInput, 0);
+    expect(markup).not.toContain("ש");
+    expect(markup).not.toContain("The Unveiled Anchor");
+  });
+});
+
 function layer(layerIndex: number, letters: [string, string, string], middah: string): HeraldLayer {
   return {
     id: `l-${layerIndex}`,

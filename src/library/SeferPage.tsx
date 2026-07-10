@@ -5,14 +5,19 @@ import { lettersById } from "../data/letters";
 import { HaShorashimBook } from "./HaShorashimBook";
 import { BalaganBook } from "./BalaganBook";
 import { VocabularyTreasuryBook } from "./VocabularyTreasuryBook";
+import { TefillotBook } from "./TefillotBook";
+import { DikdukBook } from "./DikdukBook";
+import { liturgiesById } from "../data/liturgies";
 import { BookmarkRibbon } from "./BookmarkRibbon";
 import styles from "./library.module.css";
 
-/** The ribbon's stamp: the open root's letter names when reading one, else the Book's name. */
+/** The ribbon's stamp: the open entry's name when reading one, else the Book's name. */
 function ribbonLabel(seferTitle: string, entryId?: string): string {
   if (entryId) {
     const entry = shorashim.find((e) => e.id === entryId);
     if (entry) return entry.letters.map((l) => lettersById[l]?.name ?? l).join("–");
+    const liturgy = liturgiesById[entryId];
+    if (liturgy) return liturgy.title;
   }
   return seferTitle;
 }
@@ -47,6 +52,8 @@ export function SeferPage() {
       {sefer.kind === "pardes-browse" && <HaShorashimBook entryId={entryId} />}
       {sefer.kind === "balagan" && <BalaganBook />}
       {sefer.kind === "explainer" && <VocabularyTreasuryBook />}
+      {sefer.kind === "liturgy" && <TefillotBook entryId={entryId} />}
+      {sefer.kind === "dikduk" && <DikdukBook />}
       {sefer.kind === "forthcoming" && (
         <>
           <p>{sefer.description}</p>

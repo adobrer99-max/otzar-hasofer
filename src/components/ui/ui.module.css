@@ -1,0 +1,224 @@
+/* Shared UI primitives — the illuminated design system's building blocks. */
+
+/* ——— PageHeader ——— */
+.pageHeader {
+  border-bottom: 1px solid var(--border-hairline);
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.kicker {
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.75rem;
+}
+.title {
+  font-size: var(--font-size-xxl);
+  margin: var(--space-1) 0 0;
+  line-height: 1.15;
+}
+.lede {
+  color: var(--text-muted);
+  font-size: var(--font-size-lg);
+  margin: var(--space-2) 0 0;
+  max-width: 46ch;
+}
+
+/* ——— Card / Panel ——— */
+.card {
+  background: var(--bg-raised);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-sm);
+}
+.cardInteractive {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease;
+}
+.cardInteractive:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--accent);
+  color: inherit;
+}
+.cardInteractive:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ——— Button ——— */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-latin);
+  font-size: var(--font-size-base);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-hairline);
+  background: var(--bg-raised);
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    transform 120ms ease;
+}
+.btn:hover {
+  border-color: var(--accent);
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btnPrimary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--color-charcoal);
+  font-weight: 500;
+}
+.btnPrimary:hover {
+  background: var(--accent-bright);
+  border-color: var(--accent-bright);
+}
+.btnGhost {
+  background: transparent;
+}
+.btnSubtle {
+  min-height: 0;
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.9rem;
+}
+
+/* ——— SegmentedControl ——— */
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.segmented button {
+  min-height: 40px;
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--font-latin);
+  font-size: 0.9rem;
+  background: var(--bg-raised);
+  color: var(--text-muted);
+  border: none;
+  border-inline-start: 1px solid var(--border-hairline);
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+.segmented button:first-child {
+  border-inline-start: none;
+}
+.segmented button:hover {
+  color: var(--text);
+}
+.segmented button.segmentActive {
+  background: var(--accent);
+  color: var(--color-charcoal);
+  font-weight: 500;
+}
+.segmented button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+/* ——— Callout (accent margin-note) ——— */
+.callout {
+  border-inline-start: 2px solid var(--accent);
+  padding: var(--space-1) 0 var(--space-1) var(--space-3);
+  color: var(--text-muted);
+  margin: var(--space-3) 0;
+}
+
+/* ——— DecoratedRule — a gold hairline centered on a lozenge ——— */
+.rule {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-5) 0;
+  border: none;
+}
+.ruleLine {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    to var(--rule-dir, right),
+    transparent,
+    var(--border-hairline) 30%,
+    var(--border-hairline)
+  );
+}
+.ruleLine:last-child {
+  --rule-dir: left;
+}
+.ruleMark {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  transform: rotate(45deg);
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* ——— DropCap — an illuminated initial ——— */
+.dropCap::first-letter {
+  float: inline-start;
+  font-family: var(--font-latin);
+  font-weight: 500;
+  font-size: 3.4em;
+  line-height: 0.82;
+  padding-inline-end: 0.08em;
+  padding-block-start: 0.04em;
+  color: var(--accent);
+}
+
+/* ——— ThemeToggle ——— */
+.themeToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-hairline);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease;
+}
+.themeToggle:hover {
+  color: var(--accent-bright);
+  border-color: var(--accent);
+}
+.themeToggle:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cardInteractive,
+  .btn,
+  .segmented button,
+  .themeToggle {
+    transition: none;
+  }
+}

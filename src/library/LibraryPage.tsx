@@ -25,7 +25,7 @@ function Spine({ sefer }: { sefer: SeferMeta }) {
 
 export function LibraryPage() {
   return (
-    <div className="page">
+    <div className="page page--wide">
       <div className="page-header">
         <div className="kicker">The Beit Midrash</div>
         <h1>The Shelf of Sefarim</h1>

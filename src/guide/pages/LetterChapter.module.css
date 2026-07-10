@@ -5,11 +5,30 @@
   margin-bottom: var(--space-4);
 }
 
+/* The letter set as an illuminated capital on its own gold-ruled plate. */
 .glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 6rem;
+  height: 6rem;
   font-family: var(--font-hebrew);
-  font-size: 5rem;
+  font-size: 4rem;
   color: var(--accent);
   line-height: 1;
+  background: var(--bg-raised);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 480px) {
+  .glyph {
+    width: 4.5rem;
+    height: 4.5rem;
+    font-size: 3rem;
+  }
 }
 
 .meta {

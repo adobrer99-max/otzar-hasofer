@@ -1,4 +1,4 @@
-import type { SefirahId } from "./letter";
+import type { SefirahId, CardArt } from "./letter";
 
 export type DorotHouseKind = "patriarchal" | "matriarchal";
 
@@ -33,4 +33,6 @@ export interface DorotCard {
   question?: string;
   /** The doc's one-or-two-word "Core Energy". Matriarchal cards only (for now). */
   coreEnergy?: string;
+  /** The physical card's artwork, when available (see CardArt). */
+  art?: CardArt;
 }

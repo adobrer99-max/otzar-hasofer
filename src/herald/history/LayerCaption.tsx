@@ -7,8 +7,16 @@ import { lettersById } from "../../data/letters";
 import { dorotCardsById, dorotHousesById } from "../../data/dorot";
 import { formatHebrewDateEnglish } from "../../data/hebrewCalendar";
 import { encountersByNumber } from "../../data/encounters";
+import { findTwoLetterRoot } from "../../data/twoLetterRoots";
 import { resolveShoresh } from "../shoresh/resolveShoresh";
 import styles from "./history.module.css";
+
+const FOUR_WORLDS = [
+  { world: "Assiyah — Action", station: "the Roots" },
+  { world: "Yetzirah — Formation", station: "the Trunk" },
+  { world: "Briyah — Creation", station: "the Branches" },
+  { world: "Atzilut — Emanation", station: "the Fruit" },
+];
 
 const DOROT_ROLE_LABELS: Record<DorotDrawRole, string> = {
   "beneath-first": "Beneath the First drawn",
@@ -28,9 +36,25 @@ export function LayerCaption({
   commentaries?: CommentaryRecord[];
 }) {
   const festival = festivalsById[layer.input.festivalId] ?? festivalsById.ordinary;
+  const spread = layer.input.spread ?? "triadic";
   const drawnLetters = layer.input.drawnLetters.map((d) => lettersById[d.letterId]);
   const drawnIds = layer.input.drawnLetters.map((d) => d.letterId) as [string, string, string];
-  const shoresh = resolveShoresh(drawnIds);
+  // PaRDeS takes absolute precedence on Tu Bishvat — no Shoresh resolution.
+  const shoresh = spread === "etz-chaim" ? undefined : resolveShoresh(drawnIds);
+  const etzChaimDraws =
+    spread === "etz-chaim"
+      ? [
+          ...layer.input.drawnLetters,
+          ...(layer.input.fourthLetter ? [layer.input.fourthLetter] : []),
+        ]
+      : [];
+  const yichudPairs =
+    spread === "yichud"
+      ? [
+          [layer.input.drawnLetters[0], layer.input.drawnLetters[1]] as const,
+          [layer.input.drawnLetters[2], layer.input.veiledLetter] as const,
+        ]
+      : [];
   const sacredTime = layer.input.sacredTime;
   const encounter = layer.input.encounterNumber ? encountersByNumber[layer.input.encounterNumber] : undefined;
   const readingRootKey = rootKeyFor(drawnIds);
@@ -51,6 +75,7 @@ export function LayerCaption({
         {sacredTime && ` (${formatHebrewDateEnglish(sacredTime.hebrewDate)})`}
         {festival.id !== "ordinary" && ` · ${festival.name}`}
         {sacredTime?.omer && ` · Omer day ${sacredTime.omer.day}`}
+        {sacredTime?.parsha && ` · Parashat ${sacredTime.parsha.label}`}
         {encounter && ` · Encounter ${encounter.number}: ${encounter.aspect}`}
       </div>
       {encounter?.number === 7 && (
@@ -63,21 +88,79 @@ export function LayerCaption({
           <strong>Heraldic Epithet:</strong> <em>{epithet}</em>
         </div>
       )}
-      <div>Drawn: {drawnLetters.map((l) => l?.name).join(", ")}</div>
+      <div>
+        Drawn: {drawnLetters.map((l) => l?.name).join(", ")}
+        {spread === "etz-chaim" &&
+          layer.input.fourthLetter &&
+          `, ${lettersById[layer.input.fourthLetter.letterId]?.name}`}
+        {spread === "yichud" &&
+          ` — and the anchor unveiled: ${lettersById[layer.input.veiledLetter.letterId]?.name}`}
+      </div>
 
-      {shoresh.tier === "root" && (
+      {spread === "etz-chaim" && (
+        <div>
+          <strong>The Etz Chaim — the Four Worlds:</strong>
+          <ul>
+            {etzChaimDraws.map((draw, i) => {
+              const world = FOUR_WORLDS[i];
+              const letter = lettersById[draw.letterId];
+              if (!world || !letter) return null;
+              return (
+                <li key={`${world.world}-${draw.letterId}`}>
+                  {world.station}, {world.world}: {letter.name}
+                  {draw.orientation === "reversed" && " (turned inward)"}
+                </li>
+              );
+            })}
+          </ul>
+          <div className={styles.citation}>
+            The fifth card — Olam Ha'Ba, the world to come — was drawn and sealed. The PaRDeS
+            framework, the Orchard itself, takes precedence over the Shoresh this day.
+          </div>
+        </div>
+      )}
+
+      {spread === "yichud" && (
+        <div>
+          <strong>The Yichud — synthesis of the pairs:</strong>
+          <ul>
+            {yichudPairs.map(([a, b], i) => {
+              const la = lettersById[a.letterId];
+              const lb = lettersById[b.letterId];
+              const root = findTwoLetterRoot(a.letterId, b.letterId);
+              return (
+                <li key={i}>
+                  {i === 0 ? "First pair" : "Second pair"}: {la?.name} · {lb?.name}
+                  {root && (
+                    <span className={styles.citation}>
+                      {" "}
+                      — together they speak {root.rootWord}: {root.meaning}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          <div className={styles.citation}>
+            The veiled anchor was unveiled — Tu B'Av is transparency, the lifting of veils. The
+            reading sought no tension, only synthesis, between each letter and between the pairs.
+          </div>
+        </div>
+      )}
+
+      {shoresh?.tier === "root" && (
         <div>
           <strong>Word of the Reading:</strong> {shoresh.word} — {shoresh.gloss}{" "}
           <span className={styles.citation}>({shoresh.citation})</span>
         </div>
       )}
-      {shoresh.tier === "name" && (
+      {shoresh?.tier === "name" && (
         <div>
           <strong>Recognized as:</strong> {shoresh.name} — {shoresh.gloss}{" "}
           <span className={styles.citation}>({shoresh.citation})</span>
         </div>
       )}
-      {shoresh.tier === "related" && (
+      {shoresh?.tier === "related" && (
         <div>
           <strong>Avenues of contemplation:</strong>
           <ul>
@@ -90,7 +173,7 @@ export function LayerCaption({
           </ul>
         </div>
       )}
-      {shoresh.tier === "hidden" && (
+      {shoresh?.tier === "hidden" && (
         <div>
           <strong>Shoresh Nistar (שורש נסתר) — The Hidden Root.</strong> No attested root, name,
           or correspondence was found for these letters. This is not a failed reading: the

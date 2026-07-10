@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import type { ParticipantRecord, HeraldLayer, ReadingPath } from "../types/herald";
 import type { LifeCycleEvent } from "../types/lifeCycle";
 import {
@@ -14,6 +15,7 @@ import { computeSacredTime } from "../data/sacredTime";
 import { ReadingForm } from "./form/ReadingForm";
 import { HeraldCanvas } from "./render/HeraldCanvas";
 import { deriveHeraldForm } from "./synthesis/deriveHeraldForm";
+import { resolveShoresh } from "./shoresh/resolveShoresh";
 import { ParticipantPicker } from "./history/ParticipantPicker";
 import { HistoryScrubber } from "./history/HistoryScrubber";
 import { LayerCaption } from "./history/LayerCaption";
@@ -31,6 +33,8 @@ export function HeraldPage() {
   const [selectedLayerId, setSelectedLayerId] = useState<string>();
   const [lifeCycleEvents, setLifeCycleEvents] = useState<LifeCycleEvent[]>([]);
   const [commentaries, setCommentaries] = useState<CommentaryRecord[]>([]);
+  const [justRevealed, setJustRevealed] = useState(false);
+  const wasRevealed = useRef(false);
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
@@ -48,6 +52,8 @@ export function HeraldPage() {
     getLayers(selectedParticipantId).then((ls) => {
       setLayers(ls);
       setSelectedLayerId(undefined); // default to the synthesized Herald headline
+      wasRevealed.current = ls.length >= 7; // already revealed: shown at rest
+      setJustRevealed(false);
     });
     listLifeCycleEvents(selectedParticipantId).then(setLifeCycleEvents);
   }, [selectedParticipantId]);
@@ -66,6 +72,10 @@ export function HeraldPage() {
     if (!selectedParticipantId) return;
     await addLayer(selectedParticipantId, input);
     const refreshed = await getLayers(selectedParticipantId);
+    // The reveal at the seventh: a one-time animation when this submission
+    // crosses the threshold (session-only — reloading shows it at rest).
+    if (!wasRevealed.current && refreshed.length >= 7) setJustRevealed(true);
+    wasRevealed.current = refreshed.length >= 7;
     setLayers(refreshed);
     setSelectedLayerId(undefined); // show the updated synthesis forming
   }
@@ -90,9 +100,28 @@ export function HeraldPage() {
       : `The Herald, forming — ${heraldForm.readingCount} of 7`
     : "";
   const synthesisEpithet = heraldForm?.revealed ? sealedEpithet?.text : undefined;
+  // The Word of the Life — when the dominant letters themselves spell a
+  // root or name, the seven readings together speak a word.
+  const lifeShoresh = heraldForm
+    ? resolveShoresh(heraldForm.charges.map((c) => c.letterId) as [string, string, string])
+    : undefined;
+
+  // Soft life-cycle framing for the next reading: shown from when the event
+  // is recorded until a reading is made after it (Bris frames the child's
+  // very first page instead). Guidance, never a restriction.
+  const firstReadingSince = (type: LifeCycleEvent["type"]) => {
+    const event = lifeCycleEvents.find((e) => e.type === type);
+    if (!event) return false;
+    return !layers.some((l) => l.createdAt > event.createdAt);
+  };
+  const ritualNotes = {
+    lettersAlone: firstReadingSince("aliyah"),
+    bris: layers.length === 0 && lifeCycleEvents.some((e) => e.type === "bris"),
+    barBatMitzvah: firstReadingSince("bar-bat-mitzvah"),
+  };
 
   return (
-    <div className="page">
+    <div className="page page--wide">
       <div className="page-header">
         <div className="kicker">The Herald</div>
         <h1>The Living Herald</h1>
@@ -101,7 +130,8 @@ export function HeraldPage() {
         The Herald forms across a participant's first seven readings — the
         unfolding order of Creation — and is revealed at the seventh. It is
         never overwritten: each reading is also kept on its own below, the
-        biography of how the Herald came to be.
+        biography of how the Herald came to be. At marriage, two Heralds
+        join in a shared <Link to="/covenant">Covenantal Herald</Link>.
       </p>
 
       <ParticipantPicker
@@ -133,7 +163,11 @@ export function HeraldPage() {
       {selectedParticipantId ? (
         <div className={styles.layout}>
           <div>
-            <ReadingForm onSubmit={handleSubmitReading} readingIndex={layers.length} />
+            <ReadingForm
+              onSubmit={handleSubmitReading}
+              readingIndex={layers.length}
+              ritualNotes={ritualNotes}
+            />
           </div>
           <div className={styles.canvasCol}>
             {selectedParticipant && layers.length >= 7 && !sealedEpithet && (
@@ -146,25 +180,32 @@ export function HeraldPage() {
             {heraldForm ? (
               <>
                 {viewingSynthesis ? (
-                  <HeraldCanvas
-                    ref={svgRef}
-                    form={heraldForm}
-                    displayName={selectedParticipant?.displayName}
-                    hebrewName={selectedParticipant?.hebrewName}
-                    path={selectedParticipant?.path}
-                    status={synthesisStatus}
-                    epithet={synthesisEpithet}
-                  />
+                  <div
+                    className={`${styles.heraldFrame} ${justRevealed ? styles.revealed : ""}`}
+                    onAnimationEnd={() => setJustRevealed(false)}
+                  >
+                    <HeraldCanvas
+                      ref={svgRef}
+                      form={heraldForm}
+                      displayName={selectedParticipant?.displayName}
+                      hebrewName={selectedParticipant?.hebrewName}
+                      path={selectedParticipant?.path}
+                      status={synthesisStatus}
+                      epithet={synthesisEpithet}
+                    />
+                  </div>
                 ) : (
-                  <HeraldCanvas
-                    ref={svgRef}
-                    input={selectedLayer!.input}
-                    previous={previousInput}
-                    layerCount={selectedLayer!.layerIndex}
-                    displayName={selectedParticipant?.displayName}
-                    createdAt={selectedLayer!.createdAt}
-                    epithet={epithetForSelectedLayer}
-                  />
+                  <div className={styles.heraldFrame}>
+                    <HeraldCanvas
+                      ref={svgRef}
+                      input={selectedLayer!.input}
+                      previous={previousInput}
+                      layerCount={selectedLayer!.layerIndex}
+                      displayName={selectedParticipant?.displayName}
+                      createdAt={selectedLayer!.createdAt}
+                      epithet={epithetForSelectedLayer}
+                    />
+                  </div>
                 )}
                 {viewingSynthesis ? (
                   <p className={styles.synthesisCaption}>
@@ -172,6 +213,20 @@ export function HeraldPage() {
                     {heraldForm.revealed
                       ? "Formed from the participant's first seven readings — the unfolding order of Creation. It is now fixed; later readings are kept as history but do not change it."
                       : "The Herald forms across the first seven readings; each new reading resolves it further. Select a reading below to view it on its own."}
+                    {lifeShoresh?.tier === "root" && (
+                      <>
+                        {" "}
+                        <strong>The Word of the Life:</strong> {lifeShoresh.word} —{" "}
+                        {lifeShoresh.gloss}
+                      </>
+                    )}
+                    {lifeShoresh?.tier === "name" && (
+                      <>
+                        {" "}
+                        <strong>The Word of the Life:</strong> {lifeShoresh.name} —{" "}
+                        {lifeShoresh.gloss}
+                      </>
+                    )}
                   </p>
                 ) : (
                   <LayerCaption

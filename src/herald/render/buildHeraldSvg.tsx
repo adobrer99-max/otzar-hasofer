@@ -1,11 +1,13 @@
-import type { HeraldInputSnapshot, DorotDraw } from "../../types/herald";
+import type { HeraldInputSnapshot, DorotDraw, LetterDraw } from "../../types/herald";
 import type { SefirahId } from "../../types/letter";
 import type { HeraldForm } from "../synthesis/deriveHeraldForm";
+import type { CovenantalForm } from "../covenant/deriveCovenantalForm";
 import { lettersById } from "../../data/letters";
 import { festivalsById } from "../../data/festivals";
 import { dorotCardsById, dorotHousesById } from "../../data/dorot";
 import { resolveShoresh } from "../shoresh/resolveShoresh";
 import { computeDivisions, type Division } from "./divisions";
+import { nameSeedOf, flourishRotation } from "./nameGeometry";
 
 type ShoreshResult = ReturnType<typeof resolveShoresh>;
 import {
@@ -285,7 +287,16 @@ function ShoreshNistarMark({ center }: { center: { x: number; y: number } }) {
   );
 }
 
-function OrnamentalBorder({ density, color }: { density: number; color: string }) {
+function OrnamentalBorder({
+  density,
+  color,
+  nameSeed,
+}: {
+  density: number;
+  color: string;
+  /** The hidden Hebrew-name encoding — a subtle per-flourish rotation phase. Absent: byte-identical to before. */
+  nameSeed?: number;
+}) {
   const points = shieldBorderPoints(density);
   return (
     <g stroke={color} fill={color} opacity={0.85}>
@@ -293,7 +304,11 @@ function OrnamentalBorder({ density, color }: { density: number; color: string }
         <path
           key={i}
           d={FLOURISH_UNIT_PATH}
-          transform={`translate(${p.x}, ${p.y})`}
+          transform={
+            nameSeed === undefined
+              ? `translate(${p.x}, ${p.y})`
+              : `translate(${p.x}, ${p.y}) rotate(${flourishRotation(nameSeed, i)})`
+          }
           strokeWidth={0.75}
           fillOpacity={0.15}
         />
@@ -313,9 +328,12 @@ interface HeraldFigureProps {
   festivalMotifs: string[];
   accentColor: string;
   ornamentDensity: number;
-  shoresh: ShoreshResult;
+  /** Omit to draw no root chains and no Shoresh Nistar mark (the Etz Chaim spread, where PaRDeS takes precedence). */
+  shoresh?: ShoreshResult;
   /** Sefirot of the Houses whose cards were drawn from Derekh Ha'Dorot — base marks. */
   dorotSefirot?: SefirahId[];
+  /** The hidden Hebrew-name encoding, woven into the border. See nameGeometry.ts. */
+  nameSeed?: number;
 }
 
 /**
@@ -334,6 +352,7 @@ function HeraldFigure({
   ornamentDensity,
   shoresh,
   dorotSefirot = [],
+  nameSeed,
 }: HeraldFigureProps) {
   const center = shieldCenter();
 
@@ -347,11 +366,11 @@ function HeraldFigure({
   // gematria signals aren't tied to visual positions, so they're
   // caption-only). Tier IV: no lines — see ShoreshNistarMark instead.
   const confidentChain =
-    (shoresh.tier === "root" || shoresh.tier === "name") && divisions.length > 1
+    (shoresh?.tier === "root" || shoresh?.tier === "name") && divisions.length > 1
       ? divisions.slice(1).map((division, i) => [divisions[i], division] as const)
       : [];
   const tentativePairs =
-    shoresh.tier === "related"
+    shoresh?.tier === "related"
       ? shoresh.correspondences
           .filter((c) => c.kind === "two-letter-root")
           .map((c) => {
@@ -403,7 +422,7 @@ function HeraldFigure({
         );
       })}
 
-      {shoresh.tier === "hidden" && <ShoreshNistarMark center={center} />}
+      {shoresh?.tier === "hidden" && <ShoreshNistarMark center={center} />}
 
       {divisions.map((division) => {
         const letter = lettersById[division.letterId];
@@ -433,8 +452,147 @@ function HeraldFigure({
       {festivalMotifs.map((motif) => (
         <FestivalMotif key={motif} motif={motif} center={center} />
       ))}
-      <OrnamentalBorder density={ornamentDensity} color={accentColor} />
+      <OrnamentalBorder density={ornamentDensity} color={accentColor} nameSeed={nameSeed} />
       <path d={SHIELD_PATH} fill="none" stroke={accentColor} strokeWidth={2.5} />
+    </g>
+  );
+}
+
+/** The Four Worlds, bottom to top, as the Etz Chaim spread stacks them. */
+const ETZ_CHAIM_ROWS = [
+  { world: "Assiyah", station: "the Roots", y: 590 },
+  { world: "Yetzirah", station: "the Trunk", y: 460 },
+  { world: "Briyah", station: "the Branches", y: 330 },
+  { world: "Atzilut", station: "the Fruit", y: 195 },
+] as const;
+
+/**
+ * Tu Bishvat's Vertical Four-Card Draw: the four open letters stacked as a
+ * tree — roots at the base, fruit at the chief — one per World of existence.
+ * Draw order grows upward: first drawn = the Roots (Assiyah), fourth = the
+ * Fruit (Atzilut). The fifth card (Olam Ha'Ba) stays sealed and unrendered,
+ * exactly as the veiled anchor always has.
+ */
+function EtzChaimCharges({ draws }: { draws: LetterDraw[] }) {
+  const center = shieldCenter();
+  return (
+    <g clipPath="url(#herald-shield-clip)">
+      <line
+        x1={center.x}
+        y1={ETZ_CHAIM_ROWS[0].y + 12}
+        x2={center.x}
+        y2={ETZ_CHAIM_ROWS[Math.min(draws.length, ETZ_CHAIM_ROWS.length) - 1].y - 46}
+        stroke="var(--color-gold)"
+        strokeWidth={1}
+        opacity={0.5}
+      />
+      {draws.slice(0, ETZ_CHAIM_ROWS.length).map((draw, index) => {
+        const row = ETZ_CHAIM_ROWS[index];
+        const letter = lettersById[draw.letterId];
+        const flip = draw.orientation === "reversed";
+        return (
+          <g key={`${row.world}-${draw.letterId}`}>
+            <text
+              x={center.x}
+              y={row.y}
+              textAnchor="middle"
+              fontFamily="var(--font-hebrew)"
+              fontSize={54}
+              fill="var(--color-gold)"
+              stroke="var(--color-gold-bright)"
+              strokeWidth={0.5}
+              transform={flip ? `rotate(180 ${center.x} ${row.y - 18})` : undefined}
+            >
+              {letter?.glyph ?? "?"}
+            </text>
+            <text
+              x={center.x + 52}
+              y={row.y - 14}
+              fontSize={13}
+              fill="var(--color-silver)"
+              opacity={0.85}
+            >
+              {row.world} — {row.station}
+            </text>
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+/**
+ * Tu B'Av's Yichud: the veiled anchor is unveiled and drawn openly at the
+ * shield's heart-point, and the four letters are read as two pairs — the
+ * first and second drawn; the third drawn and the unveiled — with soft
+ * ligatures binding each pair and the pairs to each other. Synthesis, not
+ * tension.
+ */
+function YichudOverlay({
+  drawnLetters,
+  unveiled,
+}: {
+  drawnLetters: [LetterDraw, LetterDraw, LetterDraw];
+  unveiled: LetterDraw;
+}) {
+  const center = shieldCenter();
+  const divisions = computeDivisions(drawnLetters);
+  const centerOf = (letterId: string) => {
+    const d = divisions.find((div) => div.letterId === letterId);
+    return d ? bandX(d.band).center : center.x;
+  };
+  const unveiledY = 520;
+  const pairY = BAND_TOP + 42;
+  const firstPair = { a: centerOf(drawnLetters[0].letterId), b: centerOf(drawnLetters[1].letterId) };
+  const thirdX = centerOf(drawnLetters[2].letterId);
+  const letter = lettersById[unveiled.letterId];
+  const flip = unveiled.orientation === "reversed";
+  return (
+    <g clipPath="url(#herald-shield-clip)">
+      {/* First pair: first + second drawn. */}
+      <path
+        d={`M ${firstPair.a} ${pairY} Q ${(firstPair.a + firstPair.b) / 2} ${pairY + 26}, ${firstPair.b} ${pairY}`}
+        fill="none"
+        stroke="var(--color-gold-bright)"
+        strokeWidth={1.75}
+        strokeLinecap="round"
+        opacity={0.9}
+      />
+      {/* Second pair: third drawn + the unveiled anchor. */}
+      <path
+        d={`M ${thirdX} ${pairY} Q ${(thirdX + center.x) / 2} ${(pairY + unveiledY) / 2}, ${center.x} ${unveiledY - 44}`}
+        fill="none"
+        stroke="var(--color-gold-bright)"
+        strokeWidth={1.75}
+        strokeLinecap="round"
+        opacity={0.9}
+      />
+      {/* Pair to pair: the unification itself. */}
+      <path
+        d={`M ${(firstPair.a + firstPair.b) / 2} ${pairY + 26} Q ${center.x} ${(pairY + unveiledY) / 2 + 20}, ${center.x} ${unveiledY - 44}`}
+        fill="none"
+        stroke="var(--color-gold)"
+        strokeWidth={1}
+        strokeDasharray="1 3"
+        strokeLinecap="round"
+        opacity={0.8}
+      />
+      <text
+        x={center.x}
+        y={unveiledY}
+        textAnchor="middle"
+        fontFamily="var(--font-hebrew)"
+        fontSize={48}
+        fill="var(--color-gold)"
+        stroke="var(--color-gold-bright)"
+        strokeWidth={0.5}
+        transform={flip ? `rotate(180 ${center.x} ${unveiledY - 16})` : undefined}
+      >
+        {letter?.glyph ?? "?"}
+      </text>
+      <text x={center.x} y={unveiledY + 22} textAnchor="middle" fontSize={12} fill="var(--color-silver)" opacity={0.85}>
+        The Unveiled Anchor
+      </text>
     </g>
   );
 }
@@ -449,17 +607,54 @@ export function HeraldLayerContent({
 }) {
   const festival = festivalsById[input.festivalId] ?? festivalsById.ordinary;
   const motif = festival.heraldAccent?.motif;
+  const spread = input.spread ?? "triadic";
+  const shared = {
+    litSefirot: [input.middah],
+    dominantSefirah: input.middah,
+    geography: input.geography.mode,
+    festivalMotifs: motif ? [motif] : [],
+    accentColor: festival.heraldAccent?.accentColor ?? "var(--color-gold)",
+    ornamentDensity: Math.min(10 + layerCount * 2, 40),
+    dorotSefirot: dorotSefirotOf(input.dorotDraws),
+    nameSeed: nameSeedOf(input.hebrewName),
+  };
+
+  if (spread === "etz-chaim") {
+    // PaRDeS takes absolute precedence on Tu Bishvat: no Shoresh resolution,
+    // no divisions — the four open letters stack vertically as the Tree.
+    const draws = input.fourthLetter
+      ? [...input.drawnLetters, input.fourthLetter]
+      : [...input.drawnLetters];
+    return (
+      <>
+        <HeraldFigure divisions={[]} {...shared} />
+        <EtzChaimCharges draws={draws} />
+      </>
+    );
+  }
+
+  const shoresh = resolveShoresh(
+    input.drawnLetters.map((d) => d.letterId) as [string, string, string],
+  );
+
+  if (spread === "yichud") {
+    return (
+      <>
+        <HeraldFigure
+          divisions={computeDivisions(input.drawnLetters)}
+          {...shared}
+          shoresh={shoresh}
+        />
+        <YichudOverlay drawnLetters={input.drawnLetters} unveiled={input.veiledLetter} />
+      </>
+    );
+  }
+
   return (
     <HeraldFigure
       divisions={computeDivisions(input.drawnLetters)}
-      litSefirot={[input.middah]}
-      dominantSefirah={input.middah}
-      geography={input.geography.mode}
-      festivalMotifs={motif ? [motif] : []}
-      accentColor={festival.heraldAccent?.accentColor ?? "var(--color-gold)"}
-      ornamentDensity={Math.min(10 + layerCount * 2, 40)}
-      shoresh={resolveShoresh(input.drawnLetters.map((d) => d.letterId) as [string, string, string])}
-      dorotSefirot={dorotSefirotOf(input.dorotDraws)}
+      {...shared}
+      shoresh={shoresh}
     />
   );
 }
@@ -483,6 +678,32 @@ export function HeraldSynthesisContent({ form }: { form: HeraldForm }) {
       ornamentDensity={form.ornamentDensity}
       shoresh={resolveShoresh(form.charges.map((c) => c.letterId) as [string, string, string])}
       dorotSefirot={form.dorotSefirot}
+    />
+  );
+}
+
+/**
+ * The Covenantal Herald — the marriage impalement. Per pale, the heraldic
+ * convention for a married couple's arms: partner A's dominant letter on
+ * the dexter half, partner B's on the sinister. The Tree lights both
+ * partners' Sefirot, and the recorded Sheva Brachot days accrete as base
+ * marks on the same Chesed→Malchut axis the Dorot draws use.
+ */
+export function HeraldCovenantContent({ form }: { form: CovenantalForm }) {
+  const divisions: Division[] = [
+    { letterId: form.dexterCharge.letterId, orientation: form.dexterCharge.orientation, count: 1, drawOrder: 0, band: [0, 0.5] },
+    { letterId: form.sinisterCharge.letterId, orientation: form.sinisterCharge.orientation, count: 1, drawOrder: 1, band: [0.5, 1] },
+  ];
+  return (
+    <HeraldFigure
+      divisions={divisions}
+      litSefirot={form.litSefirot}
+      dominantSefirah={form.dominantMiddah}
+      geography={form.geography}
+      festivalMotifs={[]}
+      accentColor={form.bothRevealed ? "var(--color-gold-bright)" : "var(--color-gold)"}
+      ornamentDensity={form.ornamentDensity}
+      dorotSefirot={form.shevaBrachotLit}
     />
   );
 }
