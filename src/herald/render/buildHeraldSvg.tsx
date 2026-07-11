@@ -98,23 +98,24 @@ function DivisionDividers({ bands, color }: { bands: [number, number][]; color: 
   );
 }
 
-function GeographyAccent({ mode }: { mode: "land" | "galut" }) {
+/**
+ * The planet sigils stand at the shield's base, below the gematria — the
+ * classical sigil of each drawn letter that carries a planet, in draw order.
+ * (Land/Galut is told by the compartment beneath the shield, so no separate
+ * geography mark is needed here.)
+ */
+function BasePlanets({ letterIds, color }: { letterIds: string[]; color: string }) {
   const center = shieldCenter();
-  const baseY = SHIELD.point - 40;
-  if (mode === "land") {
-    return (
-      <g stroke="var(--color-copper)" strokeWidth={2} fill="none">
-        <line x1={center.x} y1={baseY} x2={center.x} y2={baseY + 24} />
-        <line x1={center.x} y1={baseY + 10} x2={center.x - 16} y2={baseY + 26} />
-        <line x1={center.x} y1={baseY + 10} x2={center.x + 16} y2={baseY + 26} />
-      </g>
-    );
-  }
+  const planets = [...new Set(letterIds)].filter((id) => associationOf(id)?.kind === "planet");
+  if (planets.length === 0) return null;
+  const spacing = 40;
+  const startX = center.x - (spacing * (planets.length - 1)) / 2;
+  const y = SHIELD.point - 40;
   return (
-    <g stroke="var(--color-copper)" strokeWidth={2} fill="none">
-      <path
-        d={`M ${center.x - 20} ${baseY + 10} Q ${center.x} ${baseY - 6}, ${center.x + 20} ${baseY + 12} T ${center.x + 40} ${baseY + 8}`}
-      />
+    <g data-role="planets">
+      {planets.map((id, i) => (
+        <AssociationEmblem key={id} letterId={id} x={startX + i * spacing} y={y} size={28} color={color} />
+      ))}
     </g>
   );
 }
@@ -320,10 +321,10 @@ function OrnamentalBorder({
 
 /**
  * The crest — a torse (twisted wreath) resting on the shield's chief, bearing
- * the reading's celestial signs above it: the zodiac constellation and planet
- * sigil of each drawn letter that carries one. (The elements aren't shown here
- * — they cast the field's colour instead.) When no drawn letter is celestial,
- * a single gold flame rises in their place — the neshama, the light.
+ * the reading's zodiac signs above it: the constellation of each drawn letter
+ * that carries one. (Elements cast the field's colour; planets stand at the
+ * base.) When no drawn letter is a sign of the zodiac, a single gold flame
+ * rises in their place — the neshama, the light.
  */
 function Crest({ letterIds, metalFill, metalLine }: { letterIds: string[]; metalFill: string; metalLine: string }) {
   const center = shieldCenter();
@@ -332,10 +333,7 @@ function Crest({ letterIds, metalFill, metalLine }: { letterIds: string[]; metal
   const bandH = 11;
   const twists = 7;
   const step = (half * 2) / twists;
-  const celestial = [...new Set(letterIds)].filter((id) => {
-    const a = associationOf(id);
-    return a?.kind === "zodiac" || a?.kind === "planet";
-  });
+  const celestial = [...new Set(letterIds)].filter((id) => associationOf(id)?.kind === "zodiac");
   const signY = torseY - 34;
   const spacing = 44;
   const startX = center.x - (spacing * (celestial.length - 1)) / 2;
@@ -446,19 +444,20 @@ function Compartment({ geography, metalFill, metalLine }: { geography: "land" | 
       </g>
     );
   }
-  // Rooted earth — a solid engraved mound with upright grasses.
+  // Rooted earth — a solid engraved mound, hatched like tilled ground so it
+  // reads as a geometric base, distinct from the leafy mantling above.
   return (
     <g data-role="compartment">
       <path
-        d={`M ${center.x - span} ${y + 10} Q ${center.x} ${y - 12}, ${center.x + span} ${y + 10} L ${center.x + span} ${y + 16} Q ${center.x} ${y - 6}, ${center.x - span} ${y + 16} Z`}
+        d={`M ${center.x - span} ${y + 8} Q ${center.x} ${y - 14}, ${center.x + span} ${y + 8} L ${center.x + span} ${y + 20} Q ${center.x} ${y - 2}, ${center.x - span} ${y + 20} Z`}
         fill={metalFill}
         fillOpacity={0.85}
         stroke={metalLine}
         strokeWidth={0.75}
       />
-      <g stroke={metalLine} strokeWidth={1.25} fill="none">
-        {[-2, -1, 0, 1, 2].map((k) => (
-          <path key={k} d={`M ${center.x + k * 34} ${y + 4} q ${k >= 0 ? 4 : -4} -10 0 -22`} />
+      <g stroke={metalLine} strokeWidth={0.9} opacity={0.7}>
+        {[-3, -2, -1, 0, 1, 2, 3].map((k) => (
+          <line key={k} x1={center.x + k * 26 - 6} y1={y + 4} x2={center.x + k * 26 + 6} y2={y + 16} />
         ))}
       </g>
     </g>
@@ -849,7 +848,7 @@ function HeraldFigure({
             geography, festival motifs, and the border — so that nothing is ever
             laid opaquely over a letter. */}
         <DorotBaseMarks sefirot={dorotSefirot} />
-        <GeographyAccent mode={geography} />
+        <BasePlanets letterIds={orderedLetterIds} color={metalFill} />
         {festivalMotifs.map((motif) => (
           <FestivalMotif key={motif} motif={motif} center={center} />
         ))}

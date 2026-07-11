@@ -105,11 +105,12 @@ export function VisualCanon() {
         Nothing is ever laid over a letter.
       </p>
       <p>
-        The crest bears the reading's <strong>celestial signs</strong>: above
-        the torse rise the zodiac <strong>constellation</strong> and planet{" "}
-        <strong>sigil</strong> of each drawn letter that carries one (a single
-        gold flame when none do). Two further marks, both derived from the
-        letters, make each Herald singular: a <strong>semé</strong> of faint gold
+        The crest bears the reading's <strong>zodiac signs</strong>: above the
+        torse rises the <strong>constellation</strong> of each drawn letter that
+        carries one (a single gold flame when none do), while the planet{" "}
+        <strong>sigils</strong> stand at the shield's base beneath the gematria.
+        Two further marks, both derived from the letters, make each Herald
+        singular: a <strong>semé</strong> of faint gold
         estoiles powdering the field, and the reading's{" "}
         <strong>gematria</strong>, struck in small Hebrew numerals beneath the
         charges. Every one is a consequence of the reading, never decoration for
