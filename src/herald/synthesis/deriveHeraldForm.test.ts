@@ -58,20 +58,6 @@ describe("deriveHeraldForm", () => {
     }
   });
 
-  it("rings the bordure with the secondary letters, excluding the dominant charges, and accretes over readings", () => {
-    const full = deriveHeraldForm(seven);
-    const primary = new Set(full.charges.map((c) => c.letterId));
-    // No bordure charge duplicates a primary charge.
-    for (const b of full.bordureCharges) expect(primary.has(b.letterId)).toBe(false);
-    // The bordure is distinct and capped.
-    const ids = full.bordureCharges.map((b) => b.letterId);
-    expect(new Set(ids).size).toBe(ids.length);
-    expect(ids.length).toBeLessThanOrEqual(8);
-    // It grows as more distinct letters are drawn.
-    const early = deriveHeraldForm(seven.slice(0, 2)).bordureCharges.length;
-    expect(full.bordureCharges.length).toBeGreaterThan(early);
-  });
-
   it("lights the whole lower Tree in order after seven readings", () => {
     expect(deriveHeraldForm(seven).litSefirot).toEqual([
       "chesed",

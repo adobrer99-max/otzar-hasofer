@@ -533,34 +533,37 @@ function FieldTincture({ letterIds }: { letterIds: string[] }) {
 }
 
 /**
- * The bordure — the secondary letters strewn as small charges around the
- * shield's inner edge, one ring of the reading's whole history that never
- * crowds the central charges. Placed on the escutcheon outline itself.
+ * The fess of the Word of the Life — when the dominant three letters resolve
+ * to a Hebrew root or name, a horizontal band crosses the shield beneath the
+ * charges, inscribed with the Word they spell. The letters are the Word; the
+ * fess unites and names it.
  */
-function Bordure({ charges }: { charges: LetterDraw[] }) {
-  if (charges.length === 0) return null;
-  const points = shieldBorderPoints(charges.length, 40);
+function WordFess({ color, inscription }: { color: string; inscription: string }) {
+  const center = shieldCenter();
+  const top = BAND_TOP - 64;
+  const bottom = BAND_TOP + 48;
   return (
-    <g data-role="bordure">
-      {charges.map((c, i) => (
-        <LetterCharge
-          key={`${c.letterId}-${i}`}
-          letterId={c.letterId}
-          size={34}
-          x={points[i].x}
-          y={points[i].y}
-          fill={`url(#herald-glyph-${c.letterId})`}
-          stroke={darken(colorFor(c.letterId), 0.5)}
-        />
-      ))}
+    <g data-role="fess">
+      <rect x={SHIELD.left} y={top} width={SHIELD.right - SHIELD.left} height={bottom - top} fill={color} opacity={0.1} />
+      <line x1={SHIELD.left} y1={top} x2={SHIELD.right} y2={top} stroke={color} strokeWidth={2.5} />
+      <line x1={SHIELD.left} y1={bottom} x2={SHIELD.right} y2={bottom} stroke={color} strokeWidth={2.5} />
+      <text
+        x={center.x}
+        y={BAND_TOP + 35}
+        textAnchor="middle"
+        fontFamily="var(--font-latin)"
+        fontSize={17}
+        letterSpacing="0.24em"
+        fill="var(--color-gold-bright)"
+      >
+        {inscription.toUpperCase()}
+      </text>
     </g>
   );
 }
 
 interface HeraldFigureProps {
   divisions: Division[];
-  /** The secondary letters (synthesis only) that ring the bordure. */
-  bordureCharges?: LetterDraw[];
   geography: "land" | "galut";
   /** Zero or more accreted festival accent motifs. */
   festivalMotifs: string[];
@@ -589,7 +592,6 @@ interface HeraldFigureProps {
  */
 function HeraldFigure({
   divisions,
-  bordureCharges = [],
   geography,
   festivalMotifs,
   accentColor,
@@ -609,15 +611,19 @@ function HeraldFigure({
     return divisions.find((d) => d.letterId === letterId);
   }
 
-  // Tier I/II ("root"/"name"): a solid, confident chain connecting every
-  // division. Tier III ("related"): only the specific two-letter-root
-  // correspondences get the lighter, tentative bezier (reordered-root and
+  // Tier I/II ("root"/"name"): the Word of the Life is borne on a fess across
+  // the charges. Tier III ("related"): only the specific two-letter-root
+  // correspondences get a lighter, tentative bezier (reordered-root and
   // gematria signals aren't tied to visual positions, so they're
-  // caption-only). Tier IV: no lines — see ShoreshNistarMark instead.
-  const confidentChain =
-    (shoresh?.tier === "root" || shoresh?.tier === "name") && divisions.length > 1
-      ? divisions.slice(1).map((division, i) => [divisions[i], division] as const)
-      : [];
+  // caption-only). Tier IV: no fess — see ShoreshNistarMark instead.
+  // The fess bears the Word itself (the transliteration) — the meaning stays
+  // in the caption, so the band never overflows with a long gloss.
+  const fessInscription =
+    shoresh?.tier === "root"
+      ? shoresh.transliteration
+      : shoresh?.tier === "name"
+        ? shoresh.transliteration
+        : undefined;
   const tentativePairs =
     shoresh?.tier === "related"
       ? shoresh.correspondences
@@ -648,23 +654,8 @@ function HeraldFigure({
 
         <DivisionDividers bands={divisions.map((d) => d.band)} />
 
-        {/* The Shoresh chains — thin arcs above the charges, never over them. */}
-        {confidentChain.map(([a, b]) => {
-          const ax = bandX(a.band).center;
-          const bx = bandX(b.band).center;
-          const y = BAND_TOP - 62;
-          return (
-            <path
-              key={`${a.letterId}-${b.letterId}`}
-              d={`M ${ax} ${y} Q ${(ax + bx) / 2} ${y - 30}, ${bx} ${y}`}
-              fill="none"
-              stroke={accentColor}
-              strokeWidth={2.5}
-              strokeLinecap="round"
-              opacity={0.9}
-            />
-          );
-        })}
+        {/* The Word of the Life, borne on a fess beneath the charges. */}
+        {fessInscription && <WordFess color={accentColor} inscription={fessInscription} />}
         {tentativePairs.map(({ a, b, key }) => {
           const ax = bandX(a.band).center;
           const bx = bandX(b.band).center;
@@ -693,7 +684,6 @@ function HeraldFigure({
           <FestivalMotif key={motif} motif={motif} center={center} />
         ))}
         <OrnamentalBorder density={ornamentDensity} color={accentColor} nameSeed={nameSeed} />
-        <Bordure charges={bordureCharges} />
 
         {/* The charges last — each enamelled in its letter's own colour, drawn
             as the letterform or, in the heraldic-charge device, as the letter's
@@ -947,7 +937,6 @@ export function HeraldSynthesisContent({ form, style }: { form: HeraldForm; styl
   return (
     <HeraldFigure
       divisions={computeDivisions(form.charges)}
-      bordureCharges={form.bordureCharges}
       geography={form.geography}
       festivalMotifs={form.festivalMotifs}
       accentColor={metalAccent(style?.metal, naturalAccent(form.accentColor, form.charges[0]?.letterId))}

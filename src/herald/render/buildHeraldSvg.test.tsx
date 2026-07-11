@@ -165,6 +165,29 @@ const sevenLayers: HeraldLayer[] = [
   layer(6, ["peh", "tzadi", "kuf"], "malchut"),
 ];
 
+describe("the Word of the Life fess", () => {
+  it("bears a fess when the drawn letters spell a root, and none when they don't", () => {
+    const rootInput: HeraldInputSnapshot = {
+      ...sampleInput,
+      drawnLetters: [
+        { letterId: "mem", orientation: "upright" },
+        { letterId: "lamed", orientation: "upright" },
+        { letterId: "kaf", orientation: "upright" },
+      ],
+      veiledLetter: { letterId: "shin", orientation: "upright" },
+    };
+    expect(render(rootInput, 0)).toContain('data-role="fess"');
+    // The Etz Chaim spread skips Shoresh resolution — no fess.
+    const etz: HeraldInputSnapshot = {
+      ...rootInput,
+      festivalId: "tubishvat",
+      spread: "etz-chaim",
+      fourthLetter: { letterId: "dalet", orientation: "upright" },
+    };
+    expect(render(etz, 0)).not.toContain('data-role="fess"');
+  });
+});
+
 describe("Scribe curation (HeraldStyle)", () => {
   it("is deterministic for the same input + style, and absent style is unchanged", () => {
     const withStyle = renderToStaticMarkup(
@@ -250,11 +273,4 @@ describe("HeraldSynthesisContent determinism", () => {
     expect(forming).not.toBe(revealed);
   });
 
-  it("rings the secondary letters around the bordure as readings accrue", () => {
-    // The seven readings draw many distinct letters, so the revealed synthesis
-    // carries a bordure; the single reading (no secondaries) does not.
-    const revealed = renderToStaticMarkup(<HeraldSynthesisContent form={deriveHeraldForm(sevenLayers)} />);
-    expect(revealed).toContain('data-role="bordure"');
-    expect(render(sampleInput, 0)).not.toContain('data-role="bordure"');
-  });
 });

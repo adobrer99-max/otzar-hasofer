@@ -101,13 +101,13 @@ export function VisualCanon() {
       </p>
       <p>
         As a Herald forms across the seven readings it fills out the way real
-        arms do — the centre stays a fixed heart of the three dominant letters,
-        while everything else accretes at the edges. The <strong>field</strong>{" "}
-        divides heraldically by how many letters dominate (a plain field, then{" "}
-        <em>per pale</em>, then <em>tierced</em>), and the secondary letters
-        gather as small charges around the <strong>bordure</strong> — a ring
-        that carries the whole reading-history without ever crowding the
-        centre.
+        arms do — a fixed heart, elaboration around it. The{" "}
+        <strong>field</strong> divides heraldically by how many letters dominate
+        (a plain field, then <em>per pale</em>, then <em>tierced</em>), in the
+        letters' own colours. And when the three dominant letters spell a
+        Hebrew root, that <strong>Word of the Life</strong> is borne on a{" "}
+        <strong>fess</strong> — a band across the shield beneath the charges,
+        inscribed with the word they together speak.
       </p>
       <p>
         Each letter also has a <strong>heraldic charge</strong> — a growing
