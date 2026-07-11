@@ -17,7 +17,7 @@ const CX = CENTRAL_PANEL.columnX;
 const GATE_MID_Y = CENTRAL_PANEL.gatesY - 55;
 const WELL_MID_Y = CENTRAL_PANEL.wellsY - 26;
 export const TREE_ON_PANEL: Record<string, { x: number; y: number }> = {
-  keter: { x: CX[1], y: CENTRAL_PANEL.handY },
+  keter: { x: CX[1], y: CENTRAL_PANEL.handY + 20 }, // the iris of the Hamsa's eye
   chochmah: { x: CX[2], y: CENTRAL_PANEL.lettersY },
   binah: { x: CX[0], y: CENTRAL_PANEL.lettersY },
   chesed: { x: CX[2], y: GATE_MID_Y },
@@ -26,7 +26,7 @@ export const TREE_ON_PANEL: Record<string, { x: number; y: number }> = {
   netzach: { x: CX[2], y: WELL_MID_Y },
   hod: { x: CX[0], y: WELL_MID_Y },
   yesod: { x: CX[1], y: WELL_MID_Y },
-  malchut: { x: CX[1], y: CENTRAL_PANEL.bottomRowY - 20 },
+  malchut: { x: CX[1], y: CENTRAL_PANEL.bottomRowY - 12 }, // the seal at the Veiled Anchor
 };
 
 function HiddenTreeLayer({ revealed, middah }: { revealed: boolean; middah?: SefirahId | null }) {
