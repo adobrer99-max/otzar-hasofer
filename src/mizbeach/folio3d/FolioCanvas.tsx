@@ -102,18 +102,7 @@ export function FolioCanvas({ fallbackArt, layers, viewBox, children }: FolioCan
   }
 
   return (
-    <div
-      className={styles.stage}
-      style={{ aspectRatio: `${viewBox.width} / ${viewBox.height}` }}
-      onPointerMove={(e) => {
-        const r = e.currentTarget.getBoundingClientRect();
-        sceneRef.current?.setPointer({
-          x: ((e.clientX - r.left) / r.width) * 2 - 1,
-          y: -(((e.clientY - r.top) / r.height) * 2 - 1),
-        });
-      }}
-      onPointerLeave={() => sceneRef.current?.setPointer(null)}
-    >
+    <div className={styles.stage} style={{ aspectRatio: `${viewBox.width} / ${viewBox.height}` }}>
       <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
       {children}
     </div>

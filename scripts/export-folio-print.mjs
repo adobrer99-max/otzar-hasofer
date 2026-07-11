@@ -120,7 +120,7 @@ async function main() {
   const TITLE_BAND = 128;
   const MANDALA = 760;
   const PANEL_W = 620;
-  const PANEL_H = 870;
+  const PANEL_H = 900;
   const W = MARGIN + MANDALA + GAP + PANEL_W + MARGIN;
   const H = TITLE_BAND + PANEL_H + MARGIN;
   const mandalaY = TITLE_BAND + (PANEL_H - MANDALA) / 2;

@@ -46,8 +46,6 @@ export class FolioScene {
 
   private raf = 0;
   private clock = new THREE.Clock();
-  private tiltTarget = new THREE.Vector2(0, 0);
-  private tilt = new THREE.Vector2(0, 0);
   private disposed = false;
 
   constructor(canvas: HTMLCanvasElement, opts: FolioSceneOptions) {
@@ -59,9 +57,12 @@ export class FolioScene {
     this.renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
+    // The art plane fills the viewport exactly (no inset) so every drawn slot
+    // registers pixel-for-pixel with the DOM/SVG interaction overlay above it —
+    // a placed letter sits in its slot, never floating off it.
     const fov = 30;
     this.camera = new THREE.PerspectiveCamera(fov, opts.aspect, 0.1, 100);
-    const dist = (this.planeH / 2 / Math.tan((fov * Math.PI) / 360)) * 1.12;
+    const dist = this.planeH / 2 / Math.tan((fov * Math.PI) / 360);
     this.camera.position.set(0, 0, dist);
     this.camera.lookAt(0, 0, 0);
 
@@ -129,16 +130,6 @@ export class FolioScene {
     }
   }
 
-  /** Pointer position in [-1,1] range over the canvas, or null to rest flat. */
-  setPointer(p: { x: number; y: number } | null) {
-    if (this.reducedMotion) return;
-    if (!p) {
-      this.tiltTarget.set(0, 0);
-      return;
-    }
-    this.tiltTarget.set(p.y * 0.12, p.x * 0.16);
-  }
-
   resize() {
     const w = this.canvas.clientWidth || 1;
     const h = this.canvas.clientHeight || 1;
@@ -153,16 +144,16 @@ export class FolioScene {
     if (typeof document !== "undefined" && document.hidden) return;
 
     const t = this.clock.getElapsedTime();
-    if (!this.reducedMotion) {
-      this.tilt.lerp(this.tiltTarget, 0.06);
-      this.group.rotation.x = this.tilt.x;
-      this.group.rotation.y = this.tilt.y;
-      for (const l of this.layers) {
-        if (Math.abs(l.rot - l.rotTarget) > 1e-4) {
-          l.rot += (l.rotTarget - l.rot) * 0.15;
-          l.mesh.rotation.z = l.rot;
-        }
+    // The plate stays face-on and fixed (so the overlay keeps registering); the
+    // life comes from the breathing candle and the turning wheels, not from
+    // moving the geometry the reader is placing cards onto.
+    for (const l of this.layers) {
+      if (Math.abs(l.rot - l.rotTarget) > 1e-4) {
+        l.rot += (l.rotTarget - l.rot) * (this.reducedMotion ? 1 : 0.15);
+        l.mesh.rotation.z = l.rot;
       }
+    }
+    if (!this.reducedMotion) {
       const flicker = 0.85 + 0.1 * Math.sin(t * 1.7) + 0.05 * Math.sin(t * 6.3 + 1.2);
       this.candle.intensity = 14 * flicker;
       this.glowMaterial.opacity = 0.13 + 0.05 * flicker;

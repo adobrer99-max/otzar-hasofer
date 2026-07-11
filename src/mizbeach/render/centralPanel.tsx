@@ -40,25 +40,62 @@ function PathGlyph({
   return <path d={g.d} transform={`translate(${cx} ${cy}) scale(${sx} ${sy}) translate(${-cxf} ${-cyf})`} fill={fill} />;
 }
 
-/** A placed letter, drawn as an illuminated card: its own tincture field, a double gold frame, the gold letterform. */
+/** The gold-leaf sheen used across the folio's frames and letterforms. */
+const GOLD = "url(#mizCentralGold)";
+
+function GoldLeafDefs() {
+  return (
+    <defs>
+      <linearGradient id="mizCentralGold" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#efd48c" />
+        <stop offset="0.42" stopColor="#c9a24b" />
+        <stop offset="0.72" stopColor="#a8823a" />
+        <stop offset="1" stopColor="#e0be6f" />
+      </linearGradient>
+    </defs>
+  );
+}
+
+/** A permanent card pocket on the folio — a recessed gold-ruled frame with corner ticks that a card seats into. */
+function CardSlotFrame({ cx, cy, size }: { cx: number; cy: number; size: number }) {
+  const half = size / 2;
+  const t = 12; // corner tick length
+  const corners = [
+    [cx - half, cy - half, 1, 1],
+    [cx + half, cy - half, -1, 1],
+    [cx - half, cy + half, 1, -1],
+    [cx + half, cy + half, -1, -1],
+  ] as const;
+  return (
+    <g>
+      <rect x={cx - half} y={cy - half} width={size} height={size} rx={12} fill="#0d1014" stroke={GOLD} strokeWidth={2} />
+      <rect x={cx - half + 4.5} y={cy - half + 4.5} width={size - 9} height={size - 9} rx={9} fill="none" stroke="var(--color-gold)" strokeWidth={0.75} opacity={0.4} />
+      <g stroke="var(--color-gold-bright)" strokeWidth={1.5} opacity={0.85} strokeLinecap="round">
+        {corners.map(([px, py, sx, sy], i) => (
+          <g key={i}>
+            <line x1={px + sx * 8} y1={py + sy * 8} x2={px + sx * (8 + t)} y2={py + sy * 8} />
+            <line x1={px + sx * 8} y1={py + sy * 8} x2={px + sx * 8} y2={py + sy * (8 + t)} />
+          </g>
+        ))}
+      </g>
+    </g>
+  );
+}
+
+/** A placed letter, drawn as an illuminated card seated in its pocket: its own tincture field, a double gold frame, the gold letterform. */
 function LetterCard({ draw, cx, cy, size }: { draw: LetterDraw; cx: number; cy: number; size: number }) {
-  const field = darken(colorFor(draw.letterId), 0.18);
+  const field = darken(colorFor(draw.letterId), 0.15);
+  const highlight = colorFor(draw.letterId);
   const half = size / 2;
   return (
     <g>
-      <rect x={cx - half} y={cy - half} width={size} height={size} rx={10} fill={field} stroke="var(--color-gold)" strokeWidth={2} />
-      <rect
-        x={cx - half + 5}
-        y={cy - half + 5}
-        width={size - 10}
-        height={size - 10}
-        rx={7}
-        fill="none"
-        stroke="var(--color-gold-bright)"
-        strokeWidth={0.75}
-        opacity={0.5}
-      />
-      <PathGlyph letterId={draw.letterId} cx={cx} cy={cy - 4} size={size * 0.56} reversed={draw.orientation === "reversed"} fill="var(--color-gold-bright)" />
+      {/* soft seat shadow under the card */}
+      <rect x={cx - half + 2} y={cy - half + 4} width={size} height={size} rx={9} fill="#000000" opacity={0.35} />
+      <rect x={cx - half} y={cy - half} width={size} height={size} rx={9} fill={field} stroke={GOLD} strokeWidth={2.25} />
+      {/* a lit top edge on the tincture, for a little dimensional warmth */}
+      <rect x={cx - half + 3} y={cy - half + 3} width={size - 6} height={(size - 6) * 0.4} rx={6} fill={highlight} opacity={0.18} />
+      <rect x={cx - half + 4.5} y={cy - half + 4.5} width={size - 9} height={size - 9} rx={6} fill="none" stroke="var(--color-gold-bright)" strokeWidth={0.75} opacity={0.55} />
+      <PathGlyph letterId={draw.letterId} cx={cx} cy={cy - 3} size={size * 0.56} reversed={draw.orientation === "reversed"} fill={GOLD} />
       {draw.orientation === "reversed" && (
         <text x={cx} y={cy + half - 7} textAnchor="middle" fontFamily="var(--font-latin)" fontSize={8} fill="var(--color-gold)" opacity={0.75}>
           reversed
@@ -68,20 +105,11 @@ function LetterCard({ draw, cx, cy, size }: { draw: LetterDraw; cx: number; cy: 
   );
 }
 
-/** An empty slot, drawn as a recessed gold-framed card niche with a quiet estoile — not a wireframe. */
-function LetterNiche({ cx, cy, size }: { cx: number; cy: number; size: number }) {
-  const half = size / 2;
+/** The quiet estoile shown in an empty pocket. */
+function SlotEmptyMark({ cx, cy }: { cx: number; cy: number }) {
   return (
-    <g>
-      <rect x={cx - half} y={cy - half} width={size} height={size} rx={10} fill="#0f1216" stroke="var(--color-gold)" strokeWidth={1.25} opacity={0.85} />
-      <rect x={cx - half + 4} y={cy - half + 4} width={size - 8} height={size - 8} rx={7} fill="none" stroke="var(--color-charcoal-line)" strokeWidth={1} />
-      <path
-        d={`M ${cx} ${cy - 9} L ${cx + 6} ${cy} L ${cx} ${cy + 9} L ${cx - 6} ${cy} Z`}
-        fill="none"
-        stroke="var(--color-gold)"
-        strokeWidth={0.75}
-        opacity={0.4}
-      />
+    <g stroke="var(--color-gold)" fill="none" opacity={0.32}>
+      <path d={`M ${cx} ${cy - 11} L ${cx + 3} ${cy - 3} L ${cx + 11} ${cy} L ${cx + 3} ${cy + 3} L ${cx} ${cy + 11} L ${cx - 3} ${cy + 3} L ${cx - 11} ${cy} L ${cx - 3} ${cy - 3} Z`} strokeWidth={0.75} />
     </g>
   );
 }
@@ -120,7 +148,7 @@ function HandAnchor() {
         })}
       </g>
       {/* Fingers */}
-      <g fill="none" stroke="var(--color-gold)" strokeWidth={2} strokeLinecap="round">
+      <g fill="none" stroke={GOLD} strokeWidth={2.5} strokeLinecap="round">
         {fingerAngles.map((angle) => (
           <line
             key={angle}
@@ -133,10 +161,11 @@ function HandAnchor() {
         ))}
       </g>
       {/* Palm */}
-      <ellipse cx={cx} cy={cy + 22} rx={30} ry={36} fill="var(--color-charcoal-raised)" stroke="var(--color-gold)" strokeWidth={2} />
+      <ellipse cx={cx} cy={cy + 22} rx={30} ry={36} fill="#141a24" stroke={GOLD} strokeWidth={2.5} />
+      <circle cx={cx} cy={cy + 22} r={6} fill={GOLD} opacity={0.8} />
       <text
         x={cx}
-        y={cy + 90}
+        y={cy + 66}
         textAnchor="middle"
         fontFamily="var(--font-latin)"
         fontSize={13}
@@ -146,7 +175,7 @@ function HandAnchor() {
       </text>
       <text
         x={cx}
-        y={cy + 108}
+        y={cy + 82}
         textAnchor="middle"
         fontFamily="var(--font-latin)"
         fontSize={10}
@@ -173,18 +202,27 @@ function Arch({ x, y, hebrew, title, subtitle }: { x: number; y: number; hebrew:
   const springLine = top + width / 2;
   return (
     <g>
+      {/* A solid, illuminated gateway — a dark tincture within a gold-leaf arch, with a keystone. */}
       <path
-        d={`M ${left} ${y} L ${left} ${springLine} A ${width / 2} ${width / 2} 0 0 1 ${right} ${springLine} L ${right} ${y}`}
+        d={`M ${left} ${y} L ${left} ${springLine} A ${width / 2} ${width / 2} 0 0 1 ${right} ${springLine} L ${right} ${y} Z`}
+        fill="#111826"
+        stroke={GOLD}
+        strokeWidth={2.5}
+      />
+      <path
+        d={`M ${left + 7} ${y} L ${left + 7} ${springLine} A ${width / 2 - 7} ${width / 2 - 7} 0 0 1 ${right - 7} ${springLine} L ${right - 7} ${y}`}
         fill="none"
         stroke="var(--color-gold)"
-        strokeWidth={2}
+        strokeWidth={0.75}
+        opacity={0.4}
       />
+      <path d={`M ${x} ${top - 7} L ${x + 8} ${top + 7} L ${x - 8} ${top + 7} Z`} fill={GOLD} stroke="var(--color-charcoal)" strokeWidth={0.5} />
       <text
         x={x}
-        y={top + width / 2 - 8}
+        y={top + width / 2 - 4}
         textAnchor="middle"
         fontFamily="var(--font-hebrew)"
-        fontSize={20}
+        fontSize={22}
         fill="var(--color-gold-bright)"
       >
         {hebrew}
@@ -223,17 +261,20 @@ function Well({ x, y, hebrew, title, subtitle }: { x: number; y: number; hebrew:
   const top = y - height;
   return (
     <g>
+      {/* A vessel with a gold-leaf rim holding still water. */}
       <path
-        d={`M ${left} ${top} L ${left} ${y} L ${right} ${y} L ${right} ${top}`}
-        fill="none"
-        stroke="var(--color-copper)"
-        strokeWidth={2}
+        d={`M ${left} ${top} L ${left} ${y} Q ${left} ${y + 8} ${left + 8} ${y + 8} L ${right - 8} ${y + 8} Q ${right} ${y + 8} ${right} ${y} L ${right} ${top} Z`}
+        fill="#0e1622"
+        stroke={GOLD}
+        strokeWidth={2.5}
       />
+      <ellipse cx={x} cy={top} rx={width / 2} ry={7} fill="#0b1220" stroke={GOLD} strokeWidth={2} />
       <path
-        d={`M ${left + 6} ${top + 18} Q ${x - width / 4} ${top + 10}, ${x} ${top + 18} T ${right - 6} ${top + 18}`}
+        d={`M ${left + 10} ${top + 20} Q ${x - width / 4} ${top + 12}, ${x} ${top + 20} T ${right - 10} ${top + 20}`}
         fill="none"
         stroke="var(--color-blue-bright)"
         strokeWidth={1.5}
+        opacity={0.85}
       />
       <text
         x={x}
@@ -342,31 +383,20 @@ function SmallTreeOfLife({ x, y, middah }: { x: number; y: number; middah?: Sefi
   );
 }
 
-/** The three letter positions between the Hand Anchor and the Gates — an empty niche until a reading places its card. */
+/** The three letter positions between the Hand Anchor and the Gates — each a card pocket seating a card once drawn. */
 function LetterSlots({ placements }: { placements?: CentralPlacements }) {
-  const { columnX, handY, gatesY } = CENTRAL_PANEL;
-  const y = Math.round(handY + (gatesY - handY) * 0.42);
+  const { columnX, lettersY } = CENTRAL_PANEL;
   return (
     <g>
       {columnX.map((x, i) => {
         const draw = placements?.letters[i] ?? null;
         return (
           <g key={i}>
-            {draw ? <LetterCard draw={draw} cx={x} cy={y} size={88} /> : <LetterNiche cx={x} cy={y} size={88} />}
+            <CardSlotFrame cx={x} cy={lettersY} size={100} />
+            {draw ? <LetterCard draw={draw} cx={x} cy={lettersY} size={84} /> : <SlotEmptyMark cx={x} cy={lettersY} />}
           </g>
         );
       })}
-      <text
-        x={CENTRAL_PANEL.width / 2}
-        y={y + 62}
-        textAnchor="middle"
-        fontFamily="var(--font-latin)"
-        fontSize={11}
-        fill="var(--color-silver)"
-        opacity={0.7}
-      >
-        The Three Letters
-      </text>
     </g>
   );
 }
@@ -382,6 +412,7 @@ export function MizbeachCentralPanel({ placements }: { placements?: CentralPlace
       style={{ width: "100%", height: "auto", background: "var(--color-charcoal)" }}
     >
       <title>The Mizbe'ach central panel</title>
+      <GoldLeafDefs />
       <rect x={0} y={0} width={width} height={height} fill="var(--color-charcoal)" />
       <text
         x={width / 2}
