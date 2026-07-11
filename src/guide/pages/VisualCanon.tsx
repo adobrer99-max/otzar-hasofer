@@ -93,25 +93,27 @@ export function VisualCanon() {
         and the Herald is <strong>coloured from the letters actually drawn</strong>:
         the charges are struck in gold, and each field is tinctured in its
         letter's own colour, taken to a deep jewel tone (gold on colour, the
-        heraldic rule of tincture). So a reading of fire-letters burns on deep
-        red, one of water-letters on deep blue, and no two Heralds share a field
-        — each is unique to the person, not one of a fixed set. Around the
-        escutcheon stands a full coat of arms: a <strong>crest</strong> (a gold
-        torse and rising flame), foliate <strong>mantling</strong>, a{" "}
-        <strong>compartment</strong> (rooted earth in the Land, water in Galut),
-        an engraved <strong>orle</strong> studded with gold lozenges, and a{" "}
-        <strong>motto scroll</strong> bearing the sealed Heraldic Epithet.
+        heraldic rule of tincture). And when a Mother letter is drawn, its{" "}
+        <strong>element casts the whole field</strong> toward its hue — a fire
+        reading burns on deep red, a water reading cools to deep blue — so the
+        ground itself declares the reading's nature. No two Heralds share a
+        field. Around the escutcheon stands a full coat of arms: a{" "}
+        <strong>crest</strong> (a gold torse), foliate <strong>mantling</strong>,
+        a <strong>compartment</strong> (rooted earth in the Land, water in
+        Galut), an engraved <strong>orle</strong> studded with gold lozenges, and
+        a <strong>motto scroll</strong> bearing the sealed Heraldic Epithet.
         Nothing is ever laid over a letter.
       </p>
       <p>
-        Three further marks make each Herald singular, all derived from the
-        letters drawn: a <strong>chief of associations</strong> across the top,
-        bearing each letter's own cosmic sign — its element (an alchemical
-        triangle), its planet (a classical sigil), or its zodiac (a small
-        constellation); a <strong>semé</strong> of faint gold estoiles powdering
-        the field; and the reading's <strong>gematria</strong>, struck in small
-        Hebrew numerals beneath the charges. Every one is a consequence of the
-        reading, never decoration for its own sake.
+        The crest bears the reading's <strong>celestial signs</strong>: above
+        the torse rise the zodiac <strong>constellation</strong> and planet{" "}
+        <strong>sigil</strong> of each drawn letter that carries one (a single
+        gold flame when none do). Two further marks, both derived from the
+        letters, make each Herald singular: a <strong>semé</strong> of faint gold
+        estoiles powdering the field, and the reading's{" "}
+        <strong>gematria</strong>, struck in small Hebrew numerals beneath the
+        charges. Every one is a consequence of the reading, never decoration for
+        its own sake.
       </p>
       <p>
         As a Herald forms across the seven readings it fills out the way real

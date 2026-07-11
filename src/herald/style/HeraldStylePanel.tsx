@@ -9,16 +9,15 @@ const METALS: { value: NonNullable<HeraldStyle["metal"]>; label: string }[] = [
 ];
 
 const TOGGLES: {
-  key: "crest" | "mantling" | "compartment" | "supporters" | "motto" | "chief" | "seme" | "gematria";
+  key: "crest" | "mantling" | "compartment" | "supporters" | "motto" | "seme" | "gematria";
   label: string;
   def: boolean;
 }[] = [
-  { key: "crest", label: "Crest", def: true },
+  { key: "crest", label: "Crest & celestial signs", def: true },
   { key: "mantling", label: "Mantling", def: true },
   { key: "compartment", label: "Compartment", def: true },
   { key: "supporters", label: "Supporters", def: false },
   { key: "motto", label: "Motto scroll", def: true },
-  { key: "chief", label: "Chief of associations", def: true },
   { key: "seme", label: "Semé (powdering)", def: true },
   { key: "gematria", label: "Gematria mark", def: true },
 ];

@@ -38,6 +38,27 @@ const ZODIAC = [
   "Pisces",
 ];
 
+/** The elemental cast each element lends the field — a hue the tinctures blend toward. */
+export const ELEMENT_HUES: Record<"fire" | "water" | "air" | "earth", string> = {
+  fire: "#c0392b",
+  water: "#2e6f9e",
+  air: "#8fa0b8",
+  earth: "#5f7d3a",
+};
+
+/**
+ * The reading's elemental cast — the first drawn Mother letter's element hue,
+ * used to tint the whole field so a fire reading burns and a water reading
+ * cools. Undefined when no element letter was drawn.
+ */
+export function dominantElementHue(letterIds: string[]): string | undefined {
+  for (const id of letterIds) {
+    const a = associationOf(id);
+    if (a?.kind === "element") return ELEMENT_HUES[a.key];
+  }
+  return undefined;
+}
+
 /** Resolve a letter's cosmic association, or undefined if it can't be parsed. */
 export function associationOf(letterId: string): Association | undefined {
   const letter = lettersById[letterId];

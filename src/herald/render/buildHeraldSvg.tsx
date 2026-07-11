@@ -10,9 +10,9 @@ import { computeDivisions, type Division } from "./divisions";
 import { nameSeedOf, flourishRotation } from "./nameGeometry";
 import { LetterGlyph } from "./LetterGlyph";
 import { LetterCharge, hasCharge } from "./letterCharges";
-import { colorFor, darken } from "./letterColors";
+import { colorFor, darken, blend } from "./letterColors";
 import { AssociationEmblem } from "./heraldEmblems";
-import { toHebrewNumeral } from "./associations";
+import { toHebrewNumeral, dominantElementHue, associationOf } from "./associations";
 
 type ShoreshResult = ReturnType<typeof resolveShoresh>;
 import {
@@ -51,7 +51,6 @@ function vocab(style?: HeraldStyle): {
   mantling: boolean;
   compartment: boolean;
   supporters: boolean;
-  chief: boolean;
   seme: boolean;
   gematria: boolean;
 } {
@@ -60,7 +59,6 @@ function vocab(style?: HeraldStyle): {
     mantling: style?.mantling ?? true,
     compartment: style?.compartment ?? true,
     supporters: style?.supporters ?? false,
-    chief: style?.chief ?? true,
     seme: style?.seme ?? true,
     gematria: style?.gematria ?? true,
   };
@@ -321,19 +319,51 @@ function OrnamentalBorder({
 }
 
 /**
- * The crest — a torse (twisted wreath) resting on the shield's chief, from
- * which a small gold flame rises. Above the arms in real heraldry; here it
- * marks the Herald's summit. Kept deliberately simple and always gold.
+ * The crest — a torse (twisted wreath) resting on the shield's chief, bearing
+ * the reading's celestial signs above it: the zodiac constellation and planet
+ * sigil of each drawn letter that carries one. (The elements aren't shown here
+ * — they cast the field's colour instead.) When no drawn letter is celestial,
+ * a single gold flame rises in their place — the neshama, the light.
  */
-function Crest({ metalFill, metalLine }: { metalFill: string; metalLine: string }) {
+function Crest({ letterIds, metalFill, metalLine }: { letterIds: string[]; metalFill: string; metalLine: string }) {
   const center = shieldCenter();
   const torseY = SHIELD.top - 6;
   const half = 58;
   const bandH = 11;
   const twists = 7;
   const step = (half * 2) / twists;
+  const celestial = [...new Set(letterIds)].filter((id) => {
+    const a = associationOf(id);
+    return a?.kind === "zodiac" || a?.kind === "planet";
+  });
+  const signY = torseY - 34;
+  const spacing = 44;
+  const startX = center.x - (spacing * (celestial.length - 1)) / 2;
   return (
     <g data-role="crest">
+      {/* The celestial signs rising from the wreath, or a flame if there are none. */}
+      {celestial.length > 0 ? (
+        celestial.map((id, i) => (
+          <AssociationEmblem key={id} letterId={id} x={startX + i * spacing} y={signY} size={34} color={metalFill} />
+        ))
+      ) : (
+        <>
+          <path
+            d={`M ${center.x} ${torseY - 62}
+                C ${center.x - 15} ${torseY - 38}, ${center.x - 13} ${torseY - 16}, ${center.x} ${torseY - 11}
+                C ${center.x + 13} ${torseY - 16}, ${center.x + 15} ${torseY - 38}, ${center.x} ${torseY - 62} Z`}
+            fill={metalFill}
+            stroke={metalLine}
+            strokeWidth={0.75}
+          />
+          <path
+            d={`M ${center.x} ${torseY - 44}
+                C ${center.x - 6} ${torseY - 30}, ${center.x - 5} ${torseY - 18}, ${center.x} ${torseY - 15}
+                C ${center.x + 5} ${torseY - 18}, ${center.x + 6} ${torseY - 30}, ${center.x} ${torseY - 44} Z`}
+            fill="var(--color-charcoal)"
+          />
+        </>
+      )}
       {/* Torse: a solid gold rope-band with diagonal cross-hatching — the
           classic twisted wreath, reading as a rope rather than a fence. */}
       <path
@@ -348,22 +378,6 @@ function Crest({ metalFill, metalLine }: { metalFill: string; metalLine: string 
           return <line key={i} x1={x - 4} y1={torseY - bandH * 0.6} x2={x + 4} y2={torseY + bandH * 0.6} />;
         })}
       </g>
-      {/* A single upright flame rising from the wreath — the neshama, the light. */}
-      <path
-        d={`M ${center.x} ${torseY - 62}
-            C ${center.x - 15} ${torseY - 38}, ${center.x - 13} ${torseY - 16}, ${center.x} ${torseY - 11}
-            C ${center.x + 13} ${torseY - 16}, ${center.x + 15} ${torseY - 38}, ${center.x} ${torseY - 62} Z`}
-        fill={metalFill}
-        stroke={metalLine}
-        strokeWidth={0.75}
-      />
-      {/* Inner tongue of flame, cut from the deep ground for a crisp engraved read. */}
-      <path
-        d={`M ${center.x} ${torseY - 44}
-            C ${center.x - 6} ${torseY - 30}, ${center.x - 5} ${torseY - 18}, ${center.x} ${torseY - 15}
-            C ${center.x + 5} ${torseY - 18}, ${center.x + 6} ${torseY - 30}, ${center.x} ${torseY - 44} Z`}
-        fill="var(--color-charcoal)"
-      />
     </g>
   );
 }
@@ -560,15 +574,18 @@ function hexLuminance(hex: string): number {
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 }
 
-function FieldTincture({ letterIds }: { letterIds: string[] }) {
+function FieldTincture({ letterIds, elementColor }: { letterIds: string[]; elementColor?: string }) {
   const distinct = [...new Set(letterIds)];
   // Deep, flat heraldic tinctures — each field the letter's own colour, taken
   // to a rich jewel tone so a gold charge reads crisply over it (metal on
   // colour, the rule of tincture). No wash: these are the field, not a tint.
   // Light, metal-family colours (gold, yellow, silver) are darkened harder so
-  // a gold charge never sits gold-on-gold.
+  // a gold charge never sits gold-on-gold. When the reading carries an element,
+  // every field is cast toward that element's hue so the whole ground reads
+  // elemental (a fire reading warms, a water reading cools).
   const tincture = (id: string) => {
-    const c = colorFor(id);
+    const own = colorFor(id);
+    const c = elementColor ? blend([own, own, elementColor]) : own;
     return darken(c, Math.min(0.52 + 0.38 * hexLuminance(c), 0.82));
   };
   const colors = distinct.map(tincture);
@@ -597,31 +614,6 @@ function FieldTincture({ letterIds }: { letterIds: string[] }) {
     );
   }
   return <rect x={L} y={Y} width={R - L} height={H} fill={colors[0] ?? "#33343f"} opacity={op} />;
-}
-
-/**
- * A chief of associations — a row across the top of the shield bearing each
- * drawn letter's own cosmic mark: its element (an alchemical triangle), its
- * planet (a classical sigil), or its zodiac sign (a small constellation). The
- * emblems are derived straight from the letters, so the chief is unique to the
- * reading; the twelve signs, seven planets, and four elements each read
- * distinctly.
- */
-function AssociationChief({ letterIds, color }: { letterIds: string[]; color: string }) {
-  const distinct = [...new Set(letterIds)];
-  if (distinct.length === 0) return null;
-  const mid = (SHIELD.left + SHIELD.right) / 2;
-  const y = SHIELD.top + 70;
-  const spacing = 96;
-  const startX = mid - (spacing * (distinct.length - 1)) / 2;
-  const xs = distinct.map((_, i) => startX + i * spacing);
-  return (
-    <g data-role="chief">
-      {distinct.map((id, i) => (
-        <AssociationEmblem key={id} letterId={id} x={xs[i]} y={y} size={40} color={color} />
-      ))}
-    </g>
-  );
 }
 
 /**
@@ -749,8 +741,6 @@ interface HeraldFigureProps {
   mantling?: boolean;
   compartment?: boolean;
   supporters?: boolean;
-  /** A chief of the letters' cosmic associations (element / planet / zodiac). */
-  chief?: boolean;
   /** Semé — the field strewn with a faint repeat of each letter's charge. */
   seme?: boolean;
   /** The reading's gematria, struck in Hebrew numerals below the charges. */
@@ -778,11 +768,12 @@ function HeraldFigure({
   mantling = true,
   compartment = true,
   supporters = false,
-  chief = true,
   seme = true,
   gematria = true,
 }: HeraldFigureProps) {
   const center = shieldCenter();
+  const orderedLetterIds = [...divisions].sort((a, b) => a.drawOrder - b.drawOrder).map((d) => d.letterId);
+  const elementColor = dominantElementHue(orderedLetterIds);
   const gematriaTotal = divisions.reduce(
     (sum, d) => sum + (lettersById[d.letterId]?.gematria ?? 0) * d.count,
     0,
@@ -828,7 +819,7 @@ function HeraldFigure({
       <g clipPath="url(#herald-shield-clip)">
         {/* Flat deep ground, then the flat tincture division — no gradient, glow, or texture. */}
         <path d={SHIELD_PATH} fill="var(--color-charcoal)" />
-        <FieldTincture letterIds={divisions.map((d) => d.letterId)} />
+        <FieldTincture letterIds={divisions.map((d) => d.letterId)} elementColor={elementColor} />
         {seme && divisions.length > 0 && <FieldSeme divisions={divisions} color={metalFill} />}
 
         <DivisionDividers bands={divisions.map((d) => d.band)} color={metalLine} />
@@ -863,9 +854,6 @@ function HeraldFigure({
           <FestivalMotif key={motif} motif={motif} center={center} />
         ))}
         <OrnamentalBorder density={ornamentDensity} metalFill={metalFill} metalLine={metalLine} nameSeed={nameSeed} />
-        {chief && divisions.length > 0 && (
-          <AssociationChief letterIds={divisions.map((d) => d.letterId)} color={metalFill} />
-        )}
         {gematria && <GematriaMark total={gematriaTotal} color={metalFill} />}
 
         {/* The charges last — each enamelled in its letter's own colour, drawn
@@ -917,7 +905,7 @@ function HeraldFigure({
       {/* The escutcheon edge, outside the clip so the full stroke reads — a
           crisp struck gold edge. */}
       <path d={SHIELD_PATH} fill="none" stroke={metalFill} strokeWidth={3} />
-      {crest && <Crest metalFill={metalFill} metalLine={metalLine} />}
+      {crest && <Crest letterIds={orderedLetterIds} metalFill={metalFill} metalLine={metalLine} />}
     </>
   );
 }
