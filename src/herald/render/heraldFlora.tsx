@@ -10,23 +10,31 @@ import { SHIELD } from "./heraldGeometry";
 export const SPECIES = ["wheat", "barley", "grape", "fig", "pomegranate", "olive", "date"] as const;
 export type Species = (typeof SPECIES)[number];
 
-/** The seven species set against the seven lower Sefirot (first-draft editorial mapping). */
-const SPECIES_BY_SEFIRAH: Record<SefirahId, Species> = {
-  keter: "wheat",
-  chochmah: "olive",
-  binah: "grape",
-  chesed: "olive",
-  gevurah: "pomegranate",
-  tiferet: "wheat",
-  netzach: "date",
-  hod: "fig",
-  yesod: "barley",
-  malchut: "grape",
+/**
+ * The seven lower Sefirot ↔ the seven species, a one-to-one mapping in the
+ * order the species are named in Deut. 8:8 (Chesed→Malchut ↔ wheat→date). The
+ * species a Herald wears is set by whichever lower Sefirah wins out across the
+ * seven Encounters — i.e. the synthesis's dominant middah. (The upper three
+ * Sefirot never carry a middah, so they aren't mapped.) First-draft editorial
+ * correspondence.
+ */
+const SPECIES_BY_SEFIRAH: Partial<Record<SefirahId, Species>> = {
+  chesed: "wheat",
+  gevurah: "barley",
+  tiferet: "grape",
+  netzach: "fig",
+  hod: "pomegranate",
+  yesod: "olive",
+  malchut: "date",
 };
 
-/** The default species for a reading: its dominant middah's species, else one keyed off the gematria. */
+/**
+ * The species for a Herald: the dominant lower Sefirah's species (the Sefirah
+ * that won out over the seven Encounters), falling back to one keyed off the
+ * gematria when no middah is available.
+ */
 export function speciesFor(sefirah: SefirahId | undefined, gematria: number): Species {
-  if (sefirah && SPECIES_BY_SEFIRAH[sefirah]) return SPECIES_BY_SEFIRAH[sefirah];
+  if (sefirah && SPECIES_BY_SEFIRAH[sefirah]) return SPECIES_BY_SEFIRAH[sefirah]!;
   return SPECIES[Math.abs(gematria) % SPECIES.length];
 }
 

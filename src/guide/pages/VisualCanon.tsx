@@ -100,9 +100,10 @@ export function VisualCanon() {
         field. Around the escutcheon stands a full coat of arms: a{" "}
         <strong>crest</strong> (a gold torse), a <strong>mantling</strong> of the{" "}
         <strong>Shivat HaMinim</strong> (the seven species — wheat, barley,
-        grape, fig, pomegranate, olive, or date — one chosen for the reading, or
-        curated), a <strong>compartment</strong> (rooted earth in the Land, water
-        in Galut), an engraved <strong>orle</strong> studded with gold lozenges, and
+        grape, fig, pomegranate, olive, or date — set by whichever of the seven
+        lower Sefirot wins out across the Seven Encounters, or curated), a{" "}
+        <strong>compartment</strong> (rooted earth in the Land, water in Galut),
+        an engraved <strong>orle</strong> studded with gold lozenges, and
         a <strong>motto scroll</strong> bearing the sealed Heraldic Epithet.
         Nothing is ever laid over a letter.
       </p>
