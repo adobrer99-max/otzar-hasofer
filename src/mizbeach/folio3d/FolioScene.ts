@@ -4,27 +4,39 @@ export interface FolioSceneOptions {
   /** viewBox aspect ratio (width / height) of the folio piece this scene shows. */
   aspect: number;
   reducedMotion: boolean;
+  /**
+   * How many stacked art planes to create. 1 for the central panel; the ring
+   * mandala uses 3 (a static base plus two cyclewheels that turn independently).
+   */
+  layerCount?: number;
+}
+
+interface Layer {
+  mesh: THREE.Mesh;
+  material: THREE.MeshBasicMaterial;
+  rot: number;
+  rotTarget: number;
 }
 
 /**
- * A small, framework-agnostic three.js scene that presents one folio piece as
- * a lit "illuminated plate" resting on a tooled-leather folio: the piece's SVG
- * art is mapped onto a flat plane (kept unlit so the gold linework stays crisp
- * and legible), set on a leather backing frame under a warm candle-glow that
- * breathes, with a gentle pointer parallax tilt. The plane stays face-on so the
- * DOM/SVG interaction overlay above it registers pixel-for-pixel.
+ * A small, framework-agnostic three.js scene that presents a folio piece as a
+ * lit "illuminated plate" resting on a tooled-leather folio: the piece's SVG
+ * art is mapped onto flat planes (unlit, so the gold linework stays crisp),
+ * set on a leather backing under a warm candle-glow that breathes, with a
+ * gentle pointer parallax tilt. Art planes stay face-on so the DOM/SVG
+ * interaction overlay above registers pixel-for-pixel.
  *
- * All motion lives here in the render loop, never in stored data; honours
- * prefers-reduced-motion by holding a still, evenly-lit frame.
+ * The mandala stacks several planes and turns two of them (the Mazalot and
+ * Moon cyclewheels) beneath a fixed pointer — a volvelle. All motion lives in
+ * the render loop, never in stored data; prefers-reduced-motion holds a still,
+ * evenly-lit frame and snaps wheel turns instead of easing them.
  */
 export class FolioScene {
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
   private camera: THREE.PerspectiveCamera;
   private group = new THREE.Group();
-  private artPlane: THREE.Mesh;
-  private artMaterial: THREE.MeshBasicMaterial;
-  private glow: THREE.Mesh;
+  private layers: Layer[] = [];
   private glowMaterial: THREE.MeshBasicMaterial;
   private candle: THREE.PointLight;
   private planeW: number;
@@ -42,6 +54,7 @@ export class FolioScene {
     this.canvas = canvas;
     this.reducedMotion = opts.reducedMotion;
     this.planeW = this.planeH * opts.aspect;
+    const layerCount = opts.layerCount ?? 1;
 
     this.renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -54,7 +67,7 @@ export class FolioScene {
 
     this.scene.add(this.group);
 
-    // ——— leather backing frame (lit, sits just behind the plate) ———
+    // ——— leather backing frame (lit, sits just behind the plates) ———
     const leather = new THREE.Mesh(
       new THREE.PlaneGeometry(this.planeW * 1.08, this.planeH * 1.08),
       new THREE.MeshStandardMaterial({ color: 0x1a1712, roughness: 0.82, metalness: 0.15 }),
@@ -62,10 +75,14 @@ export class FolioScene {
     leather.position.z = -0.08;
     this.group.add(leather);
 
-    // ——— the folio art plate (unlit, texture set later) ———
-    this.artMaterial = new THREE.MeshBasicMaterial({ transparent: true, toneMapped: false });
-    this.artPlane = new THREE.Mesh(new THREE.PlaneGeometry(this.planeW, this.planeH), this.artMaterial);
-    this.group.add(this.artPlane);
+    // ——— the folio art plates (unlit, textures set later) ———
+    for (let i = 0; i < layerCount; i++) {
+      const material = new THREE.MeshBasicMaterial({ transparent: true, toneMapped: false });
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(this.planeW, this.planeH), material);
+      mesh.position.z = i * 0.03;
+      this.group.add(mesh);
+      this.layers.push({ mesh, material, rot: 0, rotTarget: 0 });
+    }
 
     // ——— warm candle glow falling on the plate (additive, breathing) ———
     this.glowMaterial = new THREE.MeshBasicMaterial({
@@ -76,11 +93,10 @@ export class FolioScene {
       opacity: this.reducedMotion ? 0.1 : 0.16,
       toneMapped: false,
     });
-    this.glow = new THREE.Mesh(new THREE.PlaneGeometry(this.planeW * 1.2, this.planeH * 1.2), this.glowMaterial);
-    this.glow.position.z = 0.05;
-    this.group.add(this.glow);
+    const glow = new THREE.Mesh(new THREE.PlaneGeometry(this.planeW * 1.2, this.planeH * 1.2), this.glowMaterial);
+    glow.position.z = layerCount * 0.03 + 0.05;
+    this.group.add(glow);
 
-    // lights (only the leather is lit — the plate is unlit for legibility)
     this.scene.add(new THREE.AmbientLight(0xfff2dd, 0.55));
     this.candle = new THREE.PointLight(0xffcc88, 14, 20, 2);
     this.candle.position.set(-0.6, 0.9, 1.4);
@@ -90,11 +106,27 @@ export class FolioScene {
     this.loop();
   }
 
-  setTexture(tex: THREE.Texture) {
-    const prev = this.artMaterial.map;
-    this.artMaterial.map = tex;
-    this.artMaterial.needsUpdate = true;
+  setTexture(tex: THREE.Texture, layer = 0) {
+    const l = this.layers[layer];
+    if (!l) {
+      tex.dispose();
+      return;
+    }
+    const prev = l.material.map;
+    l.material.map = tex;
+    l.material.needsUpdate = true;
     prev?.dispose();
+  }
+
+  /** Turn a cyclewheel layer to `radians` (eased, unless reduced motion). */
+  setLayerRotation(layer: number, radians: number) {
+    const l = this.layers[layer];
+    if (!l) return;
+    l.rotTarget = radians;
+    if (this.reducedMotion) {
+      l.rot = radians;
+      l.mesh.rotation.z = radians;
+    }
   }
 
   /** Pointer position in [-1,1] range over the canvas, or null to rest flat. */
@@ -122,11 +154,15 @@ export class FolioScene {
 
     const t = this.clock.getElapsedTime();
     if (!this.reducedMotion) {
-      // ease the tilt toward its target
       this.tilt.lerp(this.tiltTarget, 0.06);
       this.group.rotation.x = this.tilt.x;
       this.group.rotation.y = this.tilt.y;
-      // candle breath: a slow flicker with a faster shimmer on top
+      for (const l of this.layers) {
+        if (Math.abs(l.rot - l.rotTarget) > 1e-4) {
+          l.rot += (l.rotTarget - l.rot) * 0.15;
+          l.mesh.rotation.z = l.rot;
+        }
+      }
       const flicker = 0.85 + 0.1 * Math.sin(t * 1.7) + 0.05 * Math.sin(t * 6.3 + 1.2);
       this.candle.intensity = 14 * flicker;
       this.glowMaterial.opacity = 0.13 + 0.05 * flicker;
@@ -137,7 +173,6 @@ export class FolioScene {
   dispose() {
     this.disposed = true;
     cancelAnimationFrame(this.raf);
-    this.artMaterial.map?.dispose();
     this.glowMaterial.map?.dispose();
     this.scene.traverse((obj) => {
       if (obj instanceof THREE.Mesh) {
@@ -147,6 +182,7 @@ export class FolioScene {
         else mat.dispose();
       }
     });
+    for (const l of this.layers) l.material.map?.dispose();
     this.renderer.dispose();
   }
 }

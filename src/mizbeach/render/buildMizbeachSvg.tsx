@@ -412,10 +412,39 @@ function MizrachVector() {
   );
 }
 
+/**
+ * The gold pointer at twelve o'clock. On the 3D folio the two cyclewheels turn
+ * beneath it like a volvelle, so this marks the selected month / lunar day.
+ */
+function SelectionPointer() {
+  const y = CENTER.y - RINGS.mazalot.radius - RINGS.mazalot.thickness / 2 - 4;
+  return (
+    <path
+      d={`M ${CENTER.x - 7} ${y - 12} L ${CENTER.x + 7} ${y - 12} L ${CENTER.x} ${y} Z`}
+      fill="var(--color-gold-bright)"
+      stroke="var(--color-charcoal)"
+      strokeWidth={1}
+    />
+  );
+}
+
+/**
+ * Which slice of the mandala to draw. The 3D folio renders the pieces as
+ * separate stacked planes so the two cyclewheels can physically turn:
+ *   - "static": everything that never rotates (border, Parsha, Sabbath Core,
+ *     PaRDeS corners, Mizrach) plus the fixed selection pointer.
+ *   - "outer-wheel": the Mazalot + Solar-Month rings (one rigid month wheel).
+ *   - "moon-wheel": the Moon ring.
+ * Omitting `only` draws the whole mandala on one plane (the flat-SVG folio,
+ * the guide page, and the print master) — unchanged, so its tests still pass.
+ */
+export type MandalaSlice = "static" | "outer-wheel" | "moon-wheel";
+
 export function MizbeachSvgContent({
   sacredTime,
   revealHidden,
   neutral = false,
+  only,
 }: {
   sacredTime: SacredTimeSnapshot;
   revealHidden: boolean;
@@ -427,17 +456,23 @@ export function MizbeachSvgContent({
    * unchanged.
    */
   neutral?: boolean;
+  only?: MandalaSlice;
 }) {
   const isShabbat = !neutral && sacredTime.activeFestivalIds.includes("shabbat");
-  return (
-    <g>
+
+  const outerWheel = (
+    <>
       <MazalotRing activeMonth={sacredTime.hebrewDate.month} neutral={neutral} />
-      <MoonRing phase={sacredTime.lunarPhase} neutral={neutral} />
       <SolarMonthRing
         activeMonth={sacredTime.hebrewDate.month}
         activeFestivalIds={sacredTime.activeFestivalIds}
         neutral={neutral}
       />
+    </>
+  );
+  const moonWheel = <MoonRing phase={sacredTime.lunarPhase} neutral={neutral} />;
+  const staticLayer = (
+    <>
       <ParshaRing label={neutral ? undefined : sacredTime.parsha?.label} />
       <SabbathCore
         isShabbat={isShabbat}
@@ -448,6 +483,26 @@ export function MizbeachSvgContent({
       <ShivatHaminimBorder />
       <PardesCorners />
       <MizrachVector />
+    </>
+  );
+
+  if (only === "outer-wheel") return <g>{outerWheel}</g>;
+  if (only === "moon-wheel") return <g>{moonWheel}</g>;
+  // The pointer only appears on the 3D folio's static plane (the wheels turn
+  // beneath it); the flat whole-mandala render below is unchanged.
+  if (only === "static")
+    return (
+      <g>
+        {staticLayer}
+        <SelectionPointer />
+      </g>
+    );
+
+  return (
+    <g>
+      {outerWheel}
+      {moonWheel}
+      {staticLayer}
     </g>
   );
 }

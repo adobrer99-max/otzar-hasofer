@@ -10,7 +10,7 @@ import { resolveSpread } from "../../herald/spreads/resolveSpread";
 import { resolveDorotMechanic } from "../../herald/dorot/dorotMechanics";
 import { resolveShoresh } from "../../herald/shoresh/resolveShoresh";
 import { MizbeachCentralPanel } from "../render/centralPanel";
-import { MizbeachSvgContent } from "../render/buildMizbeachSvg";
+import { MizbeachSvgContent, type MandalaSlice } from "../render/buildMizbeachSvg";
 import { FolioCanvas } from "../folio3d/FolioCanvas";
 import { CENTRAL_PANEL, RINGS, CENTER, VIEWBOX_SIZE, segmentAngles, polarToCartesian } from "../render/mizbeachGeometry";
 import { sliceCenterAngle } from "./zones";
@@ -122,29 +122,54 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
   const monthSlice = monthSliceIndex(hebrewDateFromGregorian(state.effectiveDate));
   const dayNow = hebrewDateFromGregorian(state.effectiveDate).day;
 
+  // The two cyclewheels physically turn on the 3D folio so the selected slice
+  // sits under the fixed top pointer (a volvelle). These are the wheels'
+  // rotation angles, in degrees clockwise-from-top; the plane rotation and the
+  // rotation-aware drag hit-test both derive from them, so visual and
+  // interaction stay in sync.
+  const DEG2RAD = Math.PI / 180;
+  const outerWheelDeg = sliceCenterAngle(12, monthSlice);
+  const moonWheelDeg = ((dayNow - 1) / 29) * 360;
+
   function ringPointer(kind: "month" | "day", e: React.PointerEvent<SVGGElement>) {
     if (e.buttons === 0 && e.type !== "pointerdown") return;
     const svg = e.currentTarget.ownerSVGElement;
     if (!svg) return;
     const { x, y } = svgPoint(svg, e.clientX, e.clientY);
-    const angle = angleFromPoint(x, y);
+    const screenAngle = angleFromPoint(x, y);
     if (kind === "month") {
-      const slice = Math.floor(angle / 30) % 12;
+      // Undo the wheel's current rotation to find the slice actually under the cursor.
+      const textureAngle = (((screenAngle + outerWheelDeg) % 360) + 360) % 360;
+      const slice = Math.floor(textureAngle / 30) % 12;
       onChange({ effectiveDate: setMonthSlice(state.effectiveDate, slice) });
     } else {
-      const day = Math.max(1, Math.round((angle / 360) * 29) + 1);
+      const textureAngle = (((screenAngle + moonWheelDeg) % 360) + 360) % 360;
+      const day = Math.min(29, Math.max(1, Math.round((textureAngle / 360) * 29) + 1));
       onChange({ effectiveDate: setDayOfMonth(state.effectiveDate, day) });
     }
   }
+
+  const dateKey = `${state.effectiveDate.getTime()}-${state.geoMode}`;
+  // Build one mandala plane. The static base and the flat fallback carry the
+  // charcoal ground; the two cyclewheels are drawn on transparent planes so
+  // they read as separate discs turning above the base.
+  const mandalaSvg = (only?: MandalaSlice) => (
+    <svg viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`} xmlns="http://www.w3.org/2000/svg">
+      {(!only || only === "static") && (
+        <rect x={0} y={0} width={VIEWBOX_SIZE} height={VIEWBOX_SIZE} fill="var(--color-charcoal)" />
+      )}
+      <MizbeachSvgContent sacredTime={sacredTime} revealHidden={false} only={only} />
+    </svg>
+  );
 
   return (
     <div className={styles.surface}>
       {/* Central panel (3D plate, or SVG fallback) + interaction overlay */}
       <div className={styles.panelWrap}>
         <FolioCanvas
-          art={<MizbeachCentralPanel />}
+          fallbackArt={<MizbeachCentralPanel />}
+          layers={[{ art: <MizbeachCentralPanel />, textureKey: "central" }]}
           viewBox={{ width: CENTRAL_PANEL.width, height: CENTRAL_PANEL.height }}
-          textureKey="central"
         >
         <svg
           className={styles.overlay}
@@ -196,17 +221,16 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
         </FolioCanvas>
       </div>
 
-      {/* Ring mandala (3D plate, or SVG fallback) + turnable overlay */}
+      {/* Ring mandala (3D volvelle, or SVG fallback) + turnable overlay */}
       <div className={styles.ringsWrap}>
         <FolioCanvas
-          art={
-            <svg viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`} xmlns="http://www.w3.org/2000/svg">
-              <rect x={0} y={0} width={VIEWBOX_SIZE} height={VIEWBOX_SIZE} fill="var(--color-charcoal)" />
-              <MizbeachSvgContent sacredTime={sacredTime} revealHidden={false} />
-            </svg>
-          }
+          fallbackArt={mandalaSvg()}
+          layers={[
+            { art: mandalaSvg("static"), textureKey: `static-${dateKey}` },
+            { art: mandalaSvg("outer-wheel"), textureKey: `outer-${dateKey}`, rotation: outerWheelDeg * DEG2RAD },
+            { art: mandalaSvg("moon-wheel"), textureKey: `moon-${dateKey}`, rotation: moonWheelDeg * DEG2RAD },
+          ]}
           viewBox={{ width: VIEWBOX_SIZE, height: VIEWBOX_SIZE }}
-          textureKey={`${state.effectiveDate.getTime()}-${state.geoMode}`}
         >
         <svg className={styles.overlay} viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`} role="group" aria-label="Turnable rings">
           <TurnableRing
@@ -216,7 +240,7 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
             count={12}
             valueNow={monthSlice}
             valueText={formatHebrewDateEnglish(sacredTime.hebrewDate)}
-            knobAngle={sliceCenterAngle(12, monthSlice)}
+            knobAngle={0}
             onPointer={(e) => ringPointer("month", e)}
             onStep={(delta) => onChange({ effectiveDate: setMonthSlice(state.effectiveDate, monthSlice + delta) })}
           />
@@ -228,7 +252,7 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
             valueNow={dayNow - 1}
             valueMax={29}
             valueText={`Day ${dayNow} of the moon`}
-            knobAngle={((dayNow - 1) / 29) * 360}
+            knobAngle={0}
             onPointer={(e) => ringPointer("day", e)}
             onStep={(delta) => onChange({ effectiveDate: setDayOfMonth(state.effectiveDate, dayNow + delta) })}
           />
