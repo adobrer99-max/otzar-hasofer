@@ -750,11 +750,15 @@ function HeraldFigure({
             pictographic symbol (falling back to the letterform if that charge
             is not yet designed). */}
         {divisions.map((division) => {
-          const band = bandX(division.band);
-          const bandCenter = band.center;
-          // Size each charge to fill its own division so the shield is full,
-          // not a small mark in a wide field — capped so a lone charge stays sane.
-          const baseSize = Math.min((band.end - band.start) * 0.82, 210);
+          // Place and size the charge inside a safe span inset from the ogee
+          // edges, so a letter never bleeds into the curved shield outline.
+          const chargeInset = 44;
+          const safeL = SHIELD.left + chargeInset;
+          const safeR = SHIELD.right - chargeInset;
+          const mid = (division.band[0] + division.band[1]) / 2;
+          const bandCenter = safeL + mid * (safeR - safeL);
+          const safeBandW = (division.band[1] - division.band[0]) * (safeR - safeL);
+          const baseSize = Math.min(safeBandW * 0.8, 168);
           // The charges are struck in the achievement's metal — a gold-foil
           // charge on its letter's flat tincture (metal on colour). The letter's
           // own colour lives in the field behind it, not in the charge.
