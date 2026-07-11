@@ -2,11 +2,7 @@ import type { SacredTimeSnapshot, LunarPhase } from "../../types/sacredTime";
 import type { JewishMonthName } from "../../data/hebrewCalendar";
 import { mazalotRing } from "../../data/mazalot";
 import { festivalsById } from "../../data/festivals";
-import {
-  TREE_OF_LIFE_NODES,
-  TREE_OF_LIFE_PATHS,
-  FLOURISH_UNIT_PATH,
-} from "../../herald/render/heraldGeometry";
+import { FLOURISH_UNIT_PATH } from "../../herald/render/heraldGeometry";
 import {
   CENTER,
   RINGS,
@@ -390,59 +386,6 @@ function ShivatHaminimBorder() {
   );
 }
 
-/**
- * The Or HaGanuz ("hidden light") — UV-etched Sefirot on the physical
- * folio, invisible until revealed. Reuses the Herald's Tree of Life
- * geometry rather than authoring a second layout; absent entirely unless
- * `revealed`, not just dimmed, to match the physical UV-ink concept.
- */
-function HiddenSefirotLayer({ revealed, middah }: { revealed: boolean; middah?: string | null }) {
-  if (!revealed) return null;
-  const boxSize = 2 * (RINGS.parsha.radius - RINGS.parsha.thickness);
-  const originX = CENTER.x - boxSize / 2;
-  const originY = CENTER.y - boxSize / 2;
-  const pos = (id: string) => {
-    const node = TREE_OF_LIFE_NODES.find((n) => n.id === id)!;
-    return { x: originX + node.x * boxSize, y: originY + node.y * boxSize };
-  };
-  return (
-    <g opacity={0.95}>
-      {TREE_OF_LIFE_PATHS.map(([a, b]) => {
-        const pa = pos(a);
-        const pb = pos(b);
-        return (
-          <line
-            key={`${a}-${b}`}
-            x1={pa.x}
-            y1={pa.y}
-            x2={pb.x}
-            y2={pb.y}
-            stroke="var(--color-blue-bright)"
-            strokeWidth={1}
-            opacity={0.55}
-          />
-        );
-      })}
-      {TREE_OF_LIFE_NODES.map((node) => {
-        const p = pos(node.id);
-        const chosen = middah != null && node.id === middah;
-        return (
-          <circle
-            key={node.id}
-            cx={p.x}
-            cy={p.y}
-            r={chosen ? 9 : 6}
-            fill={chosen ? "var(--color-gold-bright)" : "var(--color-blue-bright)"}
-            stroke={chosen ? "var(--color-gold-bright)" : "var(--color-silver)"}
-            strokeWidth={chosen ? 2 : 1}
-            opacity={chosen ? 1 : 0.85}
-          />
-        );
-      })}
-    </g>
-  );
-}
-
 /** Fixed reference symbol — not a computed compass bearing (would need geolocation, out of scope). */
 function MizrachVector() {
   const tipY = CENTER.y - RINGS.border.radius - 8;
@@ -501,15 +444,10 @@ export type MandalaSlice = "static" | "outer-wheel" | "moon-wheel";
 
 export function MizbeachSvgContent({
   sacredTime,
-  revealHidden,
   neutral = false,
   only,
-  middah,
 }: {
   sacredTime: SacredTimeSnapshot;
-  revealHidden: boolean;
-  /** When the Tree of Life is revealed, the dominant middah's Sefirah lights gold. */
-  middah?: string | null;
   /**
    * A printable "master" folio: render every ring in its resting state with
    * nothing gold-highlighted, since the live date/festival highlight is a
@@ -545,7 +483,6 @@ export function MizbeachSvgContent({
         omerDay={neutral ? undefined : sacredTime.omer?.day}
         roshChodesh={!neutral && Boolean(sacredTime.roshChodesh)}
       />
-      <HiddenSefirotLayer revealed={revealHidden} middah={middah} />
       <ShivatHaminimBorder />
       <PardesCorners />
       <MizrachVector />

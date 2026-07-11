@@ -1,8 +1,61 @@
 import { CENTRAL_PANEL } from "./mizbeachGeometry";
+import { TREE_OF_LIFE_PATHS } from "../../herald/render/heraldGeometry";
 import type { LetterDraw } from "../../types/herald";
 import type { SefirahId } from "../../types/letter";
 import { colorFor, darken } from "../../herald/render/letterColors";
 import { letterPaths } from "../../herald/render/letterPaths.generated";
+
+/**
+ * The Or HaGanuz — the hidden Tree of Life. The folio's own elements are laid
+ * out as the Sefirot: the Hand Anchor is Keter, the Three Gates are the
+ * Chesed/Tiferet/Gevurah triad, the Three Wells are Netzach/Yesod/Hod, and the
+ * Veiled Anchor is Malchut. On the physical folio this layer is printed in
+ * heat/light-sensitive ink and revealed with a laser; here it is revealed on
+ * demand, linking all the dimensions together.
+ */
+const CX = CENTRAL_PANEL.columnX;
+const GATE_MID_Y = CENTRAL_PANEL.gatesY - 55;
+const WELL_MID_Y = CENTRAL_PANEL.wellsY - 26;
+export const TREE_ON_PANEL: Record<string, { x: number; y: number }> = {
+  keter: { x: CX[1], y: CENTRAL_PANEL.handY },
+  chochmah: { x: CX[2], y: CENTRAL_PANEL.lettersY },
+  binah: { x: CX[0], y: CENTRAL_PANEL.lettersY },
+  chesed: { x: CX[2], y: GATE_MID_Y },
+  gevurah: { x: CX[0], y: GATE_MID_Y },
+  tiferet: { x: CX[1], y: GATE_MID_Y },
+  netzach: { x: CX[2], y: WELL_MID_Y },
+  hod: { x: CX[0], y: WELL_MID_Y },
+  yesod: { x: CX[1], y: WELL_MID_Y },
+  malchut: { x: CX[1], y: CENTRAL_PANEL.bottomRowY - 20 },
+};
+
+function HiddenTreeLayer({ revealed, middah }: { revealed: boolean; middah?: SefirahId | null }) {
+  if (!revealed) return null;
+  return (
+    <g opacity={0.95}>
+      {TREE_OF_LIFE_PATHS.map(([a, b]) => {
+        const pa = TREE_ON_PANEL[a];
+        const pb = TREE_ON_PANEL[b];
+        return <line key={`${a}-${b}`} x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y} stroke="var(--color-blue-bright)" strokeWidth={1.25} opacity={0.55} />;
+      })}
+      {Object.entries(TREE_ON_PANEL).map(([id, p]) => {
+        const chosen = middah != null && id === middah;
+        return (
+          <circle
+            key={id}
+            cx={p.x}
+            cy={p.y}
+            r={chosen ? 11 : 7}
+            fill={chosen ? "var(--color-gold-bright)" : "var(--color-blue-bright)"}
+            stroke={chosen ? "var(--color-gold-bright)" : "var(--color-silver)"}
+            strokeWidth={chosen ? 2 : 1}
+            opacity={chosen ? 1 : 0.85}
+          />
+        );
+      })}
+    </g>
+  );
+}
 
 /** The reading's placements, so the folio plate shows real illuminated cards in its slots. */
 export interface CentralPlacements {
@@ -321,7 +374,7 @@ function LetterSlots({ placements }: { placements?: CentralPlacements }) {
   );
 }
 
-export function MizbeachCentralPanel({ placements }: { placements?: CentralPlacements }) {
+export function MizbeachCentralPanel({ placements, revealTree = false }: { placements?: CentralPlacements; revealTree?: boolean }) {
   const { width, height, topBanner, bottomRowY, bottomBanner } = CENTRAL_PANEL;
   return (
     <svg
@@ -349,6 +402,7 @@ export function MizbeachCentralPanel({ placements }: { placements?: CentralPlace
       <ThreeGates />
       <ThreeWells />
       <VeiledAnchor x={width / 2} y={bottomRowY} placed={!!placements?.veiled} />
+      <HiddenTreeLayer revealed={revealTree} middah={placements?.middah} />
       <text
         x={width / 2}
         y={bottomBanner}

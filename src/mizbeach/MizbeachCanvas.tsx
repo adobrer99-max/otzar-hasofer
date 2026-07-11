@@ -6,14 +6,13 @@ import { MizbeachSvgContent } from "./render/buildMizbeachSvg";
 
 export interface MizbeachCanvasProps {
   sacredTime: SacredTimeSnapshot;
-  revealHidden: boolean;
 }
 
 export const MizbeachCanvas = forwardRef<SVGSVGElement, MizbeachCanvasProps>(function MizbeachCanvas(
-  { sacredTime, revealHidden },
+  { sacredTime },
   ref,
 ) {
-  const label = `The Mizbe'ach ring mandala for ${formatHebrewDateEnglish(sacredTime.hebrewDate)} — the Mazalot, Moon, Solar Month, and Parsha rings around the Sabbath Core${revealHidden ? ", with the hidden Sefirot layer revealed" : ""}.`;
+  const label = `The Mizbe'ach ring mandala for ${formatHebrewDateEnglish(sacredTime.hebrewDate)} — the Mazalot, Moon, Solar Month, and Parsha rings around the Sabbath Core.`;
 
   return (
     <svg
@@ -26,7 +25,7 @@ export const MizbeachCanvas = forwardRef<SVGSVGElement, MizbeachCanvasProps>(fun
     >
       <title>{label}</title>
       <rect x={0} y={0} width={VIEWBOX_SIZE} height={VIEWBOX_SIZE} fill="var(--color-charcoal)" />
-      <MizbeachSvgContent sacredTime={sacredTime} revealHidden={revealHidden} />
+      <MizbeachSvgContent sacredTime={sacredTime} />
     </svg>
   );
 });

@@ -41,8 +41,17 @@ export function Mizbeach() {
         Hand Anchor, Three Gates, Three Wells, Veiled Anchor, and Tree of
         Life, in the order a reading moves through them.
       </p>
+      <div className={styles.controls}>
+        <button
+          type="button"
+          aria-pressed={revealHidden}
+          onClick={() => setRevealHidden((r) => !r)}
+        >
+          {revealHidden ? "Conceal the Hidden Layer" : "Reveal the Hidden Layer (Or HaGanuz)"}
+        </button>
+      </div>
       <div className={styles.canvasWrap}>
-        <MizbeachCentralPanel />
+        <MizbeachCentralPanel revealTree={revealHidden} />
       </div>
 
       <h2>The Ring Mandala</h2>
@@ -70,17 +79,10 @@ export function Mizbeach() {
             Galut
           </button>
         </div>
-        <button
-          type="button"
-          aria-pressed={revealHidden}
-          onClick={() => setRevealHidden((r) => !r)}
-        >
-          {revealHidden ? "Conceal the Hidden Layer" : "Reveal the Hidden Layer (Or HaGanuz)"}
-        </button>
       </div>
 
       <div className={styles.canvasWrap}>
-        <MizbeachCanvas ref={svgRef} sacredTime={sacredTime} revealHidden={revealHidden} />
+        <MizbeachCanvas ref={svgRef} sacredTime={sacredTime} />
       </div>
 
       <div className={styles.exportRow}>

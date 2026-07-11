@@ -3,14 +3,13 @@ import type { LetterDraw } from "../../types/herald";
 import type { SefirahId } from "../../types/letter";
 import { lettersById } from "../../data/letters";
 import { middot } from "../../data/middot";
-import { TREE_OF_LIFE_NODES } from "../../herald/render/heraldGeometry";
 import { dorotCardsById } from "../../data/dorot";
 import { computeSacredTime } from "../../data/sacredTime";
 import { formatHebrewDateEnglish } from "../../data/hebrewCalendar";
 import { resolveSpread } from "../../herald/spreads/resolveSpread";
 import { resolveDorotMechanic } from "../../herald/dorot/dorotMechanics";
 import { resolveShoresh } from "../../herald/shoresh/resolveShoresh";
-import { MizbeachCentralPanel } from "../render/centralPanel";
+import { MizbeachCentralPanel, TREE_ON_PANEL } from "../render/centralPanel";
 import { MizbeachSvgContent, type MandalaSlice } from "../render/buildMizbeachSvg";
 import { FolioCanvas } from "../folio3d/FolioCanvas";
 import { CENTRAL_PANEL, RINGS, CENTER, VIEWBOX_SIZE, segmentAngles, polarToCartesian } from "../render/mizbeachGeometry";
@@ -154,7 +153,7 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
   // placement changes (keyed below), not on every render.
   const centralPlacements = { letters: state.letters, veiled: state.veiled, middah: state.middah };
   const drawKey = (d: LetterDraw | null) => (d ? `${d.letterId}${d.orientation[0]}` : "_");
-  const centralKey = `central-${state.letters.map(drawKey).join("")}-${drawKey(state.veiled)}-${state.middah ?? "_"}`;
+  const centralKey = `central-${state.letters.map(drawKey).join("")}-${drawKey(state.veiled)}-${state.middah ?? "_"}-${treeRevealed ? "t" : "_"}`;
 
   const dateKey = `${state.effectiveDate.getTime()}-${state.geoMode}`;
   // Build one mandala plane. The static base and the flat fallback carry the
@@ -165,18 +164,19 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
       {(!only || only === "static") && (
         <rect x={0} y={0} width={VIEWBOX_SIZE} height={VIEWBOX_SIZE} fill="var(--color-charcoal)" />
       )}
-      <MizbeachSvgContent sacredTime={sacredTime} revealHidden={treeRevealed} middah={state.middah} only={only} />
+      <MizbeachSvgContent sacredTime={sacredTime} only={only} />
     </svg>
   );
-  const staticKey = `static-${dateKey}-${treeRevealed ? "t" : "_"}-${state.middah ?? "_"}`;
 
   return (
     <div className={styles.surface}>
       {/* Central panel (3D plate, or SVG fallback) + interaction overlay */}
       <div className={styles.panelWrap}>
         <FolioCanvas
-          fallbackArt={<MizbeachCentralPanel placements={centralPlacements} />}
-          layers={[{ art: <MizbeachCentralPanel placements={centralPlacements} />, textureKey: centralKey }]}
+          fallbackArt={<MizbeachCentralPanel placements={centralPlacements} revealTree={treeRevealed} />}
+          layers={[
+            { art: <MizbeachCentralPanel placements={centralPlacements} revealTree={treeRevealed} />, textureKey: centralKey },
+          ]}
           viewBox={{ width: CENTRAL_PANEL.width, height: CENTRAL_PANEL.height }}
         >
         <svg
@@ -227,6 +227,36 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
               onActivate={() => openZone("council")}
             />
           )}
+          {/* The revealed Or HaGanuz — the folio's own elements as the Tree of
+              Life; its lower Sefirot (the gates, the wells, the veiled anchor)
+              are the dominant-middah picker. */}
+          {treeRevealed &&
+            Object.entries(TREE_ON_PANEL).map(([id, p]) => {
+              const m = middot.find((mm) => mm.id === id);
+              if (!m) return null;
+              const chosen = state.middah === id;
+              const pick = () => onChange({ middah: id as SefirahId });
+              return (
+                <circle
+                  key={id}
+                  cx={p.x}
+                  cy={p.y}
+                  r={22}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${m.label}${chosen ? " (chosen)" : ""}`}
+                  aria-pressed={chosen}
+                  className={`${styles.treeNode} ${chosen ? styles.treeNodeChosen : ""}`}
+                  onClick={pick}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      pick();
+                    }
+                  }}
+                />
+              );
+            })}
         </svg>
         </FolioCanvas>
       </div>
@@ -236,7 +266,7 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
         <FolioCanvas
           fallbackArt={mandalaSvg()}
           layers={[
-            { art: mandalaSvg("static"), textureKey: staticKey },
+            { art: mandalaSvg("static"), textureKey: `static-${dateKey}` },
             { art: mandalaSvg("outer-wheel"), textureKey: `outer-${dateKey}`, rotation: outerWheelDeg * DEG2RAD },
             { art: mandalaSvg("moon-wheel"), textureKey: `moon-${dateKey}`, rotation: moonWheelDeg * DEG2RAD },
           ]}
@@ -266,40 +296,6 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
             onPointer={(e) => ringPointer("day", e)}
             onStep={(delta) => onChange({ effectiveDate: setDayOfMonth(state.effectiveDate, dayNow + delta) })}
           />
-          {/* The revealed Tree of Life — its lower Sefirot are the middah picker. */}
-          {treeRevealed && (
-            <g role="group" aria-label="Tree of Life — choose the dominant middah">
-              {TREE_OF_LIFE_NODES.map((node) => {
-                const m = middot.find((mm) => mm.id === node.id);
-                if (!m) return null;
-                const box = 2 * (RINGS.parsha.radius - RINGS.parsha.thickness);
-                const px = CENTER.x - box / 2 + node.x * box;
-                const py = CENTER.y - box / 2 + node.y * box;
-                const chosen = state.middah === node.id;
-                const pick = () => onChange({ middah: node.id as SefirahId });
-                return (
-                  <circle
-                    key={node.id}
-                    cx={px}
-                    cy={py}
-                    r={18}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`${m.label}${chosen ? " (chosen)" : ""}`}
-                    aria-pressed={chosen}
-                    className={`${styles.treeNode} ${chosen ? styles.treeNodeChosen : ""}`}
-                    onClick={pick}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        pick();
-                      }
-                    }}
-                  />
-                );
-              })}
-            </g>
-          )}
         </svg>
         </FolioCanvas>
       </div>
