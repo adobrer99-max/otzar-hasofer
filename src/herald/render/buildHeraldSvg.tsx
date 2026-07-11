@@ -556,7 +556,12 @@ function WordFess({ color, inscription }: { color: string; inscription: string }
         letterSpacing="0.24em"
         fill="var(--color-gold-bright)"
       >
-        {inscription.toUpperCase()}
+        {/* Fold diacritics (mâlak → MALAK): the manuscript Latin font has no
+            glyph for â/ā/ô and would otherwise show a missing-glyph box. */}
+        {inscription
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toUpperCase()}
       </text>
     </g>
   );
