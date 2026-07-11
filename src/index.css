@@ -122,6 +122,15 @@ input[type="radio"] {
   color: var(--text-muted);
 }
 
+/* The brief fallback shown while a code-split route chunk loads. */
+.route-fallback {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 /* Skip-to-content: hidden until focused, then slides in at the top-left. */
 .skip-link {
   position: absolute;

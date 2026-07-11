@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import { Nav } from "./components/Nav";
 import { Footer } from "./components/Footer";
@@ -10,7 +11,9 @@ function App() {
       </a>
       <Nav />
       <main id="main" style={{ flex: 1 }}>
-        <Outlet />
+        <Suspense fallback={<div className="route-fallback" aria-live="polite">Loading…</div>}>
+          <Outlet />
+        </Suspense>
       </main>
       <Footer />
     </>
