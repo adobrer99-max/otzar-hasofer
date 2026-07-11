@@ -18,6 +18,22 @@ import {
   circlePerimeterPoints,
 } from "./mizbeachGeometry";
 
+/** The gold-leaf sheen shared with the central panel, so both leaves of the folio read as one illuminated plate. */
+const GOLD = "url(#mizRingGold)";
+
+function MandalaGoldDefs() {
+  return (
+    <defs>
+      <linearGradient id="mizRingGold" x1="0" y1="0" x2="0" y2="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(0 60) scale(1 640)">
+        <stop offset="0" stopColor="#efd48c" />
+        <stop offset="0.42" stopColor="#c9a24b" />
+        <stop offset="0.72" stopColor="#a8823a" />
+        <stop offset="1" stopColor="#e0be6f" />
+      </linearGradient>
+    </defs>
+  );
+}
+
 /** Adar splits into AdarI/AdarII in leap years — both fold onto the ring's single "Adar" slice, matching `festivals.ts`'s own `resolveAdar` convention. */
 function foldMonth(month: JewishMonthName): JewishMonthName {
   return month === "AdarI" || month === "AdarII" ? "Adar" : month;
@@ -38,34 +54,64 @@ function RingSegments({
   renderLabel: (index: number) => string;
   fontFamily?: string;
 }) {
+  const inner = radius - thickness / 2;
+  const outer = radius + thickness / 2;
   return (
     <g>
+      {/* Solid bands: a raised charcoal for the resting slices, gold-leaf (with a soft glow) for the active one. */}
       {Array.from({ length: count }).map((_, i) => {
         const [start, end] = segmentAngles(count, i);
         const isActive = i === activeIndex;
-        const midAngle = (start + end) / 2;
-        const labelPos = polarToCartesian(CENTER.x, CENTER.y, radius, midAngle);
         return (
           <g key={i}>
+            {isActive && (
+              <path
+                d={describeArcPath(CENTER.x, CENTER.y, radius, start + 0.5, end - 0.5)}
+                fill="none"
+                stroke={GOLD}
+                strokeWidth={thickness + 8}
+                opacity={0.16}
+              />
+            )}
             <path
-              d={describeArcPath(CENTER.x, CENTER.y, radius, start + 1, end - 1)}
+              d={describeArcPath(CENTER.x, CENTER.y, radius, start + 0.5, end - 0.5)}
               fill="none"
-              stroke={isActive ? "var(--color-gold)" : "var(--color-charcoal-line)"}
+              stroke={isActive ? GOLD : "var(--color-charcoal-raised)"}
               strokeWidth={thickness}
-              opacity={isActive ? 0.9 : 0.4}
+              opacity={isActive ? 1 : 0.6}
             />
-            <text
-              x={labelPos.x}
-              y={labelPos.y}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fontFamily={fontFamily}
-              fontSize={11}
-              fill={isActive ? "var(--color-charcoal)" : "var(--text-muted)"}
-            >
-              {renderLabel(i)}
-            </text>
           </g>
+        );
+      })}
+      {/* Thin gold spokes marking the slice boundaries. */}
+      <g stroke={GOLD} strokeWidth={0.75} opacity={0.32}>
+        {Array.from({ length: count }).map((_, i) => {
+          const a = segmentAngles(count, i)[0];
+          const p1 = polarToCartesian(CENTER.x, CENTER.y, inner, a);
+          const p2 = polarToCartesian(CENTER.x, CENTER.y, outer, a);
+          return <line key={i} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} />;
+        })}
+      </g>
+      {/* Labels */}
+      {Array.from({ length: count }).map((_, i) => {
+        const [start, end] = segmentAngles(count, i);
+        const isActive = i === activeIndex;
+        const labelPos = polarToCartesian(CENTER.x, CENTER.y, radius, (start + end) / 2);
+        return (
+          <text
+            key={i}
+            x={labelPos.x}
+            y={labelPos.y}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontFamily={fontFamily}
+            fontSize={11}
+            fontWeight={isActive ? 600 : 400}
+            fill={isActive ? "var(--color-charcoal)" : "var(--color-silver)"}
+            opacity={isActive ? 1 : 0.72}
+          >
+            {renderLabel(i)}
+          </text>
         );
       })}
     </g>
@@ -154,15 +200,11 @@ function ParshaRing({ label }: { label?: string }) {
   const topLabel = polarToCartesian(CENTER.x, CENTER.y, RINGS.parsha.radius, 0);
   return (
     <g>
-      <circle
-        cx={CENTER.x}
-        cy={CENTER.y}
-        r={RINGS.parsha.radius}
-        fill="none"
-        stroke={label ? "var(--color-gold)" : "var(--color-charcoal-line)"}
-        strokeWidth={RINGS.parsha.thickness}
-        opacity={label ? 0.5 : 0.3}
-      />
+      {/* A solid narrative band; when a portion is read, its rim catches the gold leaf. */}
+      <circle cx={CENTER.x} cy={CENTER.y} r={RINGS.parsha.radius} fill="none" stroke="var(--color-charcoal-raised)" strokeWidth={RINGS.parsha.thickness} opacity={0.6} />
+      {label && (
+        <circle cx={CENTER.x} cy={CENTER.y} r={RINGS.parsha.radius + RINGS.parsha.thickness / 2 - 1.5} fill="none" stroke={GOLD} strokeWidth={1} opacity={0.6} />
+      )}
       <text
         x={topLabel.x}
         y={topLabel.y}
@@ -171,7 +213,8 @@ function ParshaRing({ label }: { label?: string }) {
         fontFamily="var(--font-latin)"
         fontSize={10}
         fontStyle={label ? undefined : "italic"}
-        fill={label ? "var(--color-gold)" : "var(--text-muted)"}
+        fill={label ? "var(--color-gold-bright)" : "var(--color-silver)"}
+        opacity={label ? 1 : 0.7}
       >
         {label ? `Parashat ${label}` : "Parsha — the festival reads this week"}
       </text>
@@ -193,15 +236,20 @@ function SabbathCore({
     .join(" · ");
   return (
     <g>
+      {/* An illuminated core: a gold-leaf rim around a still centre — filled gold on Shabbat, a dark recess otherwise. */}
+      <circle cx={CENTER.x} cy={CENTER.y} r={SABBATH_CORE_RADIUS + 5} fill="none" stroke={GOLD} strokeWidth={2.5} opacity={0.85} />
       <circle
         cx={CENTER.x}
         cy={CENTER.y}
         r={SABBATH_CORE_RADIUS}
-        fill={isShabbat ? "var(--color-gold)" : "none"}
+        fill={isShabbat ? GOLD : "#0e1420"}
         stroke={isShabbat ? "var(--color-gold-bright)" : "var(--color-silver)"}
-        strokeWidth={2}
-        opacity={isShabbat ? 0.9 : 0.6}
+        strokeWidth={1.5}
+        opacity={isShabbat ? 1 : 0.85}
       />
+      {!isShabbat && (
+        <circle cx={CENTER.x} cy={CENTER.y} r={SABBATH_CORE_RADIUS - 8} fill="none" stroke="var(--color-charcoal-line)" strokeWidth={1} />
+      )}
       <text
         x={CENTER.x}
         y={CENTER.y - (isShabbat ? 10 : 0)}
@@ -209,7 +257,7 @@ function SabbathCore({
         dominantBaseline="middle"
         fontFamily="var(--font-latin)"
         fontSize={14}
-        fill={isShabbat ? "var(--color-charcoal)" : "var(--text-muted)"}
+        fill={isShabbat ? "var(--color-charcoal)" : "var(--color-silver)"}
       >
         {isShabbat ? "Shabbat" : "Ordinary Time"}
       </text>
@@ -262,8 +310,8 @@ function PardesCorners() {
               y={point.y}
               textAnchor="middle"
               fontFamily="var(--font-hebrew)"
-              fontSize={17}
-              fill="var(--color-gold)"
+              fontSize={18}
+              fill={GOLD}
             >
               {title}
             </text>
@@ -273,7 +321,8 @@ function PardesCorners() {
               textAnchor="middle"
               fontFamily="var(--font-latin)"
               fontSize={9}
-              fill="var(--text-muted)"
+              fill="var(--color-silver)"
+              opacity={0.75}
             >
               {subtitle}
             </text>
@@ -295,15 +344,10 @@ function ShivatHaminimBorder() {
   const flourishPoints = circlePerimeterPoints(28, RINGS.border.radius).filter((_, i) => i % 4 !== 0);
   return (
     <g>
-      <circle
-        cx={CENTER.x}
-        cy={CENTER.y}
-        r={RINGS.border.radius}
-        fill="none"
-        stroke="var(--color-charcoal-line)"
-        strokeWidth={1}
-      />
-      <g stroke="var(--color-gold)" fill="var(--color-gold)" opacity={0.6}>
+      {/* A gold-leaf double rule frames the seven species. */}
+      <circle cx={CENTER.x} cy={CENTER.y} r={RINGS.border.radius + 6} fill="none" stroke={GOLD} strokeWidth={1.5} opacity={0.7} />
+      <circle cx={CENTER.x} cy={CENTER.y} r={RINGS.border.radius} fill="none" stroke={GOLD} strokeWidth={1} opacity={0.4} />
+      <g stroke={GOLD} fill={GOLD} opacity={0.7}>
         {flourishPoints.map((p, i) => (
           <path
             key={i}
@@ -490,13 +534,29 @@ export function MizbeachSvgContent({
     </>
   );
 
-  if (only === "outer-wheel") return <g>{outerWheel}</g>;
-  if (only === "moon-wheel") return <g>{moonWheel}</g>;
+  // Each slice is rasterised to its own texture, so each carries the gold-leaf
+  // gradient definition it references.
+  if (only === "outer-wheel")
+    return (
+      <g>
+        <MandalaGoldDefs />
+        {outerWheel}
+      </g>
+    );
+  if (only === "moon-wheel")
+    return (
+      <g>
+        <MandalaGoldDefs />
+        {moonWheel}
+      </g>
+    );
   // The pointer only appears on the 3D folio's static plane (the wheels turn
-  // beneath it); the flat whole-mandala render below is unchanged.
+  // beneath it); the flat whole-mandala render below is unchanged apart from
+  // the shared gold-leaf definition.
   if (only === "static")
     return (
       <g>
+        <MandalaGoldDefs />
         {staticLayer}
         <SelectionPointer />
       </g>
@@ -504,6 +564,7 @@ export function MizbeachSvgContent({
 
   return (
     <g>
+      <MandalaGoldDefs />
       {outerWheel}
       {moonWheel}
       {staticLayer}
