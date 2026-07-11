@@ -133,9 +133,6 @@ input[type="radio"] {
   .herald-living [data-role="crest"] {
     animation: herald-flicker 4.5s ease-in-out infinite;
   }
-  .herald-living [data-role="dominant-node"] {
-    animation: herald-pulse 3.6s ease-in-out infinite;
-  }
   .herald-living.herald-revealing [data-role="crest"] {
     animation: herald-crest-kindle 2.4s ease-out 1;
   }
@@ -143,10 +140,6 @@ input[type="radio"] {
 @keyframes herald-flicker {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.82; }
-}
-@keyframes herald-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.62; }
 }
 @keyframes herald-crest-kindle {
   0% { opacity: 0; }

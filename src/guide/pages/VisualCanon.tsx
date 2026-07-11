@@ -40,10 +40,11 @@ export function VisualCanon() {
         candlelight. The <strong>vellum ground</strong> is its daylight
         counterpart — ink-brown letters on warm parchment, gold kept as the
         accent. The five brand colours never change between them; only the
-        page around them does. Crucially, the Herald and the Mizbe'ach always
-        keep their charcoal field in either mode — an illuminated plate set
-        upon the page, never re-tinted, because "gold linework upon a charcoal
-        field" is intrinsic to what they are.
+        page around them does. Crucially, the Herald and the Mizbe'ach keep
+        their deep field in either mode — an illuminated plate set upon the
+        page, never re-tinted by the theme. The Mizbe'ach holds gold linework
+        on charcoal; the Herald keeps a dark ground too, but coloured from the
+        letters drawn (see below) — the one place individual colour is intended.
       </p>
 
       <h2>Ornament</h2>
@@ -68,14 +69,13 @@ export function VisualCanon() {
       <h2>The Herald's Visual Language</h2>
       <p>Every Herald is rendered according to this canon. It may include:</p>
       <ul>
-        <li>Hebrew letters, drawn as gold-leaf letterforms (calligraphic outlines, not a live font)</li>
+        <li>Hebrew letters, drawn as calligraphic letterforms (outlines, not a live font)</li>
         <li>Heraldic shield divisions</li>
         <li>Traditional ornament</li>
         <li>Symbolic flora and fauna</li>
-        <li>Sacred geometry</li>
         <li>Calligraphic flourishes</li>
         <li>Seasonal motifs</li>
-        <li>Gold linework upon a charcoal field</li>
+        <li>A field and charges coloured from the letters actually drawn</li>
       </ul>
       <p>
         No decorative element is arbitrary; every mark reflects a lived
@@ -84,23 +84,29 @@ export function VisualCanon() {
 
       <h2>The Illuminated Herald</h2>
       <p>
-        The Herald is rendered as an <strong>illuminated plate</strong>, not
-        flat linework: a beaten <strong>gold-leaf</strong> sheen on the letters
-        and emblems, a soft depth beneath the shield, and a whisper of{" "}
-        <strong>vellum tooth</strong> across the field. Around the escutcheon it
-        grows into a full coat of arms — a <strong>crest</strong> (a gold flame
-        upon a torse), foliate <strong>mantling</strong>, a{" "}
-        <strong>compartment</strong> (rooted earth in the Land, water in Galut),
-        and a <strong>motto scroll</strong> bearing the sealed Heraldic Epithet.
+        The Herald is the <em>one</em> surface that steps outside the five brand
+        colours above — deliberately. Each letter carries its own association —
+        an element, a planet, or a sign of the zodiac — and the Herald is{" "}
+        <strong>coloured from the letters actually drawn</strong>: each charge
+        is enamelled in its letter's colour, and the field takes their blend. So
+        a reading of fire-letters burns red, one of water-letters runs deep
+        blue, and no two Heralds share a palette — each is unique to the person,
+        not one of a fixed set. It is rendered as an{" "}
+        <strong>illuminated plate</strong> — depth beneath the shield, a whisper
+        of <strong>vellum tooth</strong>, and a full coat of arms around the
+        escutcheon: a <strong>crest</strong>, foliate <strong>mantling</strong>,
+        a <strong>compartment</strong> (rooted earth in the Land, water in
+        Galut), and a <strong>motto scroll</strong> bearing the sealed Heraldic
+        Epithet. Nothing is ever laid over a letter.
       </p>
       <p>
-        Because the Herald "is recognized, never assigned," its look is{" "}
-        <em>derived</em> first. The Scribe may then <strong>curate</strong>{" "}
-        within the canon — the metal of the frame (gold, antique, or silvered)
-        and which elements of the coat of arms are shown — but only within these
-        curated choices, never as free invention. On the headline Herald the
-        gold breathes with a quiet, motion-respecting shimmer; hovering a letter
-        names it.
+        Because the Herald "is recognized, never assigned," its colour is{" "}
+        <em>derived</em> from the reading first. The Scribe may then{" "}
+        <strong>curate</strong> — the metal of the frame (natural, gold, antique,
+        or silvered) and which elements of the coat of arms are shown — but only
+        within these curated choices, never as free invention. On the headline
+        Herald the frame breathes with a quiet, motion-respecting shimmer;
+        hovering a letter names it.
       </p>
 
       <hr className="hairline-rule" />

@@ -188,6 +188,30 @@ describe("Scribe curation (HeraldStyle)", () => {
     expect(gold).not.toBe(silvered);
   });
 
+  it("enamels each charge in its own letter's colour and draws no central tree", () => {
+    const markup = render(sampleInput, 0);
+    // Charges reference their per-letter enamel gradient…
+    expect(markup).toContain("url(#herald-glyph-aleph)");
+    expect(markup).toContain("url(#herald-glyph-mem)");
+    // …and the veiled letter's is never used.
+    expect(markup).not.toContain("url(#herald-glyph-shin)");
+    // The Sefirot tree no longer renders in the centre.
+    expect(markup).not.toContain('data-role="dominant-node"');
+  });
+
+  it("gives different letters a different render (unique per individual)", () => {
+    const other: HeraldInputSnapshot = {
+      ...sampleInput,
+      drawnLetters: [
+        { letterId: "shin", orientation: "upright" },
+        { letterId: "dalet", orientation: "upright" },
+        { letterId: "heh", orientation: "upright" },
+      ],
+      veiledLetter: { letterId: "tav", orientation: "upright" },
+    };
+    expect(render(sampleInput, 0)).not.toBe(render(other, 0));
+  });
+
   it("gates the heraldic vocabulary by curation", () => {
     const withCrest = renderToStaticMarkup(<HeraldLayerContent input={sampleInput} layerCount={0} style={{ crest: true }} />);
     const noCrest = renderToStaticMarkup(<HeraldLayerContent input={sampleInput} layerCount={0} style={{ crest: false }} />);

@@ -3,6 +3,7 @@ import { Card, SegmentedControl, Button } from "../../components/ui";
 import styles from "./HeraldStylePanel.module.css";
 
 const METALS: { value: NonNullable<HeraldStyle["metal"]>; label: string }[] = [
+  { value: "natural", label: "Natural" },
   { value: "gold", label: "Gold" },
   { value: "antique", label: "Antique" },
   { value: "silver", label: "Silver" },

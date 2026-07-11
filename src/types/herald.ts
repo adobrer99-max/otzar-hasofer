@@ -94,8 +94,12 @@ export interface HeraldicEpithet {
  * and to every layer render, re-derived from the stored record.
  */
 export interface HeraldStyle {
-  /** The metal of the frame (outline, border, dividers). Gold-leaf letters are unchanged. */
-  metal?: "gold" | "antique" | "silver";
+  /**
+   * The metal of the frame (outline, border, dividers). "natural" (the default)
+   * takes the reading's own colour — the dominant letter, or the festival. The
+   * enamelled charge letters keep their own association colours regardless.
+   */
+  metal?: "natural" | "gold" | "antique" | "silver";
   crest?: boolean;
   mantling?: boolean;
   compartment?: boolean;

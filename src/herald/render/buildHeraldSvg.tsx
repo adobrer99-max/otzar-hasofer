@@ -8,25 +8,41 @@ import { resolveShoresh } from "../shoresh/resolveShoresh";
 import { computeDivisions, type Division } from "./divisions";
 import { nameSeedOf, flourishRotation } from "./nameGeometry";
 import { LetterGlyph } from "./LetterGlyph";
+import { colorFor, lighten, darken, blend, letterColorIds } from "./letterColors";
 
 type ShoreshResult = ReturnType<typeof resolveShoresh>;
 import {
   SHIELD,
   SHIELD_PATH,
-  TREE_OF_LIFE_NODES,
-  TREE_OF_LIFE_PATHS,
   FLOURISH_UNIT_PATH,
   shieldCenter,
   shieldBorderPoints,
 } from "./heraldGeometry";
 
-const BAND_TOP = SHIELD.top + 150;
+// The charges sit near the shield's centre now that the Tree no longer occupies it.
+const BAND_TOP = SHIELD.top + 300;
 
-/** The metal of the frame (outline/border/dividers) from the Scribe's curation. Gold-leaf letters are unchanged. */
-function metalAccent(metal: HeraldStyle["metal"] | undefined, fallback: string): string {
+/**
+ * The metal of the frame (outline/border/dividers). "natural" (the default)
+ * takes the reading's own colour — the dominant letter, or the festival — so
+ * the frame is individual; the Scribe may override it to a fixed metal.
+ */
+function metalAccent(metal: HeraldStyle["metal"] | undefined, natural: string): string {
+  if (metal === "gold") return "var(--color-gold)";
   if (metal === "silver") return "var(--color-silver)";
   if (metal === "antique") return "#b58a37";
-  return fallback;
+  return natural;
+}
+
+/**
+ * The frame's own colour when the Scribe hasn't chosen a fixed metal: a
+ * festival keeps its accent; otherwise the frame takes a bright cast of the
+ * dominant (first-drawn) letter's colour, so the whole achievement is
+ * individual.
+ */
+function naturalAccent(festivalAccent: string, dominantLetterId: string | undefined): string {
+  if (festivalAccent && festivalAccent !== "var(--color-gold)") return festivalAccent;
+  return lighten(colorFor(dominantLetterId ?? ""), 0.14);
 }
 
 /** Heraldic-vocabulary toggles from the Scribe's curation; defaults keep the richer illuminated frame. */
@@ -73,72 +89,6 @@ function DivisionDividers({ bands }: { bands: [number, number][] }) {
         );
       })}
     </>
-  );
-}
-
-/**
- * The Tree of Life. `dominant` is the brightest/largest node; every id in
- * `lit` glows gold (smaller than the dominant); the rest stay hollow silver.
- * A single reading passes `lit=[middah], dominant=middah` (one lit node);
- * the synthesis lights one node per Encounter, completing the lower Tree.
- */
-function TreeOfLife({ lit, dominant }: { lit: string[]; dominant: string }) {
-  const center = shieldCenter();
-  const boxWidth = 170;
-  const boxHeight = 210;
-  const originX = center.x - boxWidth / 2;
-  const originY = SHIELD.shoulder - boxHeight - 10;
-  const litSet = new Set(lit);
-
-  const pos = (id: string) => {
-    const node = TREE_OF_LIFE_NODES.find((n) => n.id === id)!;
-    return { x: originX + node.x * boxWidth, y: originY + node.y * boxHeight };
-  };
-
-  return (
-    <g opacity={0.85}>
-      {TREE_OF_LIFE_PATHS.map(([a, b]) => {
-        const pa = pos(a);
-        const pb = pos(b);
-        return (
-          <line
-            key={`${a}-${b}`}
-            x1={pa.x}
-            y1={pa.y}
-            x2={pb.x}
-            y2={pb.y}
-            stroke="var(--color-silver)"
-            strokeWidth={0.75}
-            opacity={0.4}
-          />
-        );
-      })}
-      {TREE_OF_LIFE_NODES.map((node) => {
-        const p = pos(node.id);
-        const isDominant = node.id === dominant;
-        const isLit = litSet.has(node.id);
-        return (
-          <circle
-            key={node.id}
-            data-role={isDominant ? "dominant-node" : undefined}
-            cx={p.x}
-            cy={p.y}
-            r={isDominant ? 8 : isLit ? 6 : 4}
-            fill={isDominant ? "url(#herald-gold-leaf)" : isLit ? "var(--color-gold)" : "none"}
-            fillOpacity={isDominant ? 1 : isLit ? 0.55 : 1}
-            stroke={
-              isDominant
-                ? "var(--color-gold-bright)"
-                : isLit
-                  ? "var(--color-gold)"
-                  : "var(--color-silver)"
-            }
-            strokeWidth={isDominant ? 2 : isLit ? 1.5 : 1}
-            filter={isDominant ? "url(#herald-glow)" : undefined}
-          />
-        );
-      })}
-    </g>
   );
 }
 
@@ -547,10 +497,6 @@ export function MottoRibbon({ text }: { text: string }) {
 
 interface HeraldFigureProps {
   divisions: Division[];
-  /** Tree nodes that glow; empty for none. */
-  litSefirot: string[];
-  /** The brightest/largest Tree node. */
-  dominantSefirah: string;
   geography: "land" | "galut";
   /** Zero or more accreted festival accent motifs. */
   festivalMotifs: string[];
@@ -577,8 +523,6 @@ interface HeraldFigureProps {
  */
 function HeraldFigure({
   divisions,
-  litSefirot,
-  dominantSefirah,
   geography,
   festivalMotifs,
   accentColor,
@@ -592,6 +536,9 @@ function HeraldFigure({
   supporters = false,
 }: HeraldFigureProps) {
   const center = shieldCenter();
+  // The field takes a whisper of the drawn letters' blended colour, so the
+  // ground itself is individual; each charge is enamelled in its own colour.
+  const fieldTint = blend(divisions.map((d) => colorFor(d.letterId)));
 
   function findDivision(letterId: string): Division | undefined {
     return divisions.find((d) => d.letterId === letterId);
@@ -629,71 +576,75 @@ function HeraldFigure({
       <path d={SHIELD_PATH} fill="var(--color-charcoal)" filter="url(#herald-emboss)" />
       <g clipPath="url(#herald-shield-clip)">
         <path d={SHIELD_PATH} fill="url(#herald-shield-fill)" />
-        {/* Parchment tooth over the charcoal interior. */}
-        <rect x={66} y={86} width={468} height={638} fill="#c9a24b" filter="url(#herald-vellum)" opacity={0.32} />
+        {/* The field's own tint, then parchment tooth — both beneath everything. */}
+        <rect x={66} y={86} width={468} height={638} fill={darken(fieldTint, 0.25)} opacity={0.16} />
+        <rect x={66} y={86} width={468} height={638} fill="#c9a24b" filter="url(#herald-vellum)" opacity={0.22} />
 
         <DivisionDividers bands={divisions.map((d) => d.band)} />
 
-      <TreeOfLife lit={litSefirot} dominant={dominantSefirah} />
+        {/* The Shoresh chains — thin arcs above the charges, never over them. */}
+        {confidentChain.map(([a, b]) => {
+          const ax = bandX(a.band).center;
+          const bx = bandX(b.band).center;
+          const y = BAND_TOP - 62;
+          return (
+            <path
+              key={`${a.letterId}-${b.letterId}`}
+              d={`M ${ax} ${y} Q ${(ax + bx) / 2} ${y - 30}, ${bx} ${y}`}
+              fill="none"
+              stroke={accentColor}
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              opacity={0.9}
+            />
+          );
+        })}
+        {tentativePairs.map(({ a, b, key }) => {
+          const ax = bandX(a.band).center;
+          const bx = bandX(b.band).center;
+          const y = BAND_TOP - 62;
+          return (
+            <path
+              key={key}
+              d={`M ${ax} ${y} Q ${(ax + bx) / 2} ${y - 30}, ${bx} ${y}`}
+              fill="none"
+              stroke={accentColor}
+              strokeWidth={1.5}
+              strokeDasharray="1 5"
+              strokeLinecap="round"
+              opacity={0.8}
+            />
+          );
+        })}
+        {shoresh?.tier === "hidden" && <ShoreshNistarMark center={center} />}
 
-      {confidentChain.map(([a, b]) => {
-        const ax = bandX(a.band).center;
-        const bx = bandX(b.band).center;
-        const y = BAND_TOP - 30;
-        return (
-          <path
-            key={`${a.letterId}-${b.letterId}`}
-            d={`M ${ax} ${y} Q ${(ax + bx) / 2} ${y - 30}, ${bx} ${y}`}
-            fill="none"
-            stroke="var(--color-gold-bright)"
-            strokeWidth={2.5}
-            strokeLinecap="round"
-          />
-        );
-      })}
-
-      {tentativePairs.map(({ a, b, key }) => {
-        const ax = bandX(a.band).center;
-        const bx = bandX(b.band).center;
-        const y = BAND_TOP - 30;
-        return (
-          <path
-            key={key}
-            d={`M ${ax} ${y} Q ${(ax + bx) / 2} ${y - 30}, ${bx} ${y}`}
-            fill="none"
-            stroke="var(--color-gold-bright)"
-            strokeWidth={1.5}
-            strokeDasharray="1 5"
-            strokeLinecap="round"
-          />
-        );
-      })}
-
-      {shoresh?.tier === "hidden" && <ShoreshNistarMark center={center} />}
-
-      {divisions.map((division) => {
-        const { center: bandCenter } = bandX(division.band);
-        const baseSize = 60 + (2 - division.drawOrder) * 12 + (division.count - 1) * 8;
-        return (
-          <LetterGlyph
-            key={division.letterId}
-            letterId={division.letterId}
-            size={baseSize}
-            x={bandCenter}
-            baselineY={BAND_TOP}
-            fill="url(#herald-gold-leaf)"
-            stroke="var(--color-gold-bright)"
-            flip={division.orientation === "reversed"}
-          />
-        );
-      })}
-
-      <DorotBaseMarks sefirot={dorotSefirot} />
-      <GeographyAccent mode={geography} />
-      {festivalMotifs.map((motif) => (
-        <FestivalMotif key={motif} motif={motif} center={center} />
-      ))}
+        {/* Everything that frames the charges is drawn first — the base marks,
+            geography, festival motifs, and the border — so that nothing is ever
+            laid opaquely over a letter. */}
+        <DorotBaseMarks sefirot={dorotSefirot} />
+        <GeographyAccent mode={geography} />
+        {festivalMotifs.map((motif) => (
+          <FestivalMotif key={motif} motif={motif} center={center} />
+        ))}
         <OrnamentalBorder density={ornamentDensity} color={accentColor} nameSeed={nameSeed} />
+
+        {/* The charges last — each enamelled in its letter's own colour. */}
+        {divisions.map((division) => {
+          const { center: bandCenter } = bandX(division.band);
+          const baseSize = 60 + (2 - division.drawOrder) * 12 + (division.count - 1) * 8;
+          return (
+            <LetterGlyph
+              key={division.letterId}
+              letterId={division.letterId}
+              size={baseSize}
+              x={bandCenter}
+              baselineY={BAND_TOP}
+              fill={`url(#herald-glyph-${division.letterId})`}
+              stroke={darken(colorFor(division.letterId), 0.5)}
+              flip={division.orientation === "reversed"}
+            />
+          );
+        })}
       </g>
       {/* The escutcheon edge, outside the clip so the full stroke reads. */}
       <path d={SHIELD_PATH} fill="none" stroke={accentColor} strokeWidth={2.5} />
@@ -739,8 +690,8 @@ function EtzChaimCharges({ draws }: { draws: LetterDraw[] }) {
               size={54}
               x={center.x}
               baselineY={row.y}
-              fill="url(#herald-gold-leaf)"
-              stroke="var(--color-gold-bright)"
+              fill={`url(#herald-glyph-${draw.letterId})`}
+              stroke={darken(colorFor(draw.letterId), 0.5)}
               flip={draw.orientation === "reversed"}
             />
             <text
@@ -819,8 +770,8 @@ function YichudOverlay({
           size={48}
           x={center.x}
           baselineY={unveiledY}
-          fill="url(#herald-gold-leaf)"
-          stroke="var(--color-gold-bright)"
+          fill={`url(#herald-glyph-${unveiled.letterId})`}
+          stroke={darken(colorFor(unveiled.letterId), 0.5)}
           flip={unveiled.orientation === "reversed"}
         />
       </g>
@@ -845,11 +796,12 @@ export function HeraldLayerContent({
   const motif = festival.heraldAccent?.motif;
   const spread = input.spread ?? "triadic";
   const shared = {
-    litSefirot: [input.middah],
-    dominantSefirah: input.middah,
     geography: input.geography.mode,
     festivalMotifs: motif ? [motif] : [],
-    accentColor: metalAccent(style?.metal, festival.heraldAccent?.accentColor ?? "var(--color-gold)"),
+    accentColor: metalAccent(
+      style?.metal,
+      naturalAccent(festival.heraldAccent?.accentColor ?? "", input.drawnLetters[0]?.letterId),
+    ),
     ornamentDensity: Math.min(10 + layerCount * 2, 40),
     dorotSefirot: dorotSefirotOf(input.dorotDraws),
     nameSeed: nameSeedOf(input.hebrewName),
@@ -907,11 +859,9 @@ export function HeraldSynthesisContent({ form, style }: { form: HeraldForm; styl
   return (
     <HeraldFigure
       divisions={computeDivisions(form.charges)}
-      litSefirot={form.litSefirot}
-      dominantSefirah={form.dominantMiddah}
       geography={form.geography}
       festivalMotifs={form.festivalMotifs}
-      accentColor={metalAccent(style?.metal, form.accentColor)}
+      accentColor={metalAccent(style?.metal, naturalAccent(form.accentColor, form.charges[0]?.letterId))}
       ornamentDensity={form.ornamentDensity}
       shoresh={resolveShoresh(form.charges.map((c) => c.letterId) as [string, string, string])}
       dorotSefirot={form.dorotSefirot}
@@ -935,11 +885,9 @@ export function HeraldCovenantContent({ form }: { form: CovenantalForm }) {
   return (
     <HeraldFigure
       divisions={divisions}
-      litSefirot={form.litSefirot}
-      dominantSefirah={form.dominantMiddah}
       geography={form.geography}
       festivalMotifs={[]}
-      accentColor={form.bothRevealed ? "var(--color-gold-bright)" : "var(--color-gold)"}
+      accentColor={naturalAccent("", form.dexterCharge.letterId)}
       ornamentDensity={form.ornamentDensity}
       dorotSefirot={form.shevaBrachotLit}
     />
@@ -975,6 +923,19 @@ export function HeraldSvgDefs() {
         <stop offset="55%" stopColor="#c9a24b" />
         <stop offset="100%" stopColor="#a9853a" />
       </linearGradient>
+
+      {/* One enamelled gradient per letter, from its own signature colour — so a
+          charge is coloured by the letter that was actually drawn. */}
+      {letterColorIds.map((id) => {
+        const c = colorFor(id);
+        return (
+          <linearGradient id={`herald-glyph-${id}`} key={id} x1="0" y1="0" x2="0.35" y2="1">
+            <stop offset="0%" stopColor={lighten(c, 0.72)} />
+            <stop offset="45%" stopColor={lighten(c, 0.18)} />
+            <stop offset="100%" stopColor={darken(c, 0.3)} />
+          </linearGradient>
+        );
+      })}
 
       {/* Shield interior: a raised centre falling to the charcoal edge (depth). */}
       <radialGradient id="herald-shield-fill" cx="0.5" cy="0.42" r="0.75">
