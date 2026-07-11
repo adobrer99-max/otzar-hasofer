@@ -2,10 +2,17 @@
   position: sticky;
   top: 0;
   z-index: 40;
+  /* Opaque ground (both themes) so the 3D folio's vivid mandala on /mizbeach
+     doesn't bleed through the sticky bar as content scrolls under it. A
+     translucent header (the former 0.82/0.85 tint) let it show through. */
   background: var(--header-bg);
-  backdrop-filter: saturate(140%) blur(10px);
-  -webkit-backdrop-filter: saturate(140%) blur(10px);
   border-bottom: 1px solid var(--border-hairline);
+}
+
+/* Non-sticky variant (the Reading Folio): scrolls away so it never covers the
+   tall folio. Still opaque, so no bleed-through while it is on screen. */
+.headerStatic {
+  position: static;
 }
 
 .inner {

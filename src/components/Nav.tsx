@@ -142,9 +142,15 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
 
 export function Nav() {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const location = useLocation();
+
+  // The Reading Folio is a tall centrepiece; a sticky bar would cover the top
+  // of the folio (the Mizrach vector, the PaRDeS corners) as it scrolls into
+  // view. Let the header scroll away here — it stays sticky everywhere else.
+  const unstick = location.pathname === "/mizbeach";
 
   return (
-    <header className={styles.header}>
+    <header className={`${styles.header} ${unstick ? styles.headerStatic : ""}`}>
       <div className={styles.inner}>
         <NavLink to="/" className={styles.brand} end>
           <BrandMark />
