@@ -100,6 +100,16 @@ export function VisualCanon() {
         Epithet. Nothing is ever laid over a letter.
       </p>
       <p>
+        As a Herald forms across the seven readings it fills out the way real
+        arms do — the centre stays a fixed heart of the three dominant letters,
+        while everything else accretes at the edges. The <strong>field</strong>{" "}
+        divides heraldically by how many letters dominate (a plain field, then{" "}
+        <em>per pale</em>, then <em>tierced</em>), and the secondary letters
+        gather as small charges around the <strong>bordure</strong> — a ring
+        that carries the whole reading-history without ever crowding the
+        centre.
+      </p>
+      <p>
         Each letter also has a <strong>heraldic charge</strong> — a growing
         symbol language of the aleph-bet, drawn from each letter's own ancient
         pictographic origin: aleph the ox, bet the house, dalet the door, mem

@@ -9,7 +9,7 @@ import { computeDivisions, type Division } from "./divisions";
 import { nameSeedOf, flourishRotation } from "./nameGeometry";
 import { LetterGlyph } from "./LetterGlyph";
 import { LetterCharge, hasCharge } from "./letterCharges";
-import { colorFor, lighten, darken, blend, letterColorIds } from "./letterColors";
+import { colorFor, lighten, darken, letterColorIds } from "./letterColors";
 
 type ShoreshResult = ReturnType<typeof resolveShoresh>;
 import {
@@ -496,8 +496,71 @@ export function MottoRibbon({ text }: { text: string }) {
   );
 }
 
+/**
+ * The field's tincture, divided heraldically by how many letters dominate:
+ * one letter → a plain field of its colour; two → per pale; three → tierced in
+ * pale. Each region is a whisper of the letter's colour over the charcoal, so
+ * the ground itself tells the reading's shape. Drawn inside the shield clip.
+ */
+function FieldTincture({ letterIds }: { letterIds: string[] }) {
+  const distinct = [...new Set(letterIds)];
+  const colors = distinct.map(colorFor);
+  const L = 66;
+  const R = 534;
+  const Y = 86;
+  const H = 638;
+  const op = 0.17;
+  if (colors.length >= 3) {
+    const w = (R - L) / 3;
+    return (
+      <>
+        {colors.slice(0, 3).map((c, i) => (
+          <rect key={i} x={L + i * w} y={Y} width={w} height={H} fill={darken(c, 0.22)} opacity={op} />
+        ))}
+      </>
+    );
+  }
+  if (colors.length === 2) {
+    const mid = (L + R) / 2;
+    return (
+      <>
+        <rect x={L} y={Y} width={mid - L} height={H} fill={darken(colors[0], 0.22)} opacity={op} />
+        <rect x={mid} y={Y} width={R - mid} height={H} fill={darken(colors[1], 0.22)} opacity={op} />
+      </>
+    );
+  }
+  return <rect x={L} y={Y} width={R - L} height={H} fill={darken(colors[0] ?? "#888888", 0.25)} opacity={op * 0.95} />;
+}
+
+/**
+ * The bordure — the secondary letters strewn as small charges around the
+ * shield's inner edge, one ring of the reading's whole history that never
+ * crowds the central charges. Placed on the escutcheon outline itself.
+ */
+function Bordure({ charges }: { charges: LetterDraw[] }) {
+  if (charges.length === 0) return null;
+  const points = shieldBorderPoints(charges.length, 40);
+  return (
+    <g data-role="bordure">
+      {charges.map((c, i) => (
+        <LetterCharge
+          key={`${c.letterId}-${i}`}
+          letterId={c.letterId}
+          size={34}
+          x={points[i].x}
+          y={points[i].y}
+          fill={`url(#herald-glyph-${c.letterId})`}
+          stroke={darken(colorFor(c.letterId), 0.5)}
+        />
+      ))}
+    </g>
+  );
+}
+
 interface HeraldFigureProps {
   divisions: Division[];
+  /** The secondary letters (synthesis only) that ring the bordure. */
+  bordureCharges?: LetterDraw[];
   geography: "land" | "galut";
   /** Zero or more accreted festival accent motifs. */
   festivalMotifs: string[];
@@ -526,6 +589,7 @@ interface HeraldFigureProps {
  */
 function HeraldFigure({
   divisions,
+  bordureCharges = [],
   geography,
   festivalMotifs,
   accentColor,
@@ -540,9 +604,6 @@ function HeraldFigure({
   supporters = false,
 }: HeraldFigureProps) {
   const center = shieldCenter();
-  // The field takes a whisper of the drawn letters' blended colour, so the
-  // ground itself is individual; each charge is enamelled in its own colour.
-  const fieldTint = blend(divisions.map((d) => colorFor(d.letterId)));
 
   function findDivision(letterId: string): Division | undefined {
     return divisions.find((d) => d.letterId === letterId);
@@ -580,8 +641,9 @@ function HeraldFigure({
       <path d={SHIELD_PATH} fill="var(--color-charcoal)" filter="url(#herald-emboss)" />
       <g clipPath="url(#herald-shield-clip)">
         <path d={SHIELD_PATH} fill="url(#herald-shield-fill)" />
-        {/* The field's own tint, then parchment tooth — both beneath everything. */}
-        <rect x={66} y={86} width={468} height={638} fill={darken(fieldTint, 0.25)} opacity={0.16} />
+        {/* The field's tincture, divided by how many letters dominate, then a
+            whisper of parchment tooth — both beneath everything. */}
+        <FieldTincture letterIds={divisions.map((d) => d.letterId)} />
         <rect x={66} y={86} width={468} height={638} fill="#c9a24b" filter="url(#herald-vellum)" opacity={0.22} />
 
         <DivisionDividers bands={divisions.map((d) => d.band)} />
@@ -631,6 +693,7 @@ function HeraldFigure({
           <FestivalMotif key={motif} motif={motif} center={center} />
         ))}
         <OrnamentalBorder density={ornamentDensity} color={accentColor} nameSeed={nameSeed} />
+        <Bordure charges={bordureCharges} />
 
         {/* The charges last — each enamelled in its letter's own colour, drawn
             as the letterform or, in the heraldic-charge device, as the letter's
@@ -884,6 +947,7 @@ export function HeraldSynthesisContent({ form, style }: { form: HeraldForm; styl
   return (
     <HeraldFigure
       divisions={computeDivisions(form.charges)}
+      bordureCharges={form.bordureCharges}
       geography={form.geography}
       festivalMotifs={form.festivalMotifs}
       accentColor={metalAccent(style?.metal, naturalAccent(form.accentColor, form.charges[0]?.letterId))}

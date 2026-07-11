@@ -249,4 +249,12 @@ describe("HeraldSynthesisContent determinism", () => {
     const revealed = renderToStaticMarkup(<HeraldSynthesisContent form={deriveHeraldForm(sevenLayers)} />);
     expect(forming).not.toBe(revealed);
   });
+
+  it("rings the secondary letters around the bordure as readings accrue", () => {
+    // The seven readings draw many distinct letters, so the revealed synthesis
+    // carries a bordure; the single reading (no secondaries) does not.
+    const revealed = renderToStaticMarkup(<HeraldSynthesisContent form={deriveHeraldForm(sevenLayers)} />);
+    expect(revealed).toContain('data-role="bordure"');
+    expect(render(sampleInput, 0)).not.toContain('data-role="bordure"');
+  });
 });

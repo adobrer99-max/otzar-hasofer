@@ -27,6 +27,13 @@ export interface HeraldForm {
    * fewer than three distinct letters have been drawn.
    */
   charges: [LetterDraw, LetterDraw, LetterDraw];
+  /**
+   * The secondary letters — every distinct open letter drawn beyond the three
+   * dominant charges, ranked by frequency. They accrete around the shield's
+   * bordure as the readings pass, so the whole history is carried without
+   * crowding the heart of the arms. Capped so the ring never overfills.
+   */
+  bordureCharges: LetterDraw[];
   /** The Sefirah of each reading's Encounter (Chesed…Malchut); after seven readings, the whole lower Tree. */
   litSefirot: SefirahId[];
   /** The most frequent dominant middah across the readings — the brightest Tree node. */
@@ -44,6 +51,7 @@ export interface HeraldForm {
 }
 
 const MAX_FESTIVAL_MOTIFS = 3;
+const MAX_BORDURE_CHARGES = 8;
 const DEFAULT_ACCENT = "var(--color-gold)";
 
 /** Ranks distinct values by frequency; ties broken by first occurrence in the sequence. */
@@ -91,6 +99,14 @@ export function deriveHeraldForm(layers: HeraldLayer[]): HeraldForm {
     orientation: orientationOf.get(letterId) ?? "upright",
   })) as [LetterDraw, LetterDraw, LetterDraw];
 
+  // The bordure — the distinct open letters beyond the dominant three, in
+  // dominance order, capped so the ring stays orderly.
+  const primary = new Set(topThree);
+  const bordureCharges: LetterDraw[] = ranked
+    .filter((letterId) => !primary.has(letterId))
+    .slice(0, MAX_BORDURE_CHARGES)
+    .map((letterId) => ({ letterId, orientation: orientationOf.get(letterId) ?? "upright" }));
+
   // The completing Tree — one Sefirah per reading, by Encounter position.
   const litSefirot = readings
     .map((l) => getEncounterForReadingIndex(l.layerIndex)?.sefirah)
@@ -133,6 +149,7 @@ export function deriveHeraldForm(layers: HeraldLayer[]): HeraldForm {
     readingCount,
     revealed: readingCount >= HERALD_READINGS,
     charges,
+    bordureCharges,
     litSefirot,
     dominantMiddah,
     geography,
