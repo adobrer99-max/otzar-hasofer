@@ -104,6 +104,16 @@ export function VisualCanon() {
         Nothing is ever laid over a letter.
       </p>
       <p>
+        Three further marks make each Herald singular, all derived from the
+        letters drawn: a <strong>chief of associations</strong> across the top,
+        bearing each letter's own cosmic sign — its element (an alchemical
+        triangle), its planet (a classical sigil), or its zodiac (a small
+        constellation); a <strong>semé</strong> of faint gold estoiles powdering
+        the field; and the reading's <strong>gematria</strong>, struck in small
+        Hebrew numerals beneath the charges. Every one is a consequence of the
+        reading, never decoration for its own sake.
+      </p>
+      <p>
         As a Herald forms across the seven readings it fills out the way real
         arms do — a fixed heart, elaboration around it. The{" "}
         <strong>field</strong> divides heraldically by how many letters dominate

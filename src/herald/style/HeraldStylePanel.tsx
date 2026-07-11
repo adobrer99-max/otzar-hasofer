@@ -8,12 +8,19 @@ const METALS: { value: NonNullable<HeraldStyle["metal"]>; label: string }[] = [
   { value: "silver", label: "Silver" },
 ];
 
-const TOGGLES: { key: "crest" | "mantling" | "compartment" | "supporters" | "motto"; label: string; def: boolean }[] = [
+const TOGGLES: {
+  key: "crest" | "mantling" | "compartment" | "supporters" | "motto" | "chief" | "seme" | "gematria";
+  label: string;
+  def: boolean;
+}[] = [
   { key: "crest", label: "Crest", def: true },
   { key: "mantling", label: "Mantling", def: true },
   { key: "compartment", label: "Compartment", def: true },
   { key: "supporters", label: "Supporters", def: false },
   { key: "motto", label: "Motto scroll", def: true },
+  { key: "chief", label: "Chief of associations", def: true },
+  { key: "seme", label: "Semé (powdering)", def: true },
+  { key: "gematria", label: "Gematria mark", def: true },
 ];
 
 /**

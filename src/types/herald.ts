@@ -109,6 +109,12 @@ export interface HeraldStyle {
   supporters?: boolean;
   /** Whether the sealed epithet is shown on the motto scroll. */
   motto?: boolean;
+  /** A chief bearing the drawn letters' cosmic associations (element / planet / zodiac). Default on. */
+  chief?: boolean;
+  /** Semé — the field strewn with a faint repeat of each letter's charge. Default on. */
+  seme?: boolean;
+  /** The reading's gematria, struck in Hebrew numerals below the charges. Default on. */
+  gematria?: boolean;
 }
 
 export interface ParticipantRecord {

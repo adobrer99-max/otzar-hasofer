@@ -11,6 +11,8 @@ import { nameSeedOf, flourishRotation } from "./nameGeometry";
 import { LetterGlyph } from "./LetterGlyph";
 import { LetterCharge, hasCharge } from "./letterCharges";
 import { colorFor, darken } from "./letterColors";
+import { AssociationEmblem } from "./heraldEmblems";
+import { toHebrewNumeral } from "./associations";
 
 type ShoreshResult = ReturnType<typeof resolveShoresh>;
 import {
@@ -49,12 +51,18 @@ function vocab(style?: HeraldStyle): {
   mantling: boolean;
   compartment: boolean;
   supporters: boolean;
+  chief: boolean;
+  seme: boolean;
+  gematria: boolean;
 } {
   return {
     crest: style?.crest ?? true,
     mantling: style?.mantling ?? true,
     compartment: style?.compartment ?? true,
     supporters: style?.supporters ?? false,
+    chief: style?.chief ?? true,
+    seme: style?.seme ?? true,
+    gematria: style?.gematria ?? true,
   };
 }
 
@@ -592,6 +600,103 @@ function FieldTincture({ letterIds }: { letterIds: string[] }) {
 }
 
 /**
+ * A chief of associations — a row across the top of the shield bearing each
+ * drawn letter's own cosmic mark: its element (an alchemical triangle), its
+ * planet (a classical sigil), or its zodiac sign (a small constellation). The
+ * emblems are derived straight from the letters, so the chief is unique to the
+ * reading; the twelve signs, seven planets, and four elements each read
+ * distinctly.
+ */
+function AssociationChief({ letterIds, color }: { letterIds: string[]; color: string }) {
+  const distinct = [...new Set(letterIds)];
+  if (distinct.length === 0) return null;
+  const mid = (SHIELD.left + SHIELD.right) / 2;
+  const y = SHIELD.top + 70;
+  const spacing = 96;
+  const startX = mid - (spacing * (distinct.length - 1)) / 2;
+  const xs = distinct.map((_, i) => startX + i * spacing);
+  return (
+    <g data-role="chief">
+      {distinct.map((id, i) => (
+        <AssociationEmblem key={id} letterId={id} x={xs[i]} y={y} size={40} color={color} />
+      ))}
+    </g>
+  );
+}
+
+/**
+ * Semé (powdering) — each field is strewn with faint gold estoiles (small
+ * four-pointed stars), the way a heraldic field is sown with tiny charges. Kept
+ * whisper-low so it reads as tincture texture; the central charge zone is left
+ * clear, and each field's rows shift so the pattern isn't a rigid grid.
+ */
+function FieldSeme({ divisions, color }: { divisions: Division[]; color: string }) {
+  const top = SHIELD.top + 132;
+  const bot = SHIELD.point - 78;
+  const nx = 2;
+  const ny = 4;
+  const star = (x: number, y: number, r: number) =>
+    `M ${x} ${y - r} L ${x + r * 0.34} ${y - r * 0.34} L ${x + r} ${y} L ${x + r * 0.34} ${y + r * 0.34} L ${x} ${y + r} L ${x - r * 0.34} ${y + r * 0.34} L ${x - r} ${y} L ${x - r * 0.34} ${y - r * 0.34} Z`;
+  return (
+    <g data-role="seme" fill={color} opacity={0.08}>
+      {divisions.map((division, di) => {
+        const b = bandX(division.band);
+        const pad = (b.end - b.start) * 0.22;
+        const L = b.start + pad;
+        const R = b.end - pad;
+        const spots: { x: number; y: number }[] = [];
+        for (let iy = 0; iy < ny; iy++) {
+          for (let ix = 0; ix < nx; ix++) {
+            const fx = (ix + (iy % 2 ? 0.5 : 0)) / nx + 0.5 / nx;
+            const x = L + (R > L ? fx * (R - L) : 0);
+            const y = top + ((iy + 0.5) / ny) * (bot - top);
+            // Leave the middle (where the large charge sits) clear.
+            if (Math.abs(y - BAND_TOP) < 78 && Math.abs(x - b.center) < (b.end - b.start) * 0.34) continue;
+            spots.push({ x, y });
+          }
+        }
+        return (
+          <g key={`${division.letterId}-${di}`}>
+            {spots.map((p, i) => (
+              <path key={i} d={star(p.x, p.y, 4.5)} />
+            ))}
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+/**
+ * The reading's gematria, struck in small Hebrew numerals below the charges —
+ * a quiet numeric signature unique to the letters drawn (with a gershayim, as
+ * Hebrew numerals are written).
+ */
+function GematriaMark({ total, color }: { total: number; color: string }) {
+  if (total <= 0) return null;
+  const center = shieldCenter();
+  const num = toHebrewNumeral(total);
+  const marked = num.length > 1 ? num.slice(0, -1) + "״" + num.slice(-1) : num + "׳";
+  return (
+    <g data-role="gematria">
+      <text
+        x={center.x}
+        y={SHIELD.point - 66}
+        textAnchor="middle"
+        direction="rtl"
+        fontFamily="var(--font-hebrew)"
+        fontSize={19}
+        letterSpacing="0.06em"
+        fill={color}
+        opacity={0.85}
+      >
+        {marked}
+      </text>
+    </g>
+  );
+}
+
+/**
  * The fess of the Word of the Life — when the dominant three letters resolve
  * to a Hebrew root or name, a horizontal band crosses the shield beneath the
  * charges, inscribed with the Word they spell. The letters are the Word; the
@@ -644,6 +749,12 @@ interface HeraldFigureProps {
   mantling?: boolean;
   compartment?: boolean;
   supporters?: boolean;
+  /** A chief of the letters' cosmic associations (element / planet / zodiac). */
+  chief?: boolean;
+  /** Semé — the field strewn with a faint repeat of each letter's charge. */
+  seme?: boolean;
+  /** The reading's gematria, struck in Hebrew numerals below the charges. */
+  gematria?: boolean;
 }
 
 /**
@@ -667,8 +778,15 @@ function HeraldFigure({
   mantling = true,
   compartment = true,
   supporters = false,
+  chief = true,
+  seme = true,
+  gematria = true,
 }: HeraldFigureProps) {
   const center = shieldCenter();
+  const gematriaTotal = divisions.reduce(
+    (sum, d) => sum + (lettersById[d.letterId]?.gematria ?? 0) * d.count,
+    0,
+  );
 
   function findDivision(letterId: string): Division | undefined {
     return divisions.find((d) => d.letterId === letterId);
@@ -711,6 +829,7 @@ function HeraldFigure({
         {/* Flat deep ground, then the flat tincture division — no gradient, glow, or texture. */}
         <path d={SHIELD_PATH} fill="var(--color-charcoal)" />
         <FieldTincture letterIds={divisions.map((d) => d.letterId)} />
+        {seme && divisions.length > 0 && <FieldSeme divisions={divisions} color={metalFill} />}
 
         <DivisionDividers bands={divisions.map((d) => d.band)} color={metalLine} />
 
@@ -744,6 +863,10 @@ function HeraldFigure({
           <FestivalMotif key={motif} motif={motif} center={center} />
         ))}
         <OrnamentalBorder density={ornamentDensity} metalFill={metalFill} metalLine={metalLine} nameSeed={nameSeed} />
+        {chief && divisions.length > 0 && (
+          <AssociationChief letterIds={divisions.map((d) => d.letterId)} color={metalFill} />
+        )}
+        {gematria && <GematriaMark total={gematriaTotal} color={metalFill} />}
 
         {/* The charges last — each enamelled in its letter's own colour, drawn
             as the letterform or, in the heraldic-charge device, as the letter's
