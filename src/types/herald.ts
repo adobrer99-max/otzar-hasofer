@@ -95,9 +95,10 @@ export interface HeraldicEpithet {
  */
 export interface HeraldStyle {
   /**
-   * The metal of the frame (outline, border, dividers). "natural" (the default)
-   * takes the reading's own colour — the dominant letter, or the festival. The
-   * enamelled charge letters keep their own association colours regardless.
+   * The metal of the whole achievement (frame, charges, ornament) — one flat
+   * foil metal, gold by default. The field tinctures carry the reading's own
+   * colours; the metal does not. ("natural" is a deprecated alias kept for
+   * records saved before the foil-stamp redesign; it renders as gold.)
    */
   metal?: "natural" | "gold" | "antique" | "silver";
   /** How each drawn letter appears on the shield: its enamelled letterform, or its heraldic charge (the pictographic symbol language). Default letterform. */

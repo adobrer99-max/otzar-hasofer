@@ -3,7 +3,6 @@ import { Card, SegmentedControl, Button } from "../../components/ui";
 import styles from "./HeraldStylePanel.module.css";
 
 const METALS: { value: NonNullable<HeraldStyle["metal"]>; label: string }[] = [
-  { value: "natural", label: "Natural" },
   { value: "gold", label: "Gold" },
   { value: "antique", label: "Antique" },
   { value: "silver", label: "Silver" },
@@ -59,10 +58,10 @@ export function HeraldStylePanel({
       </div>
 
       <div className={styles.field}>
-        <span className={styles.label}>Metal of the frame</span>
+        <span className={styles.label}>Metal of the achievement</span>
         <SegmentedControl
-          ariaLabel="Metal of the frame"
-          value={draft.metal ?? "natural"}
+          ariaLabel="Metal of the achievement"
+          value={draft.metal ?? "gold"}
           options={METALS.map((m) => ({ value: m.value, label: m.label }))}
           onChange={(metal) => onChange({ ...draft, metal })}
         />

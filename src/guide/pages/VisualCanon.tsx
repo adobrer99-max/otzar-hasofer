@@ -75,29 +75,33 @@ export function VisualCanon() {
         <li>Symbolic flora and fauna</li>
         <li>Calligraphic flourishes</li>
         <li>Seasonal motifs</li>
-        <li>A field and charges coloured from the letters actually drawn</li>
+        <li>Gold charges on a field tinctured from the letters actually drawn</li>
       </ul>
       <p>
         No decorative element is arbitrary; every mark reflects a lived
         relationship within the Treasury.
       </p>
 
-      <h2>The Illuminated Herald</h2>
+      <h2>The Foil-Stamped Herald</h2>
       <p>
-        The Herald is the <em>one</em> surface that steps outside the five brand
-        colours above — deliberately. Each letter carries its own association —
-        an element, a planet, or a sign of the zodiac — and the Herald is{" "}
-        <strong>coloured from the letters actually drawn</strong>: each charge
-        is enamelled in its letter's colour, and the field takes their blend. So
-        a reading of fire-letters burns red, one of water-letters runs deep
-        blue, and no two Heralds share a palette — each is unique to the person,
-        not one of a fixed set. It is rendered as an{" "}
-        <strong>illuminated plate</strong> — depth beneath the shield, a whisper
-        of <strong>vellum tooth</strong>, and a full coat of arms around the
-        escutcheon: a <strong>crest</strong>, foliate <strong>mantling</strong>,
-        a <strong>compartment</strong> (rooted earth in the Land, water in
-        Galut), and a <strong>motto scroll</strong> bearing the sealed Heraldic
-        Epithet. Nothing is ever laid over a letter.
+        The Herald is struck to be <strong>foil-stamped on the back of the
+        recipient's own card deck</strong>, so it is drawn as a real engraving,
+        never a screen graphic: <strong>flat metallic gold</strong> and{" "}
+        <strong>flat heraldic tinctures</strong>, crisp linework, a deep flat
+        ground — no gradients, glows, shadows, or texture. Each letter carries
+        its own association — an element, a planet, or a sign of the zodiac —
+        and the Herald is <strong>coloured from the letters actually drawn</strong>:
+        the charges are struck in gold, and each field is tinctured in its
+        letter's own colour, taken to a deep jewel tone (gold on colour, the
+        heraldic rule of tincture). So a reading of fire-letters burns on deep
+        red, one of water-letters on deep blue, and no two Heralds share a field
+        — each is unique to the person, not one of a fixed set. Around the
+        escutcheon stands a full coat of arms: a <strong>crest</strong> (a gold
+        torse and rising flame), foliate <strong>mantling</strong>, a{" "}
+        <strong>compartment</strong> (rooted earth in the Land, water in Galut),
+        an engraved <strong>orle</strong> studded with gold lozenges, and a{" "}
+        <strong>motto scroll</strong> bearing the sealed Heraldic Epithet.
+        Nothing is ever laid over a letter.
       </p>
       <p>
         As a Herald forms across the seven readings it fills out the way real
@@ -120,12 +124,12 @@ export function VisualCanon() {
         drawn.
       </p>
       <p>
-        Because the Herald "is recognized, never assigned," its colour is{" "}
+        Because the Herald "is recognized, never assigned," its tinctures are{" "}
         <em>derived</em> from the reading first. The Scribe may then{" "}
-        <strong>curate</strong> — the metal of the frame (natural, gold, antique,
+        <strong>curate</strong> — the metal of the achievement (gold, antique,
         or silvered) and which elements of the coat of arms are shown — but only
         within these curated choices, never as free invention. On the headline
-        Herald the frame breathes with a quiet, motion-respecting shimmer;
+        Herald the crest flame breathes with a quiet, motion-respecting flicker;
         hovering a letter names it.
       </p>
 
