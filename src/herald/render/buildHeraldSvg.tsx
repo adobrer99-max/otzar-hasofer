@@ -1,4 +1,4 @@
-import type { HeraldInputSnapshot, DorotDraw, LetterDraw } from "../../types/herald";
+import type { HeraldInputSnapshot, DorotDraw, LetterDraw, HeraldStyle } from "../../types/herald";
 import type { SefirahId } from "../../types/letter";
 import type { HeraldForm } from "../synthesis/deriveHeraldForm";
 import type { CovenantalForm } from "../covenant/deriveCovenantalForm";
@@ -21,6 +21,28 @@ import {
 } from "./heraldGeometry";
 
 const BAND_TOP = SHIELD.top + 150;
+
+/** The metal of the frame (outline/border/dividers) from the Scribe's curation. Gold-leaf letters are unchanged. */
+function metalAccent(metal: HeraldStyle["metal"] | undefined, fallback: string): string {
+  if (metal === "silver") return "var(--color-silver)";
+  if (metal === "antique") return "#b58a37";
+  return fallback;
+}
+
+/** Heraldic-vocabulary toggles from the Scribe's curation; defaults keep the richer illuminated frame. */
+function vocab(style?: HeraldStyle): {
+  crest: boolean;
+  mantling: boolean;
+  compartment: boolean;
+  supporters: boolean;
+} {
+  return {
+    crest: style?.crest ?? true,
+    mantling: style?.mantling ?? true,
+    compartment: style?.compartment ?? true,
+    supporters: style?.supporters ?? false,
+  };
+}
 
 function bandX(band: [number, number]): { start: number; end: number; center: number } {
   const width = SHIELD.right - SHIELD.left;
@@ -812,9 +834,11 @@ function YichudOverlay({
 export function HeraldLayerContent({
   input,
   layerCount,
+  style,
 }: {
   input: HeraldInputSnapshot;
   layerCount: number;
+  style?: HeraldStyle;
 }) {
   const festival = festivalsById[input.festivalId] ?? festivalsById.ordinary;
   const motif = festival.heraldAccent?.motif;
@@ -824,10 +848,11 @@ export function HeraldLayerContent({
     dominantSefirah: input.middah,
     geography: input.geography.mode,
     festivalMotifs: motif ? [motif] : [],
-    accentColor: festival.heraldAccent?.accentColor ?? "var(--color-gold)",
+    accentColor: metalAccent(style?.metal, festival.heraldAccent?.accentColor ?? "var(--color-gold)"),
     ornamentDensity: Math.min(10 + layerCount * 2, 40),
     dorotSefirot: dorotSefirotOf(input.dorotDraws),
     nameSeed: nameSeedOf(input.hebrewName),
+    ...vocab(style),
   };
 
   if (spread === "etz-chaim") {
@@ -877,7 +902,7 @@ export function HeraldLayerContent({
  * are resolved as a Shoresh too, so a confident chain draws when they spell
  * a root — the word the seven readings together speak.
  */
-export function HeraldSynthesisContent({ form }: { form: HeraldForm }) {
+export function HeraldSynthesisContent({ form, style }: { form: HeraldForm; style?: HeraldStyle }) {
   return (
     <HeraldFigure
       divisions={computeDivisions(form.charges)}
@@ -885,10 +910,11 @@ export function HeraldSynthesisContent({ form }: { form: HeraldForm }) {
       dominantSefirah={form.dominantMiddah}
       geography={form.geography}
       festivalMotifs={form.festivalMotifs}
-      accentColor={form.accentColor}
+      accentColor={metalAccent(style?.metal, form.accentColor)}
       ornamentDensity={form.ornamentDensity}
       shoresh={resolveShoresh(form.charges.map((c) => c.letterId) as [string, string, string])}
       dorotSefirot={form.dorotSefirot}
+      {...vocab(style)}
     />
   );
 }

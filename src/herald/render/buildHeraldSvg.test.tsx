@@ -165,6 +165,37 @@ const sevenLayers: HeraldLayer[] = [
   layer(6, ["peh", "tzadi", "kuf"], "malchut"),
 ];
 
+describe("Scribe curation (HeraldStyle)", () => {
+  it("is deterministic for the same input + style, and absent style is unchanged", () => {
+    const withStyle = renderToStaticMarkup(
+      <HeraldLayerContent input={sampleInput} layerCount={0} style={{ metal: "silver", crest: false }} />,
+    );
+    const again = renderToStaticMarkup(
+      <HeraldLayerContent input={sampleInput} layerCount={0} style={{ metal: "silver", crest: false }} />,
+    );
+    expect(withStyle).toBe(again);
+    // No style prop and an all-defaults style yield the same structure.
+    const noStyle = render(sampleInput, 0);
+    const defaultStyle = renderToStaticMarkup(<HeraldLayerContent input={sampleInput} layerCount={0} style={{}} />);
+    expect(noStyle).toBe(defaultStyle);
+  });
+
+  it("changes the render when the curation changes", () => {
+    const gold = renderToStaticMarkup(<HeraldLayerContent input={sampleInput} layerCount={0} style={{}} />);
+    const silvered = renderToStaticMarkup(
+      <HeraldLayerContent input={sampleInput} layerCount={0} style={{ metal: "silver" }} />,
+    );
+    expect(gold).not.toBe(silvered);
+  });
+
+  it("gates the heraldic vocabulary by curation", () => {
+    const withCrest = renderToStaticMarkup(<HeraldLayerContent input={sampleInput} layerCount={0} style={{ crest: true }} />);
+    const noCrest = renderToStaticMarkup(<HeraldLayerContent input={sampleInput} layerCount={0} style={{ crest: false }} />);
+    expect(withCrest).toContain('data-role="crest"');
+    expect(noCrest).not.toContain('data-role="crest"');
+  });
+});
+
 describe("HeraldSynthesisContent determinism", () => {
   it("produces identical markup for the same derived form, twice", () => {
     const form = deriveHeraldForm(sevenLayers);

@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import type { HeraldInputSnapshot, ReadingPath } from "../../types/herald";
+import type { HeraldInputSnapshot, ReadingPath, HeraldStyle } from "../../types/herald";
 import type { HeraldForm } from "../synthesis/deriveHeraldForm";
 import { festivalsById } from "../../data/festivals";
 import { VIEWBOX_WIDTH, VIEWBOX_HEIGHT, FIGURE_OFFSET } from "./heraldGeometry";
@@ -26,10 +26,12 @@ export interface HeraldCanvasProps {
    * reading onward. Absent epithet yields output identical to before.
    */
   epithet?: string;
+  /** The Scribe's curation of this participant's Herald. Absent = default frame. */
+  style?: HeraldStyle;
 }
 
 export const HeraldCanvas = forwardRef<SVGSVGElement, HeraldCanvasProps>(function HeraldCanvas(
-  { input, form, previous, layerCount, displayName, hebrewName, path, createdAt, status, epithet },
+  { input, form, previous, layerCount, displayName, hebrewName, path, createdAt, status, epithet, style },
   ref,
 ) {
   const cx = VIEWBOX_WIDTH / 2;
@@ -66,19 +68,19 @@ export const HeraldCanvas = forwardRef<SVGSVGElement, HeraldCanvasProps>(functio
           the motto scroll rests below, all shield-relative. */}
       <g transform={`translate(${FIGURE_OFFSET.x}, ${FIGURE_OFFSET.y})`}>
         {isSynthesis ? (
-          <HeraldSynthesisContent form={form} />
+          <HeraldSynthesisContent form={form} style={style} />
         ) : input ? (
           <>
             {previous && (
               <g opacity={0.15}>
-                <HeraldLayerContent input={previous} layerCount={Math.max((layerCount ?? 0) - 1, 0)} />
+                <HeraldLayerContent input={previous} layerCount={Math.max((layerCount ?? 0) - 1, 0)} style={style} />
               </g>
             )}
-            <HeraldLayerContent input={input} layerCount={layerCount ?? 0} />
+            <HeraldLayerContent input={input} layerCount={layerCount ?? 0} style={style} />
           </>
         ) : null}
 
-        {epithet && <MottoRibbon text={epithet} />}
+        {epithet && style?.motto !== false && <MottoRibbon text={epithet} />}
       </g>
 
       {captionName && (

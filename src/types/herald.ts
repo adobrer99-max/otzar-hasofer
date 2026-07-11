@@ -85,6 +85,25 @@ export interface HeraldicEpithet {
   sealedAt: string;
 }
 
+/**
+ * The Scribe's curation of a participant's Herald — refinements on top of the
+ * derived defaults, in keeping with "the Herald is recognized, never assigned":
+ * every option is a curated enum/toggle within the Visual Canon (no free
+ * colour), so the render stays deterministic and brand-faithful. All fields
+ * optional; absent = the default illuminated frame. Applies to the synthesis
+ * and to every layer render, re-derived from the stored record.
+ */
+export interface HeraldStyle {
+  /** The metal of the frame (outline, border, dividers). Gold-leaf letters are unchanged. */
+  metal?: "gold" | "antique" | "silver";
+  crest?: boolean;
+  mantling?: boolean;
+  compartment?: boolean;
+  supporters?: boolean;
+  /** Whether the sealed epithet is shown on the motto scroll. */
+  motto?: boolean;
+}
+
 export interface ParticipantRecord {
   id: string;
   displayName: string;
@@ -95,6 +114,8 @@ export interface ParticipantRecord {
   hebrewBirthDate?: HebrewDate;
   /** Additive — participants who have not reached their seventh reading simply lack this. */
   heraldicEpithet?: HeraldicEpithet;
+  /** The Scribe's curation of this participant's Herald. Additive; absent = default frame. */
+  heraldStyle?: HeraldStyle;
   /** Set on mutation (birthday/epithet), for cloud-sync ordering. Additive; falls back to createdAt. */
   updatedAt?: string;
 }
