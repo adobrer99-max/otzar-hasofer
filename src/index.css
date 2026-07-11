@@ -107,22 +107,19 @@ input[type="radio"] {
   }
 }
 
-.page-header {
-  border-bottom: 1px solid var(--border-hairline);
-  padding-bottom: var(--space-3);
-  margin-bottom: var(--space-4);
-}
-
-.page-header .kicker {
+/* The page header now comes from the PageHeader primitive (components/ui). This
+   bare .kicker utility remains for the few bespoke heroes that don't use it
+   (e.g. the letter chapter's glyph-beside-title hero). */
+.kicker {
   color: var(--accent);
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-size: 0.75rem;
 }
 
-.page-header h1 {
-  font-size: var(--font-size-xxl);
-  margin: var(--space-1) 0 0;
+/* Muted body text — the single most-repeated inline treatment, offered once. */
+.muted {
+  color: var(--text-muted);
 }
 
 /* ——— The living Herald: subtle motion on the headline sigil only ———

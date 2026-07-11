@@ -1,6 +1,6 @@
 .panel {
   border: 1px solid var(--border-hairline);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   padding: var(--space-4);
   background: var(--bg-raised);
   margin-top: var(--space-4);
@@ -13,7 +13,7 @@
 .panel input[type="email"] {
   background: var(--bg);
   border: 1px solid var(--border-hairline);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   color: var(--text);
   padding: var(--space-2);
   font-family: var(--font-latin);

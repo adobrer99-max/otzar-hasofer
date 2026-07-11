@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { PageHeader } from "../../components/ui";
 import { dorotHouses, cardsByHouse } from "../../data/dorot";
 import { ushpizinBySefirah } from "../../data/ushpizin";
 import { encounters } from "../../data/encounters";
@@ -9,10 +10,7 @@ const pillarOrder = ["chesed", "gevurah", "tiferet", "netzach", "hod", "yesod", 
 export function Dorot() {
   return (
     <div className="page">
-      <div className="page-header">
-        <div className="kicker">The Second Deck</div>
-        <h1>Derekh Ha'Dorot</h1>
-      </div>
+      <PageHeader kicker="The Second Deck" title="Derekh Ha'Dorot" />
       <p>
         Where Derekh Eretz reveals the eternal symbolic grammar of Creation,
         Derekh Ha'Dorot reveals how those eternal principles have been lived

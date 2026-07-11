@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { PageHeader } from "../../components/ui";
 import styles from "./VisualCanon.module.css";
 
 const swatches = [
@@ -12,10 +13,7 @@ const swatches = [
 export function VisualCanon() {
   return (
     <div className="page">
-      <div className="page-header">
-        <div className="kicker">Guidebook 08</div>
-        <h1>Visual Canon</h1>
-      </div>
+      <PageHeader kicker="Guidebook 08" title="Visual Canon" />
       <p>
         The visual identity draws from illuminated manuscripts, ketubbot,
         medieval Jewish books, Geniza fragments, and ceremonial objects.

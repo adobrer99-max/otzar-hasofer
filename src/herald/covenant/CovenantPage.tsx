@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { PageHeader } from "../../components/ui";
 import type { ParticipantRecord, HeraldLayer, Orientation } from "../../types/herald";
 import type { UnionRecord } from "../../types/union";
 import { listParticipants, getLayers } from "../../storage/participantsRepo";
@@ -97,10 +98,7 @@ export function CovenantPage() {
 
   return (
     <div className="page page--wide">
-      <div className="page-header">
-        <div className="kicker">Covenantal Time</div>
-        <h1>The Covenantal Herald</h1>
-      </div>
+      <PageHeader kicker="Covenantal Time" title="The Covenantal Herald" />
       <p>
         At marriage, a shared Herald is created. Each partner keeps their own{" "}
         <Link to="/herald">Herald</Link> and history; the Covenantal Herald is derived from

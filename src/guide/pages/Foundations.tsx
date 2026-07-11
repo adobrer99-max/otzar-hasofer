@@ -1,12 +1,10 @@
 import { Link } from "react-router-dom";
+import { PageHeader } from "../../components/ui";
 
 export function Foundations() {
   return (
     <div className="page">
-      <div className="page-header">
-        <div className="kicker">Guidebook 00–01</div>
-        <h1>Foundations</h1>
-      </div>
+      <PageHeader kicker="Guidebook 00–01" title="Foundations" />
 
       <h2>Vision</h2>
       <p>

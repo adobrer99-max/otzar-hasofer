@@ -49,9 +49,3 @@
   color: var(--text-muted);
   font-style: italic;
 }
-
-.nav {
-  display: flex;
-  justify-content: space-between;
-  margin-top: var(--space-5);
-}

@@ -1,12 +1,10 @@
 import { Link } from "react-router-dom";
+import { PageHeader } from "../../components/ui";
 
 export function Scribe() {
   return (
     <div className="page">
-      <div className="page-header">
-        <div className="kicker">Guidebook 05</div>
-        <h1>The Scribe</h1>
-      </div>
+      <PageHeader kicker="Guidebook 05" title="The Scribe" />
       <p>
         The Scribe guides the reading; the Scribe does not predict it. This
         page collects the ritual's steps and posture as reference during a

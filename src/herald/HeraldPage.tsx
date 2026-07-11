@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { PageHeader } from "../components/ui";
 import type { ParticipantRecord, HeraldLayer, ReadingPath, HeraldStyle } from "../types/herald";
 import type { LifeCycleEvent } from "../types/lifeCycle";
 import {
@@ -156,10 +157,7 @@ export function HeraldPage() {
 
   return (
     <div className="page page--wide">
-      <div className="page-header">
-        <div className="kicker">The Herald</div>
-        <h1>The Living Herald</h1>
-      </div>
+      <PageHeader kicker="The Herald" title="The Living Herald" />
       <p>
         The Herald forms across a participant's first seven readings — the
         unfolding order of Creation — and is revealed at the seventh. It is

@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { PageHeader } from "../../components/ui";
 import type { GeographyMode } from "../../types/herald";
 import { computeSacredTime } from "../../data/sacredTime";
 import { MizbeachCanvas } from "../../mizbeach/MizbeachCanvas";
@@ -18,10 +19,7 @@ export function Mizbeach() {
 
   return (
     <div className="page page--wide">
-      <div className="page-header">
-        <div className="kicker">Guidebook 04</div>
-        <h1>The Mizbe'ach</h1>
-      </div>
+      <PageHeader kicker="Guidebook 04" title="The Mizbe'ach" />
       <p>
         <em>"The cards are the words. The Mizbe'ach is the sentence."</em>
       </p>
