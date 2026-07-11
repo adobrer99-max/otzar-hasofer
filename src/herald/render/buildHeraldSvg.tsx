@@ -318,6 +318,210 @@ function OrnamentalBorder({
   );
 }
 
+/**
+ * The crest — a torse (twisted wreath) resting on the shield's chief, from
+ * which a small gold flame rises. Above the arms in real heraldry; here it
+ * marks the Herald's summit. Kept deliberately simple and always gold.
+ */
+function Crest() {
+  const center = shieldCenter();
+  const torseY = SHIELD.top - 7;
+  const half = 66;
+  const twists = 8;
+  const step = (half * 2) / twists;
+  return (
+    <g data-role="crest">
+      {/* Torse: a row of alternating over/under twists. */}
+      <g stroke="var(--color-gold)" strokeWidth={2} fill="none">
+        {Array.from({ length: twists }).map((_, i) => {
+          const x0 = center.x - half + i * step;
+          const up = i % 2 === 0;
+          return (
+            <path
+              key={i}
+              d={`M ${x0} ${torseY} Q ${x0 + step / 2} ${torseY + (up ? -9 : 9)}, ${x0 + step} ${torseY}`}
+              stroke={up ? "url(#herald-gold-leaf-soft)" : "var(--color-gold)"}
+            />
+          );
+        })}
+      </g>
+      {/* Flame emblem rising from the torse. */}
+      <path
+        d={`M ${center.x} ${torseY - 58}
+            C ${center.x - 16} ${torseY - 34}, ${center.x - 12} ${torseY - 10}, ${center.x} ${torseY - 6}
+            C ${center.x + 12} ${torseY - 10}, ${center.x + 16} ${torseY - 34}, ${center.x} ${torseY - 58} Z`}
+        fill="url(#herald-gold-leaf)"
+        stroke="var(--color-gold-bright)"
+        strokeWidth={1}
+        filter="url(#herald-glow)"
+      />
+      <path
+        d={`M ${center.x} ${torseY - 40} C ${center.x - 6} ${torseY - 26}, ${center.x - 5} ${torseY - 14}, ${center.x} ${torseY - 10} C ${center.x + 5} ${torseY - 14}, ${center.x + 6} ${torseY - 26}, ${center.x} ${torseY - 40} Z`}
+        fill="var(--color-charcoal-raised)"
+        opacity={0.55}
+      />
+    </g>
+  );
+}
+
+/**
+ * Mantling — foliate scrollwork flanking the shield, the cloth-and-leaf mantle
+ * of a coat of arms. Curl count grows with the ornament density so a completed
+ * Herald is more richly framed. Drawn on both sides by mirroring.
+ */
+function Mantling({ density }: { density: number }) {
+  const lobes = Math.max(3, Math.min(5, Math.round(density / 9)));
+  const side = (dir: 1 | -1) => {
+    const rootX = dir === 1 ? SHIELD.right : SHIELD.left;
+    return Array.from({ length: lobes }).map((_, i) => {
+      const t = i / Math.max(lobes - 1, 1);
+      // Cascade from the top corner down the shield's shoulder, bulging out midway.
+      const cy = SHIELD.top + 4 + t * 168;
+      const cx = rootX + dir * (8 + 28 * Math.sin(t * Math.PI * 0.9));
+      const L = 30 * (1 - 0.4 * t);
+      const W = L * 0.62;
+      // An acanthus leaf: base at (cx,cy), tip at (cx, cy-L), then rotated to hang down-and-out.
+      const d = `M ${cx} ${cy} Q ${cx - W / 2} ${cy - L / 2}, ${cx} ${cy - L} Q ${cx + W / 2} ${cy - L / 2}, ${cx} ${cy} Z`;
+      return (
+        <path
+          key={`${dir}-${i}`}
+          d={d}
+          transform={`rotate(${dir * 138} ${cx} ${cy})`}
+          fill="url(#herald-gold-leaf-soft)"
+          fillOpacity={0.5}
+          stroke="var(--color-gold)"
+          strokeWidth={0.75}
+          strokeOpacity={0.6}
+        />
+      );
+    });
+  };
+  return (
+    <g data-role="mantling">
+      {side(1)}
+      {side(-1)}
+    </g>
+  );
+}
+
+/**
+ * The compartment — the ground on which the shield stands, just below the
+ * point. Rooted earth in the Land; water in Galut (the same vocabulary as the
+ * small GeographyAccent, enlarged to seat the whole shield).
+ */
+function Compartment({ geography }: { geography: "land" | "galut" }) {
+  const center = shieldCenter();
+  const y = SHIELD.point + 18;
+  const span = 96;
+  if (geography === "galut") {
+    return (
+      <g data-role="compartment" stroke="var(--color-copper)" strokeWidth={2} fill="none" opacity={0.8}>
+        <path d={`M ${center.x - span} ${y} Q ${center.x - span / 2} ${y - 10}, ${center.x} ${y} T ${center.x + span} ${y}`} />
+        <path d={`M ${center.x - span + 12} ${y + 12} Q ${center.x - span / 2} ${y + 2}, ${center.x} ${y + 12} T ${center.x + span - 12} ${y + 12}`} opacity={0.6} />
+      </g>
+    );
+  }
+  return (
+    <g data-role="compartment" stroke="var(--color-copper)" strokeWidth={2} fill="none" opacity={0.85}>
+      <path d={`M ${center.x - span} ${y} Q ${center.x} ${y + 14}, ${center.x + span} ${y}`} />
+      {[-1, 0, 1].map((k) => (
+        <line key={k} x1={center.x + k * 30} y1={y + 4} x2={center.x + k * 30} y2={y + 22} />
+      ))}
+    </g>
+  );
+}
+
+/**
+ * Supporters — two slender olive branches flanking the shield. Restrained by
+ * design (not full heraldic beasts); off by default, an opt-in curation.
+ */
+function Supporters() {
+  const branch = (dir: 1 | -1) => {
+    const baseX = (dir === 1 ? SHIELD.right : SHIELD.left) + dir * 26;
+    const topY = SHIELD.top + 40;
+    const botY = SHIELD.point - 30;
+    const leaves = 6;
+    return (
+      <g key={dir}>
+        <path
+          d={`M ${baseX} ${botY} C ${baseX - dir * 18} ${botY - 60}, ${baseX - dir * 18} ${topY + 60}, ${baseX} ${topY}`}
+          fill="none"
+          stroke="url(#herald-gold-leaf-soft)"
+          strokeWidth={1.75}
+        />
+        {Array.from({ length: leaves }).map((_, i) => {
+          const t = (i + 0.5) / leaves;
+          const y = botY + t * (topY - botY);
+          const x = baseX - dir * 18 * Math.sin(t * Math.PI);
+          return (
+            <ellipse
+              key={i}
+              cx={x - dir * 8}
+              cy={y}
+              rx={9}
+              ry={3.5}
+              fill="url(#herald-gold-leaf)"
+              opacity={0.75}
+              transform={`rotate(${dir * (t < 0.5 ? -35 : 35)} ${x - dir * 8} ${y})`}
+            />
+          );
+        })}
+      </g>
+    );
+  };
+  return (
+    <g data-role="supporters">
+      {branch(1)}
+      {branch(-1)}
+    </g>
+  );
+}
+
+/**
+ * The motto scroll — a ribbon banner bearing the participant's sealed Heraldic
+ * Epithet, beneath the shield in the heraldic manner. Rendered by the canvas
+ * (which holds the epithet), positioned just below the point.
+ */
+export function MottoRibbon({ text }: { text: string }) {
+  const center = shieldCenter();
+  const y = SHIELD.point + 52;
+  const w = Math.min(300, 120 + text.length * 6);
+  const half = w / 2;
+  const h = 15;
+  return (
+    <g data-role="motto">
+      {/* End scrolls. */}
+      {[-1, 1].map((dir) => (
+        <path
+          key={dir}
+          d={`M ${center.x + dir * half} ${y - h} q ${dir * 20} ${h}, 0 ${2 * h} q ${-dir * 12} ${-h}, 0 ${-2 * h} Z`}
+          fill="var(--color-charcoal-raised)"
+          stroke="url(#herald-gold-leaf-soft)"
+          strokeWidth={1.25}
+        />
+      ))}
+      {/* Central band. */}
+      <path
+        d={`M ${center.x - half} ${y - h} L ${center.x + half} ${y - h} L ${center.x + half} ${y + h} L ${center.x - half} ${y + h} Z`}
+        fill="var(--color-charcoal-raised)"
+        stroke="url(#herald-gold-leaf-soft)"
+        strokeWidth={1.25}
+      />
+      <text
+        x={center.x}
+        y={y + 5}
+        textAnchor="middle"
+        fontFamily="var(--font-latin)"
+        fontSize={14}
+        fontStyle="italic"
+        fill="var(--color-gold-bright)"
+      >
+        {text}
+      </text>
+    </g>
+  );
+}
+
 interface HeraldFigureProps {
   divisions: Division[];
   /** Tree nodes that glow; empty for none. */
@@ -335,6 +539,11 @@ interface HeraldFigureProps {
   dorotSefirot?: SefirahId[];
   /** The hidden Hebrew-name encoding, woven into the border. See nameGeometry.ts. */
   nameSeed?: number;
+  /** Heraldic vocabulary toggles (Scribe curation). Defaults keep the richer illuminated frame. */
+  crest?: boolean;
+  mantling?: boolean;
+  compartment?: boolean;
+  supporters?: boolean;
 }
 
 /**
@@ -354,6 +563,10 @@ function HeraldFigure({
   shoresh,
   dorotSefirot = [],
   nameSeed,
+  crest = true,
+  mantling = true,
+  compartment = true,
+  supporters = false,
 }: HeraldFigureProps) {
   const center = shieldCenter();
 
@@ -384,6 +597,10 @@ function HeraldFigure({
 
   return (
     <>
+      {/* The frame behind the shield: mantling, supporters, and the compartment. */}
+      {mantling && <Mantling density={ornamentDensity} />}
+      {supporters && <Supporters />}
+      {compartment && <Compartment geography={geography} />}
       {/* A faint gold halo, and a soft shadow so the plate rests upon the field. */}
       <rect x={0} y={40} width={600} height={740} fill="url(#herald-field-glow)" />
       <path d={SHIELD_PATH} fill="var(--color-charcoal)" filter="url(#herald-emboss)" />
@@ -457,6 +674,7 @@ function HeraldFigure({
       </g>
       {/* The escutcheon edge, outside the clip so the full stroke reads. */}
       <path d={SHIELD_PATH} fill="none" stroke={accentColor} strokeWidth={2.5} />
+      {crest && <Crest />}
     </>
   );
 }

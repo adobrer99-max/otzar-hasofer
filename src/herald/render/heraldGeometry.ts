@@ -6,8 +6,17 @@
  * the meaning.
  */
 
-export const VIEWBOX_WIDTH = 600;
-export const VIEWBOX_HEIGHT = 800;
+export const VIEWBOX_WIDTH = 680;
+export const VIEWBOX_HEIGHT = 980;
+
+/**
+ * The shield's internal geometry (SHIELD, below) is unchanged from the
+ * original 600×800 canvas; the larger viewBox simply adds margin, and the
+ * figure is drawn shifted by this offset so the crest sits above the shield
+ * and the motto/compartment below it. All shield-relative coordinates stay
+ * identical — only the surrounding frame grew.
+ */
+export const FIGURE_OFFSET = { x: 40, y: 70 };
 
 export const SHIELD = {
   left: 70,

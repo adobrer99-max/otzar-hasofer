@@ -14,7 +14,7 @@ import { letters } from "../../data/letters";
 import { middot } from "../../data/middot";
 import { formatHebrewDateEnglish } from "../../data/hebrewCalendar";
 import { deriveCovenantalForm } from "./deriveCovenantalForm";
-import { VIEWBOX_WIDTH, VIEWBOX_HEIGHT, shieldCenter } from "../render/heraldGeometry";
+import { VIEWBOX_WIDTH, VIEWBOX_HEIGHT, FIGURE_OFFSET } from "../render/heraldGeometry";
 import { HeraldCovenantContent, HeraldSvgDefs } from "../render/buildHeraldSvg";
 import { exportHeraldSvg } from "../export/exportSvg";
 import { exportHeraldPng } from "../export/exportPng";
@@ -94,7 +94,6 @@ export function CovenantPage() {
   const form = union && bothHaveReadings ? deriveCovenantalForm(layersA, layersB, union) : undefined;
   const nextDay = union ? (union.shevaBrachot.map((d) => d.day).reduce((a, b) => Math.max(a, b), 0) + 1) : 1;
   const captionNames = partnerA && partnerB ? `${partnerA.displayName} · ${partnerB.displayName}` : "";
-  const center = shieldCenter();
 
   return (
     <div className="page page--wide">
@@ -248,9 +247,11 @@ export function CovenantPage() {
                   <title>{`Covenantal Herald of ${captionNames}`}</title>
                   <HeraldSvgDefs />
                   <rect x={0} y={0} width={VIEWBOX_WIDTH} height={VIEWBOX_HEIGHT} fill="var(--color-charcoal)" />
-                  <HeraldCovenantContent form={form} />
+                  <g transform={`translate(${FIGURE_OFFSET.x}, ${FIGURE_OFFSET.y})`}>
+                    <HeraldCovenantContent form={form} />
+                  </g>
                   <text
-                    x={center.x}
+                    x={VIEWBOX_WIDTH / 2}
                     y={VIEWBOX_HEIGHT - 40}
                     textAnchor="middle"
                     fontFamily="var(--font-latin)"
@@ -260,7 +261,7 @@ export function CovenantPage() {
                     {captionNames}
                   </text>
                   <text
-                    x={center.x}
+                    x={VIEWBOX_WIDTH / 2}
                     y={VIEWBOX_HEIGHT - 18}
                     textAnchor="middle"
                     fontFamily="var(--font-latin)"
