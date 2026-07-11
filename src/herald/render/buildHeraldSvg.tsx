@@ -120,6 +120,7 @@ function TreeOfLife({ lit, dominant }: { lit: string[]; dominant: string }) {
         return (
           <circle
             key={node.id}
+            data-role={isDominant ? "dominant-node" : undefined}
             cx={p.x}
             cy={p.y}
             r={isDominant ? 8 : isLit ? 6 : 4}

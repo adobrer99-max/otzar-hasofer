@@ -1,4 +1,5 @@
 import { letterPaths, UNITS_PER_EM } from "./letterPaths.generated";
+import { lettersById } from "../../data/letters";
 
 /**
  * One Hebrew letterform drawn from committed path data (see
@@ -49,8 +50,17 @@ export function LetterGlyph({
       vectorEffect={stroke ? "non-scaling-stroke" : undefined}
     />
   );
+  const letter = lettersById[letterId];
+  const inspect = letter ? `${letter.name} (${letter.transliteration}) — ${letter.keyword}` : letterId;
   return (
-    <g data-charge={letterId} transform={flip ? `rotate(180 ${x} ${baselineY - size / 3})` : undefined}>
+    <g
+      data-charge={letterId}
+      role="img"
+      aria-label={inspect}
+      transform={flip ? `rotate(180 ${x} ${baselineY - size / 3})` : undefined}
+    >
+      {/* Hover-to-inspect: the browser shows this natively; screen readers read the aria-label. */}
+      <title>{inspect}</title>
       {path}
     </g>
   );

@@ -197,7 +197,7 @@ export function HeraldPage() {
               <>
                 {viewingSynthesis ? (
                   <div
-                    className={`${styles.heraldFrame} ${justRevealed ? styles.revealed : ""}`}
+                    className={`${styles.heraldFrame} herald-living ${justRevealed ? `${styles.revealed} herald-revealing` : ""}`}
                     onAnimationEnd={() => setJustRevealed(false)}
                   >
                     <HeraldCanvas
@@ -212,7 +212,7 @@ export function HeraldPage() {
                     />
                   </div>
                 ) : (
-                  <div className={styles.heraldFrame}>
+                  <div className={`${styles.heraldFrame} herald-living`}>
                     <HeraldCanvas
                       ref={svgRef}
                       input={selectedLayer!.input}
