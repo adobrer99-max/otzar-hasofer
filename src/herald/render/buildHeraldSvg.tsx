@@ -10,13 +10,12 @@ import { computeDivisions, type Division } from "./divisions";
 import { nameSeedOf, flourishRotation } from "./nameGeometry";
 import { LetterGlyph } from "./LetterGlyph";
 import { LetterCharge, hasCharge } from "./letterCharges";
-import { colorFor, lighten, darken } from "./letterColors";
+import { colorFor, darken } from "./letterColors";
 
 type ShoreshResult = ReturnType<typeof resolveShoresh>;
 import {
   SHIELD,
   SHIELD_PATH,
-  FLOURISH_UNIT_PATH,
   shieldCenter,
   shieldBorderPoints,
 } from "./heraldGeometry";
@@ -25,26 +24,23 @@ import {
 const BAND_TOP = SHIELD.top + 310;
 
 /**
- * The metal of the frame (outline/border/dividers). "natural" (the default)
- * takes the reading's own colour — the dominant letter, or the festival — so
- * the frame is individual; the Scribe may override it to a fixed metal.
+ * Foil-stamp palette. The Herald is a real gold-foil emblem on the back of a
+ * card, so the metal is flat gold, its linework a slightly deeper gold for
+ * crispness — no gradients or highlights. Individuality lives in the flat
+ * heraldic tinctures of the field, never in the metal.
  */
-function metalAccent(metal: HeraldStyle["metal"] | undefined, natural: string): string {
-  if (metal === "gold") return "var(--color-gold)";
-  if (metal === "silver") return "var(--color-silver)";
-  if (metal === "antique") return "#b58a37";
-  return natural;
-}
+const GOLD = "var(--color-gold)";
+const GOLD_LINE = "#8a6a2c";
 
 /**
- * The frame's own colour when the Scribe hasn't chosen a fixed metal: a
- * festival keeps its accent; otherwise the frame takes a bright cast of the
- * dominant (first-drawn) letter's colour, so the whole achievement is
- * individual.
+ * The metal of the whole achievement (frame, charges, ornament). Gold by
+ * default; the Scribe may seal it to another canonical metal. There is no
+ * "natural" letter-coloured metal any more — a foil stamp is one flat metal.
  */
-function naturalAccent(festivalAccent: string, dominantLetterId: string | undefined): string {
-  if (festivalAccent && festivalAccent !== "var(--color-gold)") return festivalAccent;
-  return lighten(colorFor(dominantLetterId ?? ""), 0.14);
+function metalAccent(metal: HeraldStyle["metal"] | undefined): { fill: string; line: string } {
+  if (metal === "silver") return { fill: "var(--color-silver)", line: "#8b9099" };
+  if (metal === "antique") return { fill: "#b58a37", line: "#7a5b22" };
+  return { fill: GOLD, line: GOLD_LINE };
 }
 
 /** Heraldic-vocabulary toggles from the Scribe's curation; defaults keep the richer illuminated frame. */
@@ -69,7 +65,7 @@ function bandX(band: [number, number]): { start: number; end: number; center: nu
   return { start, end, center: (start + end) / 2 };
 }
 
-function DivisionDividers({ bands }: { bands: [number, number][] }) {
+function DivisionDividers({ bands, color }: { bands: [number, number][]; color: string }) {
   const boundaries = new Set<number>();
   bands.forEach(([, end]) => {
     if (end < 1) boundaries.add(end);
@@ -78,15 +74,17 @@ function DivisionDividers({ bands }: { bands: [number, number][] }) {
     <>
       {Array.from(boundaries).map((frac) => {
         const x = SHIELD.left + frac * (SHIELD.right - SHIELD.left);
+        // A thin gold line of partition between tinctures, the full height of the field.
         return (
           <line
             key={frac}
             x1={x}
             y1={SHIELD.top}
             x2={x}
-            y2={SHIELD.shoulder}
-            stroke="var(--color-charcoal-line)"
-            strokeWidth={1.5}
+            y2={SHIELD.point}
+            stroke={color}
+            strokeWidth={1}
+            opacity={0.5}
           />
         );
       })}
@@ -263,32 +261,53 @@ function ShoreshNistarMark({ center }: { center: { x: number; y: number } }) {
   );
 }
 
+/** A single engraved lozenge (a slim upright diamond), centred on its origin. */
+const LOZENGE_PATH = "M 0 -7 L 4 0 L 0 7 L -4 0 Z";
+
+/**
+ * The border — an engraved orle (a hairline that follows the escutcheon just
+ * inside its edge) studded with evenly-spaced gold lozenges. Crisp and regular,
+ * the way a foil-stamped border reads, rather than scattered flourishes. The
+ * lozenge count grows with the ornament density so a completed Herald is more
+ * richly bordered; the hidden Hebrew-name encoding survives as a subtle
+ * per-lozenge rotation (absent name ⇒ translate-only, byte-identical to before).
+ */
 function OrnamentalBorder({
   density,
-  color,
+  metalFill,
+  metalLine,
   nameSeed,
 }: {
   density: number;
-  color: string;
-  /** The hidden Hebrew-name encoding — a subtle per-flourish rotation phase. Absent: byte-identical to before. */
+  metalFill: string;
+  metalLine: string;
+  /** The hidden Hebrew-name encoding — a subtle per-lozenge rotation phase. Absent: byte-identical to before. */
   nameSeed?: number;
 }) {
-  const points = shieldBorderPoints(density);
+  const orle = shieldBorderPoints(density, 20);
+  const studs = shieldBorderPoints(Math.max(8, Math.round(density * 0.7)), 20);
+  const orleD =
+    orle.length > 0
+      ? `M ${orle[0].x} ${orle[0].y} ` + orle.slice(1).map((p) => `L ${p.x} ${p.y}`).join(" ") + " Z"
+      : "";
   return (
-    <g stroke={color} fill={color} opacity={0.85}>
-      {points.map((p, i) => (
-        <path
-          key={i}
-          d={FLOURISH_UNIT_PATH}
-          transform={
-            nameSeed === undefined
-              ? `translate(${p.x}, ${p.y})`
-              : `translate(${p.x}, ${p.y}) rotate(${flourishRotation(nameSeed, i)})`
-          }
-          strokeWidth={0.75}
-          fillOpacity={0.15}
-        />
-      ))}
+    <g data-role="border">
+      {/* The orle: a continuous hairline just inside the shield edge. */}
+      <path d={orleD} fill="none" stroke={metalLine} strokeWidth={0.9} opacity={0.7} />
+      {/* Evenly-spaced engraved lozenges riding the orle. */}
+      <g fill={metalFill} stroke={metalLine} strokeWidth={0.5}>
+        {studs.map((p, i) => (
+          <path
+            key={i}
+            d={LOZENGE_PATH}
+            transform={
+              nameSeed === undefined
+                ? `translate(${p.x}, ${p.y})`
+                : `translate(${p.x}, ${p.y}) rotate(${flourishRotation(nameSeed, i)})`
+            }
+          />
+        ))}
+      </g>
     </g>
   );
 }
@@ -298,41 +317,44 @@ function OrnamentalBorder({
  * which a small gold flame rises. Above the arms in real heraldry; here it
  * marks the Herald's summit. Kept deliberately simple and always gold.
  */
-function Crest() {
+function Crest({ metalFill, metalLine }: { metalFill: string; metalLine: string }) {
   const center = shieldCenter();
-  const torseY = SHIELD.top - 7;
-  const half = 66;
-  const twists = 8;
+  const torseY = SHIELD.top - 6;
+  const half = 58;
+  const bandH = 11;
+  const twists = 7;
   const step = (half * 2) / twists;
   return (
     <g data-role="crest">
-      {/* Torse: a row of alternating over/under twists. */}
-      <g stroke="var(--color-gold)" strokeWidth={2} fill="none">
-        {Array.from({ length: twists }).map((_, i) => {
-          const x0 = center.x - half + i * step;
-          const up = i % 2 === 0;
-          return (
-            <path
-              key={i}
-              d={`M ${x0} ${torseY} Q ${x0 + step / 2} ${torseY + (up ? -9 : 9)}, ${x0 + step} ${torseY}`}
-              stroke={up ? "var(--color-gold)" : "var(--color-gold)"}
-            />
-          );
+      {/* Torse: a solid gold rope-band with diagonal cross-hatching — the
+          classic twisted wreath, reading as a rope rather than a fence. */}
+      <path
+        d={`M ${center.x - half} ${torseY} Q ${center.x} ${torseY - bandH}, ${center.x + half} ${torseY} Q ${center.x} ${torseY + bandH}, ${center.x - half} ${torseY} Z`}
+        fill={metalFill}
+        stroke={metalLine}
+        strokeWidth={0.75}
+      />
+      <g stroke={metalLine} strokeWidth={0.9} opacity={0.7}>
+        {Array.from({ length: twists - 1 }).map((_, i) => {
+          const x = center.x - half + (i + 1) * step;
+          return <line key={i} x1={x - 4} y1={torseY - bandH * 0.6} x2={x + 4} y2={torseY + bandH * 0.6} />;
         })}
       </g>
-      {/* Flame emblem rising from the torse. */}
+      {/* A single upright flame rising from the wreath — the neshama, the light. */}
       <path
-        d={`M ${center.x} ${torseY - 58}
-            C ${center.x - 16} ${torseY - 34}, ${center.x - 12} ${torseY - 10}, ${center.x} ${torseY - 6}
-            C ${center.x + 12} ${torseY - 10}, ${center.x + 16} ${torseY - 34}, ${center.x} ${torseY - 58} Z`}
-        fill="var(--color-gold)"
-        stroke="var(--color-gold-bright)"
-        strokeWidth={1}
+        d={`M ${center.x} ${torseY - 62}
+            C ${center.x - 15} ${torseY - 38}, ${center.x - 13} ${torseY - 16}, ${center.x} ${torseY - 11}
+            C ${center.x + 13} ${torseY - 16}, ${center.x + 15} ${torseY - 38}, ${center.x} ${torseY - 62} Z`}
+        fill={metalFill}
+        stroke={metalLine}
+        strokeWidth={0.75}
       />
+      {/* Inner tongue of flame, cut from the deep ground for a crisp engraved read. */}
       <path
-        d={`M ${center.x} ${torseY - 40} C ${center.x - 6} ${torseY - 26}, ${center.x - 5} ${torseY - 14}, ${center.x} ${torseY - 10} C ${center.x + 5} ${torseY - 14}, ${center.x + 6} ${torseY - 26}, ${center.x} ${torseY - 40} Z`}
-        fill="var(--color-charcoal-raised)"
-        opacity={0.55}
+        d={`M ${center.x} ${torseY - 44}
+            C ${center.x - 6} ${torseY - 30}, ${center.x - 5} ${torseY - 18}, ${center.x} ${torseY - 15}
+            C ${center.x + 5} ${torseY - 18}, ${center.x + 6} ${torseY - 30}, ${center.x} ${torseY - 44} Z`}
+        fill="var(--color-charcoal)"
       />
     </g>
   );
@@ -343,32 +365,33 @@ function Crest() {
  * of a coat of arms. Curl count grows with the ornament density so a completed
  * Herald is more richly framed. Drawn on both sides by mirroring.
  */
-function Mantling({ density }: { density: number }) {
-  const lobes = Math.max(3, Math.min(5, Math.round(density / 9)));
+function Mantling({ density, metalFill, metalLine }: { density: number; metalFill: string; metalLine: string }) {
+  // A little richer as the Herald completes, but always the same clean scroll.
+  const extend = Math.min(1, 0.65 + density / 90);
   const side = (dir: 1 | -1) => {
-    const rootX = dir === 1 ? SHIELD.right : SHIELD.left;
-    return Array.from({ length: lobes }).map((_, i) => {
-      const t = i / Math.max(lobes - 1, 1);
-      // Cascade from the top corner down the shield's shoulder, bulging out midway.
-      const cy = SHIELD.top + 4 + t * 168;
-      const cx = rootX + dir * (8 + 28 * Math.sin(t * Math.PI * 0.9));
-      const L = 30 * (1 - 0.4 * t);
-      const W = L * 0.62;
-      // An acanthus leaf: base at (cx,cy), tip at (cx, cy-L), then rotated to hang down-and-out.
-      const d = `M ${cx} ${cy} Q ${cx - W / 2} ${cy - L / 2}, ${cx} ${cy - L} Q ${cx + W / 2} ${cy - L / 2}, ${cx} ${cy} Z`;
-      return (
-        <path
-          key={`${dir}-${i}`}
-          d={d}
-          transform={`rotate(${dir * 138} ${cx} ${cy})`}
-          fill="var(--color-gold)"
-          fillOpacity={0.5}
-          stroke="var(--color-gold)"
-          strokeWidth={0.75}
-          strokeOpacity={0.6}
-        />
-      );
-    });
+    const rx = dir === 1 ? SHIELD.right : SHIELD.left;
+    const topY = SHIELD.top;
+    // One continuous acanthus vine sweeping from behind the torse, out over the
+    // corner, and down the shoulder — a single crisp stroke, not scattered leaves.
+    const vine =
+      `M ${rx - dir * 2} ${topY + 2}` +
+      ` C ${rx + dir * 30} ${topY - 10}, ${rx + dir * 52} ${topY + 22}, ${rx + dir * 44} ${topY + 60}` +
+      ` C ${rx + dir * 38} ${topY + 92}, ${rx + dir * 60} ${topY + 108}, ${rx + dir * 50} ${topY + 150 * extend}`;
+    // Three leaf cusps budding off the vine at set stations.
+    const leaf = (bx: number, by: number, s: number) =>
+      `M ${bx} ${by}` +
+      ` Q ${bx + dir * 22 * s} ${by - 6}, ${bx + dir * 26 * s} ${by + 14 * s}` +
+      ` Q ${bx + dir * 10 * s} ${by + 6 * s}, ${bx} ${by} Z`;
+    return (
+      <g key={dir}>
+        <path d={vine} fill="none" stroke={metalLine} strokeWidth={1.5} />
+        <g fill={metalFill} fillOpacity={0.85} stroke={metalLine} strokeWidth={0.6}>
+          <path d={leaf(rx + dir * 46, topY + 42, 1)} />
+          <path d={leaf(rx + dir * 44, topY + 92, 0.85)} />
+          <path d={leaf(rx + dir * 52, topY + 138 * extend, 0.7)} />
+        </g>
+      </g>
+    );
   };
   return (
     <g data-role="mantling">
@@ -383,24 +406,39 @@ function Mantling({ density }: { density: number }) {
  * point. Rooted earth in the Land; water in Galut (the same vocabulary as the
  * small GeographyAccent, enlarged to seat the whole shield).
  */
-function Compartment({ geography }: { geography: "land" | "galut" }) {
+function Compartment({ geography, metalFill, metalLine }: { geography: "land" | "galut"; metalFill: string; metalLine: string }) {
   const center = shieldCenter();
-  const y = SHIELD.point + 18;
-  const span = 96;
+  const y = SHIELD.point + 16;
+  const span = 110;
   if (geography === "galut") {
+    // Water — three engraved wave lines, the exile's shifting ground.
     return (
-      <g data-role="compartment" stroke="var(--color-copper)" strokeWidth={2} fill="none" opacity={0.8}>
-        <path d={`M ${center.x - span} ${y} Q ${center.x - span / 2} ${y - 10}, ${center.x} ${y} T ${center.x + span} ${y}`} />
-        <path d={`M ${center.x - span + 12} ${y + 12} Q ${center.x - span / 2} ${y + 2}, ${center.x} ${y + 12} T ${center.x + span - 12} ${y + 12}`} opacity={0.6} />
+      <g data-role="compartment" stroke={metalLine} strokeWidth={1.5} fill="none">
+        {[0, 9, 18].map((dy, k) => (
+          <path
+            key={k}
+            d={`M ${center.x - span} ${y + dy} q ${span / 4} -8 ${span / 2} 0 t ${span / 2} 0 t ${span / 2} 0 t ${span / 2} 0`}
+            opacity={0.9 - k * 0.2}
+          />
+        ))}
       </g>
     );
   }
+  // Rooted earth — a solid engraved mound with upright grasses.
   return (
-    <g data-role="compartment" stroke="var(--color-copper)" strokeWidth={2} fill="none" opacity={0.85}>
-      <path d={`M ${center.x - span} ${y} Q ${center.x} ${y + 14}, ${center.x + span} ${y}`} />
-      {[-1, 0, 1].map((k) => (
-        <line key={k} x1={center.x + k * 30} y1={y + 4} x2={center.x + k * 30} y2={y + 22} />
-      ))}
+    <g data-role="compartment">
+      <path
+        d={`M ${center.x - span} ${y + 10} Q ${center.x} ${y - 12}, ${center.x + span} ${y + 10} L ${center.x + span} ${y + 16} Q ${center.x} ${y - 6}, ${center.x - span} ${y + 16} Z`}
+        fill={metalFill}
+        fillOpacity={0.85}
+        stroke={metalLine}
+        strokeWidth={0.75}
+      />
+      <g stroke={metalLine} strokeWidth={1.25} fill="none">
+        {[-2, -1, 0, 1, 2].map((k) => (
+          <path key={k} d={`M ${center.x + k * 34} ${y + 4} q ${k >= 0 ? 4 : -4} -10 0 -22`} />
+        ))}
+      </g>
     </g>
   );
 }
@@ -409,9 +447,9 @@ function Compartment({ geography }: { geography: "land" | "galut" }) {
  * Supporters — two slender olive branches flanking the shield. Restrained by
  * design (not full heraldic beasts); off by default, an opt-in curation.
  */
-function Supporters() {
+function Supporters({ metalFill, metalLine }: { metalFill: string; metalLine: string }) {
   const branch = (dir: 1 | -1) => {
-    const baseX = (dir === 1 ? SHIELD.right : SHIELD.left) + dir * 26;
+    const baseX = (dir === 1 ? SHIELD.right : SHIELD.left) + dir * 28;
     const topY = SHIELD.top + 40;
     const botY = SHIELD.point - 30;
     const leaves = 6;
@@ -420,8 +458,8 @@ function Supporters() {
         <path
           d={`M ${baseX} ${botY} C ${baseX - dir * 18} ${botY - 60}, ${baseX - dir * 18} ${topY + 60}, ${baseX} ${topY}`}
           fill="none"
-          stroke="var(--color-gold)"
-          strokeWidth={1.75}
+          stroke={metalLine}
+          strokeWidth={1.5}
         />
         {Array.from({ length: leaves }).map((_, i) => {
           const t = (i + 0.5) / leaves;
@@ -434,8 +472,10 @@ function Supporters() {
               cy={y}
               rx={9}
               ry={3.5}
-              fill="var(--color-gold)"
-              opacity={0.75}
+              fill={metalFill}
+              fillOpacity={0.85}
+              stroke={metalLine}
+              strokeWidth={0.5}
               transform={`rotate(${dir * (t < 0.5 ? -35 : 35)} ${x - dir * 8} ${y})`}
             />
           );
@@ -502,20 +542,39 @@ export function MottoRibbon({ text }: { text: string }) {
  * pale. Each region is a whisper of the letter's colour over the charcoal, so
  * the ground itself tells the reading's shape. Drawn inside the shield clip.
  */
+/** Perceived luminance (0..1) of a #rrggbb colour. */
+function hexLuminance(hex: string): number {
+  const m = hex.replace("#", "");
+  if (m.length < 6) return 0.5;
+  const r = parseInt(m.slice(0, 2), 16);
+  const g = parseInt(m.slice(2, 4), 16);
+  const b = parseInt(m.slice(4, 6), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+}
+
 function FieldTincture({ letterIds }: { letterIds: string[] }) {
   const distinct = [...new Set(letterIds)];
-  const colors = distinct.map(colorFor);
+  // Deep, flat heraldic tinctures — each field the letter's own colour, taken
+  // to a rich jewel tone so a gold charge reads crisply over it (metal on
+  // colour, the rule of tincture). No wash: these are the field, not a tint.
+  // Light, metal-family colours (gold, yellow, silver) are darkened harder so
+  // a gold charge never sits gold-on-gold.
+  const tincture = (id: string) => {
+    const c = colorFor(id);
+    return darken(c, Math.min(0.52 + 0.38 * hexLuminance(c), 0.82));
+  };
+  const colors = distinct.map(tincture);
   const L = 66;
   const R = 534;
   const Y = 86;
   const H = 638;
-  const op = 0.17;
+  const op = 0.95;
   if (colors.length >= 3) {
     const w = (R - L) / 3;
     return (
       <>
         {colors.slice(0, 3).map((c, i) => (
-          <rect key={i} x={L + i * w} y={Y} width={w} height={H} fill={darken(c, 0.22)} opacity={op} />
+          <rect key={i} x={L + i * w} y={Y} width={w} height={H} fill={c} opacity={op} />
         ))}
       </>
     );
@@ -524,12 +583,12 @@ function FieldTincture({ letterIds }: { letterIds: string[] }) {
     const mid = (L + R) / 2;
     return (
       <>
-        <rect x={L} y={Y} width={mid - L} height={H} fill={darken(colors[0], 0.22)} opacity={op} />
-        <rect x={mid} y={Y} width={R - mid} height={H} fill={darken(colors[1], 0.22)} opacity={op} />
+        <rect x={L} y={Y} width={mid - L} height={H} fill={colors[0]} opacity={op} />
+        <rect x={mid} y={Y} width={R - mid} height={H} fill={colors[1]} opacity={op} />
       </>
     );
   }
-  return <rect x={L} y={Y} width={R - L} height={H} fill={darken(colors[0] ?? "#888888", 0.25)} opacity={op * 0.95} />;
+  return <rect x={L} y={Y} width={R - L} height={H} fill={colors[0] ?? "#33343f"} opacity={op} />;
 }
 
 /**
@@ -568,7 +627,9 @@ interface HeraldFigureProps {
   geography: "land" | "galut";
   /** Zero or more accreted festival accent motifs. */
   festivalMotifs: string[];
-  accentColor: string;
+  /** The achievement's metal: flat fill + its slightly deeper linework colour. */
+  metalFill: string;
+  metalLine: string;
   ornamentDensity: number;
   /** Omit to draw no root chains and no Shoresh Nistar mark (the Etz Chaim spread, where PaRDeS takes precedence). */
   shoresh?: ShoreshResult;
@@ -595,7 +656,8 @@ function HeraldFigure({
   divisions,
   geography,
   festivalMotifs,
-  accentColor,
+  metalFill,
+  metalLine,
   ornamentDensity,
   shoresh,
   dorotSefirot = [],
@@ -642,18 +704,18 @@ function HeraldFigure({
   return (
     <>
       {/* The frame behind the shield: mantling, supporters, and the compartment. */}
-      {mantling && <Mantling density={ornamentDensity} />}
-      {supporters && <Supporters />}
-      {compartment && <Compartment geography={geography} />}
+      {mantling && <Mantling density={ornamentDensity} metalFill={metalFill} metalLine={metalLine} />}
+      {supporters && <Supporters metalFill={metalFill} metalLine={metalLine} />}
+      {compartment && <Compartment geography={geography} metalFill={metalFill} metalLine={metalLine} />}
       <g clipPath="url(#herald-shield-clip)">
         {/* Flat deep ground, then the flat tincture division — no gradient, glow, or texture. */}
         <path d={SHIELD_PATH} fill="var(--color-charcoal)" />
         <FieldTincture letterIds={divisions.map((d) => d.letterId)} />
 
-        <DivisionDividers bands={divisions.map((d) => d.band)} />
+        <DivisionDividers bands={divisions.map((d) => d.band)} color={metalLine} />
 
         {/* The Word of the Life, borne on a fess beneath the charges. */}
-        {fessWord && <WordFess color={accentColor} word={fessWord} />}
+        {fessWord && <WordFess color={metalFill} word={fessWord} />}
         {tentativePairs.map(({ a, b, key }) => {
           const ax = bandX(a.band).center;
           const bx = bandX(b.band).center;
@@ -663,7 +725,7 @@ function HeraldFigure({
               key={key}
               d={`M ${ax} ${y} Q ${(ax + bx) / 2} ${y - 30}, ${bx} ${y}`}
               fill="none"
-              stroke={accentColor}
+              stroke={metalFill}
               strokeWidth={1.5}
               strokeDasharray="1 5"
               strokeLinecap="round"
@@ -681,7 +743,7 @@ function HeraldFigure({
         {festivalMotifs.map((motif) => (
           <FestivalMotif key={motif} motif={motif} center={center} />
         ))}
-        <OrnamentalBorder density={ornamentDensity} color={accentColor} nameSeed={nameSeed} />
+        <OrnamentalBorder density={ornamentDensity} metalFill={metalFill} metalLine={metalLine} nameSeed={nameSeed} />
 
         {/* The charges last — each enamelled in its letter's own colour, drawn
             as the letterform or, in the heraldic-charge device, as the letter's
@@ -693,8 +755,9 @@ function HeraldFigure({
           // Size each charge to fill its own division so the shield is full,
           // not a small mark in a wide field — capped so a lone charge stays sane.
           const baseSize = Math.min((band.end - band.start) * 0.82, 210);
-          const fill = colorFor(division.letterId);
-          const stroke = darken(colorFor(division.letterId), 0.5);
+          // The charges are struck in the achievement's metal — a gold-foil
+          // charge on its letter's flat tincture (metal on colour). The letter's
+          // own colour lives in the field behind it, not in the charge.
           const flip = division.orientation === "reversed";
           if (device === "charge" && hasCharge(division.letterId)) {
             return (
@@ -704,8 +767,8 @@ function HeraldFigure({
                 size={baseSize}
                 x={bandCenter}
                 y={BAND_TOP - baseSize * 0.32}
-                fill={fill}
-                stroke={stroke}
+                fill={metalFill}
+                stroke={metalLine}
                 flip={flip}
               />
             );
@@ -717,16 +780,17 @@ function HeraldFigure({
               size={baseSize}
               x={bandCenter}
               baselineY={BAND_TOP}
-              fill={fill}
-              stroke={stroke}
+              fill={metalFill}
+              stroke={metalLine}
               flip={flip}
             />
           );
         })}
       </g>
-      {/* The escutcheon edge, outside the clip so the full stroke reads. */}
-      <path d={SHIELD_PATH} fill="none" stroke={accentColor} strokeWidth={2.5} />
-      {crest && <Crest />}
+      {/* The escutcheon edge, outside the clip so the full stroke reads — a
+          crisp struck gold edge. */}
+      <path d={SHIELD_PATH} fill="none" stroke={metalFill} strokeWidth={3} />
+      {crest && <Crest metalFill={metalFill} metalLine={metalLine} />}
     </>
   );
 }
@@ -768,8 +832,8 @@ function EtzChaimCharges({ draws }: { draws: LetterDraw[] }) {
               size={54}
               x={center.x}
               baselineY={row.y}
-              fill={colorFor(draw.letterId)}
-              stroke={darken(colorFor(draw.letterId), 0.5)}
+              fill={GOLD}
+              stroke={GOLD_LINE}
               flip={draw.orientation === "reversed"}
             />
             <text
@@ -848,8 +912,8 @@ function YichudOverlay({
           size={48}
           x={center.x}
           baselineY={unveiledY}
-          fill={colorFor(unveiled.letterId)}
-          stroke={darken(colorFor(unveiled.letterId), 0.5)}
+          fill={GOLD}
+          stroke={GOLD_LINE}
           flip={unveiled.orientation === "reversed"}
         />
       </g>
@@ -873,13 +937,12 @@ export function HeraldLayerContent({
   const festival = festivalsById[input.festivalId] ?? festivalsById.ordinary;
   const motif = festival.heraldAccent?.motif;
   const spread = input.spread ?? "triadic";
+  const metal = metalAccent(style?.metal);
   const shared = {
     geography: input.geography.mode,
     festivalMotifs: motif ? [motif] : [],
-    accentColor: metalAccent(
-      style?.metal,
-      naturalAccent(festival.heraldAccent?.accentColor ?? "", input.drawnLetters[0]?.letterId),
-    ),
+    metalFill: metal.fill,
+    metalLine: metal.line,
     ornamentDensity: Math.min(10 + layerCount * 2, 40),
     dorotSefirot: dorotSefirotOf(input.dorotDraws),
     nameSeed: nameSeedOf(input.hebrewName),
@@ -935,12 +998,14 @@ export function HeraldLayerContent({
  * a root — the word the seven readings together speak.
  */
 export function HeraldSynthesisContent({ form, style }: { form: HeraldForm; style?: HeraldStyle }) {
+  const metal = metalAccent(style?.metal);
   return (
     <HeraldFigure
       divisions={computeDivisions(form.charges)}
       geography={form.geography}
       festivalMotifs={form.festivalMotifs}
-      accentColor={metalAccent(style?.metal, naturalAccent(form.accentColor, form.charges[0]?.letterId))}
+      metalFill={metal.fill}
+      metalLine={metal.line}
       ornamentDensity={form.ornamentDensity}
       shoresh={resolveShoresh(form.charges.map((c) => c.letterId) as [string, string, string])}
       dorotSefirot={form.dorotSefirot}
@@ -962,12 +1027,14 @@ export function HeraldCovenantContent({ form }: { form: CovenantalForm }) {
     { letterId: form.dexterCharge.letterId, orientation: form.dexterCharge.orientation, count: 1, drawOrder: 0, band: [0, 0.5] },
     { letterId: form.sinisterCharge.letterId, orientation: form.sinisterCharge.orientation, count: 1, drawOrder: 1, band: [0.5, 1] },
   ];
+  const metal = metalAccent(undefined);
   return (
     <HeraldFigure
       divisions={divisions}
       geography={form.geography}
       festivalMotifs={[]}
-      accentColor={naturalAccent("", form.dexterCharge.letterId)}
+      metalFill={metal.fill}
+      metalLine={metal.line}
       ornamentDensity={form.ornamentDensity}
       dorotSefirot={form.shevaBrachotLit}
     />

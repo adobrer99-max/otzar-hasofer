@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { HeraldInputSnapshot, HeraldLayer } from "../../types/herald";
 import { HeraldLayerContent, HeraldSynthesisContent } from "./buildHeraldSvg";
-import { colorFor } from "./letterColors";
 import { deriveHeraldForm } from "../synthesis/deriveHeraldForm";
 
 const sampleInput: HeraldInputSnapshot = {
@@ -212,17 +211,16 @@ describe("Scribe curation (HeraldStyle)", () => {
     expect(gold).not.toBe(silvered);
   });
 
-  it("enamels each charge in its own letter's flat colour and draws no central tree", () => {
+  it("strikes each charge in flat gold foil over its letter's tincture, and draws no central tree", () => {
     const markup = render(sampleInput, 0);
-    // Each open charge is filled flat with its own letter's colour (foil-stamp
-    // language — no per-letter gradient), asserted on the stable data-charge
-    // marker + the letter's colour, not a font glyph or a gradient url.
+    // Every open letter appears as a charge (stable data-charge marker, not a
+    // font glyph); the veiled letter never does.
     expect(markup).toContain('data-charge="aleph"');
-    expect(markup).toContain(colorFor("aleph"));
     expect(markup).toContain('data-charge="mem"');
-    expect(markup).toContain(colorFor("mem"));
-    // …and the veiled letter is never drawn.
     expect(markup).not.toContain('data-charge="shin"');
+    // The charges are struck in the achievement's flat gold metal (foil-stamp
+    // language) — the per-letter colour lives in the field tincture instead.
+    expect(markup).toContain("var(--color-gold)");
     // No gradient enamel remains — the material is flat foil.
     expect(markup).not.toContain("url(#herald-glyph-");
     // The Sefirot tree no longer renders in the centre.
