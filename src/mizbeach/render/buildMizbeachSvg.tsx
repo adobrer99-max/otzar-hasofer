@@ -46,6 +46,7 @@ function RingSegments({
   activeIndex,
   renderLabel,
   fontFamily = "var(--font-latin)",
+  rotating = false,
 }: {
   radius: number;
   thickness: number;
@@ -53,6 +54,12 @@ function RingSegments({
   activeIndex: number;
   renderLabel: (index: number) => string;
   fontFamily?: string;
+  /**
+   * On a wheel that physically turns (the interactive folio), labels are
+   * inscribed tangentially so their orientation is rotation-invariant — they
+   * stay glued to the ring as it turns, instead of floating off.
+   */
+  rotating?: boolean;
 }) {
   const inner = radius - thickness / 2;
   const outer = radius + thickness / 2;
@@ -96,7 +103,8 @@ function RingSegments({
       {Array.from({ length: count }).map((_, i) => {
         const [start, end] = segmentAngles(count, i);
         const isActive = i === activeIndex;
-        const labelPos = polarToCartesian(CENTER.x, CENTER.y, radius, (start + end) / 2);
+        const mid = (start + end) / 2;
+        const labelPos = polarToCartesian(CENTER.x, CENTER.y, radius, mid);
         return (
           <text
             key={i}
@@ -104,6 +112,7 @@ function RingSegments({
             y={labelPos.y}
             textAnchor="middle"
             dominantBaseline="middle"
+            transform={rotating ? `rotate(${mid} ${labelPos.x} ${labelPos.y})` : undefined}
             fontFamily={fontFamily}
             fontSize={11}
             fontWeight={isActive ? 600 : 400}
@@ -118,7 +127,7 @@ function RingSegments({
   );
 }
 
-function MazalotRing({ activeMonth, neutral }: { activeMonth: JewishMonthName; neutral?: boolean }) {
+function MazalotRing({ activeMonth, neutral, rotating }: { activeMonth: JewishMonthName; neutral?: boolean; rotating?: boolean }) {
   const activeIndex = neutral ? -1 : mazalotRing.findIndex((e) => e.month === foldMonth(activeMonth));
   return (
     <RingSegments
@@ -127,6 +136,7 @@ function MazalotRing({ activeMonth, neutral }: { activeMonth: JewishMonthName; n
       count={12}
       activeIndex={activeIndex}
       renderLabel={(i) => mazalotRing[i].zodiacHebrew}
+      rotating={rotating}
     />
   );
 }
@@ -149,7 +159,7 @@ const MOON_PHASES: { id: LunarPhase; label: string; hebrew: string }[] = [
   { id: "waningCrescent", label: "Waning Crescent", hebrew: "נסתר" },
 ];
 
-function MoonRing({ phase, neutral }: { phase: LunarPhase; neutral?: boolean }) {
+function MoonRing({ phase, neutral, rotating }: { phase: LunarPhase; neutral?: boolean; rotating?: boolean }) {
   const activeIndex = neutral ? -1 : MOON_PHASES.findIndex((p) => p.id === phase);
   return (
     <RingSegments
@@ -159,6 +169,7 @@ function MoonRing({ phase, neutral }: { phase: LunarPhase; neutral?: boolean }) 
       activeIndex={activeIndex}
       renderLabel={(i) => MOON_PHASES[i].hebrew}
       fontFamily="var(--font-hebrew)"
+      rotating={rotating}
     />
   );
 }
@@ -167,10 +178,12 @@ function SolarMonthRing({
   activeMonth,
   activeFestivalIds,
   neutral,
+  rotating,
 }: {
   activeMonth: JewishMonthName;
   activeFestivalIds: string[];
   neutral?: boolean;
+  rotating?: boolean;
 }) {
   // Angle-aligned with the Mazalot ring's 12 slices — same month order, so a
   // given slice of the folio always names the same Hebrew month across
@@ -187,6 +200,7 @@ function SolarMonthRing({
       count={12}
       activeIndex={activeIndex}
       renderLabel={(i) => (i === activeIndex && primaryFestival ? primaryFestival.gesture ?? primaryFestival.name : months[i])}
+      rotating={rotating}
     />
   );
 }
@@ -507,18 +521,22 @@ export function MizbeachSvgContent({
   only?: MandalaSlice;
 }) {
   const isShabbat = !neutral && sacredTime.activeFestivalIds.includes("shabbat");
+  // Only the interactive slices are drawn on turning planes, so their labels are
+  // inscribed tangentially; the combined flat render (guide/print) keeps them upright.
+  const wheelRotating = only === "outer-wheel" || only === "moon-wheel";
 
   const outerWheel = (
     <>
-      <MazalotRing activeMonth={sacredTime.hebrewDate.month} neutral={neutral} />
+      <MazalotRing activeMonth={sacredTime.hebrewDate.month} neutral={neutral} rotating={wheelRotating} />
       <SolarMonthRing
         activeMonth={sacredTime.hebrewDate.month}
         activeFestivalIds={sacredTime.activeFestivalIds}
         neutral={neutral}
+        rotating={wheelRotating}
       />
     </>
   );
-  const moonWheel = <MoonRing phase={sacredTime.lunarPhase} neutral={neutral} />;
+  const moonWheel = <MoonRing phase={sacredTime.lunarPhase} neutral={neutral} rotating={wheelRotating} />;
   const staticLayer = (
     <>
       <ParshaRing label={neutral ? undefined : sacredTime.parsha?.label} />

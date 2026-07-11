@@ -143,23 +143,13 @@ function HandAnchor() {
       <circle cx={cx} cy={cy + 20} r={3.5} fill={GOLD} />
       <text
         x={cx}
-        y={cy + 72}
+        y={cy + 78}
         textAnchor="middle"
         fontFamily="var(--font-latin)"
         fontSize={13}
         fill="var(--accent-bright)"
       >
         Hand Anchor
-      </text>
-      <text
-        x={cx}
-        y={cy + 88}
-        textAnchor="middle"
-        fontFamily="var(--font-latin)"
-        fontSize={10}
-        fill="var(--text-muted)"
-      >
-        The neshama's point of embodiment
       </text>
     </g>
   );
@@ -232,42 +222,36 @@ const WELLS = [
 ];
 
 function Well({ x, y, hebrew, title, subtitle }: { x: number; y: number; hebrew: string; title: string; subtitle: string }) {
-  const width = 100;
-  const height = 60;
-  const left = x - width / 2;
-  const right = x + width / 2;
-  const top = y - height;
+  const rx = 44; // mouth radius
+  const bodyH = 52;
+  const mouthRy = 11;
+  const top = y - bodyH; // mouth centre
+  const left = x - rx;
+  const right = x + rx;
   return (
     <g>
-      {/* A vessel with a gold-leaf rim holding still water. */}
+      {/* A round stone well: a cylinder of stone with a gold-leaf rim, looking down onto still water. */}
       <path
-        d={`M ${left} ${top} L ${left} ${y} Q ${left} ${y + 8} ${left + 8} ${y + 8} L ${right - 8} ${y + 8} Q ${right} ${y + 8} ${right} ${y} L ${right} ${top} Z`}
-        fill="#0e1622"
+        d={`M ${left} ${top} L ${left} ${y} A ${rx} ${mouthRy + 2} 0 0 0 ${right} ${y} L ${right} ${top}`}
+        fill="#12181f"
         stroke={GOLD}
         strokeWidth={2.5}
       />
-      <ellipse cx={x} cy={top} rx={width / 2} ry={7} fill="#0b1220" stroke={GOLD} strokeWidth={2} />
-      <path
-        d={`M ${left + 10} ${top + 20} Q ${x - width / 4} ${top + 12}, ${x} ${top + 20} T ${right - 10} ${top + 20}`}
-        fill="none"
-        stroke="var(--color-blue-bright)"
-        strokeWidth={1.5}
-        opacity={0.85}
-      />
-      <text
-        x={x}
-        y={top - 10}
-        textAnchor="middle"
-        fontFamily="var(--font-hebrew)"
-        fontSize={16}
-        fill="var(--color-gold-bright)"
-      >
+      {/* stone courses */}
+      <path d={`M ${left} ${top + 17} A ${rx} ${mouthRy} 0 0 0 ${right} ${top + 17}`} fill="none" stroke="var(--color-gold)" strokeWidth={0.75} opacity={0.3} />
+      <path d={`M ${left} ${top + 34} A ${rx} ${mouthRy} 0 0 0 ${right} ${top + 34}`} fill="none" stroke="var(--color-gold)" strokeWidth={0.75} opacity={0.3} />
+      {/* the mouth, and the water within */}
+      <ellipse cx={x} cy={top} rx={rx} ry={mouthRy} fill="#0a0f16" stroke={GOLD} strokeWidth={2.5} />
+      <ellipse cx={x} cy={top + 2} rx={rx - 9} ry={mouthRy - 3.5} fill="var(--color-blue)" opacity={0.8} />
+      <ellipse cx={x} cy={top + 2} rx={rx - 9} ry={mouthRy - 3.5} fill="none" stroke="var(--color-blue-bright)" strokeWidth={1} opacity={0.8} />
+      <line x1={x - 9} y1={top + 1} x2={x + 3} y2={top + 1} stroke="var(--color-silver)" strokeWidth={1} opacity={0.45} />
+      <text x={x} y={top - 14} textAnchor="middle" fontFamily="var(--font-hebrew)" fontSize={17} fill="var(--color-gold-bright)">
         {hebrew}
       </text>
-      <text x={x} y={y + 18} textAnchor="middle" fontFamily="var(--font-latin)" fontSize={11} fill="var(--text)">
+      <text x={x} y={y + 24} textAnchor="middle" fontFamily="var(--font-latin)" fontSize={12} fill="var(--text)">
         {title}
       </text>
-      <text x={x} y={y + 32} textAnchor="middle" fontFamily="var(--font-latin)" fontSize={9} fill="var(--text-muted)">
+      <text x={x} y={y + 39} textAnchor="middle" fontFamily="var(--font-latin)" fontSize={9} fill="var(--text-muted)">
         {subtitle}
       </text>
     </g>
