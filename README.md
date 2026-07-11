@@ -31,6 +31,16 @@ npm install
 npm run dev       # local dev server
 npm run build     # production build (also generates the PWA service worker)
 npm run test      # vitest — includes a determinism test for the Herald renderer
+npm run export:folio   # write a print-ready Mizbe'ach folio master (self-contained SVG)
 ```
+
+`npm run export:folio [outfile.svg]` renders the folio (the ring mandala beside
+the central panel) into a single "open folio" spread for physical production: a
+**self-contained SVG** with the brand palette baked in as literal hex and the
+David Libre + Frank Ruhl Libre fonts embedded as base64, so it scales to any
+size and opens correctly at a print shop with no external assets. It renders the
+mandala in its **neutral master** state (no live date/festival highlight, which
+is a screen-only affordance). Default output: `mizbeach-folio-print.svg` at the
+repo root (git-ignored).
 
 Built with Vite, React, and TypeScript. Installable as an offline-capable PWA.

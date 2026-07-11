@@ -12,7 +12,8 @@
     "deploy": "npm run build && wrangler deploy",
     "test": "vitest run",
     "data:shorashim": "node scripts/build-shorashim.mjs",
-    "build:letterpaths": "node scripts/build-letterpaths.mjs"
+    "build:letterpaths": "node scripts/build-letterpaths.mjs",
+    "export:folio": "node scripts/export-folio-print.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.0",

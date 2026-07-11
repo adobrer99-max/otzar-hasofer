@@ -72,8 +72,8 @@ function RingSegments({
   );
 }
 
-function MazalotRing({ activeMonth }: { activeMonth: JewishMonthName }) {
-  const activeIndex = mazalotRing.findIndex((e) => e.month === foldMonth(activeMonth));
+function MazalotRing({ activeMonth, neutral }: { activeMonth: JewishMonthName; neutral?: boolean }) {
+  const activeIndex = neutral ? -1 : mazalotRing.findIndex((e) => e.month === foldMonth(activeMonth));
   return (
     <RingSegments
       radius={RINGS.mazalot.radius}
@@ -103,8 +103,8 @@ const MOON_PHASES: { id: LunarPhase; label: string; hebrew: string }[] = [
   { id: "waningCrescent", label: "Waning Crescent", hebrew: "נסתר" },
 ];
 
-function MoonRing({ phase }: { phase: LunarPhase }) {
-  const activeIndex = MOON_PHASES.findIndex((p) => p.id === phase);
+function MoonRing({ phase, neutral }: { phase: LunarPhase; neutral?: boolean }) {
+  const activeIndex = neutral ? -1 : MOON_PHASES.findIndex((p) => p.id === phase);
   return (
     <RingSegments
       radius={RINGS.moon.radius}
@@ -120,15 +120,17 @@ function MoonRing({ phase }: { phase: LunarPhase }) {
 function SolarMonthRing({
   activeMonth,
   activeFestivalIds,
+  neutral,
 }: {
   activeMonth: JewishMonthName;
   activeFestivalIds: string[];
+  neutral?: boolean;
 }) {
   // Angle-aligned with the Mazalot ring's 12 slices — same month order, so a
   // given slice of the folio always names the same Hebrew month across
   // both rings.
   const months = mazalotRing.map((e) => e.month);
-  const activeIndex = months.findIndex((m) => m === foldMonth(activeMonth));
+  const activeIndex = neutral ? -1 : months.findIndex((m) => m === foldMonth(activeMonth));
   const primaryFestival = activeFestivalIds
     .map((id) => festivalsById[id])
     .find((f) => f && f.id !== "ordinary" && f.id !== "shabbat");
@@ -413,24 +415,34 @@ function MizrachVector() {
 export function MizbeachSvgContent({
   sacredTime,
   revealHidden,
+  neutral = false,
 }: {
   sacredTime: SacredTimeSnapshot;
   revealHidden: boolean;
+  /**
+   * A printable "master" folio: render every ring in its resting state with
+   * nothing gold-highlighted, since the live date/festival highlight is a
+   * digital-only affordance that shouldn't be baked into a physical print.
+   * Default false — the on-screen renderer and its determinism tests are
+   * unchanged.
+   */
+  neutral?: boolean;
 }) {
-  const isShabbat = sacredTime.activeFestivalIds.includes("shabbat");
+  const isShabbat = !neutral && sacredTime.activeFestivalIds.includes("shabbat");
   return (
     <g>
-      <MazalotRing activeMonth={sacredTime.hebrewDate.month} />
-      <MoonRing phase={sacredTime.lunarPhase} />
+      <MazalotRing activeMonth={sacredTime.hebrewDate.month} neutral={neutral} />
+      <MoonRing phase={sacredTime.lunarPhase} neutral={neutral} />
       <SolarMonthRing
         activeMonth={sacredTime.hebrewDate.month}
         activeFestivalIds={sacredTime.activeFestivalIds}
+        neutral={neutral}
       />
-      <ParshaRing label={sacredTime.parsha?.label} />
+      <ParshaRing label={neutral ? undefined : sacredTime.parsha?.label} />
       <SabbathCore
         isShabbat={isShabbat}
-        omerDay={sacredTime.omer?.day}
-        roshChodesh={Boolean(sacredTime.roshChodesh)}
+        omerDay={neutral ? undefined : sacredTime.omer?.day}
+        roshChodesh={!neutral && Boolean(sacredTime.roshChodesh)}
       />
       <HiddenSefirotLayer revealed={revealHidden} />
       <ShivatHaminimBorder />
