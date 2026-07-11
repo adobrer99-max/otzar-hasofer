@@ -26,7 +26,14 @@ import { HeraldStylePanel } from "./style/HeraldStylePanel";
 import { SacredTimeBanners } from "./lifeCycle/SacredTimeBanners";
 import { exportHeraldSvg } from "./export/exportSvg";
 import { exportHeraldPng } from "./export/exportPng";
-import { blazonForSnapshot, blazonForForm, downloadBlazon } from "./export/blazon";
+import {
+  blazonForSnapshot,
+  blazonForForm,
+  downloadBlazon,
+  blazonToImagePrompt,
+  copyText,
+  downloadText,
+} from "./export/blazon";
 import styles from "./HeraldPage.module.css";
 
 export function HeraldPage() {
@@ -38,6 +45,7 @@ export function HeraldPage() {
   const [commentaries, setCommentaries] = useState<CommentaryRecord[]>([]);
   const [justRevealed, setJustRevealed] = useState(false);
   const [styleDraft, setStyleDraft] = useState<HeraldStyle>({});
+  const [promptCopied, setPromptCopied] = useState(false);
   const wasRevealed = useRef(false);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -117,6 +125,15 @@ export function HeraldPage() {
       : `The Herald, forming — ${heraldForm.readingCount} of 7`
     : "";
   const synthesisEpithet = heraldForm?.revealed ? sealedEpithet?.text : undefined;
+  // The blazon of whatever Herald is currently shown — the synthesis, or a
+  // scrubbed single reading. Shared by the "Download blazon" and "Copy image
+  // prompt" export controls.
+  const currentBlazon = () =>
+    viewingSynthesis && heraldForm
+      ? blazonForForm(heraldForm, styleDraft, synthesisEpithet)
+      : selectedLayer
+        ? blazonForSnapshot(selectedLayer.input, styleDraft, epithetForSelectedLayer)
+        : undefined;
   // The Word of the Life — when the dominant letters themselves spell a
   // root or name, the seven readings together speak a word.
   const lifeShoresh = heraldForm
@@ -277,17 +294,31 @@ export function HeraldPage() {
                     type="button"
                     onClick={() => {
                       const name = selectedParticipant?.displayName ?? "Herald";
-                      const blazon =
-                        viewingSynthesis && heraldForm
-                          ? blazonForForm(heraldForm, styleDraft, synthesisEpithet)
-                          : selectedLayer
-                            ? blazonForSnapshot(selectedLayer.input, styleDraft, epithetForSelectedLayer)
-                            : undefined;
+                      const blazon = currentBlazon();
                       if (blazon) downloadBlazon(blazon, name, `${name}-blazon.txt`);
                     }}
                     title="A written description of the arms — the brief for an illustrator or foil die"
                   >
                     Download blazon
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const name = selectedParticipant?.displayName ?? "Herald";
+                      const blazon = currentBlazon();
+                      if (!blazon) return;
+                      const prompt = blazonToImagePrompt(blazon, name);
+                      const ok = await copyText(prompt);
+                      if (ok) {
+                        setPromptCopied(true);
+                        window.setTimeout(() => setPromptCopied(false), 2000);
+                      } else {
+                        downloadText(prompt, `${name}-image-prompt.txt`);
+                      }
+                    }}
+                    title="A rich image-generation prompt — paste into ChatGPT or DALL·E to render an illuminated plate"
+                  >
+                    {promptCopied ? "Copied!" : "Copy image prompt"}
                   </button>
                 </div>
                 <HeraldStylePanel

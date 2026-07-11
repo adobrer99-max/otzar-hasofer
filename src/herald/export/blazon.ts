@@ -5,7 +5,7 @@ import { lettersById } from "../../data/letters";
 import { ushpizin } from "../../data/ushpizin";
 import { computeDivisions } from "../render/divisions";
 import { resolveShoresh } from "../shoresh/resolveShoresh";
-import { colorFor } from "../render/letterColors";
+import { colorFor, colorNameFor } from "../render/letterColors";
 import { dorotSefirotOf } from "../render/buildHeraldSvg";
 import { associationOf, associationLabel, dominantElementHue, toHebrewNumeral } from "../render/associations";
 import { speciesFor, type Species } from "../render/heraldFlora";
@@ -204,6 +204,107 @@ export function blazonToText(b: Blazon, title: string): string {
 /** Download a blazon as a .txt brief (human-readable, with the JSON appended). */
 export function downloadBlazon(b: Blazon, title: string, filename: string): void {
   const blob = new Blob([blazonToText(b, title)], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+const DIVISION_PHRASE: Record<string, string> = {
+  "a plain field": "a single field",
+  "per pale": "divided into two vertical halves",
+  "tierced in pale": "divided into three vertical bands",
+};
+
+/** A richer visual phrase for each species, for the image prompt's mantling. */
+const SPECIES_PHRASE: Record<Species, string> = {
+  wheat: "golden sheaves of wheat",
+  barley: "long-awned barley",
+  grape: "grape vines heavy with clusters",
+  fig: "fig branches with broad lobed leaves and ripe figs",
+  pomegranate: "pomegranate branches bearing crowned fruit",
+  olive: "olive branches with silver-green leaves and small olives",
+  date: "date-palm fronds with hanging clusters",
+};
+
+/**
+ * Render a blazon as a rich image-generation prompt — the brief for an image
+ * model (ChatGPT/DALL·E), tuned to produce an illuminated Hebrew heraldic plate
+ * like a ketubah. Every element is drawn from the blazon (so it stays faithful
+ * to the reading); the arms are kept Hebrew-only, the epithet is the one motto.
+ */
+export function blazonToImagePrompt(b: Blazon, title: string): string {
+  const s: string[] = [];
+  s.push(
+    `An illuminated Hebrew heraldic plate — a personal coat of arms in the style of a medieval ketubah and illuminated manuscript. Hand-painted on aged cream vellum, with flat gold-leaf linework and soft watercolour tinctures, symmetrical and reverent, portrait orientation. The whole card is framed by an ornate double gold border inscribed with the twenty-two letters of the Hebrew alphabet in gold, separated by small dots.`,
+  );
+
+  s.push(
+    `At the top centre, a small gold roundel bears the Hebrew numeral ${b.gematria.hebrew} and the number ${b.gematria.total}.`,
+  );
+
+  if (b.crest.kind === "zodiac" && b.crest.signs.length) {
+    s.push(
+      `Below it rises the crest: the constellation${b.crest.signs.length > 1 ? "s" : ""} of ${b.crest.signs.join(" and ")}, drawn as gold stars joined by fine lines, resting upon a twisted gold wreath (a torse).`,
+    );
+  } else {
+    s.push(`Below it rises the crest: a single gold flame upon a twisted gold wreath (a torse).`);
+  }
+
+  if (b.wordOfLife) {
+    s.push(`Beneath the crest, a cream ribbon banner is inscribed in Hebrew with the word ${b.wordOfLife.word} (its meaning: ${b.wordOfLife.gloss}); paint only the Hebrew word on the banner.`);
+  }
+
+  const regions = b.field.regions.map((r) => colorNameFor(r.letterId));
+  const division = DIVISION_PHRASE[b.field.division] ?? b.field.division;
+  const charges = b.charges.map((c) => `${c.glyph} (${c.letterName})`).join(", ");
+  s.push(
+    `At the centre stands a heraldic escutcheon (a pointed medieval shield), ${division} tinctured ${regions.join(", ")}. Upon it, ${b.charges.length > 1 ? "one large gold Hebrew letter fills each division" : "a large gold Hebrew letter"} — ${charges} — struck in ${b.metal}, and nothing is ever laid over a letter.`,
+  );
+  if (b.field.elementCast) {
+    s.push(`The whole field is washed toward ${b.field.elementCast.element}, deepening its colour.`);
+  }
+
+  if (b.mantling) {
+    s.push(`Flanking the shield on both sides, symmetrical branches of ${SPECIES_PHRASE[b.mantling.species]} (of the seven species of the Land), in gold and natural colour, cascade from behind the crest.`);
+  }
+
+  s.push(
+    b.compartment === "land"
+      ? `The shield rests on a mound of rooted earth, its roots visibly spreading.`
+      : `The shield rests upon rippling water.`,
+  );
+
+  if (b.planets.length) {
+    s.push(`At the very base, beneath the shield, are the alchemical planet sigil${b.planets.length > 1 ? "s" : ""} of ${b.planets.map((p) => p.planet).join(" and ")}, drawn small in gold.`);
+  }
+
+  if (b.epithet) {
+    s.push(`Along the bottom, a gold-edged motto scroll reads "${b.epithet}".`);
+  }
+
+  s.push(
+    `Palette limited to gold, the named tinctures, and cream vellum. Flat and hand-painted — no photographic or 3D rendering, no drop shadows, no modern typography. All lettering inside the shield must be in Hebrew only.`,
+  );
+
+  return `Herald — ${title}\n\n${s.join(" ")}`;
+}
+
+/** Copy text to the clipboard; resolves false if the clipboard is unavailable. */
+export async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Download an image prompt as a .txt (fallback when the clipboard is unavailable). */
+export function downloadText(text: string, filename: string): void {
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

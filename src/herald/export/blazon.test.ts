@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { HeraldInputSnapshot } from "../../types/herald";
-import { blazonForSnapshot, blazonToText } from "./blazon";
+import { blazonForSnapshot, blazonToText, blazonToImagePrompt } from "./blazon";
 
 const input: HeraldInputSnapshot = {
   path: "brit",
@@ -50,5 +50,22 @@ describe("blazonForSnapshot", () => {
     expect(text).toContain("blazon.json");
     // The hidden name is woven, not displayed in the arms description body.
     expect(text).toContain("woven into the border");
+  });
+
+  it("builds a deterministic image-generation prompt from the blazon", () => {
+    const b = blazonForSnapshot(input);
+    const p = blazonToImagePrompt(b, "מלך");
+    expect(p).toBe(blazonToImagePrompt(b, "מלך"));
+    // Illuminated-plate style cues.
+    expect(p).toContain("illuminated");
+    expect(p).toContain("vellum");
+    // Derived elements: crest constellation, colour names (not hex), species, epithet slot.
+    expect(p).toContain("Libra");
+    expect(p).toContain("deep blue"); // Mem's tincture, named
+    expect(p).not.toContain("#"); // no hex codes in the prompt
+    expect(p).toContain("grape vines"); // Tiferet → grape mantling, richly phrased
+    // Arms stay Hebrew-only; the veiled letter never appears.
+    expect(p).toContain("Hebrew only");
+    expect(p).not.toContain("Shin");
   });
 });
