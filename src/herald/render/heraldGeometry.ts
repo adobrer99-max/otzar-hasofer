@@ -6,17 +6,26 @@
  * the meaning.
  */
 
-export const VIEWBOX_WIDTH = 600;
-export const VIEWBOX_HEIGHT = 800;
+export const VIEWBOX_WIDTH = 680;
+export const VIEWBOX_HEIGHT = 858;
+
+/**
+ * The shield's internal geometry (SHIELD, below) is unchanged from the
+ * original 600×800 canvas; the larger viewBox simply adds margin, and the
+ * figure is drawn shifted by this offset so the crest sits above the shield
+ * and the motto/compartment below it. All shield-relative coordinates stay
+ * identical — only the surrounding frame grew.
+ */
+export const FIGURE_OFFSET = { x: 40, y: 70 };
 
 export const SHIELD = {
   left: 70,
   right: 530,
   top: 90,
   /** y roughly where the sides stop bowing out and begin sweeping toward the point — used for internal layout. */
-  shoulder: 470,
-  /** y of the shield's lowest point */
-  point: 720,
+  shoulder: 440,
+  /** y of the shield's lowest point — kept from being over-elongated so the field isn't mostly empty below the charges. */
+  point: 640,
 };
 
 /**
@@ -27,10 +36,10 @@ export const SHIELD = {
  */
 export const SHIELD_OGEE = {
   pointX: (70 + 530) / 2,
-  rightC1: { x: 562, y: 325 },
-  rightC2: { x: 428, y: 675 },
-  leftC1: { x: 172, y: 675 },
-  leftC2: { x: 38, y: 325 },
+  rightC1: { x: 560, y: 300 },
+  rightC2: { x: 424, y: 590 },
+  leftC1: { x: 176, y: 590 },
+  leftC2: { x: 40, y: 300 },
 };
 
 /** The fixed escutcheon silhouette (flat top, ogee sides to a point), as an SVG path `d` string. */

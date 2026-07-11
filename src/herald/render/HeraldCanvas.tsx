@@ -1,9 +1,9 @@
 import { forwardRef } from "react";
-import type { HeraldInputSnapshot, ReadingPath } from "../../types/herald";
+import type { HeraldInputSnapshot, ReadingPath, HeraldStyle } from "../../types/herald";
 import type { HeraldForm } from "../synthesis/deriveHeraldForm";
 import { festivalsById } from "../../data/festivals";
-import { VIEWBOX_WIDTH, VIEWBOX_HEIGHT, shieldCenter } from "./heraldGeometry";
-import { HeraldLayerContent, HeraldSynthesisContent, HeraldSvgDefs } from "./buildHeraldSvg";
+import { VIEWBOX_WIDTH, VIEWBOX_HEIGHT, FIGURE_OFFSET } from "./heraldGeometry";
+import { HeraldLayerContent, HeraldSynthesisContent, HeraldSvgDefs, MottoRibbon } from "./buildHeraldSvg";
 
 export interface HeraldCanvasProps {
   /** Single-reading mode: render this reading's snapshot. */
@@ -26,13 +26,15 @@ export interface HeraldCanvasProps {
    * reading onward. Absent epithet yields output identical to before.
    */
   epithet?: string;
+  /** The Scribe's curation of this participant's Herald. Absent = default frame. */
+  style?: HeraldStyle;
 }
 
 export const HeraldCanvas = forwardRef<SVGSVGElement, HeraldCanvasProps>(function HeraldCanvas(
-  { input, form, previous, layerCount, displayName, hebrewName, path, createdAt, status, epithet },
+  { input, form, previous, layerCount, displayName, hebrewName, path, createdAt, status, epithet, style },
   ref,
 ) {
-  const center = shieldCenter();
+  const cx = VIEWBOX_WIDTH / 2;
   const isSynthesis = !!form;
 
   const festival = input ? (festivalsById[input.festivalId] ?? festivalsById.ordinary) : undefined;
@@ -62,36 +64,29 @@ export const HeraldCanvas = forwardRef<SVGSVGElement, HeraldCanvasProps>(functio
       <HeraldSvgDefs />
       <rect x={0} y={0} width={VIEWBOX_WIDTH} height={VIEWBOX_HEIGHT} fill="var(--color-charcoal)" />
 
-      {isSynthesis ? (
-        <HeraldSynthesisContent form={form} />
-      ) : input ? (
-        <>
-          {previous && (
-            <g opacity={0.15}>
-              <HeraldLayerContent input={previous} layerCount={Math.max((layerCount ?? 0) - 1, 0)} />
-            </g>
-          )}
-          <HeraldLayerContent input={input} layerCount={layerCount ?? 0} />
-        </>
-      ) : null}
+      {/* The figure sits inside the larger frame; the crest rises above it and
+          the motto scroll rests below, all shield-relative. */}
+      <g transform={`translate(${FIGURE_OFFSET.x}, ${FIGURE_OFFSET.y})`}>
+        {isSynthesis ? (
+          <HeraldSynthesisContent form={form} style={style} />
+        ) : input ? (
+          <>
+            {previous && (
+              <g opacity={0.15}>
+                <HeraldLayerContent input={previous} layerCount={Math.max((layerCount ?? 0) - 1, 0)} style={style} />
+              </g>
+            )}
+            <HeraldLayerContent input={input} layerCount={layerCount ?? 0} style={style} />
+          </>
+        ) : null}
 
-      {epithet && (
-        <text
-          x={center.x}
-          y={VIEWBOX_HEIGHT - 64}
-          textAnchor="middle"
-          fontFamily="var(--font-latin)"
-          fontSize={14}
-          fontStyle="italic"
-          fill="var(--color-gold)"
-        >
-          {epithet}
-        </text>
-      )}
+        {epithet && style?.motto !== false && <MottoRibbon text={epithet} />}
+      </g>
+
       {captionName && (
         <text
-          x={center.x}
-          y={VIEWBOX_HEIGHT - 40}
+          x={cx}
+          y={VIEWBOX_HEIGHT - 52}
           textAnchor="middle"
           fontFamily={brit ? "var(--font-hebrew)" : "var(--font-latin)"}
           fontSize={22}
@@ -103,8 +98,8 @@ export const HeraldCanvas = forwardRef<SVGSVGElement, HeraldCanvasProps>(functio
       {isSynthesis
         ? status && (
             <text
-              x={center.x}
-              y={VIEWBOX_HEIGHT - 18}
+              x={cx}
+              y={VIEWBOX_HEIGHT - 26}
               textAnchor="middle"
               fontFamily="var(--font-latin)"
               fontSize={12}
@@ -115,8 +110,8 @@ export const HeraldCanvas = forwardRef<SVGSVGElement, HeraldCanvasProps>(functio
           )
         : createdAt && (
             <text
-              x={center.x}
-              y={VIEWBOX_HEIGHT - 18}
+              x={cx}
+              y={VIEWBOX_HEIGHT - 26}
               textAnchor="middle"
               fontFamily="var(--font-latin)"
               fontSize={12}

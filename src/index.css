@@ -124,3 +124,34 @@ input[type="radio"] {
   font-size: var(--font-size-xxl);
   margin: var(--space-1) 0 0;
 }
+
+/* ——— The living Herald: subtle motion on the headline sigil only ———
+   Presentation-only (never in the serialized SVG), so export stays a still
+   frame. Gated by prefers-reduced-motion. Applied via the .herald-living
+   wrapper on the main Herald canvas, not on history thumbnails. */
+@media (prefers-reduced-motion: no-preference) {
+  .herald-living [data-role="crest"] {
+    animation: herald-flicker 4.5s ease-in-out infinite;
+  }
+  .herald-living.herald-revealing [data-role="crest"] {
+    animation: herald-crest-kindle 2.4s ease-out 1;
+  }
+}
+@keyframes herald-flicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.82; }
+}
+@keyframes herald-crest-kindle {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* Hover-to-inspect: a charge lifts gently on hover/focus. */
+@media (prefers-reduced-motion: no-preference) {
+  .herald-living [data-charge] {
+    transition: filter 160ms ease;
+  }
+}
+.herald-living [data-charge]:hover {
+  filter: brightness(1.15);
+}

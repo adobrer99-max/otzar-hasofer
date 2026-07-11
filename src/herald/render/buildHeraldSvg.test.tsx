@@ -36,13 +36,15 @@ describe("HeraldLayerContent determinism", () => {
     expect(render(sampleInput, 0)).not.toBe(render(changed, 0));
   });
 
-  it("never renders the veiled letter's glyph", () => {
+  it("never renders the veiled letter as a charge", () => {
     const markup = render(sampleInput, 0);
-    // Shin (veiled) must not appear; Aleph/Bet/Mem (open) must.
-    expect(markup).not.toContain("ש");
-    expect(markup).toContain("א");
-    expect(markup).toContain("ב");
-    expect(markup).toContain("מ");
+    // Shin (veiled) must not appear as a charge; Aleph/Bet/Mem (open) must.
+    // Asserted on stable data-charge markers, not font glyphs, so the guarantee
+    // survives the letterform-to-path conversion.
+    expect(markup).not.toContain('data-charge="shin"');
+    expect(markup).toContain('data-charge="aleph"');
+    expect(markup).toContain('data-charge="bet"');
+    expect(markup).toContain('data-charge="mem"');
   });
 });
 
@@ -88,17 +90,18 @@ describe("the Etz Chaim spread (Tu Bishvat)", () => {
 
   it("renders all four open letters, stacked as the Four Worlds", () => {
     const markup = render(etzChaimInput, 0);
-    expect(markup).toContain("א");
-    expect(markup).toContain("ב");
-    expect(markup).toContain("מ");
-    expect(markup).toContain("ד"); // the Fruit
+    expect(markup).toContain('data-spread="etz-chaim"');
+    expect(markup).toContain('data-charge="aleph"');
+    expect(markup).toContain('data-charge="bet"');
+    expect(markup).toContain('data-charge="mem"');
+    expect(markup).toContain('data-charge="dalet"'); // the Fruit
     expect(markup).toContain("Atzilut");
     expect(markup).toContain("Assiyah");
   });
 
   it("keeps the fifth card (Olam Ha'Ba, in the veiled slot) sealed and unrendered", () => {
     const markup = render(etzChaimInput, 0);
-    expect(markup).not.toContain("ש");
+    expect(markup).not.toContain('data-charge="shin"');
   });
 });
 
@@ -113,17 +116,19 @@ describe("the Yichud spread (Tu B'Av)", () => {
     expect(render(yichudInput, 0)).toBe(render(yichudInput, 0));
   });
 
-  it("unveils the anchor — its glyph is rendered this one spread", () => {
+  it("unveils the anchor — its charge is rendered this one spread", () => {
     const markup = render(yichudInput, 0);
-    expect(markup).toContain("ש"); // the unveiled anchor
-    expect(markup).toContain("The Unveiled Anchor");
+    expect(markup).toContain('data-spread="yichud"');
+    expect(markup).toContain('data-role="unveiled-anchor"');
+    expect(markup).toContain('data-charge="shin"'); // the unveiled anchor
   });
 
   it("does not change the ordinary triadic render", () => {
     // The same input without the spread field must render as it always has.
     const markup = render(sampleInput, 0);
-    expect(markup).not.toContain("ש");
-    expect(markup).not.toContain("The Unveiled Anchor");
+    expect(markup).not.toContain('data-spread="yichud"');
+    expect(markup).not.toContain('data-role="unveiled-anchor"');
+    expect(markup).not.toContain('data-charge="shin"');
   });
 });
 
@@ -160,6 +165,103 @@ const sevenLayers: HeraldLayer[] = [
   layer(6, ["peh", "tzadi", "kuf"], "malchut"),
 ];
 
+describe("the Word of the Life fess", () => {
+  it("bears a fess when the drawn letters spell a root, and none when they don't", () => {
+    const rootInput: HeraldInputSnapshot = {
+      ...sampleInput,
+      drawnLetters: [
+        { letterId: "mem", orientation: "upright" },
+        { letterId: "lamed", orientation: "upright" },
+        { letterId: "kaf", orientation: "upright" },
+      ],
+      veiledLetter: { letterId: "shin", orientation: "upright" },
+    };
+    expect(render(rootInput, 0)).toContain('data-role="fess"');
+    // The Etz Chaim spread skips Shoresh resolution — no fess.
+    const etz: HeraldInputSnapshot = {
+      ...rootInput,
+      festivalId: "tubishvat",
+      spread: "etz-chaim",
+      fourthLetter: { letterId: "dalet", orientation: "upright" },
+    };
+    expect(render(etz, 0)).not.toContain('data-role="fess"');
+  });
+});
+
+describe("Scribe curation (HeraldStyle)", () => {
+  it("is deterministic for the same input + style, and absent style is unchanged", () => {
+    const withStyle = renderToStaticMarkup(
+      <HeraldLayerContent input={sampleInput} layerCount={0} style={{ metal: "silver", crest: false }} />,
+    );
+    const again = renderToStaticMarkup(
+      <HeraldLayerContent input={sampleInput} layerCount={0} style={{ metal: "silver", crest: false }} />,
+    );
+    expect(withStyle).toBe(again);
+    // No style prop and an all-defaults style yield the same structure.
+    const noStyle = render(sampleInput, 0);
+    const defaultStyle = renderToStaticMarkup(<HeraldLayerContent input={sampleInput} layerCount={0} style={{}} />);
+    expect(noStyle).toBe(defaultStyle);
+  });
+
+  it("changes the render when the curation changes", () => {
+    const gold = renderToStaticMarkup(<HeraldLayerContent input={sampleInput} layerCount={0} style={{}} />);
+    const silvered = renderToStaticMarkup(
+      <HeraldLayerContent input={sampleInput} layerCount={0} style={{ metal: "silver" }} />,
+    );
+    expect(gold).not.toBe(silvered);
+  });
+
+  it("strikes each charge in flat gold foil over its letter's tincture, and draws no central tree", () => {
+    const markup = render(sampleInput, 0);
+    // Every open letter appears as a charge (stable data-charge marker, not a
+    // font glyph); the veiled letter never does.
+    expect(markup).toContain('data-charge="aleph"');
+    expect(markup).toContain('data-charge="mem"');
+    expect(markup).not.toContain('data-charge="shin"');
+    // The charges are struck in the achievement's flat gold metal (foil-stamp
+    // language) — the per-letter colour lives in the field tincture instead.
+    expect(markup).toContain("var(--color-gold)");
+    // No gradient enamel remains — the material is flat foil.
+    expect(markup).not.toContain("url(#herald-glyph-");
+    // The Sefirot tree no longer renders in the centre.
+    expect(markup).not.toContain('data-role="dominant-node"');
+  });
+
+  it("gives different letters a different render (unique per individual)", () => {
+    const other: HeraldInputSnapshot = {
+      ...sampleInput,
+      drawnLetters: [
+        { letterId: "shin", orientation: "upright" },
+        { letterId: "dalet", orientation: "upright" },
+        { letterId: "heh", orientation: "upright" },
+      ],
+      veiledLetter: { letterId: "tav", orientation: "upright" },
+    };
+    expect(render(sampleInput, 0)).not.toBe(render(other, 0));
+  });
+
+  it("renders the heraldic charge device when curated, and letterforms by default", () => {
+    const glyphMode = renderToStaticMarkup(<HeraldLayerContent input={sampleInput} layerCount={0} style={{ device: "glyph" }} />);
+    const chargeMode = renderToStaticMarkup(<HeraldLayerContent input={sampleInput} layerCount={0} style={{ device: "charge" }} />);
+    expect(glyphMode).not.toContain('data-device="charge"');
+    expect(chargeMode).toContain('data-device="charge"');
+    // The charge is still marked with its letter and remains deterministic.
+    expect(chargeMode).toContain('data-charge="aleph"');
+    expect(chargeMode).toBe(
+      renderToStaticMarkup(<HeraldLayerContent input={sampleInput} layerCount={0} style={{ device: "charge" }} />),
+    );
+    // Default (no device) is the letterform, unchanged.
+    expect(render(sampleInput, 0)).toBe(glyphMode);
+  });
+
+  it("gates the heraldic vocabulary by curation", () => {
+    const withCrest = renderToStaticMarkup(<HeraldLayerContent input={sampleInput} layerCount={0} style={{ crest: true }} />);
+    const noCrest = renderToStaticMarkup(<HeraldLayerContent input={sampleInput} layerCount={0} style={{ crest: false }} />);
+    expect(withCrest).toContain('data-role="crest"');
+    expect(noCrest).not.toContain('data-role="crest"');
+  });
+});
+
 describe("HeraldSynthesisContent determinism", () => {
   it("produces identical markup for the same derived form, twice", () => {
     const form = deriveHeraldForm(sevenLayers);
@@ -175,4 +277,5 @@ describe("HeraldSynthesisContent determinism", () => {
     const revealed = renderToStaticMarkup(<HeraldSynthesisContent form={deriveHeraldForm(sevenLayers)} />);
     expect(forming).not.toBe(revealed);
   });
+
 });

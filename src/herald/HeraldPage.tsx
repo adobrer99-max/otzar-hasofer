@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import type { ParticipantRecord, HeraldLayer, ReadingPath } from "../types/herald";
+import type { ParticipantRecord, HeraldLayer, ReadingPath, HeraldStyle } from "../types/herald";
 import type { LifeCycleEvent } from "../types/lifeCycle";
 import {
   listParticipants,
   createParticipant,
   getLayers,
   addLayer,
+  setHeraldStyle,
 } from "../storage/participantsRepo";
 import { listLifeCycleEvents } from "../storage/lifeCycleRepo";
 import { listAllCommentaries } from "../storage/commentariesRepo";
@@ -21,6 +22,7 @@ import { HistoryScrubber } from "./history/HistoryScrubber";
 import { LayerCaption } from "./history/LayerCaption";
 import { LifeCycleEventsPanel } from "./lifeCycle/LifeCycleEventsPanel";
 import { EpithetPanel } from "./epithet/EpithetPanel";
+import { HeraldStylePanel } from "./style/HeraldStylePanel";
 import { SacredTimeBanners } from "./lifeCycle/SacredTimeBanners";
 import { exportHeraldSvg } from "./export/exportSvg";
 import { exportHeraldPng } from "./export/exportPng";
@@ -34,6 +36,7 @@ export function HeraldPage() {
   const [lifeCycleEvents, setLifeCycleEvents] = useState<LifeCycleEvent[]>([]);
   const [commentaries, setCommentaries] = useState<CommentaryRecord[]>([]);
   const [justRevealed, setJustRevealed] = useState(false);
+  const [styleDraft, setStyleDraft] = useState<HeraldStyle>({});
   const wasRevealed = useRef(false);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -58,6 +61,12 @@ export function HeraldPage() {
     listLifeCycleEvents(selectedParticipantId).then(setLifeCycleEvents);
   }, [selectedParticipantId]);
 
+  // Keep the curation draft in step with the selected participant's sealed style.
+  useEffect(() => {
+    const p = participants.find((x) => x.id === selectedParticipantId);
+    setStyleDraft(p?.heraldStyle ?? {});
+  }, [selectedParticipantId, participants]);
+
   async function handleCreateParticipant(displayName: string, path: ReadingPath) {
     const record = await createParticipant(displayName, path);
     setParticipants((prev) => [...prev, record].sort((a, b) => a.displayName.localeCompare(b.displayName)));
@@ -66,6 +75,12 @@ export function HeraldPage() {
 
   function handleParticipantChange(updated: ParticipantRecord) {
     setParticipants((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+  }
+
+  async function handleSealStyle() {
+    if (!selectedParticipantId) return;
+    const updated = await setHeraldStyle(selectedParticipantId, styleDraft);
+    handleParticipantChange(updated);
   }
 
   async function handleSubmitReading(input: Parameters<typeof addLayer>[1]) {
@@ -84,6 +99,7 @@ export function HeraldPage() {
   const selectedLayer = selectedIndex >= 0 ? layers[selectedIndex] : undefined;
   const previousInput = selectedIndex > 0 ? layers[selectedIndex - 1].input : undefined;
   const selectedParticipant = participants.find((p) => p.id === selectedParticipantId);
+  const styleDirty = JSON.stringify(styleDraft) !== JSON.stringify(selectedParticipant?.heraldStyle ?? {});
   const todayHebrewDate = computeSacredTime(new Date(), "land").hebrewDate;
   const sealedEpithet = selectedParticipant?.heraldicEpithet;
   /** The Epithet belongs to the seventh reading onward — earlier layers show the pre-revelation Herald. */
@@ -181,7 +197,7 @@ export function HeraldPage() {
               <>
                 {viewingSynthesis ? (
                   <div
-                    className={`${styles.heraldFrame} ${justRevealed ? styles.revealed : ""}`}
+                    className={`${styles.heraldFrame} herald-living ${justRevealed ? `${styles.revealed} herald-revealing` : ""}`}
                     onAnimationEnd={() => setJustRevealed(false)}
                   >
                     <HeraldCanvas
@@ -192,10 +208,11 @@ export function HeraldPage() {
                       path={selectedParticipant?.path}
                       status={synthesisStatus}
                       epithet={synthesisEpithet}
+                      style={styleDraft}
                     />
                   </div>
                 ) : (
-                  <div className={styles.heraldFrame}>
+                  <div className={`${styles.heraldFrame} herald-living`}>
                     <HeraldCanvas
                       ref={svgRef}
                       input={selectedLayer!.input}
@@ -204,6 +221,7 @@ export function HeraldPage() {
                       displayName={selectedParticipant?.displayName}
                       createdAt={selectedLayer!.createdAt}
                       epithet={epithetForSelectedLayer}
+                      style={styleDraft}
                     />
                   </div>
                 )}
@@ -255,6 +273,13 @@ export function HeraldPage() {
                     Download PNG
                   </button>
                 </div>
+                <HeraldStylePanel
+                  draft={styleDraft}
+                  onChange={setStyleDraft}
+                  onSeal={handleSealStyle}
+                  dirty={styleDirty}
+                  sealed={!!selectedParticipant?.heraldStyle}
+                />
                 <h3>History</h3>
                 <HistoryScrubber
                   layers={layers}
