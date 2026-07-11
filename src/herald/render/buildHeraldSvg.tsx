@@ -2,6 +2,7 @@ import type { HeraldInputSnapshot, DorotDraw, LetterDraw, HeraldStyle } from "..
 import type { SefirahId } from "../../types/letter";
 import type { HeraldForm } from "../synthesis/deriveHeraldForm";
 import type { CovenantalForm } from "../covenant/deriveCovenantalForm";
+import { lettersById } from "../../data/letters";
 import { festivalsById } from "../../data/festivals";
 import { dorotCardsById, dorotHousesById } from "../../data/dorot";
 import { resolveShoresh } from "../shoresh/resolveShoresh";
@@ -538,7 +539,7 @@ function FieldTincture({ letterIds }: { letterIds: string[] }) {
  * charges, inscribed with the Word they spell. The letters are the Word; the
  * fess unites and names it.
  */
-function WordFess({ color, inscription }: { color: string; inscription: string }) {
+function WordFess({ color, word }: { color: string; word: string }) {
   const center = shieldCenter();
   const top = BAND_TOP - 64;
   const bottom = BAND_TOP + 48;
@@ -549,19 +550,15 @@ function WordFess({ color, inscription }: { color: string; inscription: string }
       <line x1={SHIELD.left} y1={bottom} x2={SHIELD.right} y2={bottom} stroke={color} strokeWidth={2.5} />
       <text
         x={center.x}
-        y={BAND_TOP + 35}
+        y={BAND_TOP + 38}
         textAnchor="middle"
-        fontFamily="var(--font-latin)"
-        fontSize={17}
-        letterSpacing="0.24em"
+        direction="rtl"
+        fontFamily="var(--font-hebrew)"
+        fontSize={26}
+        letterSpacing="0.1em"
         fill="var(--color-gold-bright)"
       >
-        {/* Fold diacritics (mâlak → MALAK): the manuscript Latin font has no
-            glyph for â/ā/ô and would otherwise show a missing-glyph box. */}
-        {inscription
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .toUpperCase()}
+        {word}
       </text>
     </g>
   );
@@ -621,14 +618,16 @@ function HeraldFigure({
   // correspondences get a lighter, tentative bezier (reordered-root and
   // gematria signals aren't tied to visual positions, so they're
   // caption-only). Tier IV: no fess — see ShoreshNistarMark instead.
-  // The fess bears the Word itself (the transliteration) — the meaning stays
-  // in the caption, so the band never overflows with a long gloss.
-  const fessInscription =
-    shoresh?.tier === "root"
-      ? shoresh.transliteration
-      : shoresh?.tier === "name"
-        ? shoresh.transliteration
-        : undefined;
+  // The fess bears the Word itself, in Hebrew — the three root letters in draw
+  // order (no transliteration; the meaning stays in the caption). In the
+  // heraldic-charge device this is the one place the written word appears.
+  const fessWord =
+    shoresh?.tier === "root" || shoresh?.tier === "name"
+      ? [...divisions]
+          .sort((a, b) => a.drawOrder - b.drawOrder)
+          .map((d) => lettersById[d.letterId]?.glyph ?? "")
+          .join("")
+      : undefined;
   const tentativePairs =
     shoresh?.tier === "related"
       ? shoresh.correspondences
@@ -660,7 +659,7 @@ function HeraldFigure({
         <DivisionDividers bands={divisions.map((d) => d.band)} />
 
         {/* The Word of the Life, borne on a fess beneath the charges. */}
-        {fessInscription && <WordFess color={accentColor} inscription={fessInscription} />}
+        {fessWord && <WordFess color={accentColor} word={fessWord} />}
         {tentativePairs.map(({ a, b, key }) => {
           const ax = bandX(a.band).center;
           const bx = bandX(b.band).center;
