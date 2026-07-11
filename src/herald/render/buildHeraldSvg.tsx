@@ -432,6 +432,7 @@ function HeraldFigure({
         return (
           <text
             key={division.letterId}
+            data-charge={division.letterId}
             x={bandCenter}
             y={BAND_TOP}
             textAnchor="middle"
@@ -476,7 +477,7 @@ const ETZ_CHAIM_ROWS = [
 function EtzChaimCharges({ draws }: { draws: LetterDraw[] }) {
   const center = shieldCenter();
   return (
-    <g clipPath="url(#herald-shield-clip)">
+    <g clipPath="url(#herald-shield-clip)" data-spread="etz-chaim">
       <line
         x1={center.x}
         y1={ETZ_CHAIM_ROWS[0].y + 12}
@@ -493,6 +494,7 @@ function EtzChaimCharges({ draws }: { draws: LetterDraw[] }) {
         return (
           <g key={`${row.world}-${draw.letterId}`}>
             <text
+              data-charge={draw.letterId}
               x={center.x}
               y={row.y}
               textAnchor="middle"
@@ -548,7 +550,7 @@ function YichudOverlay({
   const letter = lettersById[unveiled.letterId];
   const flip = unveiled.orientation === "reversed";
   return (
-    <g clipPath="url(#herald-shield-clip)">
+    <g clipPath="url(#herald-shield-clip)" data-spread="yichud">
       {/* First pair: first + second drawn. */}
       <path
         d={`M ${firstPair.a} ${pairY} Q ${(firstPair.a + firstPair.b) / 2} ${pairY + 26}, ${firstPair.b} ${pairY}`}
@@ -578,6 +580,8 @@ function YichudOverlay({
         opacity={0.8}
       />
       <text
+        data-charge={unveiled.letterId}
+        data-role="unveiled-anchor"
         x={center.x}
         y={unveiledY}
         textAnchor="middle"

@@ -36,13 +36,15 @@ describe("HeraldLayerContent determinism", () => {
     expect(render(sampleInput, 0)).not.toBe(render(changed, 0));
   });
 
-  it("never renders the veiled letter's glyph", () => {
+  it("never renders the veiled letter as a charge", () => {
     const markup = render(sampleInput, 0);
-    // Shin (veiled) must not appear; Aleph/Bet/Mem (open) must.
-    expect(markup).not.toContain("ש");
-    expect(markup).toContain("א");
-    expect(markup).toContain("ב");
-    expect(markup).toContain("מ");
+    // Shin (veiled) must not appear as a charge; Aleph/Bet/Mem (open) must.
+    // Asserted on stable data-charge markers, not font glyphs, so the guarantee
+    // survives the letterform-to-path conversion.
+    expect(markup).not.toContain('data-charge="shin"');
+    expect(markup).toContain('data-charge="aleph"');
+    expect(markup).toContain('data-charge="bet"');
+    expect(markup).toContain('data-charge="mem"');
   });
 });
 
@@ -88,17 +90,18 @@ describe("the Etz Chaim spread (Tu Bishvat)", () => {
 
   it("renders all four open letters, stacked as the Four Worlds", () => {
     const markup = render(etzChaimInput, 0);
-    expect(markup).toContain("א");
-    expect(markup).toContain("ב");
-    expect(markup).toContain("מ");
-    expect(markup).toContain("ד"); // the Fruit
+    expect(markup).toContain('data-spread="etz-chaim"');
+    expect(markup).toContain('data-charge="aleph"');
+    expect(markup).toContain('data-charge="bet"');
+    expect(markup).toContain('data-charge="mem"');
+    expect(markup).toContain('data-charge="dalet"'); // the Fruit
     expect(markup).toContain("Atzilut");
     expect(markup).toContain("Assiyah");
   });
 
   it("keeps the fifth card (Olam Ha'Ba, in the veiled slot) sealed and unrendered", () => {
     const markup = render(etzChaimInput, 0);
-    expect(markup).not.toContain("ש");
+    expect(markup).not.toContain('data-charge="shin"');
   });
 });
 
@@ -113,17 +116,19 @@ describe("the Yichud spread (Tu B'Av)", () => {
     expect(render(yichudInput, 0)).toBe(render(yichudInput, 0));
   });
 
-  it("unveils the anchor — its glyph is rendered this one spread", () => {
+  it("unveils the anchor — its charge is rendered this one spread", () => {
     const markup = render(yichudInput, 0);
-    expect(markup).toContain("ש"); // the unveiled anchor
-    expect(markup).toContain("The Unveiled Anchor");
+    expect(markup).toContain('data-spread="yichud"');
+    expect(markup).toContain('data-role="unveiled-anchor"');
+    expect(markup).toContain('data-charge="shin"'); // the unveiled anchor
   });
 
   it("does not change the ordinary triadic render", () => {
     // The same input without the spread field must render as it always has.
     const markup = render(sampleInput, 0);
-    expect(markup).not.toContain("ש");
-    expect(markup).not.toContain("The Unveiled Anchor");
+    expect(markup).not.toContain('data-spread="yichud"');
+    expect(markup).not.toContain('data-role="unveiled-anchor"');
+    expect(markup).not.toContain('data-charge="shin"');
   });
 });
 
