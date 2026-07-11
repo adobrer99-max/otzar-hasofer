@@ -2,12 +2,12 @@ import type { HeraldInputSnapshot, DorotDraw, LetterDraw } from "../../types/her
 import type { SefirahId } from "../../types/letter";
 import type { HeraldForm } from "../synthesis/deriveHeraldForm";
 import type { CovenantalForm } from "../covenant/deriveCovenantalForm";
-import { lettersById } from "../../data/letters";
 import { festivalsById } from "../../data/festivals";
 import { dorotCardsById, dorotHousesById } from "../../data/dorot";
 import { resolveShoresh } from "../shoresh/resolveShoresh";
 import { computeDivisions, type Division } from "./divisions";
 import { nameSeedOf, flourishRotation } from "./nameGeometry";
+import { LetterGlyph } from "./LetterGlyph";
 
 type ShoreshResult = ReturnType<typeof resolveShoresh>;
 import {
@@ -432,26 +432,19 @@ function HeraldFigure({
       {shoresh?.tier === "hidden" && <ShoreshNistarMark center={center} />}
 
       {divisions.map((division) => {
-        const letter = lettersById[division.letterId];
         const { center: bandCenter } = bandX(division.band);
         const baseSize = 60 + (2 - division.drawOrder) * 12 + (division.count - 1) * 8;
-        const flip = division.orientation === "reversed";
         return (
-          <text
+          <LetterGlyph
             key={division.letterId}
-            data-charge={division.letterId}
+            letterId={division.letterId}
+            size={baseSize}
             x={bandCenter}
-            y={BAND_TOP}
-            textAnchor="middle"
-            fontFamily="var(--font-hebrew)"
-            fontSize={baseSize}
+            baselineY={BAND_TOP}
             fill="url(#herald-gold-leaf)"
             stroke="var(--color-gold-bright)"
-            strokeWidth={0.5}
-            transform={flip ? `rotate(180 ${bandCenter} ${BAND_TOP - baseSize / 3})` : undefined}
-          >
-            {letter?.glyph ?? "?"}
-          </text>
+            flip={division.orientation === "reversed"}
+          />
         );
       })}
 
@@ -498,24 +491,17 @@ function EtzChaimCharges({ draws }: { draws: LetterDraw[] }) {
       />
       {draws.slice(0, ETZ_CHAIM_ROWS.length).map((draw, index) => {
         const row = ETZ_CHAIM_ROWS[index];
-        const letter = lettersById[draw.letterId];
-        const flip = draw.orientation === "reversed";
         return (
           <g key={`${row.world}-${draw.letterId}`}>
-            <text
-              data-charge={draw.letterId}
+            <LetterGlyph
+              letterId={draw.letterId}
+              size={54}
               x={center.x}
-              y={row.y}
-              textAnchor="middle"
-              fontFamily="var(--font-hebrew)"
-              fontSize={54}
+              baselineY={row.y}
               fill="url(#herald-gold-leaf)"
               stroke="var(--color-gold-bright)"
-              strokeWidth={0.5}
-              transform={flip ? `rotate(180 ${center.x} ${row.y - 18})` : undefined}
-            >
-              {letter?.glyph ?? "?"}
-            </text>
+              flip={draw.orientation === "reversed"}
+            />
             <text
               x={center.x + 52}
               y={row.y - 14}
@@ -556,8 +542,6 @@ function YichudOverlay({
   const pairY = BAND_TOP + 42;
   const firstPair = { a: centerOf(drawnLetters[0].letterId), b: centerOf(drawnLetters[1].letterId) };
   const thirdX = centerOf(drawnLetters[2].letterId);
-  const letter = lettersById[unveiled.letterId];
-  const flip = unveiled.orientation === "reversed";
   return (
     <g clipPath="url(#herald-shield-clip)" data-spread="yichud">
       {/* First pair: first + second drawn. */}
@@ -588,21 +572,17 @@ function YichudOverlay({
         strokeLinecap="round"
         opacity={0.8}
       />
-      <text
-        data-charge={unveiled.letterId}
-        data-role="unveiled-anchor"
-        x={center.x}
-        y={unveiledY}
-        textAnchor="middle"
-        fontFamily="var(--font-hebrew)"
-        fontSize={48}
-        fill="url(#herald-gold-leaf)"
-        stroke="var(--color-gold-bright)"
-        strokeWidth={0.5}
-        transform={flip ? `rotate(180 ${center.x} ${unveiledY - 16})` : undefined}
-      >
-        {letter?.glyph ?? "?"}
-      </text>
+      <g data-role="unveiled-anchor">
+        <LetterGlyph
+          letterId={unveiled.letterId}
+          size={48}
+          x={center.x}
+          baselineY={unveiledY}
+          fill="url(#herald-gold-leaf)"
+          stroke="var(--color-gold-bright)"
+          flip={unveiled.orientation === "reversed"}
+        />
+      </g>
       <text x={center.x} y={unveiledY + 22} textAnchor="middle" fontSize={12} fill="var(--color-silver)" opacity={0.85}>
         The Unveiled Anchor
       </text>
