@@ -351,6 +351,7 @@ export function ReadingForm({ onSubmit, readingIndex, ritualNotes }: ReadingForm
           <button
             type="button"
             className={geoMode === "land" ? styles.active : undefined}
+            aria-pressed={geoMode === "land"}
             onClick={() => setGeoMode("land")}
           >
             Land
@@ -358,6 +359,7 @@ export function ReadingForm({ onSubmit, readingIndex, ritualNotes }: ReadingForm
           <button
             type="button"
             className={geoMode === "galut" ? styles.active : undefined}
+            aria-pressed={geoMode === "galut"}
             onClick={() => setGeoMode("galut")}
           >
             Galut

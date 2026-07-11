@@ -5,8 +5,11 @@ import { Footer } from "./components/Footer";
 function App() {
   return (
     <>
+      <a href="#main" className="skip-link">
+        Skip to content
+      </a>
       <Nav />
-      <main style={{ flex: 1 }}>
+      <main id="main" style={{ flex: 1 }}>
         <Outlet />
       </main>
       <Footer />

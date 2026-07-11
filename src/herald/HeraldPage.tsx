@@ -315,6 +315,7 @@ export function HeraldPage() {
                       }
                     }}
                     title="A rich image-generation prompt — paste into ChatGPT or DALL·E to render an illuminated plate"
+                    aria-live="polite"
                   >
                     {promptCopied ? "Copied!" : "Copy image prompt"}
                   </button>

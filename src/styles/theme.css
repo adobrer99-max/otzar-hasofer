@@ -146,6 +146,9 @@
   --bg-raised: #ece5d3;
   --bg-sunken: #e4dcc6;
   --text: #2a2318;
+  /* Contrast (WCAG): muted on vellum bg 4.95:1, on raised 4.53:1 — both ≥ AA
+     (4.5). Dark-theme muted (#9aa1ad) is 6.9:1 / 6.3:1. Keep muted at or above
+     these values if the grounds change. */
   --text-muted: #6f6650;
   --accent: #a9812f;
   --accent-bright: #8a6820;

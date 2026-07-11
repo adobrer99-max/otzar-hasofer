@@ -144,6 +144,7 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
         <svg
           className={styles.overlay}
           viewBox={`0 0 ${CENTRAL_PANEL.width} ${CENTRAL_PANEL.height}`}
+          role="group"
           aria-label="Reading placements"
         >
           {CENTRAL_ZONES.filter((z) => z.kind !== "gate" && z.kind !== "well").map((zone) => (
@@ -192,13 +193,14 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
       {/* Ring mandala + turnable overlay */}
       <div className={styles.ringsWrap}>
         <MizbeachCanvas sacredTime={sacredTime} revealHidden={false} />
-        <svg className={styles.overlay} viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`} aria-label="Turnable rings">
+        <svg className={styles.overlay} viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`} role="group" aria-label="Turnable rings">
           <TurnableRing
             label="Turn to a Hebrew month"
             radius={RINGS.mazalot.radius}
             thickness={RINGS.mazalot.thickness}
             count={12}
             valueNow={monthSlice}
+            valueText={formatHebrewDateEnglish(sacredTime.hebrewDate)}
             knobAngle={sliceCenterAngle(12, monthSlice)}
             onPointer={(e) => ringPointer("month", e)}
             onStep={(delta) => onChange({ effectiveDate: setMonthSlice(state.effectiveDate, monthSlice + delta) })}
@@ -210,6 +212,7 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
             count={8}
             valueNow={dayNow - 1}
             valueMax={29}
+            valueText={`Day ${dayNow} of the moon`}
             knobAngle={((dayNow - 1) / 29) * 360}
             onPointer={(e) => ringPointer("day", e)}
             onStep={(delta) => onChange({ effectiveDate: setDayOfMonth(state.effectiveDate, dayNow + delta) })}
@@ -323,6 +326,7 @@ function TurnableRing({
   count,
   valueNow,
   valueMax,
+  valueText,
   knobAngle,
   onPointer,
   onStep,
@@ -333,6 +337,7 @@ function TurnableRing({
   count: number;
   valueNow: number;
   valueMax?: number;
+  valueText?: string;
   knobAngle: number;
   onPointer: (e: React.PointerEvent<SVGGElement>) => void;
   onStep: (delta: number) => void;
@@ -347,6 +352,7 @@ function TurnableRing({
       aria-valuenow={valueNow}
       aria-valuemin={0}
       aria-valuemax={valueMax ?? count - 1}
+      aria-valuetext={valueText}
       onPointerDown={(e) => {
         (e.currentTarget as SVGGElement).setPointerCapture(e.pointerId);
         onPointer(e);
