@@ -338,7 +338,7 @@ function ShivatHaminimBorder() {
  * geometry rather than authoring a second layout; absent entirely unless
  * `revealed`, not just dimmed, to match the physical UV-ink concept.
  */
-function HiddenSefirotLayer({ revealed }: { revealed: boolean }) {
+function HiddenSefirotLayer({ revealed, middah }: { revealed: boolean; middah?: string | null }) {
   if (!revealed) return null;
   const boxSize = 2 * (RINGS.parsha.radius - RINGS.parsha.thickness);
   const originX = CENTER.x - boxSize / 2;
@@ -348,7 +348,7 @@ function HiddenSefirotLayer({ revealed }: { revealed: boolean }) {
     return { x: originX + node.x * boxSize, y: originY + node.y * boxSize };
   };
   return (
-    <g opacity={0.9}>
+    <g opacity={0.95}>
       {TREE_OF_LIFE_PATHS.map(([a, b]) => {
         const pa = pos(a);
         const pb = pos(b);
@@ -360,23 +360,24 @@ function HiddenSefirotLayer({ revealed }: { revealed: boolean }) {
             x2={pb.x}
             y2={pb.y}
             stroke="var(--color-blue-bright)"
-            strokeWidth={0.75}
-            opacity={0.5}
+            strokeWidth={1}
+            opacity={0.55}
           />
         );
       })}
       {TREE_OF_LIFE_NODES.map((node) => {
         const p = pos(node.id);
+        const chosen = middah != null && node.id === middah;
         return (
           <circle
             key={node.id}
             cx={p.x}
             cy={p.y}
-            r={6}
-            fill="var(--color-blue-bright)"
-            stroke="var(--color-silver)"
-            strokeWidth={1}
-            opacity={0.85}
+            r={chosen ? 9 : 6}
+            fill={chosen ? "var(--color-gold-bright)" : "var(--color-blue-bright)"}
+            stroke={chosen ? "var(--color-gold-bright)" : "var(--color-silver)"}
+            strokeWidth={chosen ? 2 : 1}
+            opacity={chosen ? 1 : 0.85}
           />
         );
       })}
@@ -445,9 +446,12 @@ export function MizbeachSvgContent({
   revealHidden,
   neutral = false,
   only,
+  middah,
 }: {
   sacredTime: SacredTimeSnapshot;
   revealHidden: boolean;
+  /** When the Tree of Life is revealed, the dominant middah's Sefirah lights gold. */
+  middah?: string | null;
   /**
    * A printable "master" folio: render every ring in its resting state with
    * nothing gold-highlighted, since the live date/festival highlight is a
@@ -479,7 +483,7 @@ export function MizbeachSvgContent({
         omerDay={neutral ? undefined : sacredTime.omer?.day}
         roshChodesh={!neutral && Boolean(sacredTime.roshChodesh)}
       />
-      <HiddenSefirotLayer revealed={revealHidden} />
+      <HiddenSefirotLayer revealed={revealHidden} middah={middah} />
       <ShivatHaminimBorder />
       <PardesCorners />
       <MizrachVector />

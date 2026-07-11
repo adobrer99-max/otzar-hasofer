@@ -1,4 +1,3 @@
-import { TREE_OF_LIFE_NODES, TREE_OF_LIFE_PATHS } from "../../herald/render/heraldGeometry";
 import { CENTRAL_PANEL } from "./mizbeachGeometry";
 import type { LetterDraw } from "../../types/herald";
 import type { SefirahId } from "../../types/letter";
@@ -126,46 +125,25 @@ function SlotEmptyMark({ cx, cy }: { cx: number; cy: number }) {
 function HandAnchor() {
   const cx = CENTRAL_PANEL.width / 2;
   const cy = CENTRAL_PANEL.handY;
-  const fingerAngles = [-40, -20, 0, 20, 40];
   return (
     <g>
-      {/* Radiating sunburst behind the hand */}
-      <g stroke="var(--color-charcoal-line)" strokeWidth={1} opacity={0.6}>
-        {Array.from({ length: 16 }).map((_, i) => {
-          const angle = (i / 16) * 360;
-          const rad = (angle * Math.PI) / 180;
-          const inner = 60;
-          const outer = 92;
-          return (
-            <line
-              key={i}
-              x1={cx + inner * Math.cos(rad)}
-              y1={cy + inner * Math.sin(rad)}
-              x2={cx + outer * Math.cos(rad)}
-              y2={cy + outer * Math.sin(rad)}
-            />
-          );
-        })}
+      {/* A faint halo of reverence behind the hand */}
+      <circle cx={cx} cy={cy} r={74} fill="none" stroke="var(--color-charcoal-line)" strokeWidth={1} opacity={0.35} />
+      {/* The Hamsa — an open, upraised hand (fingers and thumbs share a gold outline; the seams read as the fingers) */}
+      <g fill="#141a24" stroke={GOLD} strokeWidth={2.25} strokeLinejoin="round" strokeLinecap="round">
+        <path d={`M ${cx - 34} ${cy + 4} Q ${cx - 40} ${cy + 46} ${cx} ${cy + 50} Q ${cx + 40} ${cy + 46} ${cx + 34} ${cy + 4} Z`} />
+        <rect x={cx - 26} y={cy - 34} width={15} height={48} rx={7.5} />
+        <rect x={cx - 7.5} y={cy - 46} width={16} height={60} rx={8} />
+        <rect x={cx + 11} y={cy - 34} width={15} height={48} rx={7.5} />
+        <rect x={cx - 47} y={cy - 30} width={13} height={42} rx={6.5} transform={`rotate(-40 ${cx - 40.5} ${cy - 9})`} />
+        <rect x={cx + 34} y={cy - 30} width={13} height={42} rx={6.5} transform={`rotate(40 ${cx + 40.5} ${cy - 9})`} />
       </g>
-      {/* Fingers */}
-      <g fill="none" stroke={GOLD} strokeWidth={2.5} strokeLinecap="round">
-        {fingerAngles.map((angle) => (
-          <line
-            key={angle}
-            x1={cx}
-            y1={cy - 5}
-            x2={cx}
-            y2={cy - 55}
-            transform={`rotate(${angle} ${cx} ${cy - 5})`}
-          />
-        ))}
-      </g>
-      {/* Palm */}
-      <ellipse cx={cx} cy={cy + 22} rx={30} ry={36} fill="#141a24" stroke={GOLD} strokeWidth={2.5} />
-      <circle cx={cx} cy={cy + 22} r={6} fill={GOLD} opacity={0.8} />
+      {/* The eye in the palm */}
+      <path d={`M ${cx - 12} ${cy + 20} Q ${cx} ${cy + 12} ${cx + 12} ${cy + 20} Q ${cx} ${cy + 28} ${cx - 12} ${cy + 20} Z`} fill="none" stroke={GOLD} strokeWidth={1.5} />
+      <circle cx={cx} cy={cy + 20} r={3.5} fill={GOLD} />
       <text
         x={cx}
-        y={cy + 66}
+        y={cy + 72}
         textAnchor="middle"
         fontFamily="var(--font-latin)"
         fontSize={13}
@@ -175,7 +153,7 @@ function HandAnchor() {
       </text>
       <text
         x={cx}
-        y={cy + 82}
+        y={cy + 88}
         textAnchor="middle"
         fontFamily="var(--font-latin)"
         fontSize={10}
@@ -341,48 +319,6 @@ function VeiledAnchor({ x, y, placed = false }: { x: number; y: number; placed?:
   );
 }
 
-function SmallTreeOfLife({ x, y, middah }: { x: number; y: number; middah?: SefirahId | null }) {
-  const boxSize = 90;
-  const originX = x - boxSize / 2;
-  const originY = y - 70;
-  const pos = (id: string) => {
-    const node = TREE_OF_LIFE_NODES.find((n) => n.id === id)!;
-    return { x: originX + node.x * boxSize, y: originY + node.y * boxSize };
-  };
-  return (
-    <g>
-      {TREE_OF_LIFE_PATHS.map(([a, b]) => {
-        const pa = pos(a);
-        const pb = pos(b);
-        return (
-          <line key={`${a}-${b}`} x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y} stroke="var(--color-silver)" strokeWidth={0.75} opacity={0.5} />
-        );
-      })}
-      {TREE_OF_LIFE_NODES.map((node) => {
-        const p = pos(node.id);
-        const chosen = middah != null && node.id === middah;
-        return (
-          <circle
-            key={node.id}
-            cx={p.x}
-            cy={p.y}
-            r={chosen ? 7 : 5}
-            fill={chosen ? "var(--color-gold-bright)" : "none"}
-            stroke={chosen ? "var(--color-gold-bright)" : "var(--color-gold)"}
-            strokeWidth={chosen ? 2 : 1.25}
-          />
-        );
-      })}
-      <text x={x} y={y + 50} textAnchor="middle" fontFamily="var(--font-latin)" fontSize={11} fill="var(--text)">
-        Tree of Life
-      </text>
-      <text x={x} y={y + 64} textAnchor="middle" fontFamily="var(--font-latin)" fontSize={9} fill="var(--text-muted)">
-        All paths return here
-      </text>
-    </g>
-  );
-}
-
 /** The three letter positions between the Hand Anchor and the Gates — each a card pocket seating a card once drawn. */
 function LetterSlots({ placements }: { placements?: CentralPlacements }) {
   const { columnX, lettersY } = CENTRAL_PANEL;
@@ -428,8 +364,7 @@ export function MizbeachCentralPanel({ placements }: { placements?: CentralPlace
       <LetterSlots placements={placements} />
       <ThreeGates />
       <ThreeWells />
-      <VeiledAnchor x={CENTRAL_PANEL.columnX[0] + 60} y={bottomRowY} placed={!!placements?.veiled} />
-      <SmallTreeOfLife x={CENTRAL_PANEL.columnX[2] - 60} y={bottomRowY} middah={placements?.middah} />
+      <VeiledAnchor x={width / 2} y={bottomRowY} placed={!!placements?.veiled} />
       <text
         x={width / 2}
         y={bottomBanner}

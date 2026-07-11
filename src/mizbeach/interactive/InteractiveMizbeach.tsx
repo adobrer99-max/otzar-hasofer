@@ -2,6 +2,8 @@ import { useState } from "react";
 import type { LetterDraw } from "../../types/herald";
 import type { SefirahId } from "../../types/letter";
 import { lettersById } from "../../data/letters";
+import { middot } from "../../data/middot";
+import { TREE_OF_LIFE_NODES } from "../../herald/render/heraldGeometry";
 import { dorotCardsById } from "../../data/dorot";
 import { computeSacredTime } from "../../data/sacredTime";
 import { formatHebrewDateEnglish } from "../../data/hebrewCalendar";
@@ -43,6 +45,9 @@ function svgPoint(svg: SVGSVGElement, clientX: number, clientY: number): { x: nu
 
 export function InteractiveMizbeach({ state, onChange, readingIndex }: InteractiveMizbeachProps) {
   const [openZoneId, setOpenZoneId] = useState<string>();
+  // The Tree of Life is hidden (the Or HaGanuz) until revealed on the rings —
+  // it links the folio's dimensions, and its lower Sefirot are the middah picker.
+  const [treeRevealed, setTreeRevealed] = useState(false);
 
   const festivalId = resolvedFestivalId(state);
   const sacredTime = computeSacredTime(state.effectiveDate, state.geoMode);
@@ -62,8 +67,6 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
   const popoverTarget = ((): PopoverTarget | undefined => {
     if (!openZoneId) return undefined;
     if (openZoneId === "hand") return { kind: "hand", label: "Hand Anchor", value: state.palmNotes };
-    if (openZoneId === "tree")
-      return { kind: "tree", label: "Dominant middah", value: state.middah };
     if (openZoneId === "veiled")
       return { kind: "veiled", label: "The Veiled Anchor", value: state.veiled };
     if (openZoneId === "fourth")
@@ -89,7 +92,6 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
   function commit(value: LetterDraw | SefirahId | string) {
     const id = openZoneId!;
     if (id === "hand") onChange({ palmNotes: value as string });
-    else if (id === "tree") onChange({ middah: value as SefirahId });
     else if (id === "veiled") onChange({ veiled: value as LetterDraw });
     else if (id === "fourth") onChange({ fourth: value as LetterDraw });
     else if (id.startsWith("letter-")) {
@@ -163,9 +165,10 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
       {(!only || only === "static") && (
         <rect x={0} y={0} width={VIEWBOX_SIZE} height={VIEWBOX_SIZE} fill="var(--color-charcoal)" />
       )}
-      <MizbeachSvgContent sacredTime={sacredTime} revealHidden={false} only={only} />
+      <MizbeachSvgContent sacredTime={sacredTime} revealHidden={treeRevealed} middah={state.middah} only={only} />
     </svg>
   );
+  const staticKey = `static-${dateKey}-${treeRevealed ? "t" : "_"}-${state.middah ?? "_"}`;
 
   return (
     <div className={styles.surface}>
@@ -233,7 +236,7 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
         <FolioCanvas
           fallbackArt={mandalaSvg()}
           layers={[
-            { art: mandalaSvg("static"), textureKey: `static-${dateKey}` },
+            { art: mandalaSvg("static"), textureKey: staticKey },
             { art: mandalaSvg("outer-wheel"), textureKey: `outer-${dateKey}`, rotation: outerWheelDeg * DEG2RAD },
             { art: mandalaSvg("moon-wheel"), textureKey: `moon-${dateKey}`, rotation: moonWheelDeg * DEG2RAD },
           ]}
@@ -263,6 +266,40 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
             onPointer={(e) => ringPointer("day", e)}
             onStep={(delta) => onChange({ effectiveDate: setDayOfMonth(state.effectiveDate, dayNow + delta) })}
           />
+          {/* The revealed Tree of Life — its lower Sefirot are the middah picker. */}
+          {treeRevealed && (
+            <g role="group" aria-label="Tree of Life — choose the dominant middah">
+              {TREE_OF_LIFE_NODES.map((node) => {
+                const m = middot.find((mm) => mm.id === node.id);
+                if (!m) return null;
+                const box = 2 * (RINGS.parsha.radius - RINGS.parsha.thickness);
+                const px = CENTER.x - box / 2 + node.x * box;
+                const py = CENTER.y - box / 2 + node.y * box;
+                const chosen = state.middah === node.id;
+                const pick = () => onChange({ middah: node.id as SefirahId });
+                return (
+                  <circle
+                    key={node.id}
+                    cx={px}
+                    cy={py}
+                    r={18}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`${m.label}${chosen ? " (chosen)" : ""}`}
+                    aria-pressed={chosen}
+                    className={`${styles.treeNode} ${chosen ? styles.treeNodeChosen : ""}`}
+                    onClick={pick}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        pick();
+                      }
+                    }}
+                  />
+                );
+              })}
+            </g>
+          )}
         </svg>
         </FolioCanvas>
       </div>
@@ -275,6 +312,23 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
           {festivalId !== "ordinary" && ` · ${festivalId}`}
           {sacredTime.parsha && ` · Parashat ${sacredTime.parsha.label}`}
           {spread !== "triadic" && ` · ${spread === "etz-chaim" ? "Etz Chaim spread" : "Yichud spread"}`}
+        </div>
+        <div className={styles.treeControl}>
+          <button
+            type="button"
+            className={styles.revealBtn}
+            aria-pressed={treeRevealed}
+            onClick={() => setTreeRevealed((v) => !v)}
+          >
+            {treeRevealed ? "Conceal the Tree of Life" : "Reveal the Tree of Life (Or HaGanuz)"}
+          </button>
+          {treeRevealed && (
+            <span className={styles.treeHint}>
+              {state.middah
+                ? `Dominant middah — ${middot.find((m) => m.id === state.middah)?.label.split(" — ")[0]}`
+                : "Choose the dominant middah: click a lit Sefirah."}
+            </span>
+          )}
         </div>
         <Interpretation letters={state.letters} />
       </div>
