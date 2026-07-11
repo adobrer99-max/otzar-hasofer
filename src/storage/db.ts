@@ -36,6 +36,15 @@ interface OtzarHaSoferDB extends DBSchema {
     key: string;
     value: UnionRecord;
   };
+  /**
+   * Pre-canonical content drafts authored in the Scriptorium (/scriptorium).
+   * Local-only scratch — deliberately NOT in the sync queue; the durable
+   * artifact is the exported JSON that gets folded into src/data/*.ts.
+   */
+  contentDrafts: {
+    key: string;
+    value: import("./contentDraftsRepo").DraftRecord;
+  };
   /** Outbox of local changes awaiting a push to the Scribes' Cloud. */
   syncQueue: {
     key: number;
@@ -52,7 +61,7 @@ let dbPromise: Promise<IDBPDatabase<OtzarHaSoferDB>> | undefined;
 
 export function getDb() {
   if (!dbPromise) {
-    dbPromise = openDB<OtzarHaSoferDB>("otzar-hasofer", 5, {
+    dbPromise = openDB<OtzarHaSoferDB>("otzar-hasofer", 6, {
       upgrade(db, oldVersion) {
         if (oldVersion < 1) {
           db.createObjectStore("participants", { keyPath: "id" });
@@ -73,6 +82,9 @@ export function getDb() {
         }
         if (oldVersion < 5) {
           db.createObjectStore("unions", { keyPath: "id" });
+        }
+        if (oldVersion < 6) {
+          db.createObjectStore("contentDrafts", { keyPath: "key" });
         }
       },
     });

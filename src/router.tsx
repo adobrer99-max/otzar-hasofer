@@ -32,6 +32,8 @@ const CommentariesPage = lazyPage(() => import("./commentaries/CommentariesPage"
 const LibraryPage = lazyPage(() => import("./library/LibraryPage"), "LibraryPage");
 const SeferPage = lazyPage(() => import("./library/SeferPage"), "SeferPage");
 const AccountPage = lazyPage(() => import("./cloud/AccountPage"), "AccountPage");
+// Unlinked drafting studio — reachable by URL only, deliberately absent from the nav.
+const ScriptoriumPage = lazyPage(() => import("./scriptorium/ScriptoriumPage"), "ScriptoriumPage");
 
 export const router = createHashRouter([
   {
@@ -57,6 +59,7 @@ export const router = createHashRouter([
       { path: "sefarim", element: <LibraryPage /> },
       { path: "sefarim/:id/:entryId?", element: <SeferPage /> },
       { path: "account", element: <AccountPage /> },
+      { path: "scriptorium", element: <ScriptoriumPage /> },
       { path: "*", element: <NotFound /> },
     ],
   },

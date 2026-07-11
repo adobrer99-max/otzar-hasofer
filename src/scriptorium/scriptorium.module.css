@@ -1,0 +1,233 @@
+.dashboard {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.datasetTab {
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-raised);
+  cursor: pointer;
+  text-align: start;
+  min-width: 150px;
+  color: inherit;
+  font: inherit;
+}
+
+.datasetTab:hover {
+  border-color: var(--accent);
+}
+
+.datasetTabActive {
+  border-color: var(--accent-bright);
+  box-shadow: inset 0 0 0 1px var(--accent-bright);
+}
+
+.datasetName {
+  display: block;
+  font-weight: 600;
+}
+
+.datasetCount {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 2fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+.entryList {
+  max-height: 70vh;
+  overflow-y: auto;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius);
+}
+
+.entryButton {
+  display: block;
+  width: 100%;
+  text-align: start;
+  border: none;
+  border-bottom: 1px solid var(--border-hairline);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+}
+
+.entryButton:hover {
+  background: var(--bg-raised);
+}
+
+.entryButtonActive {
+  background: var(--bg-raised);
+  box-shadow: inset 2px 0 0 var(--accent-bright);
+}
+
+.entryButtonLabel {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.entrySub {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.status {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0 6px;
+  border-radius: var(--radius);
+  white-space: nowrap;
+}
+
+.statusDrafted {
+  color: var(--accent-bright);
+  border: 1px solid var(--accent-bright);
+}
+
+.statusGap {
+  color: #c98a3c;
+  border: 1px solid #c98a3c;
+}
+
+.editorPane {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.form {
+  display: grid;
+  gap: var(--space-3);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+}
+
+.field {
+  display: grid;
+  gap: 4px;
+}
+
+.field label {
+  font-size: 0.85rem;
+  color: var(--accent-bright);
+  font-weight: 600;
+}
+
+.field input,
+.field textarea {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: var(--space-2);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius);
+  background: var(--bg-base);
+  color: inherit;
+  width: 100%;
+}
+
+.field textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.fieldHint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.hebrewInput {
+  font-family: var(--font-hebrew);
+  direction: rtl;
+  unicode-bidi: plaintext;
+  font-size: 1.15rem;
+}
+
+.formActions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.savedNote {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.previewShell {
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  background: var(--bg-raised);
+}
+
+.previewLabel {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin-bottom: var(--space-2);
+}
+
+.exportBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-hairline);
+}
+
+/* Generic labeled preview (encounters, epithets, letters). */
+.previewField {
+  margin-bottom: var(--space-2);
+}
+
+.previewFieldLabel {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.previewGlyph {
+  font-family: var(--font-hebrew);
+  font-size: 2.5rem;
+  color: var(--accent-bright);
+  line-height: 1;
+}
+
+.previewHebrew {
+  font-family: var(--font-hebrew);
+  direction: rtl;
+  unicode-bidi: plaintext;
+}
+
+.muted {
+  color: var(--text-muted);
+}

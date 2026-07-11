@@ -1,0 +1,205 @@
+import { useEffect, useMemo, useState } from "react";
+import { PageHeader, Button, Callout } from "../components/ui";
+import {
+  DATASETS,
+  datasetsById,
+  draftKey,
+  type DatasetId,
+  type RegistryEntry,
+} from "./contentRegistry";
+import {
+  listDrafts,
+  putDraft,
+  deleteDraft,
+  type DraftRecord,
+} from "../storage/contentDraftsRepo";
+import { overlayForDataset, serializeDataset, serializeAll } from "./exportDrafts";
+import { downloadText, copyText } from "../herald/export/blazon";
+import { DraftEditor } from "./DraftEditor";
+import { PreviewPane } from "./PreviewPane";
+import styles from "./scriptorium.module.css";
+
+/**
+ * The Scriptorium — a standalone, unlinked drafting studio (reachable only at
+ * /scriptorium). Browse every authorable content gap, write into a form, watch
+ * the real component render live, and export the drafts as JSON. It only reads
+ * the shipped datasets; nothing here changes what the live app renders.
+ */
+export function ScriptoriumPage() {
+  const [datasetId, setDatasetId] = useState<DatasetId>("festivals");
+  const [drafts, setDrafts] = useState<DraftRecord[]>([]);
+  const [entryId, setEntryId] = useState<string>();
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [savedNote, setSavedNote] = useState<string>();
+
+  const dataset = datasetsById[datasetId];
+  const draftsByKey = useMemo(() => new Map(drafts.map((d) => [d.key, d])), [drafts]);
+  const overlay = useMemo(() => overlayForDataset(datasetId, drafts), [datasetId, drafts]);
+  const entry = dataset.entries.find((e) => e.id === entryId);
+
+  useEffect(() => {
+    listDrafts().then(setDrafts);
+  }, []);
+
+  // Selecting a dataset lands on its first entry.
+  useEffect(() => {
+    setEntryId(dataset.entries[0]?.id);
+    setSavedNote(undefined);
+  }, [datasetId, dataset.entries]);
+
+  const persisted = useMemo(() => {
+    if (!entry) return {};
+    const draft = draftsByKey.get(draftKey(datasetId, entry.id));
+    return { ...entry.base, ...draft?.fields };
+  }, [entry, draftsByKey, datasetId]);
+
+  // Hydrate the form from base + any saved draft when the selection (or the
+  // loaded drafts) change. Editing never touches `drafts`, so this never
+  // clobbers in-progress typing. (The saved-note is cleared on edit/selection,
+  // not here — otherwise a post-save drafts refresh would wipe it instantly.)
+  useEffect(() => {
+    setValues(persisted);
+  }, [persisted]);
+
+  const dirty = JSON.stringify(values) !== JSON.stringify(persisted);
+  const hasDraft = !!entry && draftsByKey.has(draftKey(datasetId, entry.id));
+
+  async function refresh() {
+    setDrafts(await listDrafts());
+  }
+
+  async function handleSave() {
+    if (!entry) return;
+    await putDraft(datasetId, entry.id, values);
+    await refresh();
+    setSavedNote(`Saved locally · ${new Date().toLocaleTimeString()}`);
+  }
+
+  async function handleRevert() {
+    if (!entry) return;
+    await deleteDraft(datasetId, entry.id);
+    await refresh();
+    setValues(entry.base);
+    setSavedNote("Reverted to the shipped text.");
+  }
+
+  function statusOf(e: RegistryEntry): "drafted" | "gap" | undefined {
+    if (overlay[e.id]) return "drafted";
+    if (e.isGap) return "gap";
+    return undefined;
+  }
+
+  function datasetSummary(id: DatasetId): string {
+    const d = datasetsById[id];
+    const drafted = Object.keys(overlayForDataset(id, drafts)).length;
+    const gaps = d.entries.filter((e) => e.isGap && !overlayForDataset(id, drafts)[e.id]).length;
+    return `${drafted} drafted · ${gaps} ${d.gapNoun}${gaps === 1 ? "" : "s"}`;
+  }
+
+  return (
+    <div className="page">
+      <PageHeader
+        kicker="The Scriptorium — a drafting studio"
+        title="Author the Treasury's content"
+        lede="Write into the gaps and watch the real page render as you type. Drafts are saved in this browser only — export the JSON often; it is the copy that gets folded into the data files."
+      />
+
+      <div className={styles.dashboard}>
+        {DATASETS.map((d) => (
+          <button
+            key={d.id}
+            type="button"
+            className={`${styles.datasetTab} ${d.id === datasetId ? styles.datasetTabActive : ""}`}
+            onClick={() => setDatasetId(d.id)}
+          >
+            <span className={styles.datasetName}>{d.label}</span>
+            <span className={styles.datasetCount}>{datasetSummary(d.id)}</span>
+          </button>
+        ))}
+      </div>
+
+      <p className={styles.muted}>{dataset.blurb}</p>
+
+      <div className={styles.workspace}>
+        <div className={styles.entryList}>
+          {dataset.entries.map((e) => {
+            const status = statusOf(e);
+            return (
+              <button
+                key={e.id}
+                type="button"
+                className={`${styles.entryButton} ${e.id === entryId ? styles.entryButtonActive : ""}`}
+                onClick={() => {
+                  setEntryId(e.id);
+                  setSavedNote(undefined);
+                }}
+              >
+                <span className={styles.entryButtonLabel}>
+                  <span>{e.label}</span>
+                  {status && (
+                    <span
+                      className={`${styles.status} ${status === "drafted" ? styles.statusDrafted : styles.statusGap}`}
+                    >
+                      {status}
+                    </span>
+                  )}
+                </span>
+                {e.sublabel && <span className={styles.entrySub}>{e.sublabel}</span>}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className={styles.editorPane}>
+          {entry ? (
+            <>
+              <DraftEditor
+                dataset={dataset}
+                values={values}
+                onFieldChange={(key, value) => {
+                  setValues((prev) => ({ ...prev, [key]: value }));
+                  setSavedNote(undefined);
+                }}
+                onSave={handleSave}
+                onRevert={handleRevert}
+                dirty={dirty}
+                hasDraft={hasDraft}
+                savedNote={savedNote}
+              />
+              <PreviewPane datasetId={datasetId} entry={entry} values={values} />
+            </>
+          ) : (
+            <p>Select an entry to begin.</p>
+          )}
+        </div>
+      </div>
+
+      <div className={styles.exportBar}>
+        <Button
+          variant="primary"
+          onClick={() => downloadText(serializeDataset(datasetId, drafts), `scriptorium-${datasetId}.json`)}
+        >
+          Download “{dataset.label}” JSON
+        </Button>
+        <Button variant="ghost" onClick={() => downloadText(serializeAll(drafts), "scriptorium-drafts.json")}>
+          Export all
+        </Button>
+        <Button
+          variant="subtle"
+          onClick={async () => {
+            const ok = await copyText(serializeAll(drafts));
+            setSavedNote(ok ? "Copied all drafts to the clipboard." : "Clipboard unavailable — use a Download button.");
+          }}
+        >
+          Copy all
+        </Button>
+      </div>
+
+      <Callout>
+        These drafts live only in this browser (IndexedDB) and are never synced.
+        The exported JSON is the durable artifact — hand it back to have it folded
+        into <code>src/data/*.ts</code>.
+      </Callout>
+    </div>
+  );
+}
