@@ -68,7 +68,7 @@ export function VisualCanon() {
       <h2>The Herald's Visual Language</h2>
       <p>Every Herald is rendered according to this canon. It may include:</p>
       <ul>
-        <li>Hebrew letters</li>
+        <li>Hebrew letters, drawn as gold-leaf letterforms (calligraphic outlines, not a live font)</li>
         <li>Heraldic shield divisions</li>
         <li>Traditional ornament</li>
         <li>Symbolic flora and fauna</li>
@@ -80,6 +80,27 @@ export function VisualCanon() {
       <p>
         No decorative element is arbitrary; every mark reflects a lived
         relationship within the Treasury.
+      </p>
+
+      <h2>The Illuminated Herald</h2>
+      <p>
+        The Herald is rendered as an <strong>illuminated plate</strong>, not
+        flat linework: a beaten <strong>gold-leaf</strong> sheen on the letters
+        and emblems, a soft depth beneath the shield, and a whisper of{" "}
+        <strong>vellum tooth</strong> across the field. Around the escutcheon it
+        grows into a full coat of arms — a <strong>crest</strong> (a gold flame
+        upon a torse), foliate <strong>mantling</strong>, a{" "}
+        <strong>compartment</strong> (rooted earth in the Land, water in Galut),
+        and a <strong>motto scroll</strong> bearing the sealed Heraldic Epithet.
+      </p>
+      <p>
+        Because the Herald "is recognized, never assigned," its look is{" "}
+        <em>derived</em> first. The Scribe may then <strong>curate</strong>{" "}
+        within the canon — the metal of the frame (gold, antique, or silvered)
+        and which elements of the coat of arms are shown — but only within these
+        curated choices, never as free invention. On the headline Herald the
+        gold breathes with a quiet, motion-respecting shimmer; hovering a letter
+        names it.
       </p>
 
       <hr className="hairline-rule" />
