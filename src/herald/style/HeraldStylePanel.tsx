@@ -14,12 +14,23 @@ const TOGGLES: {
   def: boolean;
 }[] = [
   { key: "crest", label: "Crest & celestial signs", def: true },
-  { key: "mantling", label: "Mantling", def: true },
+  { key: "mantling", label: "Flanking species", def: true },
   { key: "compartment", label: "Compartment", def: true },
   { key: "supporters", label: "Supporters", def: false },
   { key: "motto", label: "Motto scroll", def: true },
   { key: "seme", label: "Semé (powdering)", def: true },
   { key: "gematria", label: "Gematria mark", def: true },
+];
+
+const SPECIES_OPTIONS: { value: string; label: string }[] = [
+  { value: "auto", label: "Derived from the reading" },
+  { value: "wheat", label: "Wheat" },
+  { value: "barley", label: "Barley" },
+  { value: "grape", label: "Grape" },
+  { value: "fig", label: "Fig" },
+  { value: "pomegranate", label: "Pomegranate" },
+  { value: "olive", label: "Olive" },
+  { value: "date", label: "Date" },
 ];
 
 /**
@@ -71,6 +82,27 @@ export function HeraldStylePanel({
           options={METALS.map((m) => ({ value: m.value, label: m.label }))}
           onChange={(metal) => onChange({ ...draft, metal })}
         />
+      </div>
+
+      <div className={styles.field}>
+        <span className={styles.label}>Flanking species (the Shivat HaMinim)</span>
+        <select
+          className={styles.select}
+          aria-label="Flanking species"
+          value={draft.mantlingSpecies ?? "auto"}
+          onChange={(e) =>
+            onChange({
+              ...draft,
+              mantlingSpecies: e.target.value === "auto" ? undefined : (e.target.value as HeraldStyle["mantlingSpecies"]),
+            })
+          }
+        >
+          {SPECIES_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       <fieldset className={styles.toggles}>

@@ -98,9 +98,11 @@ export function VisualCanon() {
         reading burns on deep red, a water reading cools to deep blue — so the
         ground itself declares the reading's nature. No two Heralds share a
         field. Around the escutcheon stands a full coat of arms: a{" "}
-        <strong>crest</strong> (a gold torse), foliate <strong>mantling</strong>,
-        a <strong>compartment</strong> (rooted earth in the Land, water in
-        Galut), an engraved <strong>orle</strong> studded with gold lozenges, and
+        <strong>crest</strong> (a gold torse), a <strong>mantling</strong> of the{" "}
+        <strong>Shivat HaMinim</strong> (the seven species — wheat, barley,
+        grape, fig, pomegranate, olive, or date — one chosen for the reading, or
+        curated), a <strong>compartment</strong> (rooted earth in the Land, water
+        in Galut), an engraved <strong>orle</strong> studded with gold lozenges, and
         a <strong>motto scroll</strong> bearing the sealed Heraldic Epithet.
         Nothing is ever laid over a letter.
       </p>

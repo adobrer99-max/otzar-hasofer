@@ -30,6 +30,20 @@
   letter-spacing: 0.08em;
   font-size: 0.72rem;
 }
+.select {
+  appearance: none;
+  background: var(--bg-sunken, var(--bg-raised));
+  color: var(--text);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md, 6px);
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  cursor: pointer;
+}
+.select:focus-visible {
+  outline: 2px solid var(--focus-ring, var(--accent));
+  outline-offset: 1px;
+}
 .toggles {
   border: none;
   margin: 0;

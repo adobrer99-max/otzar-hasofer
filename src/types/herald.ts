@@ -107,6 +107,8 @@ export interface HeraldStyle {
   mantling?: boolean;
   compartment?: boolean;
   supporters?: boolean;
+  /** Which of the seven species flanks the shield; omit to derive it from the dominant middah. */
+  mantlingSpecies?: "wheat" | "barley" | "grape" | "fig" | "pomegranate" | "olive" | "date";
   /** Whether the sealed epithet is shown on the motto scroll. */
   motto?: boolean;
   /** Semé — the field strewn with faint gold estoiles. Default on. */

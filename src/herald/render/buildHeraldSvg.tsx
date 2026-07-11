@@ -13,6 +13,7 @@ import { LetterCharge, hasCharge } from "./letterCharges";
 import { colorFor, darken, blend } from "./letterColors";
 import { AssociationEmblem } from "./heraldEmblems";
 import { toHebrewNumeral, dominantElementHue, associationOf } from "./associations";
+import { SpeciesMantling, speciesFor, type Species } from "./heraldFlora";
 
 type ShoreshResult = ReturnType<typeof resolveShoresh>;
 import {
@@ -381,47 +382,6 @@ function Crest({ letterIds, metalFill, metalLine }: { letterIds: string[]; metal
 }
 
 /**
- * Mantling — foliate scrollwork flanking the shield, the cloth-and-leaf mantle
- * of a coat of arms. Curl count grows with the ornament density so a completed
- * Herald is more richly framed. Drawn on both sides by mirroring.
- */
-function Mantling({ density, metalFill, metalLine }: { density: number; metalFill: string; metalLine: string }) {
-  // A little richer as the Herald completes, but always the same clean scroll.
-  const extend = Math.min(1, 0.65 + density / 90);
-  const side = (dir: 1 | -1) => {
-    const rx = dir === 1 ? SHIELD.right : SHIELD.left;
-    const topY = SHIELD.top;
-    // One continuous acanthus vine sweeping from behind the torse, out over the
-    // corner, and down the shoulder — a single crisp stroke, not scattered leaves.
-    const vine =
-      `M ${rx - dir * 2} ${topY + 2}` +
-      ` C ${rx + dir * 30} ${topY - 10}, ${rx + dir * 52} ${topY + 22}, ${rx + dir * 44} ${topY + 60}` +
-      ` C ${rx + dir * 38} ${topY + 92}, ${rx + dir * 60} ${topY + 108}, ${rx + dir * 50} ${topY + 150 * extend}`;
-    // Three leaf cusps budding off the vine at set stations.
-    const leaf = (bx: number, by: number, s: number) =>
-      `M ${bx} ${by}` +
-      ` Q ${bx + dir * 22 * s} ${by - 6}, ${bx + dir * 26 * s} ${by + 14 * s}` +
-      ` Q ${bx + dir * 10 * s} ${by + 6 * s}, ${bx} ${by} Z`;
-    return (
-      <g key={dir}>
-        <path d={vine} fill="none" stroke={metalLine} strokeWidth={1.5} />
-        <g fill={metalFill} fillOpacity={0.85} stroke={metalLine} strokeWidth={0.6}>
-          <path d={leaf(rx + dir * 46, topY + 42, 1)} />
-          <path d={leaf(rx + dir * 44, topY + 92, 0.85)} />
-          <path d={leaf(rx + dir * 52, topY + 138 * extend, 0.7)} />
-        </g>
-      </g>
-    );
-  };
-  return (
-    <g data-role="mantling">
-      {side(1)}
-      {side(-1)}
-    </g>
-  );
-}
-
-/**
  * The compartment — the ground on which the shield stands, just below the
  * point. Rooted earth in the Land; water in Galut (the same vocabulary as the
  * small GeographyAccent, enlarged to seat the whole shield).
@@ -744,6 +704,10 @@ interface HeraldFigureProps {
   seme?: boolean;
   /** The reading's gematria, struck in Hebrew numerals below the charges. */
   gematria?: boolean;
+  /** The reading's dominant middah — sets the default Shivat-HaMinim species of the mantling. */
+  sefirah?: SefirahId;
+  /** Curated override of the flanking species; omit to derive it from the reading. */
+  mantlingSpecies?: Species;
 }
 
 /**
@@ -769,6 +733,8 @@ function HeraldFigure({
   supporters = false,
   seme = true,
   gematria = true,
+  sefirah,
+  mantlingSpecies,
 }: HeraldFigureProps) {
   const center = shieldCenter();
   const orderedLetterIds = [...divisions].sort((a, b) => a.drawOrder - b.drawOrder).map((d) => d.letterId);
@@ -777,6 +743,7 @@ function HeraldFigure({
     (sum, d) => sum + (lettersById[d.letterId]?.gematria ?? 0) * d.count,
     0,
   );
+  const species = mantlingSpecies ?? speciesFor(sefirah, gematriaTotal);
 
   function findDivision(letterId: string): Division | undefined {
     return divisions.find((d) => d.letterId === letterId);
@@ -811,8 +778,8 @@ function HeraldFigure({
 
   return (
     <>
-      {/* The frame behind the shield: mantling, supporters, and the compartment. */}
-      {mantling && <Mantling density={ornamentDensity} metalFill={metalFill} metalLine={metalLine} />}
+      {/* The frame behind the shield: the Shivat-HaMinim mantling, supporters, and the compartment. */}
+      {mantling && <SpeciesMantling species={species} fill={metalFill} line={metalLine} />}
       {supporters && <Supporters metalFill={metalFill} metalLine={metalLine} />}
       {compartment && <Compartment geography={geography} metalFill={metalFill} metalLine={metalLine} />}
       <g clipPath="url(#herald-shield-clip)">
@@ -1061,6 +1028,8 @@ export function HeraldLayerContent({
     dorotSefirot: dorotSefirotOf(input.dorotDraws),
     nameSeed: nameSeedOf(input.hebrewName),
     device: style?.device ?? "glyph",
+    sefirah: input.middah,
+    mantlingSpecies: style?.mantlingSpecies,
     ...vocab(style),
   };
 
@@ -1124,6 +1093,8 @@ export function HeraldSynthesisContent({ form, style }: { form: HeraldForm; styl
       shoresh={resolveShoresh(form.charges.map((c) => c.letterId) as [string, string, string])}
       dorotSefirot={form.dorotSefirot}
       device={style?.device ?? "glyph"}
+      sefirah={form.dominantMiddah}
+      mantlingSpecies={style?.mantlingSpecies}
       {...vocab(style)}
     />
   );
