@@ -148,3 +148,9 @@ data-sources/openscriptures/
 
 # Wrangler local state/cache (Cloudflare Workers deploy — see wrangler.jsonc, DEPLOY.md)
 .wrangler/
+
+# Generated print-master artifacts + the esbuild temp entry (see
+# scripts/export-folio-print.mjs — regenerate with `npm run export:folio`).
+scratch-out/
+mizbeach-folio-print.*
+scripts/.folio-entry.*

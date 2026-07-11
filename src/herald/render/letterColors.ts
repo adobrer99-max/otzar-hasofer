@@ -80,3 +80,38 @@ export function blend(hexes: string[]): string {
 
 /** The 22 letter ids, for generating the per-letter glyph gradients once in <defs>. */
 export const letterColorIds = Object.keys(letterColors);
+
+/**
+ * A human-readable colour name for each letter's signature tincture — the words
+ * already carried in the table's comments above. Used by the image-prompt
+ * export so a field reads as "deep blue, pale sky, radiant gold" rather than
+ * hex codes.
+ */
+export const letterColorNames: Record<string, string> = {
+  aleph: "pale gold",
+  mem: "deep blue",
+  shin: "flame red",
+  bet: "leaden violet",
+  gimel: "royal blue",
+  dalet: "iron red",
+  kaf: "radiant gold",
+  peh: "verdant green",
+  resh: "warm orange",
+  tav: "silver",
+  heh: "scarlet",
+  tet: "amber",
+  samech: "burnt orange",
+  vav: "olive green",
+  yod: "moss green",
+  ayin: "dark earthen brown",
+  zayin: "gold-yellow",
+  lamed: "pale sky blue",
+  tzadi: "aqua",
+  chet: "sea blue",
+  nun: "deep teal",
+  kuf: "indigo",
+};
+
+export function colorNameFor(letterId: string): string {
+  return letterColorNames[letterId] ?? "gold";
+}

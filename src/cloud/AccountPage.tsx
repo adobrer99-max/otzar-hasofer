@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { PageHeader } from "../components/ui";
 import { isCloudConfigured } from "./config";
 import { syncNow } from "./orchestrator";
 import { getPendingCount, createIdbAdapter } from "./sync";
@@ -106,10 +107,7 @@ export function AccountPage() {
 
   return (
     <div className="page">
-      <div className="page-header">
-        <div className="kicker">The Scribe's Seal</div>
-        <h1>Account</h1>
-      </div>
+      <PageHeader kicker="The Scribe's Seal" title="Account" />
 
       <p>
         The Treasury lives in this browser first — every reading, Herald, and

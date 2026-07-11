@@ -1,12 +1,10 @@
 import { Link } from "react-router-dom";
+import { PageHeader } from "../../components/ui";
 
 export function Shoresh() {
   return (
     <div className="page">
-      <div className="page-header">
-        <div className="kicker">The Nikkudot</div>
-        <h1>Shoresh — The Root of the Reading</h1>
-      </div>
+      <PageHeader kicker="The Nikkudot" title="Shoresh — The Root of the Reading" />
       <p>
         Within Derekh Eretz, the Hebrew letters form the symbolic grammar of
         each reading. Individually, each letter is contemplated for its own

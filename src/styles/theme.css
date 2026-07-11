@@ -136,7 +136,10 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.45);
   --shadow-lg: 0 12px 34px rgba(0, 0, 0, 0.5);
-  --header-bg: rgba(20, 23, 28, 0.82);
+  /* Opaque: a GPU-composited WebGL canvas (the 3D folio on /mizbeach) escapes
+     the sticky header's backdrop-filter and would otherwise bleed sharp
+     through a translucent tint. An opaque ground obscures it reliably. */
+  --header-bg: rgb(20, 23, 28);
 }
 
 /* ——— Semantic tokens: light — the vellum ground ——— */
@@ -146,6 +149,9 @@
   --bg-raised: #ece5d3;
   --bg-sunken: #e4dcc6;
   --text: #2a2318;
+  /* Contrast (WCAG): muted on vellum bg 4.95:1, on raised 4.53:1 — both ≥ AA
+     (4.5). Dark-theme muted (#9aa1ad) is 6.9:1 / 6.3:1. Keep muted at or above
+     these values if the grounds change. */
   --text-muted: #6f6650;
   --accent: #a9812f;
   --accent-bright: #8a6820;
@@ -154,7 +160,9 @@
   --shadow-sm: 0 1px 2px rgba(70, 55, 25, 0.12);
   --shadow-md: 0 6px 18px rgba(70, 55, 25, 0.14);
   --shadow-lg: 0 16px 38px rgba(70, 55, 25, 0.16);
-  --header-bg: rgba(244, 239, 226, 0.85);
+  /* Opaque — see the dark-theme note: a translucent bar lets the folio's
+     vivid mandala bleed through the sticky header. */
+  --header-bg: #f4efe2;
 }
 
 /*

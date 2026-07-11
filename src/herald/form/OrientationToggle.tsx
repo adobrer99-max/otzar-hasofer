@@ -13,6 +13,7 @@ export function OrientationToggle({
       <button
         type="button"
         className={value === "upright" ? styles.active : undefined}
+        aria-pressed={value === "upright"}
         onClick={() => onChange("upright")}
       >
         Upright
@@ -20,6 +21,7 @@ export function OrientationToggle({
       <button
         type="button"
         className={value === "reversed" ? styles.active : undefined}
+        aria-pressed={value === "reversed"}
         onClick={() => onChange("reversed")}
       >
         Reversed

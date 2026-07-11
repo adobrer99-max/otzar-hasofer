@@ -1,33 +1,12 @@
 import { Link } from "react-router-dom";
+import { guideLinks, practiceLinks, libraryLinks, homeLink, accountLink } from "./siteMap";
 import styles from "./Footer.module.css";
 
 const columns = [
-  {
-    title: "The Guide",
-    links: [
-      { to: "/guide/foundations", label: "Foundations" },
-      { to: "/guide/letters", label: "The Twenty-Two Letters" },
-      { to: "/guide/sacred-time", label: "Sacred Time" },
-      { to: "/guide/visual-canon", label: "Visual Canon" },
-    ],
-  },
-  {
-    title: "The Living Practice",
-    links: [
-      { to: "/herald", label: "The Herald" },
-      { to: "/mizbeach", label: "The Mizbe'ach" },
-      { to: "/covenant", label: "The Covenant" },
-      { to: "/sefarim", label: "The Sefarim" },
-      { to: "/commentaries", label: "Commentaries" },
-    ],
-  },
-  {
-    title: "The Treasury",
-    links: [
-      { to: "/", label: "Home" },
-      { to: "/account", label: "The Scribe's Seal" },
-    ],
-  },
+  { title: "The Guide", links: guideLinks },
+  { title: "The Practice", links: practiceLinks },
+  { title: "The Library", links: libraryLinks },
+  { title: "The Treasury", links: [homeLink, accountLink] },
 ];
 
 export function Footer() {

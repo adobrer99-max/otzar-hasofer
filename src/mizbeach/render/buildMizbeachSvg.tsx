@@ -2,11 +2,7 @@ import type { SacredTimeSnapshot, LunarPhase } from "../../types/sacredTime";
 import type { JewishMonthName } from "../../data/hebrewCalendar";
 import { mazalotRing } from "../../data/mazalot";
 import { festivalsById } from "../../data/festivals";
-import {
-  TREE_OF_LIFE_NODES,
-  TREE_OF_LIFE_PATHS,
-  FLOURISH_UNIT_PATH,
-} from "../../herald/render/heraldGeometry";
+import { FLOURISH_UNIT_PATH } from "../../herald/render/heraldGeometry";
 import {
   CENTER,
   RINGS,
@@ -17,6 +13,22 @@ import {
   segmentAngles,
   circlePerimeterPoints,
 } from "./mizbeachGeometry";
+
+/** The gold-leaf sheen shared with the central panel, so both leaves of the folio read as one illuminated plate. */
+const GOLD = "url(#mizRingGold)";
+
+function MandalaGoldDefs() {
+  return (
+    <defs>
+      <linearGradient id="mizRingGold" x1="0" y1="0" x2="0" y2="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(0 60) scale(1 640)">
+        <stop offset="0" stopColor="#efd48c" />
+        <stop offset="0.42" stopColor="#c9a24b" />
+        <stop offset="0.72" stopColor="#a8823a" />
+        <stop offset="1" stopColor="#e0be6f" />
+      </linearGradient>
+    </defs>
+  );
+}
 
 /** Adar splits into AdarI/AdarII in leap years — both fold onto the ring's single "Adar" slice, matching `festivals.ts`'s own `resolveAdar` convention. */
 function foldMonth(month: JewishMonthName): JewishMonthName {
@@ -30,6 +42,7 @@ function RingSegments({
   activeIndex,
   renderLabel,
   fontFamily = "var(--font-latin)",
+  rotating = false,
 }: {
   radius: number;
   thickness: number;
@@ -37,43 +50,81 @@ function RingSegments({
   activeIndex: number;
   renderLabel: (index: number) => string;
   fontFamily?: string;
+  /**
+   * On a wheel that physically turns (the interactive folio), labels are
+   * inscribed tangentially so their orientation is rotation-invariant — they
+   * stay glued to the ring as it turns, instead of floating off.
+   */
+  rotating?: boolean;
 }) {
+  const inner = radius - thickness / 2;
+  const outer = radius + thickness / 2;
   return (
     <g>
+      {/* Solid bands: a raised charcoal for the resting slices, gold-leaf (with a soft glow) for the active one. */}
       {Array.from({ length: count }).map((_, i) => {
         const [start, end] = segmentAngles(count, i);
         const isActive = i === activeIndex;
-        const midAngle = (start + end) / 2;
-        const labelPos = polarToCartesian(CENTER.x, CENTER.y, radius, midAngle);
         return (
           <g key={i}>
+            {isActive && (
+              <path
+                d={describeArcPath(CENTER.x, CENTER.y, radius, start + 0.5, end - 0.5)}
+                fill="none"
+                stroke={GOLD}
+                strokeWidth={thickness + 8}
+                opacity={0.16}
+              />
+            )}
             <path
-              d={describeArcPath(CENTER.x, CENTER.y, radius, start + 1, end - 1)}
+              d={describeArcPath(CENTER.x, CENTER.y, radius, start + 0.5, end - 0.5)}
               fill="none"
-              stroke={isActive ? "var(--color-gold)" : "var(--color-charcoal-line)"}
+              stroke={isActive ? GOLD : "var(--color-charcoal-raised)"}
               strokeWidth={thickness}
-              opacity={isActive ? 0.9 : 0.4}
+              opacity={isActive ? 1 : 0.6}
             />
-            <text
-              x={labelPos.x}
-              y={labelPos.y}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fontFamily={fontFamily}
-              fontSize={11}
-              fill={isActive ? "var(--color-charcoal)" : "var(--text-muted)"}
-            >
-              {renderLabel(i)}
-            </text>
           </g>
+        );
+      })}
+      {/* Thin gold spokes marking the slice boundaries. */}
+      <g stroke={GOLD} strokeWidth={0.75} opacity={0.32}>
+        {Array.from({ length: count }).map((_, i) => {
+          const a = segmentAngles(count, i)[0];
+          const p1 = polarToCartesian(CENTER.x, CENTER.y, inner, a);
+          const p2 = polarToCartesian(CENTER.x, CENTER.y, outer, a);
+          return <line key={i} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} />;
+        })}
+      </g>
+      {/* Labels */}
+      {Array.from({ length: count }).map((_, i) => {
+        const [start, end] = segmentAngles(count, i);
+        const isActive = i === activeIndex;
+        const mid = (start + end) / 2;
+        const labelPos = polarToCartesian(CENTER.x, CENTER.y, radius, mid);
+        return (
+          <text
+            key={i}
+            x={labelPos.x}
+            y={labelPos.y}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            transform={rotating ? `rotate(${mid} ${labelPos.x} ${labelPos.y})` : undefined}
+            fontFamily={fontFamily}
+            fontSize={11}
+            fontWeight={isActive ? 600 : 400}
+            fill={isActive ? "var(--color-charcoal)" : "var(--color-silver)"}
+            opacity={isActive ? 1 : 0.72}
+          >
+            {renderLabel(i)}
+          </text>
         );
       })}
     </g>
   );
 }
 
-function MazalotRing({ activeMonth }: { activeMonth: JewishMonthName }) {
-  const activeIndex = mazalotRing.findIndex((e) => e.month === foldMonth(activeMonth));
+function MazalotRing({ activeMonth, neutral, rotating }: { activeMonth: JewishMonthName; neutral?: boolean; rotating?: boolean }) {
+  const activeIndex = neutral ? -1 : mazalotRing.findIndex((e) => e.month === foldMonth(activeMonth));
   return (
     <RingSegments
       radius={RINGS.mazalot.radius}
@@ -81,6 +132,7 @@ function MazalotRing({ activeMonth }: { activeMonth: JewishMonthName }) {
       count={12}
       activeIndex={activeIndex}
       renderLabel={(i) => mazalotRing[i].zodiacHebrew}
+      rotating={rotating}
     />
   );
 }
@@ -103,8 +155,8 @@ const MOON_PHASES: { id: LunarPhase; label: string; hebrew: string }[] = [
   { id: "waningCrescent", label: "Waning Crescent", hebrew: "נסתר" },
 ];
 
-function MoonRing({ phase }: { phase: LunarPhase }) {
-  const activeIndex = MOON_PHASES.findIndex((p) => p.id === phase);
+function MoonRing({ phase, neutral, rotating }: { phase: LunarPhase; neutral?: boolean; rotating?: boolean }) {
+  const activeIndex = neutral ? -1 : MOON_PHASES.findIndex((p) => p.id === phase);
   return (
     <RingSegments
       radius={RINGS.moon.radius}
@@ -113,6 +165,7 @@ function MoonRing({ phase }: { phase: LunarPhase }) {
       activeIndex={activeIndex}
       renderLabel={(i) => MOON_PHASES[i].hebrew}
       fontFamily="var(--font-hebrew)"
+      rotating={rotating}
     />
   );
 }
@@ -120,15 +173,19 @@ function MoonRing({ phase }: { phase: LunarPhase }) {
 function SolarMonthRing({
   activeMonth,
   activeFestivalIds,
+  neutral,
+  rotating,
 }: {
   activeMonth: JewishMonthName;
   activeFestivalIds: string[];
+  neutral?: boolean;
+  rotating?: boolean;
 }) {
   // Angle-aligned with the Mazalot ring's 12 slices — same month order, so a
   // given slice of the folio always names the same Hebrew month across
   // both rings.
   const months = mazalotRing.map((e) => e.month);
-  const activeIndex = months.findIndex((m) => m === foldMonth(activeMonth));
+  const activeIndex = neutral ? -1 : months.findIndex((m) => m === foldMonth(activeMonth));
   const primaryFestival = activeFestivalIds
     .map((id) => festivalsById[id])
     .find((f) => f && f.id !== "ordinary" && f.id !== "shabbat");
@@ -139,6 +196,7 @@ function SolarMonthRing({
       count={12}
       activeIndex={activeIndex}
       renderLabel={(i) => (i === activeIndex && primaryFestival ? primaryFestival.gesture ?? primaryFestival.name : months[i])}
+      rotating={rotating}
     />
   );
 }
@@ -152,15 +210,11 @@ function ParshaRing({ label }: { label?: string }) {
   const topLabel = polarToCartesian(CENTER.x, CENTER.y, RINGS.parsha.radius, 0);
   return (
     <g>
-      <circle
-        cx={CENTER.x}
-        cy={CENTER.y}
-        r={RINGS.parsha.radius}
-        fill="none"
-        stroke={label ? "var(--color-gold)" : "var(--color-charcoal-line)"}
-        strokeWidth={RINGS.parsha.thickness}
-        opacity={label ? 0.5 : 0.3}
-      />
+      {/* A solid narrative band; when a portion is read, its rim catches the gold leaf. */}
+      <circle cx={CENTER.x} cy={CENTER.y} r={RINGS.parsha.radius} fill="none" stroke="var(--color-charcoal-raised)" strokeWidth={RINGS.parsha.thickness} opacity={0.6} />
+      {label && (
+        <circle cx={CENTER.x} cy={CENTER.y} r={RINGS.parsha.radius + RINGS.parsha.thickness / 2 - 1.5} fill="none" stroke={GOLD} strokeWidth={1} opacity={0.6} />
+      )}
       <text
         x={topLabel.x}
         y={topLabel.y}
@@ -169,7 +223,8 @@ function ParshaRing({ label }: { label?: string }) {
         fontFamily="var(--font-latin)"
         fontSize={10}
         fontStyle={label ? undefined : "italic"}
-        fill={label ? "var(--color-gold)" : "var(--text-muted)"}
+        fill={label ? "var(--color-gold-bright)" : "var(--color-silver)"}
+        opacity={label ? 1 : 0.7}
       >
         {label ? `Parashat ${label}` : "Parsha — the festival reads this week"}
       </text>
@@ -191,15 +246,20 @@ function SabbathCore({
     .join(" · ");
   return (
     <g>
+      {/* An illuminated core: a gold-leaf rim around a still centre — filled gold on Shabbat, a dark recess otherwise. */}
+      <circle cx={CENTER.x} cy={CENTER.y} r={SABBATH_CORE_RADIUS + 5} fill="none" stroke={GOLD} strokeWidth={2.5} opacity={0.85} />
       <circle
         cx={CENTER.x}
         cy={CENTER.y}
         r={SABBATH_CORE_RADIUS}
-        fill={isShabbat ? "var(--color-gold)" : "none"}
+        fill={isShabbat ? GOLD : "#0e1420"}
         stroke={isShabbat ? "var(--color-gold-bright)" : "var(--color-silver)"}
-        strokeWidth={2}
-        opacity={isShabbat ? 0.9 : 0.6}
+        strokeWidth={1.5}
+        opacity={isShabbat ? 1 : 0.85}
       />
+      {!isShabbat && (
+        <circle cx={CENTER.x} cy={CENTER.y} r={SABBATH_CORE_RADIUS - 8} fill="none" stroke="var(--color-charcoal-line)" strokeWidth={1} />
+      )}
       <text
         x={CENTER.x}
         y={CENTER.y - (isShabbat ? 10 : 0)}
@@ -207,7 +267,7 @@ function SabbathCore({
         dominantBaseline="middle"
         fontFamily="var(--font-latin)"
         fontSize={14}
-        fill={isShabbat ? "var(--color-charcoal)" : "var(--text-muted)"}
+        fill={isShabbat ? "var(--color-charcoal)" : "var(--color-silver)"}
       >
         {isShabbat ? "Shabbat" : "Ordinary Time"}
       </text>
@@ -260,8 +320,8 @@ function PardesCorners() {
               y={point.y}
               textAnchor="middle"
               fontFamily="var(--font-hebrew)"
-              fontSize={17}
-              fill="var(--color-gold)"
+              fontSize={18}
+              fill={GOLD}
             >
               {title}
             </text>
@@ -271,7 +331,8 @@ function PardesCorners() {
               textAnchor="middle"
               fontFamily="var(--font-latin)"
               fontSize={9}
-              fill="var(--text-muted)"
+              fill="var(--color-silver)"
+              opacity={0.75}
             >
               {subtitle}
             </text>
@@ -293,15 +354,10 @@ function ShivatHaminimBorder() {
   const flourishPoints = circlePerimeterPoints(28, RINGS.border.radius).filter((_, i) => i % 4 !== 0);
   return (
     <g>
-      <circle
-        cx={CENTER.x}
-        cy={CENTER.y}
-        r={RINGS.border.radius}
-        fill="none"
-        stroke="var(--color-charcoal-line)"
-        strokeWidth={1}
-      />
-      <g stroke="var(--color-gold)" fill="var(--color-gold)" opacity={0.6}>
+      {/* A gold-leaf double rule frames the seven species. */}
+      <circle cx={CENTER.x} cy={CENTER.y} r={RINGS.border.radius + 6} fill="none" stroke={GOLD} strokeWidth={1.5} opacity={0.7} />
+      <circle cx={CENTER.x} cy={CENTER.y} r={RINGS.border.radius} fill="none" stroke={GOLD} strokeWidth={1} opacity={0.4} />
+      <g stroke={GOLD} fill={GOLD} opacity={0.7}>
         {flourishPoints.map((p, i) => (
           <path
             key={i}
@@ -326,58 +382,6 @@ function ShivatHaminimBorder() {
           {SHIVAT_HAMINIM[i]}
         </text>
       ))}
-    </g>
-  );
-}
-
-/**
- * The Or HaGanuz ("hidden light") — UV-etched Sefirot on the physical
- * folio, invisible until revealed. Reuses the Herald's Tree of Life
- * geometry rather than authoring a second layout; absent entirely unless
- * `revealed`, not just dimmed, to match the physical UV-ink concept.
- */
-function HiddenSefirotLayer({ revealed }: { revealed: boolean }) {
-  if (!revealed) return null;
-  const boxSize = 2 * (RINGS.parsha.radius - RINGS.parsha.thickness);
-  const originX = CENTER.x - boxSize / 2;
-  const originY = CENTER.y - boxSize / 2;
-  const pos = (id: string) => {
-    const node = TREE_OF_LIFE_NODES.find((n) => n.id === id)!;
-    return { x: originX + node.x * boxSize, y: originY + node.y * boxSize };
-  };
-  return (
-    <g opacity={0.9}>
-      {TREE_OF_LIFE_PATHS.map(([a, b]) => {
-        const pa = pos(a);
-        const pb = pos(b);
-        return (
-          <line
-            key={`${a}-${b}`}
-            x1={pa.x}
-            y1={pa.y}
-            x2={pb.x}
-            y2={pb.y}
-            stroke="var(--color-blue-bright)"
-            strokeWidth={0.75}
-            opacity={0.5}
-          />
-        );
-      })}
-      {TREE_OF_LIFE_NODES.map((node) => {
-        const p = pos(node.id);
-        return (
-          <circle
-            key={node.id}
-            cx={p.x}
-            cy={p.y}
-            r={6}
-            fill="var(--color-blue-bright)"
-            stroke="var(--color-silver)"
-            strokeWidth={1}
-            opacity={0.85}
-          />
-        );
-      })}
     </g>
   );
 }
@@ -410,32 +414,115 @@ function MizrachVector() {
   );
 }
 
+/**
+ * The gold pointer at twelve o'clock. On the 3D folio the two cyclewheels turn
+ * beneath it like a volvelle, so this marks the selected month / lunar day.
+ */
+function SelectionPointer() {
+  const y = CENTER.y - RINGS.mazalot.radius - RINGS.mazalot.thickness / 2 - 4;
+  return (
+    <path
+      d={`M ${CENTER.x - 7} ${y - 12} L ${CENTER.x + 7} ${y - 12} L ${CENTER.x} ${y} Z`}
+      fill="var(--color-gold-bright)"
+      stroke="var(--color-charcoal)"
+      strokeWidth={1}
+    />
+  );
+}
+
+/**
+ * Which slice of the mandala to draw. The 3D folio renders the pieces as
+ * separate stacked planes so the two cyclewheels can physically turn:
+ *   - "static": everything that never rotates (border, Parsha, Sabbath Core,
+ *     PaRDeS corners, Mizrach) plus the fixed selection pointer.
+ *   - "outer-wheel": the Mazalot + Solar-Month rings (one rigid month wheel).
+ *   - "moon-wheel": the Moon ring.
+ * Omitting `only` draws the whole mandala on one plane (the flat-SVG folio,
+ * the guide page, and the print master) — unchanged, so its tests still pass.
+ */
+export type MandalaSlice = "static" | "outer-wheel" | "moon-wheel";
+
 export function MizbeachSvgContent({
   sacredTime,
-  revealHidden,
+  neutral = false,
+  only,
 }: {
   sacredTime: SacredTimeSnapshot;
-  revealHidden: boolean;
+  /**
+   * A printable "master" folio: render every ring in its resting state with
+   * nothing gold-highlighted, since the live date/festival highlight is a
+   * digital-only affordance that shouldn't be baked into a physical print.
+   * Default false — the on-screen renderer and its determinism tests are
+   * unchanged.
+   */
+  neutral?: boolean;
+  only?: MandalaSlice;
 }) {
-  const isShabbat = sacredTime.activeFestivalIds.includes("shabbat");
-  return (
-    <g>
-      <MazalotRing activeMonth={sacredTime.hebrewDate.month} />
-      <MoonRing phase={sacredTime.lunarPhase} />
+  const isShabbat = !neutral && sacredTime.activeFestivalIds.includes("shabbat");
+  // Only the interactive slices are drawn on turning planes, so their labels are
+  // inscribed tangentially; the combined flat render (guide/print) keeps them upright.
+  const wheelRotating = only === "outer-wheel" || only === "moon-wheel";
+
+  const outerWheel = (
+    <>
+      <MazalotRing activeMonth={sacredTime.hebrewDate.month} neutral={neutral} rotating={wheelRotating} />
       <SolarMonthRing
         activeMonth={sacredTime.hebrewDate.month}
         activeFestivalIds={sacredTime.activeFestivalIds}
+        neutral={neutral}
+        rotating={wheelRotating}
       />
-      <ParshaRing label={sacredTime.parsha?.label} />
+    </>
+  );
+  const moonWheel = <MoonRing phase={sacredTime.lunarPhase} neutral={neutral} rotating={wheelRotating} />;
+  const staticLayer = (
+    <>
+      <ParshaRing label={neutral ? undefined : sacredTime.parsha?.label} />
       <SabbathCore
         isShabbat={isShabbat}
-        omerDay={sacredTime.omer?.day}
-        roshChodesh={Boolean(sacredTime.roshChodesh)}
+        omerDay={neutral ? undefined : sacredTime.omer?.day}
+        roshChodesh={!neutral && Boolean(sacredTime.roshChodesh)}
       />
-      <HiddenSefirotLayer revealed={revealHidden} />
       <ShivatHaminimBorder />
       <PardesCorners />
       <MizrachVector />
+    </>
+  );
+
+  // Each slice is rasterised to its own texture, so each carries the gold-leaf
+  // gradient definition it references.
+  if (only === "outer-wheel")
+    return (
+      <g>
+        <MandalaGoldDefs />
+        {outerWheel}
+      </g>
+    );
+  if (only === "moon-wheel")
+    return (
+      <g>
+        <MandalaGoldDefs />
+        {moonWheel}
+      </g>
+    );
+  // The pointer only appears on the 3D folio's static plane (the wheels turn
+  // beneath it); the flat whole-mandala render below is unchanged apart from
+  // the shared gold-leaf definition.
+  if (only === "static")
+    return (
+      <g>
+        <MandalaGoldDefs />
+        {staticLayer}
+        <SelectionPointer />
+      </g>
+    );
+
+  return (
+    <g>
+      <MandalaGoldDefs />
+      {outerWheel}
+      {moonWheel}
+      {staticLayer}
     </g>
   );
 }

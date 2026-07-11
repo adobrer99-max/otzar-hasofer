@@ -1,3 +1,4 @@
+import { PageHeader } from "../../components/ui";
 import { letters } from "../../data/letters";
 import type { LetterClassification } from "../../types/letter";
 import { LetterTile } from "../components/LetterTile";
@@ -24,10 +25,7 @@ const groups: { classification: LetterClassification; label: string; note: strin
 export function LettersIndex() {
   return (
     <div className="page">
-      <div className="page-header">
-        <div className="kicker">Derekh Eretz</div>
-        <h1>The Twenty-Two Letters</h1>
-      </div>
+      <PageHeader kicker="Derekh Eretz" title="The Twenty-Two Letters" />
       <p>
         Twenty-two cards, one per Hebrew letter — vertical, archetypal,
         covenantal. Each of the three drawn letters in a reading becomes a

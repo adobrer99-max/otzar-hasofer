@@ -13,6 +13,7 @@ export function PathToggle({
       <button
         type="button"
         className={value === "brit" ? styles.active : undefined}
+        aria-pressed={value === "brit"}
         onClick={() => onChange("brit")}
       >
         Derekh HaBrit
@@ -20,6 +21,7 @@ export function PathToggle({
       <button
         type="button"
         className={value === "noach" ? styles.active : undefined}
+        aria-pressed={value === "noach"}
         onClick={() => onChange("noach")}
       >
         Derekh Noach

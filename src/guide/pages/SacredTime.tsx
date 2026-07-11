@@ -1,14 +1,12 @@
 import { Link } from "react-router-dom";
+import { PageHeader } from "../../components/ui";
 import { festivals } from "../../data/festivals";
 import { FestivalCard } from "../components/FestivalCard";
 
 export function SacredTime() {
   return (
     <div className="page">
-      <div className="page-header">
-        <div className="kicker">Guidebook 06</div>
-        <h1>Sacred Time</h1>
-      </div>
+      <PageHeader kicker="Guidebook 06" title="Sacred Time" />
       <p>
         The Jewish calendar is not a backdrop to a reading — it changes how
         the reading itself is conducted. No reading occurs outside of sacred

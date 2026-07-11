@@ -61,6 +61,69 @@
   fill: color-mix(in srgb, var(--color-gold) 8%, transparent);
 }
 
+/* Bare targets sit over slots already drawn on the folio plate: invisible
+   until hovered/focused, when a gold frame confirms the interactive area. */
+.zoneRectBare {
+  fill: transparent;
+  stroke: var(--color-gold-bright);
+  stroke-width: 1.5;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+.zone:hover .zoneRectBare,
+.zone:focus-visible .zoneRectBare {
+  opacity: 0.9;
+  fill: color-mix(in srgb, var(--color-gold) 10%, transparent);
+}
+
+/* ——— revealed Tree of Life: clickable Sefirot ——— */
+.treeNode {
+  fill: transparent;
+  stroke: var(--color-gold-bright);
+  stroke-width: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: stroke-width 140ms ease;
+}
+.treeNode:hover,
+.treeNode:focus-visible {
+  stroke-width: 2.5;
+  fill: color-mix(in srgb, var(--color-gold) 12%, transparent);
+}
+.treeNode:focus-visible {
+  outline: none;
+}
+.treeNodeChosen {
+  stroke-width: 2.5;
+}
+
+.treeControl {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin: var(--space-2) 0;
+}
+.revealBtn {
+  font-family: var(--font-latin);
+  font-size: 0.85rem;
+  color: var(--accent-bright);
+  background: transparent;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+}
+.revealBtn[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--color-gold) 10%, transparent);
+}
+.treeHint {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
 /* ——— turn knob on a ring's current value ——— */
 .ringKnob {
   fill: var(--color-gold-bright);

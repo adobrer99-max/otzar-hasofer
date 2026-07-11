@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { PageHeader } from "../components/ui";
 import { sefarim, type SeferMeta } from "../data/sefarim";
 import styles from "./library.module.css";
 
@@ -26,10 +27,7 @@ function Spine({ sefer }: { sefer: SeferMeta }) {
 export function LibraryPage() {
   return (
     <div className="page page--wide">
-      <div className="page-header">
-        <div className="kicker">The Beit Midrash</div>
-        <h1>The Shelf of Sefarim</h1>
-      </div>
+      <PageHeader kicker="The Beit Midrash" title="The Shelf of Sefarim" />
       <p>
         The Books of the Treasury, kept together as a library. Some are read,
         some are written, and some link to chapters already open elsewhere in

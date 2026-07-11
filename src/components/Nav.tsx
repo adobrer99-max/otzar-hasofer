@@ -1,30 +1,8 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { ThemeToggle } from "./ui/ThemeToggle";
+import { guideLinks, practiceLinks, libraryLinks, accountLink, type SiteLink } from "./siteMap";
 import styles from "./Nav.module.css";
-
-const guideLinks = [
-  { to: "/guide/foundations", label: "Foundations" },
-  { to: "/guide/letters", label: "The Twenty-Two Letters" },
-  { to: "/guide/shoresh", label: "Shoresh" },
-  { to: "/guide/dorot", label: "Derekh Ha'Dorot" },
-  { to: "/guide/mizbeach", label: "The Mizbe'ach" },
-  { to: "/guide/scribe", label: "The Scribe" },
-  { to: "/guide/sacred-time", label: "Sacred Time" },
-  { to: "/guide/encounters", label: "Seven Encounters" },
-  { to: "/guide/visual-canon", label: "Visual Canon" },
-];
-
-const practiceLinks = [
-  { to: "/herald", label: "The Herald" },
-  { to: "/mizbeach", label: "The Mizbe'ach" },
-  { to: "/covenant", label: "The Covenant" },
-  { to: "/sefarim", label: "The Sefarim" },
-  { to: "/commentaries", label: "Commentaries" },
-];
-
-/** The top-level product surfaces shown directly in the desktop bar (the rest live in Home/drawer). */
-const primaryLinks = practiceLinks.filter((l) => l.to !== "/covenant" && l.to !== "/mizbeach");
 
 function linkClass({ isActive }: { isActive: boolean }) {
   return isActive ? styles.active : undefined;
@@ -54,7 +32,8 @@ function BrandMark() {
   );
 }
 
-function GuideDropdown() {
+/** A labelled disclosure menu of nav links, keyboard- and outside-click-dismissible. */
+function NavDropdown({ label, links }: { label: string; links: SiteLink[] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const menuId = useId();
@@ -78,25 +57,25 @@ function GuideDropdown() {
     };
   }, [open]);
 
-  const guideActive = location.pathname.startsWith("/guide");
+  const active = links.some((l) => location.pathname === l.to || location.pathname.startsWith(l.to + "/"));
 
   return (
     <div className={styles.dropdown} ref={ref}>
       <button
         type="button"
-        className={`${styles.dropdownTrigger} ${guideActive ? styles.active : ""}`}
+        className={`${styles.dropdownTrigger} ${active ? styles.active : ""}`}
         aria-expanded={open}
         aria-controls={menuId}
         onClick={() => setOpen((v) => !v)}
       >
-        The Guide
+        {label}
         <span className={styles.caret} aria-hidden="true">
           ▾
         </span>
       </button>
       {open && (
         <div className={styles.dropdownMenu} id={menuId} role="menu">
-          {guideLinks.map((link) => (
+          {links.map((link) => (
             <NavLink key={link.to} to={link.to} className={linkClass} role="menuitem">
               {link.label}
             </NavLink>
@@ -137,25 +116,23 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
         aria-label="Primary"
         onClick={(e) => e.stopPropagation()}
       >
+        {[
+          { title: "The Guide", links: guideLinks },
+          { title: "The Practice", links: practiceLinks },
+          { title: "The Library", links: libraryLinks },
+        ].map((group) => (
+          <div className={styles.drawerGroup} key={group.title}>
+            <div className={styles.drawerGroupTitle}>{group.title}</div>
+            {group.links.map((link) => (
+              <NavLink key={link.to} to={link.to} className={linkClass}>
+                {link.label}
+              </NavLink>
+            ))}
+          </div>
+        ))}
         <div className={styles.drawerGroup}>
-          <div className={styles.drawerGroupTitle}>The Guide</div>
-          {guideLinks.map((link) => (
-            <NavLink key={link.to} to={link.to} className={linkClass}>
-              {link.label}
-            </NavLink>
-          ))}
-        </div>
-        <div className={styles.drawerGroup}>
-          <div className={styles.drawerGroupTitle}>The Living Practice</div>
-          {practiceLinks.map((link) => (
-            <NavLink key={link.to} to={link.to} className={linkClass}>
-              {link.label}
-            </NavLink>
-          ))}
-        </div>
-        <div className={styles.drawerGroup}>
-          <NavLink to="/account" className={linkClass}>
-            Account
+          <NavLink to={accountLink.to} className={linkClass}>
+            {accountLink.label}
           </NavLink>
         </div>
       </nav>
@@ -165,9 +142,15 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
 
 export function Nav() {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const location = useLocation();
+
+  // The Reading Folio is a tall centrepiece; a sticky bar would cover the top
+  // of the folio (the Mizrach vector, the PaRDeS corners) as it scrolls into
+  // view. Let the header scroll away here — it stays sticky everywhere else.
+  const unstick = location.pathname === "/mizbeach";
 
   return (
-    <header className={styles.header}>
+    <header className={`${styles.header} ${unstick ? styles.headerStatic : ""}`}>
       <div className={styles.inner}>
         <NavLink to="/" className={styles.brand} end>
           <BrandMark />
@@ -178,8 +161,9 @@ export function Nav() {
           <NavLink to="/" end className={linkClass}>
             The Treasury
           </NavLink>
-          <GuideDropdown />
-          {primaryLinks.map((link) => (
+          <NavDropdown label="The Guide" links={guideLinks} />
+          <NavDropdown label="The Practice" links={practiceLinks} />
+          {libraryLinks.map((link) => (
             <NavLink key={link.to} to={link.to} className={linkClass}>
               {link.label}
             </NavLink>
@@ -187,8 +171,8 @@ export function Nav() {
         </nav>
 
         <div className={styles.actions}>
-          <NavLink to="/account" className={`${styles.accountLink} ${styles.desktopOnly}`}>
-            Account
+          <NavLink to={accountLink.to} className={`${styles.accountLink} ${styles.desktopOnly}`}>
+            {accountLink.label}
           </NavLink>
           <ThemeToggle />
           <button

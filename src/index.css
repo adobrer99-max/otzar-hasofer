@@ -107,22 +107,51 @@ input[type="radio"] {
   }
 }
 
-.page-header {
-  border-bottom: 1px solid var(--border-hairline);
-  padding-bottom: var(--space-3);
-  margin-bottom: var(--space-4);
-}
-
-.page-header .kicker {
+/* The page header now comes from the PageHeader primitive (components/ui). This
+   bare .kicker utility remains for the few bespoke heroes that don't use it
+   (e.g. the letter chapter's glyph-beside-title hero). */
+.kicker {
   color: var(--accent);
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-size: 0.75rem;
 }
 
-.page-header h1 {
-  font-size: var(--font-size-xxl);
-  margin: var(--space-1) 0 0;
+/* Muted body text — the single most-repeated inline treatment, offered once. */
+.muted {
+  color: var(--text-muted);
+}
+
+/* The brief fallback shown while a code-split route chunk loads. */
+.route-fallback {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Skip-to-content: hidden until focused, then slides in at the top-left. */
+.skip-link {
+  position: absolute;
+  left: var(--space-2);
+  top: var(--space-2);
+  z-index: 100;
+  background: var(--bg-raised);
+  color: var(--accent-bright);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  transform: translateY(-250%);
+  transition: transform 140ms ease;
+}
+.skip-link:focus {
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .skip-link {
+    transition: none;
+  }
 }
 
 /* ——— The living Herald: subtle motion on the headline sigil only ———

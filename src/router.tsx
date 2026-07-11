@@ -1,24 +1,37 @@
+import { lazy, type ComponentType } from "react";
 import { createHashRouter } from "react-router-dom";
 import App from "./App";
 import { Home } from "./guide/pages/Home";
-import { Foundations } from "./guide/pages/Foundations";
-import { LettersIndex } from "./guide/pages/LettersIndex";
-import { LetterChapter } from "./guide/pages/LetterChapter";
-import { Shoresh } from "./guide/pages/Shoresh";
-import { Dorot } from "./guide/pages/Dorot";
-import { DorotHouse } from "./guide/pages/DorotHouse";
-import { Mizbeach } from "./guide/pages/Mizbeach";
-import { Scribe } from "./guide/pages/Scribe";
-import { SacredTime } from "./guide/pages/SacredTime";
-import { Encounters } from "./guide/pages/Encounters";
-import { VisualCanon } from "./guide/pages/VisualCanon";
-import { HeraldPage } from "./herald/HeraldPage";
-import { CovenantPage } from "./herald/covenant/CovenantPage";
-import { MizbeachToolPage } from "./mizbeach/MizbeachToolPage";
-import { CommentariesPage } from "./commentaries/CommentariesPage";
-import { LibraryPage } from "./library/LibraryPage";
-import { SeferPage } from "./library/SeferPage";
-import { AccountPage } from "./cloud/AccountPage";
+import { NotFound } from "./guide/pages/NotFound";
+
+// The Home landing and the 404 stay eager so the first paint and unknown paths
+// are instant. Every other route is code-split, so heavy modules — above all the
+// ~1.1 MB Shoresh lexicon pulled in by the Herald/Mizbe'ach/Library routes —
+// load on demand instead of in the initial bundle. (Named exports are mapped to
+// the default the lazy loader expects.)
+const lazyPage = <M extends Record<string, ComponentType>>(
+  loader: () => Promise<M>,
+  name: keyof M,
+) => lazy(() => loader().then((m) => ({ default: m[name] })));
+
+const Foundations = lazyPage(() => import("./guide/pages/Foundations"), "Foundations");
+const LettersIndex = lazyPage(() => import("./guide/pages/LettersIndex"), "LettersIndex");
+const LetterChapter = lazyPage(() => import("./guide/pages/LetterChapter"), "LetterChapter");
+const Shoresh = lazyPage(() => import("./guide/pages/Shoresh"), "Shoresh");
+const Dorot = lazyPage(() => import("./guide/pages/Dorot"), "Dorot");
+const DorotHouse = lazyPage(() => import("./guide/pages/DorotHouse"), "DorotHouse");
+const Mizbeach = lazyPage(() => import("./guide/pages/Mizbeach"), "Mizbeach");
+const Scribe = lazyPage(() => import("./guide/pages/Scribe"), "Scribe");
+const SacredTime = lazyPage(() => import("./guide/pages/SacredTime"), "SacredTime");
+const Encounters = lazyPage(() => import("./guide/pages/Encounters"), "Encounters");
+const VisualCanon = lazyPage(() => import("./guide/pages/VisualCanon"), "VisualCanon");
+const HeraldPage = lazyPage(() => import("./herald/HeraldPage"), "HeraldPage");
+const CovenantPage = lazyPage(() => import("./herald/covenant/CovenantPage"), "CovenantPage");
+const MizbeachToolPage = lazyPage(() => import("./mizbeach/MizbeachToolPage"), "MizbeachToolPage");
+const CommentariesPage = lazyPage(() => import("./commentaries/CommentariesPage"), "CommentariesPage");
+const LibraryPage = lazyPage(() => import("./library/LibraryPage"), "LibraryPage");
+const SeferPage = lazyPage(() => import("./library/SeferPage"), "SeferPage");
+const AccountPage = lazyPage(() => import("./cloud/AccountPage"), "AccountPage");
 
 export const router = createHashRouter([
   {
@@ -44,6 +57,7 @@ export const router = createHashRouter([
       { path: "sefarim", element: <LibraryPage /> },
       { path: "sefarim/:id/:entryId?", element: <SeferPage /> },
       { path: "account", element: <AccountPage /> },
+      { path: "*", element: <NotFound /> },
     ],
   },
 ]);

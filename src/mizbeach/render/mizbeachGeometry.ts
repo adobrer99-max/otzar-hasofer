@@ -63,13 +63,14 @@ export function segmentAngles(count: number, index: number): [number, number] {
  */
 export const CENTRAL_PANEL = {
   width: 620,
-  height: 870,
-  topBanner: 30,
-  handY: 150,
-  gatesY: 420,
-  wellsY: 580,
-  bottomRowY: 720,
-  bottomBanner: 820,
+  height: 900,
+  topBanner: 34,
+  handY: 156,
+  lettersY: 300,
+  gatesY: 480,
+  wellsY: 620,
+  bottomRowY: 762,
+  bottomBanner: 858,
   columnX: [140, 310, 480] as [number, number, number],
 };
 

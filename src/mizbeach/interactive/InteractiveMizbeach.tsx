@@ -9,8 +9,9 @@ import { formatHebrewDateEnglish } from "../../data/hebrewCalendar";
 import { resolveSpread } from "../../herald/spreads/resolveSpread";
 import { resolveDorotMechanic } from "../../herald/dorot/dorotMechanics";
 import { resolveShoresh } from "../../herald/shoresh/resolveShoresh";
-import { MizbeachCentralPanel } from "../render/centralPanel";
-import { MizbeachCanvas } from "../MizbeachCanvas";
+import { MizbeachCentralPanel, TREE_ON_PANEL } from "../render/centralPanel";
+import { MizbeachSvgContent, type MandalaSlice } from "../render/buildMizbeachSvg";
+import { FolioCanvas } from "../folio3d/FolioCanvas";
 import { CENTRAL_PANEL, RINGS, CENTER, VIEWBOX_SIZE, segmentAngles, polarToCartesian } from "../render/mizbeachGeometry";
 import { sliceCenterAngle } from "./zones";
 import { CENTRAL_ZONES, FOURTH_ZONE, wedgePath, type Zone } from "./zones";
@@ -43,6 +44,9 @@ function svgPoint(svg: SVGSVGElement, clientX: number, clientY: number): { x: nu
 
 export function InteractiveMizbeach({ state, onChange, readingIndex }: InteractiveMizbeachProps) {
   const [openZoneId, setOpenZoneId] = useState<string>();
+  // The Tree of Life is hidden (the Or HaGanuz) until revealed on the rings —
+  // it links the folio's dimensions, and its lower Sefirot are the middah picker.
+  const [treeRevealed, setTreeRevealed] = useState(false);
 
   const festivalId = resolvedFestivalId(state);
   const sacredTime = computeSacredTime(state.effectiveDate, state.geoMode);
@@ -62,8 +66,6 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
   const popoverTarget = ((): PopoverTarget | undefined => {
     if (!openZoneId) return undefined;
     if (openZoneId === "hand") return { kind: "hand", label: "Hand Anchor", value: state.palmNotes };
-    if (openZoneId === "tree")
-      return { kind: "tree", label: "Dominant middah", value: state.middah };
     if (openZoneId === "veiled")
       return { kind: "veiled", label: "The Veiled Anchor", value: state.veiled };
     if (openZoneId === "fourth")
@@ -89,7 +91,6 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
   function commit(value: LetterDraw | SefirahId | string) {
     const id = openZoneId!;
     if (id === "hand") onChange({ palmNotes: value as string });
-    else if (id === "tree") onChange({ middah: value as SefirahId });
     else if (id === "veiled") onChange({ veiled: value as LetterDraw });
     else if (id === "fourth") onChange({ fourth: value as LetterDraw });
     else if (id.startsWith("letter-")) {
@@ -121,38 +122,78 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
   const monthSlice = monthSliceIndex(hebrewDateFromGregorian(state.effectiveDate));
   const dayNow = hebrewDateFromGregorian(state.effectiveDate).day;
 
+  // The two cyclewheels physically turn on the 3D folio so the selected slice
+  // sits under the fixed top pointer (a volvelle). These are the wheels'
+  // rotation angles, in degrees clockwise-from-top; the plane rotation and the
+  // rotation-aware drag hit-test both derive from them, so visual and
+  // interaction stay in sync.
+  const DEG2RAD = Math.PI / 180;
+  const outerWheelDeg = sliceCenterAngle(12, monthSlice);
+  const moonWheelDeg = ((dayNow - 1) / 29) * 360;
+
   function ringPointer(kind: "month" | "day", e: React.PointerEvent<SVGGElement>) {
     if (e.buttons === 0 && e.type !== "pointerdown") return;
     const svg = e.currentTarget.ownerSVGElement;
     if (!svg) return;
     const { x, y } = svgPoint(svg, e.clientX, e.clientY);
-    const angle = angleFromPoint(x, y);
+    const screenAngle = angleFromPoint(x, y);
     if (kind === "month") {
-      const slice = Math.floor(angle / 30) % 12;
+      // Undo the wheel's current rotation to find the slice actually under the cursor.
+      const textureAngle = (((screenAngle + outerWheelDeg) % 360) + 360) % 360;
+      const slice = Math.floor(textureAngle / 30) % 12;
       onChange({ effectiveDate: setMonthSlice(state.effectiveDate, slice) });
     } else {
-      const day = Math.max(1, Math.round((angle / 360) * 29) + 1);
+      const textureAngle = (((screenAngle + moonWheelDeg) % 360) + 360) % 360;
+      const day = Math.min(29, Math.max(1, Math.round((textureAngle / 360) * 29) + 1));
       onChange({ effectiveDate: setDayOfMonth(state.effectiveDate, day) });
     }
   }
 
+  // The plate itself shows the placed cards, so it re-rasterises when a
+  // placement changes (keyed below), not on every render.
+  const centralPlacements = { letters: state.letters, veiled: state.veiled, middah: state.middah };
+  const drawKey = (d: LetterDraw | null) => (d ? `${d.letterId}${d.orientation[0]}` : "_");
+  const centralKey = `central-${state.letters.map(drawKey).join("")}-${drawKey(state.veiled)}-${state.middah ?? "_"}-${treeRevealed ? "t" : "_"}`;
+
+  const dateKey = `${state.effectiveDate.getTime()}-${state.geoMode}`;
+  // Build one mandala plane. The static base and the flat fallback carry the
+  // charcoal ground; the two cyclewheels are drawn on transparent planes so
+  // they read as separate discs turning above the base.
+  const mandalaSvg = (only?: MandalaSlice) => (
+    <svg viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`} xmlns="http://www.w3.org/2000/svg">
+      {(!only || only === "static") && (
+        <rect x={0} y={0} width={VIEWBOX_SIZE} height={VIEWBOX_SIZE} fill="var(--color-charcoal)" />
+      )}
+      <MizbeachSvgContent sacredTime={sacredTime} only={only} />
+    </svg>
+  );
+
   return (
     <div className={styles.surface}>
-      {/* Central panel + interaction overlay */}
+      {/* Central panel (3D plate, or SVG fallback) + interaction overlay */}
       <div className={styles.panelWrap}>
-        <MizbeachCentralPanel />
+        <FolioCanvas
+          fallbackArt={<MizbeachCentralPanel placements={centralPlacements} revealTree={treeRevealed} />}
+          layers={[
+            { art: <MizbeachCentralPanel placements={centralPlacements} revealTree={treeRevealed} />, textureKey: centralKey },
+          ]}
+          viewBox={{ width: CENTRAL_PANEL.width, height: CENTRAL_PANEL.height }}
+        >
         <svg
           className={styles.overlay}
           viewBox={`0 0 ${CENTRAL_PANEL.width} ${CENTRAL_PANEL.height}`}
+          role="group"
           aria-label="Reading placements"
         >
+          {/* The hand / letter / veiled / tree slots are drawn on the folio
+              plate itself, so their overlay targets are bare (an invisible
+              hit-area with a focus/hover frame) rather than a schematic box. */}
           {CENTRAL_ZONES.filter((z) => z.kind !== "gate" && z.kind !== "well").map((zone) => (
             <ZoneTarget
               key={zone.id}
               zone={zone}
+              bare
               filled={isZoneFilled(zone, state)}
-              glyph={zoneGlyph(zone, state, placedGlyph)}
-              sublabel={zoneSublabel(zone, state)}
               onActivate={() => openZone(zone.id)}
             />
           ))}
@@ -186,20 +227,60 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
               onActivate={() => openZone("council")}
             />
           )}
+          {/* The revealed Or HaGanuz — the folio's own elements as the Tree of
+              Life; its lower Sefirot (the gates, the wells, the veiled anchor)
+              are the dominant-middah picker. */}
+          {treeRevealed &&
+            Object.entries(TREE_ON_PANEL).map(([id, p]) => {
+              const m = middot.find((mm) => mm.id === id);
+              if (!m) return null;
+              const chosen = state.middah === id;
+              const pick = () => onChange({ middah: id as SefirahId });
+              return (
+                <circle
+                  key={id}
+                  cx={p.x}
+                  cy={p.y}
+                  r={22}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${m.label}${chosen ? " (chosen)" : ""}`}
+                  aria-pressed={chosen}
+                  className={`${styles.treeNode} ${chosen ? styles.treeNodeChosen : ""}`}
+                  onClick={pick}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      pick();
+                    }
+                  }}
+                />
+              );
+            })}
         </svg>
+        </FolioCanvas>
       </div>
 
-      {/* Ring mandala + turnable overlay */}
+      {/* Ring mandala (3D volvelle, or SVG fallback) + turnable overlay */}
       <div className={styles.ringsWrap}>
-        <MizbeachCanvas sacredTime={sacredTime} revealHidden={false} />
-        <svg className={styles.overlay} viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`} aria-label="Turnable rings">
+        <FolioCanvas
+          fallbackArt={mandalaSvg()}
+          layers={[
+            { art: mandalaSvg("static"), textureKey: `static-${dateKey}` },
+            { art: mandalaSvg("outer-wheel"), textureKey: `outer-${dateKey}`, rotation: outerWheelDeg * DEG2RAD },
+            { art: mandalaSvg("moon-wheel"), textureKey: `moon-${dateKey}`, rotation: moonWheelDeg * DEG2RAD },
+          ]}
+          viewBox={{ width: VIEWBOX_SIZE, height: VIEWBOX_SIZE }}
+        >
+        <svg className={styles.overlay} viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`} role="group" aria-label="Turnable rings">
           <TurnableRing
             label="Turn to a Hebrew month"
             radius={RINGS.mazalot.radius}
             thickness={RINGS.mazalot.thickness}
             count={12}
             valueNow={monthSlice}
-            knobAngle={sliceCenterAngle(12, monthSlice)}
+            valueText={formatHebrewDateEnglish(sacredTime.hebrewDate)}
+            knobAngle={0}
             onPointer={(e) => ringPointer("month", e)}
             onStep={(delta) => onChange({ effectiveDate: setMonthSlice(state.effectiveDate, monthSlice + delta) })}
           />
@@ -210,11 +291,13 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
             count={8}
             valueNow={dayNow - 1}
             valueMax={29}
-            knobAngle={((dayNow - 1) / 29) * 360}
+            valueText={`Day ${dayNow} of the moon`}
+            knobAngle={0}
             onPointer={(e) => ringPointer("day", e)}
             onStep={(delta) => onChange({ effectiveDate: setDayOfMonth(state.effectiveDate, dayNow + delta) })}
           />
         </svg>
+        </FolioCanvas>
       </div>
 
       {/* Resolved sacred time + interpretation */}
@@ -225,6 +308,23 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
           {festivalId !== "ordinary" && ` · ${festivalId}`}
           {sacredTime.parsha && ` · Parashat ${sacredTime.parsha.label}`}
           {spread !== "triadic" && ` · ${spread === "etz-chaim" ? "Etz Chaim spread" : "Yichud spread"}`}
+        </div>
+        <div className={styles.treeControl}>
+          <button
+            type="button"
+            className={styles.revealBtn}
+            aria-pressed={treeRevealed}
+            onClick={() => setTreeRevealed((v) => !v)}
+          >
+            {treeRevealed ? "Conceal the Tree of Life" : "Reveal the Tree of Life (Or HaGanuz)"}
+          </button>
+          {treeRevealed && (
+            <span className={styles.treeHint}>
+              {state.middah
+                ? `Dominant middah — ${middot.find((m) => m.id === state.middah)?.label.split(" — ")[0]}`
+                : "Choose the dominant middah: click a lit Sefirah."}
+            </span>
+          )}
         </div>
         <Interpretation letters={state.letters} />
       </div>
@@ -268,12 +368,15 @@ function ZoneTarget({
   glyph,
   sublabel,
   onActivate,
+  bare = false,
 }: {
   zone: Zone;
   filled: boolean;
   glyph?: string;
   sublabel?: string;
   onActivate: () => void;
+  /** The slot is drawn on the folio plate itself, so the target is an invisible hit-area (frame on hover/focus only). */
+  bare?: boolean;
 }) {
   return (
     <g
@@ -295,19 +398,19 @@ function ZoneTarget({
         width={zone.w}
         height={zone.h}
         rx={8}
-        className={styles.zoneRect}
+        className={bare ? styles.zoneRectBare : styles.zoneRect}
       />
-      {glyph && (
+      {!bare && glyph && (
         <text x={zone.cx} y={zone.cy + 18} textAnchor="middle" fontFamily="var(--font-hebrew)" fontSize={52} fill="var(--color-gold)">
           {glyph}
         </text>
       )}
-      {!glyph && !filled && (
+      {!bare && !glyph && !filled && (
         <text x={zone.cx} y={zone.cy + 8} textAnchor="middle" fontSize={26} fill="var(--color-gold)" opacity={0.5}>
           +
         </text>
       )}
-      {sublabel && (
+      {!bare && sublabel && (
         <text x={zone.cx} y={zone.cy + zone.h / 2 - 6} textAnchor="middle" fontSize={11} fill="var(--color-silver)">
           {sublabel}
         </text>
@@ -323,6 +426,7 @@ function TurnableRing({
   count,
   valueNow,
   valueMax,
+  valueText,
   knobAngle,
   onPointer,
   onStep,
@@ -333,6 +437,7 @@ function TurnableRing({
   count: number;
   valueNow: number;
   valueMax?: number;
+  valueText?: string;
   knobAngle: number;
   onPointer: (e: React.PointerEvent<SVGGElement>) => void;
   onStep: (delta: number) => void;
@@ -347,6 +452,7 @@ function TurnableRing({
       aria-valuenow={valueNow}
       aria-valuemin={0}
       aria-valuemax={valueMax ?? count - 1}
+      aria-valuetext={valueText}
       onPointerDown={(e) => {
         (e.currentTarget as SVGGElement).setPointerCapture(e.pointerId);
         onPointer(e);
@@ -372,21 +478,4 @@ function isZoneFilled(zone: Zone, state: MizbeachReadingState): boolean {
   if (zone.kind === "veiled") return state.veiled !== null;
   if (zone.kind === "letter") return state.letters[zone.index!] !== null;
   return false;
-}
-
-function zoneGlyph(
-  zone: Zone,
-  state: MizbeachReadingState,
-  placedGlyph: (d: LetterDraw | null) => string | undefined,
-): string | undefined {
-  if (zone.kind === "letter") return placedGlyph(state.letters[zone.index!]);
-  if (zone.kind === "veiled") return state.veiled ? "◈" : undefined; // stays sealed — a mark, not the glyph
-  return undefined;
-}
-
-function zoneSublabel(zone: Zone, state: MizbeachReadingState): string | undefined {
-  if (zone.kind === "hand") return state.palmNotes.trim() ? "recorded" : undefined;
-  if (zone.kind === "tree" && state.middah) return middot.find((m) => m.id === state.middah)?.label.split(" — ")[0];
-  if (zone.kind === "veiled" && state.veiled) return "sealed";
-  return undefined;
 }

@@ -1,4 +1,5 @@
 import { Link, Navigate, useParams } from "react-router-dom";
+import { PageHeader } from "../components/ui";
 import { sefarimById } from "../data/sefarim";
 import { shorashim } from "../data/shorashim.generated";
 import { lettersById } from "../data/letters";
@@ -44,10 +45,7 @@ export function SeferPage() {
     <div className={`page ${styles.bookPage}`}>
       <BookmarkRibbon label={ribbonLabel(sefer.title, entryId)} />
 
-      <div className="page-header">
-        <div className="kicker">{sefer.hebrewName} · {sefer.subtitle}</div>
-        <h1>{sefer.title}</h1>
-      </div>
+      <PageHeader kicker={`${sefer.hebrewName} · ${sefer.subtitle}`} title={sefer.title} />
 
       {sefer.kind === "pardes-browse" && <HaShorashimBook entryId={entryId} />}
       {sefer.kind === "balagan" && <BalaganBook />}

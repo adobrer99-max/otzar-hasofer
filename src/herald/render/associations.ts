@@ -59,6 +59,15 @@ export function dominantElementHue(letterIds: string[]): string | undefined {
   return undefined;
 }
 
+/** A human-readable name for a letter's association ("Fire", "Sun", "Aries"), or undefined. */
+export function associationLabel(letterId: string): string | undefined {
+  const a = associationOf(letterId);
+  if (!a) return undefined;
+  if (a.kind === "element") return a.key.charAt(0).toUpperCase() + a.key.slice(1);
+  if (a.kind === "planet") return a.key.charAt(0).toUpperCase() + a.key.slice(1);
+  return ZODIAC[a.index];
+}
+
 /** Resolve a letter's cosmic association, or undefined if it can't be parsed. */
 export function associationOf(letterId: string): Association | undefined {
   const letter = lettersById[letterId];

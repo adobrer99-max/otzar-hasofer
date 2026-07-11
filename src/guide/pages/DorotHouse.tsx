@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { PageHeader } from "../../components/ui";
 import { dorotHouses, dorotHousesById, cardsByHouse } from "../../data/dorot";
 import { ushpizinBySefirah } from "../../data/ushpizin";
 import type { CommentaryRecord } from "../../types/commentary";
@@ -33,18 +34,18 @@ export function DorotHouse() {
 
   return (
     <div className="page">
-      <div className="page-header">
-        <div className="kicker">
-          Derekh Ha'Dorot — Pillar of {sefirahName} ({house.kind} House)
-        </div>
-        <h1>
-          House of {house.figure}
-          {house.houseName && ` — ${house.houseName}`}
-        </h1>
-        {house.spiritualEnergy && (
-          <p className={styles.cardMeta}>Spiritual Energy: {house.spiritualEnergy}</p>
-        )}
-      </div>
+      <PageHeader
+        kicker={`Derekh Ha'Dorot — Pillar of ${sefirahName} (${house.kind} House)`}
+        title={
+          <>
+            House of {house.figure}
+            {house.houseName && ` — ${house.houseName}`}
+          </>
+        }
+      />
+      {house.spiritualEnergy && (
+        <p className={styles.cardMeta}>Spiritual Energy: {house.spiritualEnergy}</p>
+      )}
       {house.teaching && <blockquote>{house.teaching}</blockquote>}
 
       {house.kind === "matriarchal" && (

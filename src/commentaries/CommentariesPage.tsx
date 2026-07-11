@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { PageHeader } from "../components/ui";
 import type { CommentaryRecord, CommentarySubject } from "../types/commentary";
 import {
   listAllCommentaries,
@@ -64,10 +65,7 @@ export function CommentariesPage() {
 
   return (
     <div className="page">
-      <div className="page-header">
-        <div className="kicker">The Drash of the Treasury</div>
-        <h1>Commentaries</h1>
-      </div>
+      <PageHeader kicker="The Drash of the Treasury" title="Commentaries" />
       <p>
         Every reading proceeds through four tiers: the Letter as it is
         (Peshat), the witness of the tradition (Remez), the received and

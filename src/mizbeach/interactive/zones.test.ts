@@ -2,14 +2,16 @@ import { describe, it, expect } from "vitest";
 import { CENTRAL_ZONES, FOURTH_ZONE, zoneById, ringSliceAt, sliceCenterAngle, wedgePath, RING_MONTH_ORDER } from "./zones";
 
 describe("central zones", () => {
-  it("defines one hand, three letters, three gates, three wells, a veiled, and a tree zone", () => {
+  it("defines one hand, three letters, three gates, three wells, and a veiled zone", () => {
     const byKind = (k: string) => CENTRAL_ZONES.filter((z) => z.kind === k);
     expect(byKind("hand")).toHaveLength(1);
     expect(byKind("letter")).toHaveLength(3);
     expect(byKind("gate")).toHaveLength(3);
     expect(byKind("well")).toHaveLength(3);
     expect(byKind("veiled")).toHaveLength(1);
-    expect(byKind("tree")).toHaveLength(1);
+    // The Tree of Life is no longer a central-panel zone — it is the revealable
+    // Or HaGanuz on the ring mandala (its lower Sefirot are the middah picker).
+    expect(byKind("tree")).toHaveLength(0);
   });
 
   it("gives every zone a unique id resolvable via zoneById", () => {

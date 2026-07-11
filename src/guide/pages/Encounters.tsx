@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { PageHeader } from "../../components/ui";
 import { encounters } from "../../data/encounters";
 import { housesBySefirah } from "../../data/dorot";
 import { ushpizinBySefirah } from "../../data/ushpizin";
@@ -6,10 +7,7 @@ import { ushpizinBySefirah } from "../../data/ushpizin";
 export function Encounters() {
   return (
     <div className="page">
-      <div className="page-header">
-        <div className="kicker">The Onboarding</div>
-        <h1>The Seven Encounters of Bereshit</h1>
-      </div>
+      <PageHeader kicker="The Onboarding" title="The Seven Encounters of Bereshit" />
       <p>
         The Herald is not formed by accumulating information. It is formed
         through the participant's gradual participation in the unfolding

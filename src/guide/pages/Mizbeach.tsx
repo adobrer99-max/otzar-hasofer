@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { PageHeader } from "../../components/ui";
 import type { GeographyMode } from "../../types/herald";
 import { computeSacredTime } from "../../data/sacredTime";
 import { MizbeachCanvas } from "../../mizbeach/MizbeachCanvas";
@@ -18,10 +19,7 @@ export function Mizbeach() {
 
   return (
     <div className="page page--wide">
-      <div className="page-header">
-        <div className="kicker">Guidebook 04</div>
-        <h1>The Mizbe'ach</h1>
-      </div>
+      <PageHeader kicker="Guidebook 04" title="The Mizbe'ach" />
       <p>
         <em>"The cards are the words. The Mizbe'ach is the sentence."</em>
       </p>
@@ -43,8 +41,17 @@ export function Mizbeach() {
         Hand Anchor, Three Gates, Three Wells, Veiled Anchor, and Tree of
         Life, in the order a reading moves through them.
       </p>
+      <div className={styles.controls}>
+        <button
+          type="button"
+          aria-pressed={revealHidden}
+          onClick={() => setRevealHidden((r) => !r)}
+        >
+          {revealHidden ? "Conceal the Hidden Layer" : "Reveal the Hidden Layer (Or HaGanuz)"}
+        </button>
+      </div>
       <div className={styles.canvasWrap}>
-        <MizbeachCentralPanel />
+        <MizbeachCentralPanel revealTree={revealHidden} />
       </div>
 
       <h2>The Ring Mandala</h2>
@@ -72,17 +79,10 @@ export function Mizbeach() {
             Galut
           </button>
         </div>
-        <button
-          type="button"
-          aria-pressed={revealHidden}
-          onClick={() => setRevealHidden((r) => !r)}
-        >
-          {revealHidden ? "Conceal the Hidden Layer" : "Reveal the Hidden Layer (Or HaGanuz)"}
-        </button>
       </div>
 
       <div className={styles.canvasWrap}>
-        <MizbeachCanvas ref={svgRef} sacredTime={sacredTime} revealHidden={revealHidden} />
+        <MizbeachCanvas ref={svgRef} sacredTime={sacredTime} />
       </div>
 
       <div className={styles.exportRow}>
