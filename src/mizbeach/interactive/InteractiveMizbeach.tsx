@@ -10,7 +10,8 @@ import { resolveSpread } from "../../herald/spreads/resolveSpread";
 import { resolveDorotMechanic } from "../../herald/dorot/dorotMechanics";
 import { resolveShoresh } from "../../herald/shoresh/resolveShoresh";
 import { MizbeachCentralPanel } from "../render/centralPanel";
-import { MizbeachCanvas } from "../MizbeachCanvas";
+import { MizbeachSvgContent } from "../render/buildMizbeachSvg";
+import { FolioCanvas } from "../folio3d/FolioCanvas";
 import { CENTRAL_PANEL, RINGS, CENTER, VIEWBOX_SIZE, segmentAngles, polarToCartesian } from "../render/mizbeachGeometry";
 import { sliceCenterAngle } from "./zones";
 import { CENTRAL_ZONES, FOURTH_ZONE, wedgePath, type Zone } from "./zones";
@@ -138,9 +139,13 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
 
   return (
     <div className={styles.surface}>
-      {/* Central panel + interaction overlay */}
+      {/* Central panel (3D plate, or SVG fallback) + interaction overlay */}
       <div className={styles.panelWrap}>
-        <MizbeachCentralPanel />
+        <FolioCanvas
+          art={<MizbeachCentralPanel />}
+          viewBox={{ width: CENTRAL_PANEL.width, height: CENTRAL_PANEL.height }}
+          textureKey="central"
+        >
         <svg
           className={styles.overlay}
           viewBox={`0 0 ${CENTRAL_PANEL.width} ${CENTRAL_PANEL.height}`}
@@ -188,11 +193,21 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
             />
           )}
         </svg>
+        </FolioCanvas>
       </div>
 
-      {/* Ring mandala + turnable overlay */}
+      {/* Ring mandala (3D plate, or SVG fallback) + turnable overlay */}
       <div className={styles.ringsWrap}>
-        <MizbeachCanvas sacredTime={sacredTime} revealHidden={false} />
+        <FolioCanvas
+          art={
+            <svg viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`} xmlns="http://www.w3.org/2000/svg">
+              <rect x={0} y={0} width={VIEWBOX_SIZE} height={VIEWBOX_SIZE} fill="var(--color-charcoal)" />
+              <MizbeachSvgContent sacredTime={sacredTime} revealHidden={false} />
+            </svg>
+          }
+          viewBox={{ width: VIEWBOX_SIZE, height: VIEWBOX_SIZE }}
+          textureKey={`${state.effectiveDate.getTime()}-${state.geoMode}`}
+        >
         <svg className={styles.overlay} viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`} role="group" aria-label="Turnable rings">
           <TurnableRing
             label="Turn to a Hebrew month"
@@ -218,6 +233,7 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
             onStep={(delta) => onChange({ effectiveDate: setDayOfMonth(state.effectiveDate, dayNow + delta) })}
           />
         </svg>
+        </FolioCanvas>
       </div>
 
       {/* Resolved sacred time + interpretation */}
