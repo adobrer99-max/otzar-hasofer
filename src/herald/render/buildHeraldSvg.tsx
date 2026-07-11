@@ -20,8 +20,8 @@ import {
   shieldBorderPoints,
 } from "./heraldGeometry";
 
-// The charges sit near the shield's centre now that the Tree no longer occupies it.
-const BAND_TOP = SHIELD.top + 300;
+// The charges sit at the shield's centre now that the Tree no longer occupies it.
+const BAND_TOP = SHIELD.top + 310;
 
 /**
  * The metal of the frame (outline/border/dividers). "natural" (the default)
@@ -690,8 +690,11 @@ function HeraldFigure({
             pictographic symbol (falling back to the letterform if that charge
             is not yet designed). */}
         {divisions.map((division) => {
-          const { center: bandCenter } = bandX(division.band);
-          const baseSize = 60 + (2 - division.drawOrder) * 12 + (division.count - 1) * 8;
+          const band = bandX(division.band);
+          const bandCenter = band.center;
+          // Size each charge to fill its own division so the shield is full,
+          // not a small mark in a wide field — capped so a lone charge stays sane.
+          const baseSize = Math.min((band.end - band.start) * 0.82, 210);
           const fill = `url(#herald-glyph-${division.letterId})`;
           const stroke = darken(colorFor(division.letterId), 0.5);
           const flip = division.orientation === "reversed";
@@ -700,9 +703,9 @@ function HeraldFigure({
               <LetterCharge
                 key={division.letterId}
                 letterId={division.letterId}
-                size={baseSize * 1.25}
+                size={baseSize}
                 x={bandCenter}
-                y={BAND_TOP - baseSize * 0.33}
+                y={BAND_TOP - baseSize * 0.32}
                 fill={fill}
                 stroke={stroke}
                 flip={flip}
