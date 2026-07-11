@@ -10,7 +10,7 @@ import { computeDivisions, type Division } from "./divisions";
 import { nameSeedOf, flourishRotation } from "./nameGeometry";
 import { LetterGlyph } from "./LetterGlyph";
 import { LetterCharge, hasCharge } from "./letterCharges";
-import { colorFor, lighten, darken, letterColorIds } from "./letterColors";
+import { colorFor, lighten, darken } from "./letterColors";
 
 type ShoreshResult = ReturnType<typeof resolveShoresh>;
 import {
@@ -315,7 +315,7 @@ function Crest() {
             <path
               key={i}
               d={`M ${x0} ${torseY} Q ${x0 + step / 2} ${torseY + (up ? -9 : 9)}, ${x0 + step} ${torseY}`}
-              stroke={up ? "url(#herald-gold-leaf-soft)" : "var(--color-gold)"}
+              stroke={up ? "var(--color-gold)" : "var(--color-gold)"}
             />
           );
         })}
@@ -325,10 +325,9 @@ function Crest() {
         d={`M ${center.x} ${torseY - 58}
             C ${center.x - 16} ${torseY - 34}, ${center.x - 12} ${torseY - 10}, ${center.x} ${torseY - 6}
             C ${center.x + 12} ${torseY - 10}, ${center.x + 16} ${torseY - 34}, ${center.x} ${torseY - 58} Z`}
-        fill="url(#herald-gold-leaf)"
+        fill="var(--color-gold)"
         stroke="var(--color-gold-bright)"
         strokeWidth={1}
-        filter="url(#herald-glow)"
       />
       <path
         d={`M ${center.x} ${torseY - 40} C ${center.x - 6} ${torseY - 26}, ${center.x - 5} ${torseY - 14}, ${center.x} ${torseY - 10} C ${center.x + 5} ${torseY - 14}, ${center.x + 6} ${torseY - 26}, ${center.x} ${torseY - 40} Z`}
@@ -362,7 +361,7 @@ function Mantling({ density }: { density: number }) {
           key={`${dir}-${i}`}
           d={d}
           transform={`rotate(${dir * 138} ${cx} ${cy})`}
-          fill="url(#herald-gold-leaf-soft)"
+          fill="var(--color-gold)"
           fillOpacity={0.5}
           stroke="var(--color-gold)"
           strokeWidth={0.75}
@@ -421,7 +420,7 @@ function Supporters() {
         <path
           d={`M ${baseX} ${botY} C ${baseX - dir * 18} ${botY - 60}, ${baseX - dir * 18} ${topY + 60}, ${baseX} ${topY}`}
           fill="none"
-          stroke="url(#herald-gold-leaf-soft)"
+          stroke="var(--color-gold)"
           strokeWidth={1.75}
         />
         {Array.from({ length: leaves }).map((_, i) => {
@@ -435,7 +434,7 @@ function Supporters() {
               cy={y}
               rx={9}
               ry={3.5}
-              fill="url(#herald-gold-leaf)"
+              fill="var(--color-gold)"
               opacity={0.75}
               transform={`rotate(${dir * (t < 0.5 ? -35 : 35)} ${x - dir * 8} ${y})`}
             />
@@ -471,7 +470,7 @@ export function MottoRibbon({ text }: { text: string }) {
           key={dir}
           d={`M ${center.x + dir * half} ${y - h} q ${dir * 20} ${h}, 0 ${2 * h} q ${-dir * 12} ${-h}, 0 ${-2 * h} Z`}
           fill="var(--color-charcoal-raised)"
-          stroke="url(#herald-gold-leaf-soft)"
+          stroke="var(--color-gold)"
           strokeWidth={1.25}
         />
       ))}
@@ -479,7 +478,7 @@ export function MottoRibbon({ text }: { text: string }) {
       <path
         d={`M ${center.x - half} ${y - h} L ${center.x + half} ${y - h} L ${center.x + half} ${y + h} L ${center.x - half} ${y + h} Z`}
         fill="var(--color-charcoal-raised)"
-        stroke="url(#herald-gold-leaf-soft)"
+        stroke="var(--color-gold)"
         strokeWidth={1.25}
       />
       <text
@@ -646,15 +645,10 @@ function HeraldFigure({
       {mantling && <Mantling density={ornamentDensity} />}
       {supporters && <Supporters />}
       {compartment && <Compartment geography={geography} />}
-      {/* A faint gold halo, and a soft shadow so the plate rests upon the field. */}
-      <rect x={0} y={40} width={600} height={740} fill="url(#herald-field-glow)" />
-      <path d={SHIELD_PATH} fill="var(--color-charcoal)" filter="url(#herald-emboss)" />
       <g clipPath="url(#herald-shield-clip)">
-        <path d={SHIELD_PATH} fill="url(#herald-shield-fill)" />
-        {/* The field's tincture, divided by how many letters dominate, then a
-            whisper of parchment tooth — both beneath everything. */}
+        {/* Flat deep ground, then the flat tincture division — no gradient, glow, or texture. */}
+        <path d={SHIELD_PATH} fill="var(--color-charcoal)" />
         <FieldTincture letterIds={divisions.map((d) => d.letterId)} />
-        <rect x={66} y={86} width={468} height={638} fill="#c9a24b" filter="url(#herald-vellum)" opacity={0.22} />
 
         <DivisionDividers bands={divisions.map((d) => d.band)} />
 
@@ -699,7 +693,7 @@ function HeraldFigure({
           // Size each charge to fill its own division so the shield is full,
           // not a small mark in a wide field — capped so a lone charge stays sane.
           const baseSize = Math.min((band.end - band.start) * 0.82, 210);
-          const fill = `url(#herald-glyph-${division.letterId})`;
+          const fill = colorFor(division.letterId);
           const stroke = darken(colorFor(division.letterId), 0.5);
           const flip = division.orientation === "reversed";
           if (device === "charge" && hasCharge(division.letterId)) {
@@ -774,7 +768,7 @@ function EtzChaimCharges({ draws }: { draws: LetterDraw[] }) {
               size={54}
               x={center.x}
               baselineY={row.y}
-              fill={`url(#herald-glyph-${draw.letterId})`}
+              fill={colorFor(draw.letterId)}
               stroke={darken(colorFor(draw.letterId), 0.5)}
               flip={draw.orientation === "reversed"}
             />
@@ -854,7 +848,7 @@ function YichudOverlay({
           size={48}
           x={center.x}
           baselineY={unveiledY}
-          fill={`url(#herald-glyph-${unveiled.letterId})`}
+          fill={colorFor(unveiled.letterId)}
           stroke={darken(colorFor(unveiled.letterId), 0.5)}
           flip={unveiled.orientation === "reversed"}
         />
@@ -981,12 +975,10 @@ export function HeraldCovenantContent({ form }: { form: CovenantalForm }) {
 }
 
 /**
- * The illumination layer — gradients, filters, and a texture that turn the
- * flat linework into an illuminated plate. All defs are static (determinism
- * preserved) and live inside the exported `<svg>`, so SVG export clones them
- * and PNG rasterizes them. Gradient/texture stop-colours are written as
- * literal hex (mirroring the brand constants in theme.css) — NOT `var(--…)` —
- * because the SVG-export var-resolver walks fill/stroke/style, not stop-color.
+ * Foil-stamp language: the Herald is drawn as flat metal and flat tinctures —
+ * no gradients, glows, shadows, or texture, so it reproduces as a real
+ * foil-stamped / printed emblem on the back of a card, not a screen graphic.
+ * The only def is the shield clip.
  */
 export function HeraldSvgDefs() {
   return (
@@ -994,72 +986,6 @@ export function HeraldSvgDefs() {
       <clipPath id="herald-shield-clip">
         <path d={SHIELD_PATH} />
       </clipPath>
-
-      {/* Beaten gold-leaf: a pale highlight sweeping to a deep shadow. */}
-      <linearGradient id="herald-gold-leaf" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#f4e4b0" />
-        <stop offset="34%" stopColor="#e4c579" />
-        <stop offset="66%" stopColor="#c9a24b" />
-        <stop offset="100%" stopColor="#9c7a35" />
-      </linearGradient>
-
-      {/* A softer, near-vertical gold for strokes/flourishes. */}
-      <linearGradient id="herald-gold-leaf-soft" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#ecd291" />
-        <stop offset="55%" stopColor="#c9a24b" />
-        <stop offset="100%" stopColor="#a9853a" />
-      </linearGradient>
-
-      {/* One enamelled gradient per letter, from its own signature colour — so a
-          charge is coloured by the letter that was actually drawn. */}
-      {letterColorIds.map((id) => {
-        const c = colorFor(id);
-        return (
-          <linearGradient id={`herald-glyph-${id}`} key={id} x1="0" y1="0" x2="0.35" y2="1">
-            <stop offset="0%" stopColor={lighten(c, 0.72)} />
-            <stop offset="45%" stopColor={lighten(c, 0.18)} />
-            <stop offset="100%" stopColor={darken(c, 0.3)} />
-          </linearGradient>
-        );
-      })}
-
-      {/* Shield interior: a raised centre falling to the charcoal edge (depth). */}
-      <radialGradient id="herald-shield-fill" cx="0.5" cy="0.42" r="0.75">
-        <stop offset="0%" stopColor="#232833" />
-        <stop offset="70%" stopColor="#1a1e25" />
-        <stop offset="100%" stopColor="#14171c" />
-      </radialGradient>
-
-      {/* A faint gold halo behind the shield. */}
-      <radialGradient id="herald-field-glow" cx="0.5" cy="0.42" r="0.5">
-        <stop offset="0%" stopColor="#c9a24b" stopOpacity="0.14" />
-        <stop offset="60%" stopColor="#c9a24b" stopOpacity="0.05" />
-        <stop offset="100%" stopColor="#c9a24b" stopOpacity="0" />
-      </radialGradient>
-
-      {/* Soft outer shadow so the plate sits upon the field, not floats on it. */}
-      <filter id="herald-emboss" x="-12%" y="-12%" width="124%" height="124%">
-        <feDropShadow dx="0" dy="3" stdDeviation="5" floodColor="#000000" floodOpacity="0.45" />
-      </filter>
-
-      {/* A gentle glow for the dominant emblems (crest, dominant Tree node). */}
-      <filter id="herald-glow" x="-40%" y="-40%" width="180%" height="180%">
-        <feGaussianBlur stdDeviation="2.4" result="b" />
-        <feMerge>
-          <feMergeNode in="b" />
-          <feMergeNode in="SourceGraphic" />
-        </feMerge>
-      </filter>
-
-      {/* Parchment tooth: a whisper of fractal texture over the charcoal field. */}
-      <filter id="herald-vellum" x="0" y="0" width="100%" height="100%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="3" seed="7" stitchTiles="stitch" result="noise" />
-        <feColorMatrix
-          in="noise"
-          type="matrix"
-          values="0 0 0 0 0.86  0 0 0 0 0.79  0 0 0 0 0.6  0 0 0 0.5 0"
-        />
-      </filter>
     </defs>
   );
 }

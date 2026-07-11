@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { HeraldInputSnapshot, HeraldLayer } from "../../types/herald";
 import { HeraldLayerContent, HeraldSynthesisContent } from "./buildHeraldSvg";
+import { colorFor } from "./letterColors";
 import { deriveHeraldForm } from "../synthesis/deriveHeraldForm";
 
 const sampleInput: HeraldInputSnapshot = {
@@ -211,13 +212,19 @@ describe("Scribe curation (HeraldStyle)", () => {
     expect(gold).not.toBe(silvered);
   });
 
-  it("enamels each charge in its own letter's colour and draws no central tree", () => {
+  it("enamels each charge in its own letter's flat colour and draws no central tree", () => {
     const markup = render(sampleInput, 0);
-    // Charges reference their per-letter enamel gradient…
-    expect(markup).toContain("url(#herald-glyph-aleph)");
-    expect(markup).toContain("url(#herald-glyph-mem)");
-    // …and the veiled letter's is never used.
-    expect(markup).not.toContain("url(#herald-glyph-shin)");
+    // Each open charge is filled flat with its own letter's colour (foil-stamp
+    // language — no per-letter gradient), asserted on the stable data-charge
+    // marker + the letter's colour, not a font glyph or a gradient url.
+    expect(markup).toContain('data-charge="aleph"');
+    expect(markup).toContain(colorFor("aleph"));
+    expect(markup).toContain('data-charge="mem"');
+    expect(markup).toContain(colorFor("mem"));
+    // …and the veiled letter is never drawn.
+    expect(markup).not.toContain('data-charge="shin"');
+    // No gradient enamel remains — the material is flat foil.
+    expect(markup).not.toContain("url(#herald-glyph-");
     // The Sefirot tree no longer renders in the centre.
     expect(markup).not.toContain('data-role="dominant-node"');
   });
