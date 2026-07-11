@@ -212,6 +212,20 @@ describe("Scribe curation (HeraldStyle)", () => {
     expect(render(sampleInput, 0)).not.toBe(render(other, 0));
   });
 
+  it("renders the heraldic charge device when curated, and letterforms by default", () => {
+    const glyphMode = renderToStaticMarkup(<HeraldLayerContent input={sampleInput} layerCount={0} style={{ device: "glyph" }} />);
+    const chargeMode = renderToStaticMarkup(<HeraldLayerContent input={sampleInput} layerCount={0} style={{ device: "charge" }} />);
+    expect(glyphMode).not.toContain('data-device="charge"');
+    expect(chargeMode).toContain('data-device="charge"');
+    // The charge is still marked with its letter and remains deterministic.
+    expect(chargeMode).toContain('data-charge="aleph"');
+    expect(chargeMode).toBe(
+      renderToStaticMarkup(<HeraldLayerContent input={sampleInput} layerCount={0} style={{ device: "charge" }} />),
+    );
+    // Default (no device) is the letterform, unchanged.
+    expect(render(sampleInput, 0)).toBe(glyphMode);
+  });
+
   it("gates the heraldic vocabulary by curation", () => {
     const withCrest = renderToStaticMarkup(<HeraldLayerContent input={sampleInput} layerCount={0} style={{ crest: true }} />);
     const noCrest = renderToStaticMarkup(<HeraldLayerContent input={sampleInput} layerCount={0} style={{ crest: false }} />);

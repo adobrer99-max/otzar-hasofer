@@ -8,6 +8,7 @@ import { resolveShoresh } from "../shoresh/resolveShoresh";
 import { computeDivisions, type Division } from "./divisions";
 import { nameSeedOf, flourishRotation } from "./nameGeometry";
 import { LetterGlyph } from "./LetterGlyph";
+import { LetterCharge, hasCharge } from "./letterCharges";
 import { colorFor, lighten, darken, blend, letterColorIds } from "./letterColors";
 
 type ShoreshResult = ReturnType<typeof resolveShoresh>;
@@ -508,6 +509,8 @@ interface HeraldFigureProps {
   dorotSefirot?: SefirahId[];
   /** The hidden Hebrew-name encoding, woven into the border. See nameGeometry.ts. */
   nameSeed?: number;
+  /** How each drawn letter is depicted: its enamelled letterform, or its heraldic charge. */
+  device?: "glyph" | "charge";
   /** Heraldic vocabulary toggles (Scribe curation). Defaults keep the richer illuminated frame. */
   crest?: boolean;
   mantling?: boolean;
@@ -530,6 +533,7 @@ function HeraldFigure({
   shoresh,
   dorotSefirot = [],
   nameSeed,
+  device = "glyph",
   crest = true,
   mantling = true,
   compartment = true,
@@ -628,10 +632,30 @@ function HeraldFigure({
         ))}
         <OrnamentalBorder density={ornamentDensity} color={accentColor} nameSeed={nameSeed} />
 
-        {/* The charges last — each enamelled in its letter's own colour. */}
+        {/* The charges last — each enamelled in its letter's own colour, drawn
+            as the letterform or, in the heraldic-charge device, as the letter's
+            pictographic symbol (falling back to the letterform if that charge
+            is not yet designed). */}
         {divisions.map((division) => {
           const { center: bandCenter } = bandX(division.band);
           const baseSize = 60 + (2 - division.drawOrder) * 12 + (division.count - 1) * 8;
+          const fill = `url(#herald-glyph-${division.letterId})`;
+          const stroke = darken(colorFor(division.letterId), 0.5);
+          const flip = division.orientation === "reversed";
+          if (device === "charge" && hasCharge(division.letterId)) {
+            return (
+              <LetterCharge
+                key={division.letterId}
+                letterId={division.letterId}
+                size={baseSize * 1.25}
+                x={bandCenter}
+                y={BAND_TOP - baseSize * 0.33}
+                fill={fill}
+                stroke={stroke}
+                flip={flip}
+              />
+            );
+          }
           return (
             <LetterGlyph
               key={division.letterId}
@@ -639,9 +663,9 @@ function HeraldFigure({
               size={baseSize}
               x={bandCenter}
               baselineY={BAND_TOP}
-              fill={`url(#herald-glyph-${division.letterId})`}
-              stroke={darken(colorFor(division.letterId), 0.5)}
-              flip={division.orientation === "reversed"}
+              fill={fill}
+              stroke={stroke}
+              flip={flip}
             />
           );
         })}
@@ -805,6 +829,7 @@ export function HeraldLayerContent({
     ornamentDensity: Math.min(10 + layerCount * 2, 40),
     dorotSefirot: dorotSefirotOf(input.dorotDraws),
     nameSeed: nameSeedOf(input.hebrewName),
+    device: style?.device ?? "glyph",
     ...vocab(style),
   };
 
@@ -865,6 +890,7 @@ export function HeraldSynthesisContent({ form, style }: { form: HeraldForm; styl
       ornamentDensity={form.ornamentDensity}
       shoresh={resolveShoresh(form.charges.map((c) => c.letterId) as [string, string, string])}
       dorotSefirot={form.dorotSefirot}
+      device={style?.device ?? "glyph"}
       {...vocab(style)}
     />
   );

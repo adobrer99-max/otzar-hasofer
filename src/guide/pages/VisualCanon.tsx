@@ -100,6 +100,16 @@ export function VisualCanon() {
         Epithet. Nothing is ever laid over a letter.
       </p>
       <p>
+        Each letter also has a <strong>heraldic charge</strong> — a growing
+        symbol language of the aleph-bet, drawn from each letter's own ancient
+        pictographic origin: aleph the ox, bet the house, dalet the door, mem
+        the water (a fountain), zayin the sword, ayin the eye, shin the flame,
+        tav the cross, and so on through all twenty-two. The Scribe may set a
+        Herald to wear these charges instead of the letterforms, so a reading
+        becomes a true coat of arms assembled from the symbols of the letters
+        drawn.
+      </p>
+      <p>
         Because the Herald "is recognized, never assigned," its colour is{" "}
         <em>derived</em> from the reading first. The Scribe may then{" "}
         <strong>curate</strong> — the metal of the frame (natural, gold, antique,

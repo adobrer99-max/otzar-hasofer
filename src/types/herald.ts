@@ -100,6 +100,8 @@ export interface HeraldStyle {
    * enamelled charge letters keep their own association colours regardless.
    */
   metal?: "natural" | "gold" | "antique" | "silver";
+  /** How each drawn letter appears on the shield: its enamelled letterform, or its heraldic charge (the pictographic symbol language). Default letterform. */
+  device?: "glyph" | "charge";
   crest?: boolean;
   mantling?: boolean;
   compartment?: boolean;

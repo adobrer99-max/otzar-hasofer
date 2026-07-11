@@ -46,10 +46,23 @@ export function HeraldStylePanel({
       </div>
 
       <div className={styles.field}>
+        <span className={styles.label}>Device on the shield</span>
+        <SegmentedControl
+          ariaLabel="Device on the shield"
+          value={draft.device ?? "glyph"}
+          options={[
+            { value: "glyph", label: "Letterform" },
+            { value: "charge", label: "Heraldic charge" },
+          ]}
+          onChange={(device) => onChange({ ...draft, device })}
+        />
+      </div>
+
+      <div className={styles.field}>
         <span className={styles.label}>Metal of the frame</span>
         <SegmentedControl
           ariaLabel="Metal of the frame"
-          value={draft.metal ?? "gold"}
+          value={draft.metal ?? "natural"}
           options={METALS.map((m) => ({ value: m.value, label: m.label }))}
           onChange={(metal) => onChange({ ...draft, metal })}
         />
