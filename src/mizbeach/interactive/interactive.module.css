@@ -61,6 +61,21 @@
   fill: color-mix(in srgb, var(--color-gold) 8%, transparent);
 }
 
+/* Bare targets sit over slots already drawn on the folio plate: invisible
+   until hovered/focused, when a gold frame confirms the interactive area. */
+.zoneRectBare {
+  fill: transparent;
+  stroke: var(--color-gold-bright);
+  stroke-width: 1.5;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+.zone:hover .zoneRectBare,
+.zone:focus-visible .zoneRectBare {
+  opacity: 0.9;
+  fill: color-mix(in srgb, var(--color-gold) 10%, transparent);
+}
+
 /* ——— turn knob on a ring's current value ——— */
 .ringKnob {
   fill: var(--color-gold-bright);

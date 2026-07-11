@@ -2,7 +2,6 @@ import { useState } from "react";
 import type { LetterDraw } from "../../types/herald";
 import type { SefirahId } from "../../types/letter";
 import { lettersById } from "../../data/letters";
-import { middot } from "../../data/middot";
 import { dorotCardsById } from "../../data/dorot";
 import { computeSacredTime } from "../../data/sacredTime";
 import { formatHebrewDateEnglish } from "../../data/hebrewCalendar";
@@ -149,6 +148,12 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
     }
   }
 
+  // The plate itself shows the placed cards, so it re-rasterises when a
+  // placement changes (keyed below), not on every render.
+  const centralPlacements = { letters: state.letters, veiled: state.veiled, middah: state.middah };
+  const drawKey = (d: LetterDraw | null) => (d ? `${d.letterId}${d.orientation[0]}` : "_");
+  const centralKey = `central-${state.letters.map(drawKey).join("")}-${drawKey(state.veiled)}-${state.middah ?? "_"}`;
+
   const dateKey = `${state.effectiveDate.getTime()}-${state.geoMode}`;
   // Build one mandala plane. The static base and the flat fallback carry the
   // charcoal ground; the two cyclewheels are drawn on transparent planes so
@@ -167,8 +172,8 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
       {/* Central panel (3D plate, or SVG fallback) + interaction overlay */}
       <div className={styles.panelWrap}>
         <FolioCanvas
-          fallbackArt={<MizbeachCentralPanel />}
-          layers={[{ art: <MizbeachCentralPanel />, textureKey: "central" }]}
+          fallbackArt={<MizbeachCentralPanel placements={centralPlacements} />}
+          layers={[{ art: <MizbeachCentralPanel placements={centralPlacements} />, textureKey: centralKey }]}
           viewBox={{ width: CENTRAL_PANEL.width, height: CENTRAL_PANEL.height }}
         >
         <svg
@@ -177,13 +182,15 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
           role="group"
           aria-label="Reading placements"
         >
+          {/* The hand / letter / veiled / tree slots are drawn on the folio
+              plate itself, so their overlay targets are bare (an invisible
+              hit-area with a focus/hover frame) rather than a schematic box. */}
           {CENTRAL_ZONES.filter((z) => z.kind !== "gate" && z.kind !== "well").map((zone) => (
             <ZoneTarget
               key={zone.id}
               zone={zone}
+              bare
               filled={isZoneFilled(zone, state)}
-              glyph={zoneGlyph(zone, state, placedGlyph)}
-              sublabel={zoneSublabel(zone, state)}
               onActivate={() => openZone(zone.id)}
             />
           ))}
@@ -311,12 +318,15 @@ function ZoneTarget({
   glyph,
   sublabel,
   onActivate,
+  bare = false,
 }: {
   zone: Zone;
   filled: boolean;
   glyph?: string;
   sublabel?: string;
   onActivate: () => void;
+  /** The slot is drawn on the folio plate itself, so the target is an invisible hit-area (frame on hover/focus only). */
+  bare?: boolean;
 }) {
   return (
     <g
@@ -338,19 +348,19 @@ function ZoneTarget({
         width={zone.w}
         height={zone.h}
         rx={8}
-        className={styles.zoneRect}
+        className={bare ? styles.zoneRectBare : styles.zoneRect}
       />
-      {glyph && (
+      {!bare && glyph && (
         <text x={zone.cx} y={zone.cy + 18} textAnchor="middle" fontFamily="var(--font-hebrew)" fontSize={52} fill="var(--color-gold)">
           {glyph}
         </text>
       )}
-      {!glyph && !filled && (
+      {!bare && !glyph && !filled && (
         <text x={zone.cx} y={zone.cy + 8} textAnchor="middle" fontSize={26} fill="var(--color-gold)" opacity={0.5}>
           +
         </text>
       )}
-      {sublabel && (
+      {!bare && sublabel && (
         <text x={zone.cx} y={zone.cy + zone.h / 2 - 6} textAnchor="middle" fontSize={11} fill="var(--color-silver)">
           {sublabel}
         </text>
@@ -418,21 +428,4 @@ function isZoneFilled(zone: Zone, state: MizbeachReadingState): boolean {
   if (zone.kind === "veiled") return state.veiled !== null;
   if (zone.kind === "letter") return state.letters[zone.index!] !== null;
   return false;
-}
-
-function zoneGlyph(
-  zone: Zone,
-  state: MizbeachReadingState,
-  placedGlyph: (d: LetterDraw | null) => string | undefined,
-): string | undefined {
-  if (zone.kind === "letter") return placedGlyph(state.letters[zone.index!]);
-  if (zone.kind === "veiled") return state.veiled ? "◈" : undefined; // stays sealed — a mark, not the glyph
-  return undefined;
-}
-
-function zoneSublabel(zone: Zone, state: MizbeachReadingState): string | undefined {
-  if (zone.kind === "hand") return state.palmNotes.trim() ? "recorded" : undefined;
-  if (zone.kind === "tree" && state.middah) return middot.find((m) => m.id === state.middah)?.label.split(" — ")[0];
-  if (zone.kind === "veiled" && state.veiled) return "sealed";
-  return undefined;
 }

@@ -1,5 +1,90 @@
 import { TREE_OF_LIFE_NODES, TREE_OF_LIFE_PATHS } from "../../herald/render/heraldGeometry";
 import { CENTRAL_PANEL } from "./mizbeachGeometry";
+import type { LetterDraw } from "../../types/herald";
+import type { SefirahId } from "../../types/letter";
+import { colorFor, darken } from "../../herald/render/letterColors";
+import { letterPaths } from "../../herald/render/letterPaths.generated";
+
+/** The reading's placements, so the folio plate shows real illuminated cards in its slots. */
+export interface CentralPlacements {
+  letters: [LetterDraw | null, LetterDraw | null, LetterDraw | null];
+  veiled: LetterDraw | null;
+  middah: SefirahId | null;
+}
+
+/** A font-independent Hebrew letterform (David Libre outline), centred in a box, flipped 180° when the card is reversed. */
+function PathGlyph({
+  letterId,
+  cx,
+  cy,
+  size,
+  reversed,
+  fill,
+}: {
+  letterId: string;
+  cx: number;
+  cy: number;
+  size: number;
+  reversed: boolean;
+  fill: string;
+}) {
+  const g = letterPaths[letterId];
+  if (!g) return null;
+  const w = g.bbox.maxX - g.bbox.minX;
+  const h = g.bbox.maxY - g.bbox.minY;
+  const s = Math.min(size / h, size / w);
+  const cxf = (g.bbox.minX + g.bbox.maxX) / 2;
+  const cyf = (g.bbox.minY + g.bbox.maxY) / 2;
+  const sx = reversed ? -s : s;
+  const sy = reversed ? s : -s;
+  return <path d={g.d} transform={`translate(${cx} ${cy}) scale(${sx} ${sy}) translate(${-cxf} ${-cyf})`} fill={fill} />;
+}
+
+/** A placed letter, drawn as an illuminated card: its own tincture field, a double gold frame, the gold letterform. */
+function LetterCard({ draw, cx, cy, size }: { draw: LetterDraw; cx: number; cy: number; size: number }) {
+  const field = darken(colorFor(draw.letterId), 0.18);
+  const half = size / 2;
+  return (
+    <g>
+      <rect x={cx - half} y={cy - half} width={size} height={size} rx={10} fill={field} stroke="var(--color-gold)" strokeWidth={2} />
+      <rect
+        x={cx - half + 5}
+        y={cy - half + 5}
+        width={size - 10}
+        height={size - 10}
+        rx={7}
+        fill="none"
+        stroke="var(--color-gold-bright)"
+        strokeWidth={0.75}
+        opacity={0.5}
+      />
+      <PathGlyph letterId={draw.letterId} cx={cx} cy={cy - 4} size={size * 0.56} reversed={draw.orientation === "reversed"} fill="var(--color-gold-bright)" />
+      {draw.orientation === "reversed" && (
+        <text x={cx} y={cy + half - 7} textAnchor="middle" fontFamily="var(--font-latin)" fontSize={8} fill="var(--color-gold)" opacity={0.75}>
+          reversed
+        </text>
+      )}
+    </g>
+  );
+}
+
+/** An empty slot, drawn as a recessed gold-framed card niche with a quiet estoile — not a wireframe. */
+function LetterNiche({ cx, cy, size }: { cx: number; cy: number; size: number }) {
+  const half = size / 2;
+  return (
+    <g>
+      <rect x={cx - half} y={cy - half} width={size} height={size} rx={10} fill="#0f1216" stroke="var(--color-gold)" strokeWidth={1.25} opacity={0.85} />
+      <rect x={cx - half + 4} y={cy - half + 4} width={size - 8} height={size - 8} rx={7} fill="none" stroke="var(--color-charcoal-line)" strokeWidth={1} />
+      <path
+        d={`M ${cx} ${cy - 9} L ${cx + 6} ${cy} L ${cx} ${cy + 9} L ${cx - 6} ${cy} Z`}
+        fill="none"
+        stroke="var(--color-gold)"
+        strokeWidth={0.75}
+        opacity={0.4}
+      />
+    </g>
+  );
+}
 
 /**
  * The Mizbe'ach's central panel — Hand Anchor, Three Gates, Three Wells,
@@ -180,7 +265,7 @@ function ThreeWells() {
   );
 }
 
-function VeiledAnchor({ x, y }: { x: number; y: number }) {
+function VeiledAnchor({ x, y, placed = false }: { x: number; y: number; placed?: boolean }) {
   return (
     <g>
       <g stroke="var(--color-silver)" strokeWidth={2} fill="none" opacity={0.5}>
@@ -189,8 +274,8 @@ function VeiledAnchor({ x, y }: { x: number; y: number }) {
         <line x1={x - 14} y1={y - 30} x2={x + 14} y2={y - 30} />
         <path d={`M ${x - 18} ${y + 5} Q ${x - 20} ${y + 20}, ${x} ${y + 22} Q ${x + 20} ${y + 20}, ${x + 18} ${y + 5}`} />
       </g>
-      {/* Draped curtain, partially obscuring the anchor */}
-      <g fill="var(--color-charcoal-raised)" opacity={0.75}>
+      {/* Draped curtain, obscuring the anchor — heavier once a veiled card is sealed within. */}
+      <g fill="var(--color-charcoal-raised)" opacity={placed ? 0.95 : 0.75}>
         {[-24, -8, 8, 24].map((dx) => (
           <path
             key={dx}
@@ -198,17 +283,24 @@ function VeiledAnchor({ x, y }: { x: number; y: number }) {
           />
         ))}
       </g>
+      {placed && (
+        <g>
+          {/* A wax seal over the drawn curtain — the card is set, but stays hidden. */}
+          <circle cx={x} cy={y - 12} r={11} fill="var(--color-copper)" stroke="var(--color-gold-bright)" strokeWidth={1.5} />
+          <path d={`M ${x} ${y - 20} L ${x + 5} ${y - 12} L ${x} ${y - 4} L ${x - 5} ${y - 12} Z`} fill="var(--color-gold-bright)" />
+        </g>
+      )}
       <text x={x} y={y + 50} textAnchor="middle" fontFamily="var(--font-latin)" fontSize={11} fill="var(--text)">
         Veiled Anchor
       </text>
       <text x={x} y={y + 64} textAnchor="middle" fontFamily="var(--font-latin)" fontSize={9} fill="var(--text-muted)">
-        Revealed in its time
+        {placed ? "Sealed — revealed in its time" : "Revealed in its time"}
       </text>
     </g>
   );
 }
 
-function SmallTreeOfLife({ x, y }: { x: number; y: number }) {
+function SmallTreeOfLife({ x, y, middah }: { x: number; y: number; middah?: SefirahId | null }) {
   const boxSize = 90;
   const originX = x - boxSize / 2;
   const originY = y - 70;
@@ -227,8 +319,17 @@ function SmallTreeOfLife({ x, y }: { x: number; y: number }) {
       })}
       {TREE_OF_LIFE_NODES.map((node) => {
         const p = pos(node.id);
+        const chosen = middah != null && node.id === middah;
         return (
-          <circle key={node.id} cx={p.x} cy={p.y} r={5} fill="none" stroke="var(--color-gold)" strokeWidth={1.25} />
+          <circle
+            key={node.id}
+            cx={p.x}
+            cy={p.y}
+            r={chosen ? 7 : 5}
+            fill={chosen ? "var(--color-gold-bright)" : "none"}
+            stroke={chosen ? "var(--color-gold-bright)" : "var(--color-gold)"}
+            strokeWidth={chosen ? 2 : 1.25}
+          />
         );
       })}
       <text x={x} y={y + 50} textAnchor="middle" fontFamily="var(--font-latin)" fontSize={11} fill="var(--text)">
@@ -241,29 +342,20 @@ function SmallTreeOfLife({ x, y }: { x: number; y: number }) {
   );
 }
 
-/** The three letter positions between the Hand Anchor and the Gates — faint on the folio until a reading places its letters. */
-function LetterSlots() {
+/** The three letter positions between the Hand Anchor and the Gates — an empty niche until a reading places its card. */
+function LetterSlots({ placements }: { placements?: CentralPlacements }) {
   const { columnX, handY, gatesY } = CENTRAL_PANEL;
   const y = Math.round(handY + (gatesY - handY) * 0.42);
   return (
     <g>
-      {columnX.map((x, i) => (
-        <g key={i}>
-          <rect
-            x={x - 44}
-            y={y - 44}
-            width={88}
-            height={88}
-            rx={8}
-            fill="none"
-            stroke="var(--color-gold)"
-            strokeWidth={1}
-            strokeDasharray="2 6"
-            opacity={0.28}
-          />
-          <circle cx={x} cy={y} r={2.5} fill="var(--color-gold)" opacity={0.4} />
-        </g>
-      ))}
+      {columnX.map((x, i) => {
+        const draw = placements?.letters[i] ?? null;
+        return (
+          <g key={i}>
+            {draw ? <LetterCard draw={draw} cx={x} cy={y} size={88} /> : <LetterNiche cx={x} cy={y} size={88} />}
+          </g>
+        );
+      })}
       <text
         x={CENTRAL_PANEL.width / 2}
         y={y + 62}
@@ -279,7 +371,7 @@ function LetterSlots() {
   );
 }
 
-export function MizbeachCentralPanel() {
+export function MizbeachCentralPanel({ placements }: { placements?: CentralPlacements }) {
   const { width, height, topBanner, bottomRowY, bottomBanner } = CENTRAL_PANEL;
   return (
     <svg
@@ -302,11 +394,11 @@ export function MizbeachCentralPanel() {
         דע לפני מי אתה עומד
       </text>
       <HandAnchor />
-      <LetterSlots />
+      <LetterSlots placements={placements} />
       <ThreeGates />
       <ThreeWells />
-      <VeiledAnchor x={CENTRAL_PANEL.columnX[0] + 60} y={bottomRowY} />
-      <SmallTreeOfLife x={CENTRAL_PANEL.columnX[2] - 60} y={bottomRowY} />
+      <VeiledAnchor x={CENTRAL_PANEL.columnX[0] + 60} y={bottomRowY} placed={!!placements?.veiled} />
+      <SmallTreeOfLife x={CENTRAL_PANEL.columnX[2] - 60} y={bottomRowY} middah={placements?.middah} />
       <text
         x={width / 2}
         y={bottomBanner}
