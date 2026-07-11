@@ -26,6 +26,7 @@ import { HeraldStylePanel } from "./style/HeraldStylePanel";
 import { SacredTimeBanners } from "./lifeCycle/SacredTimeBanners";
 import { exportHeraldSvg } from "./export/exportSvg";
 import { exportHeraldPng } from "./export/exportPng";
+import { blazonForSnapshot, blazonForForm, downloadBlazon } from "./export/blazon";
 import styles from "./HeraldPage.module.css";
 
 export function HeraldPage() {
@@ -271,6 +272,22 @@ export function HeraldPage() {
                     }
                   >
                     Download PNG
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const name = selectedParticipant?.displayName ?? "Herald";
+                      const blazon =
+                        viewingSynthesis && heraldForm
+                          ? blazonForForm(heraldForm, styleDraft, synthesisEpithet)
+                          : selectedLayer
+                            ? blazonForSnapshot(selectedLayer.input, styleDraft, epithetForSelectedLayer)
+                            : undefined;
+                      if (blazon) downloadBlazon(blazon, name, `${name}-blazon.txt`);
+                    }}
+                    title="A written description of the arms — the brief for an illustrator or foil die"
+                  >
+                    Download blazon
                   </button>
                 </div>
                 <HeraldStylePanel
