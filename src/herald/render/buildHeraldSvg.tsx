@@ -101,7 +101,7 @@ function TreeOfLife({ lit, dominant }: { lit: string[]; dominant: string }) {
             cx={p.x}
             cy={p.y}
             r={isDominant ? 8 : isLit ? 6 : 4}
-            fill={isDominant ? "var(--color-gold)" : isLit ? "var(--color-gold)" : "none"}
+            fill={isDominant ? "url(#herald-gold-leaf)" : isLit ? "var(--color-gold)" : "none"}
             fillOpacity={isDominant ? 1 : isLit ? 0.55 : 1}
             stroke={
               isDominant
@@ -111,6 +111,7 @@ function TreeOfLife({ lit, dominant }: { lit: string[]; dominant: string }) {
                   : "var(--color-silver)"
             }
             strokeWidth={isDominant ? 2 : isLit ? 1.5 : 1}
+            filter={isDominant ? "url(#herald-glow)" : undefined}
           />
         );
       })}
@@ -382,10 +383,16 @@ function HeraldFigure({
       : [];
 
   return (
-    <g clipPath="url(#herald-shield-clip)">
-      <path d={SHIELD_PATH} fill="var(--color-charcoal-raised)" />
+    <>
+      {/* A faint gold halo, and a soft shadow so the plate rests upon the field. */}
+      <rect x={0} y={40} width={600} height={740} fill="url(#herald-field-glow)" />
+      <path d={SHIELD_PATH} fill="var(--color-charcoal)" filter="url(#herald-emboss)" />
+      <g clipPath="url(#herald-shield-clip)">
+        <path d={SHIELD_PATH} fill="url(#herald-shield-fill)" />
+        {/* Parchment tooth over the charcoal interior. */}
+        <rect x={66} y={86} width={468} height={638} fill="#c9a24b" filter="url(#herald-vellum)" opacity={0.32} />
 
-      <DivisionDividers bands={divisions.map((d) => d.band)} />
+        <DivisionDividers bands={divisions.map((d) => d.band)} />
 
       <TreeOfLife lit={litSefirot} dominant={dominantSefirah} />
 
@@ -438,7 +445,7 @@ function HeraldFigure({
             textAnchor="middle"
             fontFamily="var(--font-hebrew)"
             fontSize={baseSize}
-            fill="var(--color-gold)"
+            fill="url(#herald-gold-leaf)"
             stroke="var(--color-gold-bright)"
             strokeWidth={0.5}
             transform={flip ? `rotate(180 ${bandCenter} ${BAND_TOP - baseSize / 3})` : undefined}
@@ -453,9 +460,11 @@ function HeraldFigure({
       {festivalMotifs.map((motif) => (
         <FestivalMotif key={motif} motif={motif} center={center} />
       ))}
-      <OrnamentalBorder density={ornamentDensity} color={accentColor} nameSeed={nameSeed} />
+        <OrnamentalBorder density={ornamentDensity} color={accentColor} nameSeed={nameSeed} />
+      </g>
+      {/* The escutcheon edge, outside the clip so the full stroke reads. */}
       <path d={SHIELD_PATH} fill="none" stroke={accentColor} strokeWidth={2.5} />
-    </g>
+    </>
   );
 }
 
@@ -500,7 +509,7 @@ function EtzChaimCharges({ draws }: { draws: LetterDraw[] }) {
               textAnchor="middle"
               fontFamily="var(--font-hebrew)"
               fontSize={54}
-              fill="var(--color-gold)"
+              fill="url(#herald-gold-leaf)"
               stroke="var(--color-gold-bright)"
               strokeWidth={0.5}
               transform={flip ? `rotate(180 ${center.x} ${row.y - 18})` : undefined}
@@ -587,7 +596,7 @@ function YichudOverlay({
         textAnchor="middle"
         fontFamily="var(--font-hebrew)"
         fontSize={48}
-        fill="var(--color-gold)"
+        fill="url(#herald-gold-leaf)"
         stroke="var(--color-gold-bright)"
         strokeWidth={0.5}
         transform={flip ? `rotate(180 ${center.x} ${unveiledY - 16})` : undefined}
@@ -712,12 +721,73 @@ export function HeraldCovenantContent({ form }: { form: CovenantalForm }) {
   );
 }
 
+/**
+ * The illumination layer — gradients, filters, and a texture that turn the
+ * flat linework into an illuminated plate. All defs are static (determinism
+ * preserved) and live inside the exported `<svg>`, so SVG export clones them
+ * and PNG rasterizes them. Gradient/texture stop-colours are written as
+ * literal hex (mirroring the brand constants in theme.css) — NOT `var(--…)` —
+ * because the SVG-export var-resolver walks fill/stroke/style, not stop-color.
+ */
 export function HeraldSvgDefs() {
   return (
     <defs>
       <clipPath id="herald-shield-clip">
         <path d={SHIELD_PATH} />
       </clipPath>
+
+      {/* Beaten gold-leaf: a pale highlight sweeping to a deep shadow. */}
+      <linearGradient id="herald-gold-leaf" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#f4e4b0" />
+        <stop offset="34%" stopColor="#e4c579" />
+        <stop offset="66%" stopColor="#c9a24b" />
+        <stop offset="100%" stopColor="#9c7a35" />
+      </linearGradient>
+
+      {/* A softer, near-vertical gold for strokes/flourishes. */}
+      <linearGradient id="herald-gold-leaf-soft" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#ecd291" />
+        <stop offset="55%" stopColor="#c9a24b" />
+        <stop offset="100%" stopColor="#a9853a" />
+      </linearGradient>
+
+      {/* Shield interior: a raised centre falling to the charcoal edge (depth). */}
+      <radialGradient id="herald-shield-fill" cx="0.5" cy="0.42" r="0.75">
+        <stop offset="0%" stopColor="#232833" />
+        <stop offset="70%" stopColor="#1a1e25" />
+        <stop offset="100%" stopColor="#14171c" />
+      </radialGradient>
+
+      {/* A faint gold halo behind the shield. */}
+      <radialGradient id="herald-field-glow" cx="0.5" cy="0.42" r="0.5">
+        <stop offset="0%" stopColor="#c9a24b" stopOpacity="0.14" />
+        <stop offset="60%" stopColor="#c9a24b" stopOpacity="0.05" />
+        <stop offset="100%" stopColor="#c9a24b" stopOpacity="0" />
+      </radialGradient>
+
+      {/* Soft outer shadow so the plate sits upon the field, not floats on it. */}
+      <filter id="herald-emboss" x="-12%" y="-12%" width="124%" height="124%">
+        <feDropShadow dx="0" dy="3" stdDeviation="5" floodColor="#000000" floodOpacity="0.45" />
+      </filter>
+
+      {/* A gentle glow for the dominant emblems (crest, dominant Tree node). */}
+      <filter id="herald-glow" x="-40%" y="-40%" width="180%" height="180%">
+        <feGaussianBlur stdDeviation="2.4" result="b" />
+        <feMerge>
+          <feMergeNode in="b" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+
+      {/* Parchment tooth: a whisper of fractal texture over the charcoal field. */}
+      <filter id="herald-vellum" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="3" seed="7" stitchTiles="stitch" result="noise" />
+        <feColorMatrix
+          in="noise"
+          type="matrix"
+          values="0 0 0 0 0.86  0 0 0 0 0.79  0 0 0 0 0.6  0 0 0 0.5 0"
+        />
+      </filter>
     </defs>
   );
 }
