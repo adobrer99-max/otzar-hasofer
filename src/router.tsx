@@ -25,6 +25,7 @@ const Scribe = lazyPage(() => import("./guide/pages/Scribe"), "Scribe");
 const SacredTime = lazyPage(() => import("./guide/pages/SacredTime"), "SacredTime");
 const Encounters = lazyPage(() => import("./guide/pages/Encounters"), "Encounters");
 const VisualCanon = lazyPage(() => import("./guide/pages/VisualCanon"), "VisualCanon");
+const StylesheetPreview = lazyPage(() => import("./guide/pages/StylesheetPreview"), "StylesheetPreview");
 const HeraldPage = lazyPage(() => import("./herald/HeraldPage"), "HeraldPage");
 const CovenantPage = lazyPage(() => import("./herald/covenant/CovenantPage"), "CovenantPage");
 const MizbeachToolPage = lazyPage(() => import("./mizbeach/MizbeachToolPage"), "MizbeachToolPage");
@@ -50,6 +51,7 @@ export const router = createHashRouter([
       { path: "guide/sacred-time", element: <SacredTime /> },
       { path: "guide/encounters", element: <Encounters /> },
       { path: "guide/visual-canon", element: <VisualCanon /> },
+      { path: "guide/stylesheet-preview", element: <StylesheetPreview /> },
       { path: "herald", element: <HeraldPage /> },
       { path: "mizbeach", element: <MizbeachToolPage /> },
       { path: "covenant", element: <CovenantPage /> },
