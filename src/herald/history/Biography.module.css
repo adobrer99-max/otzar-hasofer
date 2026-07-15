@@ -1,0 +1,92 @@
+.wrap {
+  margin-top: var(--space-5);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: var(--space-4);
+}
+.rule {
+  flex: 1;
+  height: 1px;
+  background: var(--border-hairline);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card {
+  width: 100%;
+  text-align: start;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  border: 1px solid var(--border-hairline);
+  border-inline-start: 3px solid var(--accent);
+  border-radius: 11px;
+  padding: 20px 24px;
+  background: var(--bg-raised);
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+.card:hover {
+  background: color-mix(in srgb, var(--bg-raised) 84%, var(--accent));
+}
+.active {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.node {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-hebrew);
+  font-size: 20px;
+  color: var(--color-charcoal);
+  background: radial-gradient(circle at 40% 35%, var(--color-gold-bright), var(--color-gold));
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.cardHead {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.title {
+  font-family: var(--font-latin);
+  font-size: 1.35rem;
+  color: var(--text);
+}
+.heb {
+  font-size: 1.1rem;
+  color: color-mix(in srgb, var(--accent) 82%, var(--text-muted));
+}
+.date {
+  margin-inline-start: auto;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.desc {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  text-wrap: pretty;
+}
