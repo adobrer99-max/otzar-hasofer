@@ -43,7 +43,6 @@ function RingSegments({
   renderLabel,
   fontFamily = "var(--font-latin)",
   rotating = false,
-  upright = false,
 }: {
   radius: number;
   thickness: number;
@@ -52,17 +51,12 @@ function RingSegments({
   renderLabel: (index: number) => string;
   fontFamily?: string;
   /**
-   * On a wheel that physically turns (the interactive folio), labels are
-   * inscribed tangentially so their orientation is rotation-invariant — they
-   * stay glued to the ring as it turns, instead of floating off.
+   * True for a wheel that physically turns on the 3D folio (the Month and Moon
+   * cyclewheels). Such a wheel is drawn without slice labels — baked into the
+   * rotating texture the text would tilt/invert as it turns. Static rings and
+   * the flat guide/print render (rotating=false) keep their upright labels.
    */
   rotating?: boolean;
-  /**
-   * Keep every label horizontally upright at its slice centre (the mockup's
-   * Ring Mandala convention) rather than following the ring's curve. Wins over
-   * `rotating` when both are set.
-   */
-  upright?: boolean;
 }) {
   const inner = radius - thickness / 2;
   const outer = radius + thickness / 2;
@@ -102,30 +96,35 @@ function RingSegments({
           return <line key={i} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} />;
         })}
       </g>
-      {/* Labels */}
-      {Array.from({ length: count }).map((_, i) => {
-        const [start, end] = segmentAngles(count, i);
-        const isActive = i === activeIndex;
-        const mid = (start + end) / 2;
-        const labelPos = polarToCartesian(CENTER.x, CENTER.y, radius, mid);
-        return (
-          <text
-            key={i}
-            x={labelPos.x}
-            y={labelPos.y}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            transform={!upright && rotating ? `rotate(${mid} ${labelPos.x} ${labelPos.y})` : undefined}
-            fontFamily={fontFamily}
-            fontSize={11}
-            fontWeight={isActive ? 600 : 400}
-            fill={isActive ? "var(--color-charcoal)" : "var(--color-silver)"}
-            opacity={isActive ? 1 : 0.72}
-          >
-            {renderLabel(i)}
-          </text>
-        );
-      })}
+      {/* Labels. Suppressed on a physically-turning wheel (the interactive 3D
+          folio's Month/Moon planes): baked into the rotating texture the text
+          tilts/inverts as the wheel turns, so it reads as noise. The gold-lit
+          active slice plus the readout below carry the value instead. The flat
+          guide/print render never spins (rotating=false) → labels shown upright;
+          the static Weekday ring never sets `rotating` → always labelled. */}
+      {!rotating &&
+        Array.from({ length: count }).map((_, i) => {
+          const [start, end] = segmentAngles(count, i);
+          const isActive = i === activeIndex;
+          const mid = (start + end) / 2;
+          const labelPos = polarToCartesian(CENTER.x, CENTER.y, radius, mid);
+          return (
+            <text
+              key={i}
+              x={labelPos.x}
+              y={labelPos.y}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontFamily={fontFamily}
+              fontSize={11}
+              fontWeight={isActive ? 600 : 400}
+              fill={isActive ? "var(--color-charcoal)" : "var(--color-silver)"}
+              opacity={isActive ? 1 : 0.72}
+            >
+              {renderLabel(i)}
+            </text>
+          );
+        })}
     </g>
   );
 }
@@ -167,8 +166,9 @@ function MoonRing({ phase, neutral, rotating }: { phase: LunarPhase; neutral?: b
  * The outer Month ring — the twelve Hebrew months. The `mazalotRing` order is
  * reused purely as the canonical month sequence (its zodiac labels are no
  * longer drawn); a given slice always names the same month, angle-aligned with
- * the folio's turnable outer wheel. Labels are inscribed upright (the Ring
- * Mandala convention) rather than following the ring's curve.
+ * the folio's turnable outer wheel. On the flat guide/print render the month
+ * names are inscribed upright; on the turning 3D wheel they are omitted (see
+ * `RingSegments`), the gold-lit slice marking the current month instead.
  */
 function MonthRing({
   activeMonth,
@@ -194,7 +194,6 @@ function MonthRing({
       activeIndex={activeIndex}
       renderLabel={(i) => (i === activeIndex && primaryFestival ? primaryFestival.gesture ?? primaryFestival.name : months[i])}
       rotating={rotating}
-      upright
     />
   );
 }
@@ -231,7 +230,6 @@ function WeekdayRing({ dayOfWeek, neutral }: { dayOfWeek: DayOfWeek; neutral?: b
         activeIndex={activeIndex}
         renderLabel={(i) => WEEKDAYS[i].hebrew}
         fontFamily="var(--font-hebrew)"
-        upright
       />
       {activeIndex !== 0 && (
         <path
@@ -315,60 +313,47 @@ function SabbathCore({
   );
 }
 
-const PARDES_CORNERS: { key: keyof typeof CORNER_POINTS; title: string; subtitle: string }[] = [
-  { key: "peshat", title: "Peshat", subtitle: "The Simple" },
-  { key: "remez", title: "Remez", subtitle: "The Hinted" },
-  { key: "drash", title: "Drash", subtitle: "The Sought" },
-  { key: "sod", title: "Sod", subtitle: "The Lived" },
+const PARDES_CORNERS: { key: keyof typeof CORNER_POINTS; title: string }[] = [
+  { key: "peshat", title: "Peshat" },
+  { key: "remez", title: "Remez" },
+  { key: "drash", title: "Drash" },
+  { key: "sod", title: "Sod" },
 ];
 
 function PardesCorners() {
   return (
     <g>
-      {PARDES_CORNERS.map(({ key, title, subtitle }) => {
+      {PARDES_CORNERS.map(({ key, title }) => {
         const point = CORNER_POINTS[key];
         return (
-          <g key={key}>
-            <text
-              x={point.x}
-              y={point.y}
-              textAnchor="middle"
-              fontFamily="var(--font-hebrew)"
-              fontSize={18}
-              fill={GOLD}
-            >
-              {title}
-            </text>
-            <text
-              x={point.x}
-              y={point.y + 15}
-              textAnchor="middle"
-              fontFamily="var(--font-latin)"
-              fontSize={9}
-              fill="var(--color-silver)"
-              opacity={0.75}
-            >
-              {subtitle}
-            </text>
-          </g>
+          <text
+            key={key}
+            x={point.x}
+            y={point.y}
+            textAnchor="middle"
+            fontFamily="var(--font-hebrew)"
+            fontSize={18}
+            fill={GOLD}
+          >
+            {title}
+          </text>
         );
       })}
     </g>
   );
 }
 
-/** The seven species of Deuteronomy 8:8 — "the Fruits of the Covenant." */
-const SHIVAT_HAMINIM = ["Wheat", "Barley", "Grape", "Fig", "Pomegranate", "Olive", "Date"];
-
+/**
+ * The outer gold-leaf border — a double rule with evenly-spaced flourish ticks.
+ * (It once carried the seven species names of Deut. 8:8; those Latin labels are
+ * dropped to keep the mandala's text Hebrew, but the decorative frame stays.)
+ */
 function ShivatHaminimBorder() {
-  const speciesPoints = circlePerimeterPoints(7, RINGS.border.radius);
-  // 28 = 7 * 4, so every 4th point of this finer ring lands exactly on a
-  // species point above — filtering those out leaves 3 plain flourish
-  // ticks evenly spaced between each pair of species.
+  // 28 = 7 * 4: dropping every 4th tick leaves 3 flourishes evenly spaced in
+  // each of the seven arcs, keeping the border's sevenfold rhythm.
   const flourishPoints = circlePerimeterPoints(28, RINGS.border.radius).filter((_, i) => i % 4 !== 0);
   return (
     <g>
-      {/* A gold-leaf double rule frames the seven species. */}
       <circle cx={CENTER.x} cy={CENTER.y} r={RINGS.border.radius + 6} fill="none" stroke={GOLD} strokeWidth={1.5} opacity={0.7} />
       <circle cx={CENTER.x} cy={CENTER.y} r={RINGS.border.radius} fill="none" stroke={GOLD} strokeWidth={1} opacity={0.4} />
       <g stroke={GOLD} fill={GOLD} opacity={0.7}>
@@ -382,20 +367,6 @@ function ShivatHaminimBorder() {
           />
         ))}
       </g>
-      {speciesPoints.map((p, i) => (
-        <text
-          key={i}
-          x={p.x}
-          y={p.y}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fontFamily="var(--font-latin)"
-          fontSize={9}
-          fill="var(--color-gold-bright)"
-        >
-          {SHIVAT_HAMINIM[i]}
-        </text>
-      ))}
     </g>
   );
 }
@@ -473,8 +444,9 @@ export function MizbeachSvgContent({
   only?: MandalaSlice;
 }) {
   const isShabbat = !neutral && sacredTime.activeFestivalIds.includes("shabbat");
-  // Only the interactive slices are drawn on turning planes, so their labels are
-  // inscribed tangentially; the combined flat render (guide/print) keeps them upright.
+  // The Month/Moon slices are drawn on turning planes (the 3D volvelle), so they
+  // are rendered without labels; the combined flat render (guide/print) is still
+  // and keeps its upright labels.
   const wheelRotating = only === "outer-wheel" || only === "moon-wheel";
 
   const outerWheel = (
