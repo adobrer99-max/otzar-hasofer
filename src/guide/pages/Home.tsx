@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { Card, DecoratedRule } from "../../components/ui";
 import { guideLinks, practiceLinks, libraryLinks, type SiteLink } from "../../components/siteMap";
-import { HeroSigil } from "./HeroSigil";
 import styles from "./Home.module.css";
 
 function DoorGrid({ doors }: { doors: SiteLink[] }) {
@@ -45,7 +44,13 @@ export function Home() {
           </div>
         </div>
         <div className={styles.heroSigil}>
-          <HeroSigil />
+          <img
+            className={styles.seal}
+            src="scribe-seal.png"
+            alt="The Scribe's Seal"
+            width={640}
+            height={640}
+          />
         </div>
       </section>
 
