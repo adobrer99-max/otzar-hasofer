@@ -135,3 +135,57 @@ export async function addLayer(
   await enqueueSync("heraldLayers", layer.id, "put");
   return layer;
 }
+
+/**
+ * Deletes a single reading (Herald layer), then renumbers the participant's
+ * remaining layers in `createdAt` order so `layerIndex` stays contiguous and
+ * exactly the earliest carries `isOrigin` — keeping Encounter numbering, the
+ * ghosted-previous-layer step, and `layerCount` correct after a mid-history
+ * deletion.
+ */
+export async function deleteLayer(participantId: string, layerId: string): Promise<void> {
+  const db = await getDb();
+  await db.delete("heraldLayers", layerId);
+  await enqueueSync("heraldLayers", layerId, "delete");
+  const remaining = (await db.getAllFromIndex("heraldLayers", "by-participant", participantId)).sort(
+    (a, b) => a.createdAt.localeCompare(b.createdAt),
+  );
+  for (let i = 0; i < remaining.length; i++) {
+    const l = remaining[i];
+    const isOrigin = i === 0;
+    if (l.layerIndex !== i || l.isOrigin !== isOrigin) {
+      const updated: HeraldLayer = { ...l, layerIndex: i, isOrigin };
+      await db.put("heraldLayers", updated);
+      await enqueueSync("heraldLayers", l.id, "put");
+    }
+  }
+}
+
+/**
+ * Deletes a participant and everything belonging to them — all their Herald
+ * layers, their life-cycle events, and any union (marriage) that references
+ * them — so no orphaned records survive. Sync tombstones are enqueued for each
+ * (a no-op when no cloud is configured).
+ */
+export async function deleteParticipant(participantId: string): Promise<void> {
+  const db = await getDb();
+  const layers = await db.getAllFromIndex("heraldLayers", "by-participant", participantId);
+  for (const l of layers) {
+    await db.delete("heraldLayers", l.id);
+    await enqueueSync("heraldLayers", l.id, "delete");
+  }
+  const events = await db.getAllFromIndex("lifeCycleEvents", "by-participant", participantId);
+  for (const e of events) {
+    await db.delete("lifeCycleEvents", e.id);
+    await enqueueSync("lifeCycleEvents", e.id, "delete");
+  }
+  const unions = await db.getAll("unions");
+  for (const u of unions) {
+    if (u.partnerAId === participantId || u.partnerBId === participantId) {
+      await db.delete("unions", u.id);
+      await enqueueSync("unions", u.id, "delete");
+    }
+  }
+  await db.delete("participants", participantId);
+  await enqueueSync("participants", participantId, "delete");
+}

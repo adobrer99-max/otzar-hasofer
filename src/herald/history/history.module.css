@@ -24,6 +24,32 @@
   cursor: pointer;
 }
 
+/* Low-emphasis destructive controls (remove participant / delete reading). */
+.dangerLink {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  color: var(--text-muted) !important;
+  font-size: 0.85rem;
+}
+.dangerLink:hover {
+  color: var(--color-copper) !important;
+  border-color: var(--border-hairline) !important;
+}
+.confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.confirmText {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.dangerBtn {
+  border-color: var(--color-copper) !important;
+  color: var(--color-copper) !important;
+}
+
 .scrubber {
   display: flex;
   gap: var(--space-2);

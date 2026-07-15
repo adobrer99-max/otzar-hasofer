@@ -36,13 +36,50 @@
   border-color: var(--accent);
 }
 
-/* The rendered Herald sits on a gold-ruled plate. */
+/* The rendered Herald sits on an illuminated plate — the same lit-document
+   language as the rest of the site. All of this richness is screen-only CSS on
+   the wrapper; the SVG inside is untouched, so the exported/foil-stamp master
+   stays flat. */
 .canvasCol > .heraldFrame {
+  position: relative;
   border: 1px solid var(--accent);
   border-radius: var(--radius-md);
   overflow: hidden;
-  box-shadow: var(--shadow-md);
   line-height: 0;
+  background: linear-gradient(var(--bg-raised), var(--color-charcoal));
+  box-shadow:
+    0 30px 70px -30px rgba(0, 0, 0, 0.85),
+    0 0 42px -18px rgba(201, 162, 75, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+/* Gold top-fillet, matching the .otz-panel plate. */
+.canvasCol > .heraldFrame::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  z-index: 2;
+  background: linear-gradient(90deg, transparent, #8a6a2c, var(--accent-bright), #8a6a2c, transparent);
+  opacity: 0.75;
+}
+/* A warm, front-lit glow over the achievement — screen-blended so it lifts the
+   flat gold foil without altering the artwork. */
+.canvasCol > .heraldFrame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(58% 42% at 50% 38%, rgba(228, 197, 121, 0.16), transparent 70%);
+  mix-blend-mode: screen;
+}
+/* Lift the flat metal + deepened tinctures so they read as lit, not printed.
+   A CSS filter is not serialized into the exported SVG. */
+.canvasCol > .heraldFrame svg {
+  position: relative;
+  filter: saturate(1.12) brightness(1.05) contrast(1.03);
 }
 
 .empty {
@@ -64,6 +101,50 @@
 }
 .returnBtn:hover {
   border-color: var(--accent);
+}
+
+.layerActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.deleteLink {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-latin);
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin-bottom: var(--space-2);
+}
+.deleteLink:hover {
+  color: var(--color-copper);
+  border-color: var(--border-hairline);
+}
+.deleteConfirm {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: var(--space-2);
+}
+.deleteConfirm button {
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--border-hairline);
+  color: var(--text);
+}
+.dangerBtn {
+  border-color: var(--color-copper) !important;
+  color: var(--color-copper) !important;
 }
 
 .synthesisCaption {

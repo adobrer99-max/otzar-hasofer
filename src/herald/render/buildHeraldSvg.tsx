@@ -10,7 +10,7 @@ import { computeDivisions, type Division } from "./divisions";
 import { nameSeedOf, flourishRotation } from "./nameGeometry";
 import { LetterGlyph } from "./LetterGlyph";
 import { LetterCharge, hasCharge } from "./letterCharges";
-import { colorFor, darken, blend } from "./letterColors";
+import { colorFor, jewelTone, blend } from "./letterColors";
 import { AssociationEmblem } from "./heraldEmblems";
 import { toHebrewNumeral, dominantElementHue, associationOf } from "./associations";
 import { SpeciesMantling, speciesFor, type Species } from "./heraldFlora";
@@ -523,16 +523,6 @@ export function MottoRibbon({ text }: { text: string }) {
  * pale. Each region is a whisper of the letter's colour over the charcoal, so
  * the ground itself tells the reading's shape. Drawn inside the shield clip.
  */
-/** Perceived luminance (0..1) of a #rrggbb colour. */
-function hexLuminance(hex: string): number {
-  const m = hex.replace("#", "");
-  if (m.length < 6) return 0.5;
-  const r = parseInt(m.slice(0, 2), 16);
-  const g = parseInt(m.slice(2, 4), 16);
-  const b = parseInt(m.slice(4, 6), 16);
-  return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-}
-
 function FieldTincture({ letterIds, elementColor }: { letterIds: string[]; elementColor?: string }) {
   const distinct = [...new Set(letterIds)];
   // Deep, flat heraldic tinctures — each field the letter's own colour, taken
@@ -545,7 +535,7 @@ function FieldTincture({ letterIds, elementColor }: { letterIds: string[]; eleme
   const tincture = (id: string) => {
     const own = colorFor(id);
     const c = elementColor ? blend([own, own, elementColor]) : own;
-    return darken(c, Math.min(0.52 + 0.38 * hexLuminance(c), 0.82));
+    return jewelTone(c);
   };
   const colors = distinct.map(tincture);
   const L = 66;
