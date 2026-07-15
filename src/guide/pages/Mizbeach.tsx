@@ -56,9 +56,9 @@ export function Mizbeach() {
 
       <h2>The Ring Mandala</h2>
       <p>
-        The Mazalot, Moon, Solar Month/Holiday, and Parsha rings, the
-        Sabbath Core, the PaRDeS corners, the Shivat HaMinim border, and the
-        Mizrach vector — described in full below the diagram.
+        The Month, Moon, and Weekday rings, the Sabbath Core, the PaRDeS
+        corners, the Shivat HaMinim border, and the Mizrach vector —
+        described in full below the diagram.
       </p>
       <div className={styles.controls}>
         <div className={styles.segmented} role="group" aria-label="Geography — Land or Galut">
@@ -158,19 +158,21 @@ export function Mizbeach() {
 
       <h2>The Rings</h2>
       <p>
-        Reading outward to inward: the <strong>Ring of the Mazalot</strong>{" "}
-        (the cosmic climate — the zodiac sign of the current Hebrew month),
-        the <strong>Ring of the Moon</strong> (the lunar pulse — the
-        traditional eight-phase cycle, new through waning crescent), the{" "}
-        <strong>Ring of the Solar Month/Holiday</strong>{" "}
-        (the temporal season — the current Hebrew month, or an active
-        festival's gesture when one is underway), and the{" "}
-        <strong>Ring of the Parsha</strong> (the narrative context — the
-        weekly Torah portion, computed live by the Treasury's own engine;
-        see the <Link to="/guide/sacred-time">Sacred Time</Link> page's
-        note on cross-checking a published luach). At the center, the{" "}
+        Reading outward to inward: the <strong>Ring of the Month</strong>{" "}
+        (the temporal season — the twelve Hebrew months, named upright, with
+        the current month lit, or an active festival's gesture in its place
+        when one is underway), the <strong>Ring of the Moon</strong> (the
+        lunar pulse — the traditional eight-phase cycle, new through waning
+        crescent), and the <strong>Ring of the Weekday</strong> (the weekly
+        pulse — the seven days with Shabbat crowning the top and the week
+        flowing clockwise back up to Erev Shabbat; the current day is lit,
+        and Shabbat always keeps a gold rim). At the center, the{" "}
         <strong>Sabbath Core</strong> marks whether today is Shabbat — the
-        point of stillness all the rings turn around.
+        point of stillness all the rings turn around. The weekly Torah
+        portion is still computed live by the Treasury's own engine and named
+        in the reading's resolved time (see the{" "}
+        <Link to="/guide/sacred-time">Sacred Time</Link> page's note on
+        cross-checking a published luach).
       </p>
 
       <h2>Border and Vector</h2>

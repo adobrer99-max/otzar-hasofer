@@ -1,5 +1,5 @@
 import type { SacredTimeSnapshot, LunarPhase } from "../../types/sacredTime";
-import type { JewishMonthName } from "../../data/hebrewCalendar";
+import type { JewishMonthName, DayOfWeek } from "../../data/hebrewCalendar";
 import { mazalotRing } from "../../data/mazalot";
 import { festivalsById } from "../../data/festivals";
 import { FLOURISH_UNIT_PATH } from "../../herald/render/heraldGeometry";
@@ -43,6 +43,7 @@ function RingSegments({
   renderLabel,
   fontFamily = "var(--font-latin)",
   rotating = false,
+  upright = false,
 }: {
   radius: number;
   thickness: number;
@@ -56,6 +57,12 @@ function RingSegments({
    * stay glued to the ring as it turns, instead of floating off.
    */
   rotating?: boolean;
+  /**
+   * Keep every label horizontally upright at its slice centre (the mockup's
+   * Ring Mandala convention) rather than following the ring's curve. Wins over
+   * `rotating` when both are set.
+   */
+  upright?: boolean;
 }) {
   const inner = radius - thickness / 2;
   const outer = radius + thickness / 2;
@@ -108,7 +115,7 @@ function RingSegments({
             y={labelPos.y}
             textAnchor="middle"
             dominantBaseline="middle"
-            transform={rotating ? `rotate(${mid} ${labelPos.x} ${labelPos.y})` : undefined}
+            transform={!upright && rotating ? `rotate(${mid} ${labelPos.x} ${labelPos.y})` : undefined}
             fontFamily={fontFamily}
             fontSize={11}
             fontWeight={isActive ? 600 : 400}
@@ -120,20 +127,6 @@ function RingSegments({
         );
       })}
     </g>
-  );
-}
-
-function MazalotRing({ activeMonth, neutral, rotating }: { activeMonth: JewishMonthName; neutral?: boolean; rotating?: boolean }) {
-  const activeIndex = neutral ? -1 : mazalotRing.findIndex((e) => e.month === foldMonth(activeMonth));
-  return (
-    <RingSegments
-      radius={RINGS.mazalot.radius}
-      thickness={RINGS.mazalot.thickness}
-      count={12}
-      activeIndex={activeIndex}
-      renderLabel={(i) => mazalotRing[i].zodiacHebrew}
-      rotating={rotating}
-    />
   );
 }
 
@@ -170,7 +163,14 @@ function MoonRing({ phase, neutral, rotating }: { phase: LunarPhase; neutral?: b
   );
 }
 
-function SolarMonthRing({
+/**
+ * The outer Month ring — the twelve Hebrew months. The `mazalotRing` order is
+ * reused purely as the canonical month sequence (its zodiac labels are no
+ * longer drawn); a given slice always names the same month, angle-aligned with
+ * the folio's turnable outer wheel. Labels are inscribed upright (the Ring
+ * Mandala convention) rather than following the ring's curve.
+ */
+function MonthRing({
   activeMonth,
   activeFestivalIds,
   neutral,
@@ -181,9 +181,6 @@ function SolarMonthRing({
   neutral?: boolean;
   rotating?: boolean;
 }) {
-  // Angle-aligned with the Mazalot ring's 12 slices — same month order, so a
-  // given slice of the folio always names the same Hebrew month across
-  // both rings.
   const months = mazalotRing.map((e) => e.month);
   const activeIndex = neutral ? -1 : months.findIndex((m) => m === foldMonth(activeMonth));
   const primaryFestival = activeFestivalIds
@@ -191,43 +188,60 @@ function SolarMonthRing({
     .find((f) => f && f.id !== "ordinary" && f.id !== "shabbat");
   return (
     <RingSegments
-      radius={RINGS.solarMonth.radius}
-      thickness={RINGS.solarMonth.thickness}
+      radius={RINGS.month.radius}
+      thickness={RINGS.month.thickness}
       count={12}
       activeIndex={activeIndex}
       renderLabel={(i) => (i === activeIndex && primaryFestival ? primaryFestival.gesture ?? primaryFestival.name : months[i])}
       rotating={rotating}
+      upright
     />
   );
 }
 
 /**
- * The Parsha ring — the Narrative Context. Live: names the week's Torah
- * portion (see `src/data/parsha.ts`); muted when the week's Shabbat carries
- * a festival reading instead.
+ * The seven days of the week, Shabbat crowning the top slice and the week
+ * flowing clockwise back up to Erev Shabbat. Live: the current weekday catches
+ * the gold leaf; Shabbat always keeps a gold rim so the day of rest reads even
+ * mid-week (the mockup's fixed Shabbat wedge). Rendered on the static plane, so
+ * its Hebrew labels stay upright.
  */
-function ParshaRing({ label }: { label?: string }) {
-  const topLabel = polarToCartesian(CENTER.x, CENTER.y, RINGS.parsha.radius, 0);
+const WEEKDAYS: { id: DayOfWeek; hebrew: string }[] = [
+  { id: "saturday", hebrew: "שבת" },
+  { id: "sunday", hebrew: "ראשון" },
+  { id: "monday", hebrew: "שני" },
+  { id: "tuesday", hebrew: "שלישי" },
+  { id: "wednesday", hebrew: "רביעי" },
+  { id: "thursday", hebrew: "חמישי" },
+  { id: "friday", hebrew: "ששי" },
+];
+
+function WeekdayRing({ dayOfWeek, neutral }: { dayOfWeek: DayOfWeek; neutral?: boolean }) {
+  const activeIndex = neutral ? -1 : WEEKDAYS.findIndex((d) => d.id === dayOfWeek);
+  const { radius, thickness } = RINGS.weekday;
+  // Shabbat sits at index 0 (top); keep a persistent gold rim there unless the
+  // live day is already Shabbat (then RingSegments' active band covers it).
+  const [shabbatStart, shabbatEnd] = segmentAngles(WEEKDAYS.length, 0);
   return (
     <g>
-      {/* A solid narrative band; when a portion is read, its rim catches the gold leaf. */}
-      <circle cx={CENTER.x} cy={CENTER.y} r={RINGS.parsha.radius} fill="none" stroke="var(--color-charcoal-raised)" strokeWidth={RINGS.parsha.thickness} opacity={0.6} />
-      {label && (
-        <circle cx={CENTER.x} cy={CENTER.y} r={RINGS.parsha.radius + RINGS.parsha.thickness / 2 - 1.5} fill="none" stroke={GOLD} strokeWidth={1} opacity={0.6} />
+      <RingSegments
+        radius={radius}
+        thickness={thickness}
+        count={WEEKDAYS.length}
+        activeIndex={activeIndex}
+        renderLabel={(i) => WEEKDAYS[i].hebrew}
+        fontFamily="var(--font-hebrew)"
+        upright
+      />
+      {activeIndex !== 0 && (
+        <path
+          d={describeArcPath(CENTER.x, CENTER.y, radius, shabbatStart + 0.5, shabbatEnd - 0.5)}
+          fill="none"
+          stroke={GOLD}
+          strokeWidth={thickness}
+          opacity={0.28}
+        />
       )}
-      <text
-        x={topLabel.x}
-        y={topLabel.y}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fontFamily="var(--font-latin)"
-        fontSize={10}
-        fontStyle={label ? undefined : "italic"}
-        fill={label ? "var(--color-gold-bright)" : "var(--color-silver)"}
-        opacity={label ? 1 : 0.7}
-      >
-        {label ? `Parashat ${label}` : "Parsha — the festival reads this week"}
-      </text>
     </g>
   );
 }
@@ -419,7 +433,7 @@ function MizrachVector() {
  * beneath it like a volvelle, so this marks the selected month / lunar day.
  */
 function SelectionPointer() {
-  const y = CENTER.y - RINGS.mazalot.radius - RINGS.mazalot.thickness / 2 - 4;
+  const y = CENTER.y - RINGS.month.radius - RINGS.month.thickness / 2 - 4;
   return (
     <path
       d={`M ${CENTER.x - 7} ${y - 12} L ${CENTER.x + 7} ${y - 12} L ${CENTER.x} ${y} Z`}
@@ -435,7 +449,7 @@ function SelectionPointer() {
  * separate stacked planes so the two cyclewheels can physically turn:
  *   - "static": everything that never rotates (border, Parsha, Sabbath Core,
  *     PaRDeS corners, Mizrach) plus the fixed selection pointer.
- *   - "outer-wheel": the Mazalot + Solar-Month rings (one rigid month wheel).
+ *   - "outer-wheel": the Month ring (the rigid outer month wheel).
  *   - "moon-wheel": the Moon ring.
  * Omitting `only` draws the whole mandala on one plane (the flat-SVG folio,
  * the guide page, and the print master) — unchanged, so its tests still pass.
@@ -464,20 +478,17 @@ export function MizbeachSvgContent({
   const wheelRotating = only === "outer-wheel" || only === "moon-wheel";
 
   const outerWheel = (
-    <>
-      <MazalotRing activeMonth={sacredTime.hebrewDate.month} neutral={neutral} rotating={wheelRotating} />
-      <SolarMonthRing
-        activeMonth={sacredTime.hebrewDate.month}
-        activeFestivalIds={sacredTime.activeFestivalIds}
-        neutral={neutral}
-        rotating={wheelRotating}
-      />
-    </>
+    <MonthRing
+      activeMonth={sacredTime.hebrewDate.month}
+      activeFestivalIds={sacredTime.activeFestivalIds}
+      neutral={neutral}
+      rotating={wheelRotating}
+    />
   );
   const moonWheel = <MoonRing phase={sacredTime.lunarPhase} neutral={neutral} rotating={wheelRotating} />;
   const staticLayer = (
     <>
-      <ParshaRing label={neutral ? undefined : sacredTime.parsha?.label} />
+      <WeekdayRing dayOfWeek={sacredTime.dayOfWeek} neutral={neutral} />
       <SabbathCore
         isShabbat={isShabbat}
         omerDay={neutral ? undefined : sacredTime.omer?.day}

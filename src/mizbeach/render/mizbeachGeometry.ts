@@ -19,10 +19,9 @@ export const CENTER = { x: VIEWBOX_SIZE / 2, y: VIEWBOX_SIZE / 2 };
 /** Ring radii, outer to inner. Each ring is stroked at its radius with `thickness` as strokeWidth. */
 export const RINGS = {
   border: { radius: 330, thickness: 14 },
-  mazalot: { radius: 292, thickness: 34 },
+  month: { radius: 292, thickness: 34 },
   moon: { radius: 240, thickness: 28 },
-  solarMonth: { radius: 190, thickness: 28 },
-  parsha: { radius: 146, thickness: 22 },
+  weekday: { radius: 186, thickness: 30 },
 } as const;
 
 export const SABBATH_CORE_RADIUS = 70;
