@@ -5,10 +5,14 @@
   margin-bottom: var(--space-3);
 }
 
+/* Feed card — a received/ongoing commentary, ruled with a copper margin. */
 .entry {
   border: 1px solid var(--border-hairline);
-  padding: var(--space-3);
-  margin-bottom: var(--space-3);
+  border-inline-start: 3px solid var(--color-copper);
+  border-radius: 12px;
+  padding: 22px 26px;
+  margin-bottom: 16px;
+  background: var(--bg-raised);
 }
 
 .entryHeader {
@@ -20,8 +24,9 @@
 }
 
 .entryTitle {
+  font-family: var(--font-latin);
+  font-size: 1.4rem;
   color: var(--accent-bright);
-  font-weight: 600;
 }
 
 .entryMeta {

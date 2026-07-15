@@ -43,13 +43,19 @@ export function LibraryPage() {
         ))}
       </div>
 
-      <div className={styles.cards}>
+      <div className="otz-shead" style={{ marginTop: "var(--space-5)" }}>
+        <h2 className="otz-section-title">The Books</h2>
+        <span className="otz-heb">הספרים</span>
+      </div>
+      <div className="otz-grid otz-grid--2">
         {sefarim.map((sefer) => (
-          <div key={sefer.id} className={styles.card}>
-            <Link to={seferHref(sefer)}>{sefer.title}</Link>
-            <span className={styles.cardMeta}>{sefer.hebrewName}</span>
-            <p>{sefer.description}</p>
-          </div>
+          <Link key={sefer.id} to={seferHref(sefer)} className="otz-card">
+            <div>
+              <span className="otz-card__title">{sefer.title}</span>
+              <span className="otz-card__heb">{sefer.hebrewName}</span>
+            </div>
+            <p className="otz-card__body">{sefer.description}</p>
+          </Link>
         ))}
       </div>
     </div>
