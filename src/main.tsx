@@ -8,6 +8,21 @@ import { initCloudSync } from "./cloud/orchestrator";
 // Inert when the deployment has no cloud configured.
 initCloudSync();
 
+// A code-split route chunk failed to load — almost always because a new deploy
+// renamed the hashed chunks while this page was still open on the old build, so
+// the old chunk name now 404s ("Failed to fetch dynamically imported module").
+// Reload once to fetch the fresh index.html + current chunk names. Guarded by a
+// short sessionStorage cooldown so a genuinely-missing asset can't loop.
+window.addEventListener("vite:preloadError", (event) => {
+  const KEY = "otz-chunk-reload-at";
+  const last = Number(sessionStorage.getItem(KEY) ?? "0");
+  if (Date.now() - last > 10_000) {
+    sessionStorage.setItem(KEY, String(Date.now()));
+    event.preventDefault(); // stop Vite from re-throwing before we reload
+    window.location.reload();
+  }
+});
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <RouterProvider router={router} />
