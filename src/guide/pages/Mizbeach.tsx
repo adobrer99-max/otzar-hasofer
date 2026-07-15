@@ -19,7 +19,7 @@ export function Mizbeach() {
 
   return (
     <div className="page page--wide">
-      <PageHeader kicker="Guidebook 04" title="The Mizbe'ach" />
+      <PageHeader kicker="Guidebook 04" title="The Mizbe'ach" hebrew="מזבח" />
       <p>
         <em>"The cards are the words. The Mizbe'ach is the sentence."</em>
       </p>

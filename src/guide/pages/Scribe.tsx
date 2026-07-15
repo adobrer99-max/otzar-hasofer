@@ -4,7 +4,7 @@ import { PageHeader } from "../../components/ui";
 export function Scribe() {
   return (
     <div className="page">
-      <PageHeader kicker="Guidebook 05" title="The Scribe" />
+      <PageHeader kicker="Guidebook 05" title="The Scribe" hebrew="הסופר" />
       <p>
         The Scribe guides the reading; the Scribe does not predict it. This
         page collects the ritual's steps and posture as reference during a

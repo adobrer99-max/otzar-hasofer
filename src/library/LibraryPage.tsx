@@ -27,7 +27,7 @@ function Spine({ sefer }: { sefer: SeferMeta }) {
 export function LibraryPage() {
   return (
     <div className="page page--wide">
-      <PageHeader kicker="The Beit Midrash" title="The Shelf of Sefarim" />
+      <PageHeader kicker="The Beit Midrash" title="The Shelf of Sefarim" hebrew="מדף הספרים" />
       <p>
         The Books of the Treasury, kept together as a library. Some are read,
         some are written, and some link to chapters already open elsewhere in

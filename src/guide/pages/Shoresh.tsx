@@ -4,7 +4,7 @@ import { PageHeader } from "../../components/ui";
 export function Shoresh() {
   return (
     <div className="page">
-      <PageHeader kicker="The Nikkudot" title="Shoresh — The Root of the Reading" />
+      <PageHeader kicker="The Nikkudot" title="Shoresh — The Root of the Reading" hebrew="שורש" />
       <p>
         Within Derekh Eretz, the Hebrew letters form the symbolic grammar of
         each reading. Individually, each letter is contemplated for its own

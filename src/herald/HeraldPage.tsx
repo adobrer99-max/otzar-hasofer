@@ -157,7 +157,7 @@ export function HeraldPage() {
 
   return (
     <div className="page page--wide">
-      <PageHeader kicker="The Herald" title="The Living Herald" />
+      <PageHeader kicker="The Herald" title="The Living Herald" hebrew="הכרוז החי" />
       <p>
         The Herald forms across a participant's first seven readings — the
         unfolding order of Creation — and is revealed at the seventh. It is

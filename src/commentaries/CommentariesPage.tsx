@@ -65,7 +65,7 @@ export function CommentariesPage() {
 
   return (
     <div className="page">
-      <PageHeader kicker="The Drash of the Treasury" title="Commentaries" />
+      <PageHeader kicker="The Drash of the Treasury" title="Commentaries" hebrew="פירושים" />
       <p>
         Every reading proceeds through four tiers: the Letter as it is
         (Peshat), the witness of the tradition (Remez), the received and

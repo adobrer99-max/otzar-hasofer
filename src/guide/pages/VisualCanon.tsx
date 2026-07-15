@@ -13,7 +13,7 @@ const swatches = [
 export function VisualCanon() {
   return (
     <div className="page">
-      <PageHeader kicker="Guidebook 08" title="Visual Canon" />
+      <PageHeader kicker="Guidebook 08" title="Visual Canon" hebrew="חזון" />
       <p>
         The visual identity draws from illuminated manuscripts, ketubbot,
         medieval Jewish books, Geniza fragments, and ceremonial objects.
