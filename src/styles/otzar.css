@@ -1,0 +1,287 @@
+/* ============================================================
+   OTZAR HA'SOFER — Illuminated Plate layer
+   An OPTIONAL enhancement over the repo's existing design system.
+   Every value maps to the repo's own theme.css tokens (--bg,
+   --accent, --border-hairline, --space-*, --font-latin…) with a
+   brand-hex fallback, so it inherits BOTH themes (charcoal + vellum)
+   automatically and previews standalone. The .otz-* class names are
+   additive — they never collide with the app's CSS-module classes.
+   Fonts follow the Visual Canon: Frank Ruhl Libre (Latin) / David
+   Libre (Hebrew); no Cormorant/EB Garamond. In-app, delete the
+   @import below — the fonts are already self-hosted in theme.css.
+   ============================================================ */
+
+/* Web-font @import removed — Frank Ruhl Libre / David Libre are self-hosted
+   in theme.css. Fonts, colours, radii, and measure all resolve to the repo's
+   own tokens (the fallbacks only apply when previewed standalone). */
+
+:root{
+  /* surfaces — mapped to repo semantic tokens (fallback = charcoal canon) */
+  --otz-bg:var(--bg,#14171c);
+  --otz-panel-a:var(--bg-raised,#1c2027);
+  --otz-panel-b:var(--bg-sunken,#0f1216);
+  --otz-card:var(--bg-raised,#1c2027);
+  --otz-card-hover:color-mix(in srgb,var(--bg-raised,#1c2027) 82%,var(--accent,#c9a24b));
+  --otz-border:var(--border-hairline,#2a2f38);
+  --otz-border-soft:var(--border-hairline,#2a2f38);
+  --otz-line:var(--border-hairline,#2a2f38);
+  --otz-field:var(--bg-raised,#1c2027);
+  --otz-field-border:var(--border-hairline,#2a2f38);
+  /* palette — accent pair is themed; blue/copper/silver are canon constants */
+  --otz-gold:var(--accent,#c9a24b);
+  --otz-gold-bright:var(--accent-bright,#e4c579);
+  --otz-gold-dim:color-mix(in srgb,var(--accent,#c9a24b) 66%,#000);
+  --otz-gold-ink:#14100a;
+  --otz-blue:var(--color-blue,#1f3a5f);
+  --otz-blue-light:var(--color-blue-bright,#3f6ea5);
+  --otz-copper:var(--color-copper,#c98056);
+  --otz-silver:var(--color-silver,#c7ccd4);
+  /* ink — mapped to repo text tokens */
+  --otz-head:var(--text,#ece6d8);
+  --otz-head-2:var(--text,#ece6d8);
+  --otz-body:var(--text,#ece6d8);
+  --otz-muted:var(--text-muted,#9aa1ad);
+  --otz-faint:var(--text-muted,#9aa1ad);
+  --otz-eyebrow:var(--accent,#c9a24b);
+  /* type — Visual Canon */
+  --otz-display:var(--font-latin,'Frank Ruhl Libre',Georgia,serif);
+  --otz-serif:var(--font-latin,'Frank Ruhl Libre',Georgia,serif);
+  --otz-hebrew:var(--font-hebrew,'David Libre','Frank Ruhl Libre',serif);
+  /* geometry — repo radii/measure with fallback */
+  --otz-radius:var(--radius-lg,14px);
+  --otz-radius-sm:var(--radius-md,9px);
+  --otz-maxw:var(--measure,1040px);
+  --otz-read:860px;
+}
+
+/* (box-sizing + body reset already provided by index.css) */
+
+/* ---- page & panel ------------------------------------------------ */
+.otz-page{
+  min-height:100%;
+  display:flex;
+  justify-content:center;
+  padding:56px 60px 90px;
+  background:
+    radial-gradient(circle at 18% 8%,rgba(199,154,68,.06),transparent 44%),
+    radial-gradient(circle at 85% 82%,rgba(45,74,114,.08),transparent 48%),
+    var(--otz-bg);
+}
+.otz-panel{
+  position:relative;
+  width:var(--otz-maxw);
+  max-width:100%;
+  flex:none;
+  background:linear-gradient(var(--otz-panel-a),var(--otz-panel-b));
+  border:1px solid var(--otz-border);
+  border-radius:var(--otz-radius);
+  box-shadow:0 40px 90px -40px rgba(0,0,0,.8);
+  overflow:hidden;
+}
+.otz-panel::before{
+  content:"";
+  position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--otz-gold-dim),var(--otz-gold),var(--otz-gold-dim),transparent);
+  opacity:.7;
+}
+
+/* ---- top nav ----------------------------------------------------- */
+.otz-nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:20px 40px;border-bottom:1px solid var(--otz-line);
+}
+.otz-nav__group{display:flex;align-items:center;gap:34px}
+.otz-brand{display:flex;align-items:center;gap:11px;text-decoration:none}
+.otz-brand__mark{
+  width:26px;height:31px;border:1.4px solid var(--otz-gold);
+  border-radius:4px 4px 8px 8px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--otz-hebrew);font-size:15px;color:var(--otz-gold);
+}
+.otz-brand__word{font-family:var(--otz-hebrew);font-size:22px;font-weight:500;color:var(--otz-head-2)}
+.otz-nav__links{display:flex;gap:26px;font-size:16px}
+.otz-nav__links a{
+  color:var(--otz-muted);text-decoration:none;border-bottom:none;padding-bottom:3px;
+  transition:color .15s;
+}
+.otz-nav__links a:hover{color:var(--otz-gold-bright)}
+.otz-nav__links a.is-active{color:var(--otz-gold-bright);border-bottom:1.5px solid var(--otz-gold)}
+.otz-nav__right{display:flex;align-items:center;gap:18px}
+.otz-nav__account{color:var(--otz-muted);font-size:16px;text-decoration:none}
+.otz-nav__toggle{
+  width:34px;height:34px;border:1px solid var(--otz-field-border);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;color:var(--otz-gold);font-size:15px;
+}
+
+/* ---- content wrappers ------------------------------------------- */
+.otz-content{padding:44px 64px 60px}
+.otz-read{max-width:var(--otz-read);margin:0 auto;padding:48px 40px 64px}
+
+/* ---- headings & lede -------------------------------------------- */
+.otz-eyebrow{
+  font-family:var(--otz-serif);font-weight:600;font-size:12px;line-height:1;
+  letter-spacing:.3em;text-transform:uppercase;color:var(--otz-eyebrow);
+}
+.otz-title,.otz-prose h1{
+  margin:16px 0 4px;font-family:var(--otz-display);font-weight:600;
+  font-size:56px;line-height:1.04;color:var(--otz-head);letter-spacing:.01em;
+}
+.otz-heb{font-family:var(--otz-hebrew);font-size:24px;color:#a9853c}
+.otz-lede{margin:14px 0 0;max-width:680px;font-size:18px;line-height:1.7;color:var(--otz-muted);text-wrap:pretty}
+
+.otz-section-title,.otz-prose h2{
+  margin:36px 0 12px;font-family:var(--otz-display);font-weight:600;font-size:32px;color:var(--otz-head-2);
+}
+.otz-section-label{
+  font-family:var(--otz-serif);font-weight:600;font-size:12px;line-height:1.4;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--otz-gold);margin:0 0 10px;
+}
+
+/* ---- prose ------------------------------------------------------- */
+.otz-prose p{margin:0 0 20px;font-size:18px;line-height:1.78;color:var(--otz-body);text-wrap:pretty}
+.otz-prose em{font-style:italic;color:var(--otz-head-2)}
+.otz-prose a,a.otz-link{color:var(--otz-gold);text-decoration:none;border-bottom:1px solid rgba(199,154,68,.4)}
+.otz-prose a:hover,a.otz-link:hover{color:var(--otz-gold-bright);border-bottom-color:var(--otz-gold-bright)}
+
+.otz-callout{
+  border-inline-start:2px solid var(--otz-gold);
+  background:rgba(199,154,68,.05);border-radius:0 8px 8px 0;
+  padding:16px 22px;margin:0 0 30px;
+}
+.otz-callout p{margin:0;font-style:italic;font-size:17px;line-height:1.7;color:#cbb98f}
+.otz-note-panel{border:1px solid var(--otz-border-soft);border-radius:12px;background:var(--otz-card);padding:22px 26px;margin:0 0 26px}
+.otz-note-panel p{margin:0;font-size:17px;line-height:1.76;color:#aab2be}
+
+.otz-quote{margin:0 0 28px;border-inline-start:2px solid var(--otz-gold);padding-inline-start:20px}
+.otz-quote p{margin:0;font-family:var(--otz-display);font-style:italic;font-size:25px;line-height:1.4;color:var(--otz-head-2)}
+
+/* ---- dividers ---------------------------------------------------- */
+.otz-rule{height:1px;background:linear-gradient(90deg,var(--otz-panel-b),#2f3543,var(--otz-panel-b));margin:22px 0}
+.otz-rule--fade{background:linear-gradient(90deg,#2f3543,transparent)}
+.otz-diamond{display:flex;align-items:center;gap:16px}
+.otz-diamond::before,.otz-diamond::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,#2f3543)}
+.otz-diamond::after{background:linear-gradient(90deg,#2f3543,transparent)}
+.otz-diamond > span{width:9px;height:9px;transform:rotate(45deg);border:1px solid var(--otz-gold)}
+
+/* ---- section header w/ hebrew ----------------------------------- */
+.otz-shead{display:flex;align-items:baseline;gap:14px}
+.otz-shead .otz-heb{font-size:19px;color:var(--otz-faint)}
+.otz-shead + .otz-subtle{margin:6px 0 20px}
+.otz-subtle{font-style:italic;font-size:16px;color:var(--otz-muted)}
+
+/* ---- card grid (reference / letters) ---------------------------- */
+.otz-grid{display:grid;gap:14px}
+.otz-grid--3{grid-template-columns:repeat(3,1fr)}
+.otz-grid--4{grid-template-columns:repeat(4,1fr)}
+.otz-grid--2{grid-template-columns:1fr 1fr}
+.otz-card{
+  display:block;border:1px solid var(--otz-border-soft);border-radius:12px;
+  padding:24px 26px;background:var(--otz-card);text-decoration:none;
+  transition:border-color .15s,background .15s;
+}
+.otz-card:hover{border-color:var(--otz-gold-dim);background:var(--otz-card-hover)}
+.otz-card__title{font-family:var(--otz-display);font-size:25px;color:var(--otz-gold-bright)}
+.otz-card__heb{font-family:var(--otz-hebrew);font-size:18px;color:var(--otz-faint);margin-inline-start:12px}
+.otz-card__body{margin:9px 0 0;font-size:16px;line-height:1.6;color:var(--otz-muted);text-wrap:pretty}
+/* accent variants */
+.otz-card--gold{border-inline-start:3px solid var(--otz-gold)}
+.otz-card--blue{border-inline-start:3px solid var(--otz-blue)}
+.otz-card--copper{border-inline-start:3px solid var(--otz-copper)}
+.otz-card--silver{border-inline-start:3px solid var(--otz-silver)}
+
+/* letter card (centered glyph) */
+.otz-letter{
+  display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;
+  border:1px solid var(--otz-border-soft);border-radius:12px;padding:22px 14px 20px;
+  background:var(--otz-card);text-decoration:none;transition:border-color .15s,background .15s;
+}
+.otz-letter:hover{border-color:var(--otz-gold-dim);background:var(--otz-card-hover)}
+.otz-letter__glyph{font-family:var(--otz-hebrew);font-size:44px;line-height:1;color:var(--otz-gold-bright)}
+.otz-letter__name{font-family:var(--otz-display);font-size:18px;color:var(--otz-head-2);margin-top:4px}
+.otz-letter__meaning{font-size:13.5px;line-height:1.4;color:var(--otz-blue-light);text-wrap:pretty}
+
+/* four-tier pips (Peshat/Remez/Drash/Sod) */
+.otz-pips{display:flex;gap:7px}
+.otz-pip{font-family:var(--otz-hebrew);font-size:14px;color:var(--otz-muted);border:1px solid #2f3543;border-radius:20px;padding:3px 12px}
+
+/* ---- pillar / house panel --------------------------------------- */
+.otz-pillar{border:1px solid var(--otz-border-soft);border-inline-start:3px solid var(--otz-gold);border-radius:12px;padding:20px 24px;background:var(--otz-card)}
+.otz-pillar__head{font-family:var(--otz-serif);font-weight:600;font-size:12px;line-height:1.4;letter-spacing:.1em;text-transform:uppercase;color:var(--otz-gold);margin-bottom:14px}
+.otz-houses{display:flex;gap:32px;flex-wrap:wrap}
+.otz-house{display:flex;flex-direction:column;gap:3px;text-decoration:none}
+.otz-house__name{font-family:var(--otz-display);font-size:20px;color:var(--otz-head-2)}
+.otz-house__count{font-size:14px;color:var(--otz-blue-light)}
+
+/* ---- shelf / spines (Sefarim) ----------------------------------- */
+.otz-shelf{display:flex;align-items:flex-end;justify-content:center;gap:20px}
+.otz-spine{
+  width:52px;border-radius:4px 4px 0 0;
+  box-shadow:inset -5px 0 8px rgba(0,0,0,.22),inset 4px 0 4px rgba(255,255,255,.14);
+  display:flex;align-items:center;justify-content:center;writing-mode:vertical-rl;
+  padding:16px 0;text-decoration:none;transition:transform .15s;
+}
+.otz-spine:hover{transform:translateY(-8px)}
+.otz-spine--gold{background:linear-gradient(100deg,#d8ad52,#b7873a);color:#2b2008}
+.otz-spine--copper{background:linear-gradient(100deg,#c07a45,#a35f34);color:#f4e7d8}
+.otz-spine--blue{background:linear-gradient(100deg,#345479,#26405f);color:#dfe6f0}
+.otz-spine--silver{background:linear-gradient(100deg,#cfd4db,#a9afb8);color:#2a2f38}
+.otz-spine__title{font-family:var(--otz-hebrew);font-size:21px}
+.otz-spine__latin{font-family:var(--otz-serif);font-size:12px;margin-top:auto;letter-spacing:.05em;opacity:.72}
+.otz-ledge{height:10px;background:linear-gradient(#d8ad52,var(--otz-gold-dim));border-radius:2px;box-shadow:0 6px 16px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.15)}
+
+/* ---- chips ------------------------------------------------------- */
+.otz-chips{display:flex;gap:10px;flex-wrap:wrap}
+.otz-chip{
+  font-family:var(--otz-serif);font-size:15px;padding:8px 18px;border-radius:20px;cursor:pointer;
+  border:1px solid var(--otz-field-border);background:transparent;color:var(--otz-muted);
+}
+.otz-chip.is-active{border-color:var(--otz-gold);background:linear-gradient(var(--otz-gold-bright),var(--otz-gold));color:var(--otz-gold-ink)}
+
+/* ---- forms ------------------------------------------------------- */
+.otz-form{border:1px solid var(--otz-border-soft);border-radius:14px;padding:30px 32px;background:var(--otz-card)}
+.otz-form__title{font-family:var(--otz-display);font-size:26px;color:var(--otz-gold-bright);margin-bottom:22px}
+.otz-form__grid{display:grid;grid-template-columns:1fr 1fr;gap:20px 26px}
+.otz-field{display:flex;flex-direction:column;gap:8px}
+.otz-field--wide{grid-column:1 / -1}
+.otz-label{font-family:var(--otz-serif);font-weight:600;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8a8477}
+.otz-input,.otz-select,.otz-textarea{
+  border:1px solid var(--otz-field-border);border-radius:var(--otz-radius-sm);
+  background:var(--otz-field);color:var(--otz-head-2);font-family:var(--otz-serif);font-size:16px;
+  padding:0 15px;height:44px;
+}
+.otz-textarea{min-height:130px;padding:14px 15px;resize:vertical}
+.otz-input::placeholder,.otz-textarea::placeholder{color:var(--otz-faint);font-style:italic}
+.otz-input:focus,.otz-select:focus,.otz-textarea:focus{outline:none;border-color:var(--otz-gold-dim)}
+
+/* ---- buttons ----------------------------------------------------- */
+.otz-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  font-family:var(--otz-serif);font-size:16px;letter-spacing:.02em;
+  border-radius:var(--otz-radius-sm);padding:13px 28px;cursor:pointer;text-decoration:none;white-space:nowrap;
+}
+.otz-btn--primary{color:var(--otz-gold-ink);background:linear-gradient(var(--otz-gold-bright),var(--otz-gold));border:1px solid var(--otz-gold)}
+.otz-btn--ghost{color:var(--otz-gold-bright);background:transparent;border:1px solid var(--otz-gold-dim)}
+
+/* ---- feed cards (commentaries) ---------------------------------- */
+.otz-feed{display:flex;flex-direction:column;gap:16px}
+.otz-feed-card{border:1px solid var(--otz-border-soft);border-inline-start:3px solid var(--otz-gold);border-radius:12px;padding:24px 26px;background:var(--otz-card)}
+.otz-feed-card__title{font-family:var(--otz-display);font-size:24px;color:var(--otz-gold-bright)}
+.otz-feed-card__byline{display:flex;align-items:center;gap:8px;margin:5px 0 10px;font-size:15px;color:var(--otz-faint)}
+.otz-feed-card__body{margin:0;font-size:16.5px;line-height:1.66;color:var(--otz-muted);text-wrap:pretty}
+
+/* ---- context / status bar --------------------------------------- */
+.otz-statusbar{display:flex;align-items:center;gap:14px;padding:16px 48px;border-top:1px solid var(--otz-line);background:#101319;font-size:16px;color:var(--otz-muted)}
+.otz-statusbar__dot{width:8px;height:8px;border-radius:50%;background:var(--otz-gold);box-shadow:0 0 8px var(--otz-gold)}
+
+/* ---- rtl niceties ------------------------------------------------ */
+[dir=rtl] .otz-nav__links,[dir=rtl] .otz-houses,[dir=rtl] .otz-chips{direction:rtl}
+
+/* ---- responsive -------------------------------------------------- */
+@media (max-width:1100px){
+  .otz-page{padding:28px 20px 60px}
+  .otz-content{padding:32px 28px 48px}
+  .otz-read{padding:36px 26px 48px}
+  .otz-nav{flex-wrap:wrap;gap:14px}
+  .otz-grid--4{grid-template-columns:repeat(2,1fr)}
+  .otz-grid--3,.otz-grid--2,.otz-form__grid{grid-template-columns:1fr}
+  .otz-title,.otz-prose h1{font-size:40px}
+}

@@ -6,6 +6,7 @@ import { ushpizinBySefirah } from "../../data/ushpizin";
 import type { CommentaryRecord } from "../../types/commentary";
 import { listAllCommentaries } from "../../storage/commentariesRepo";
 import { CommentaryList } from "../../commentaries/CommentaryList";
+import { DorotCardView } from "../components/DorotCardView";
 import styles from "./Dorot.module.css";
 
 export function DorotHouse() {
@@ -62,36 +63,9 @@ export function DorotHouse() {
           (c) => c.subject.kind === "dorot-card" && c.subject.cardId === card.id,
         );
         return (
-          <div key={card.id} className={styles.card}>
-            <h3>
-              {card.index}. {card.title}
-            </h3>
-            {card.art && (
-              <figure style={{ margin: "0.5rem 0", maxWidth: 280 }}>
-                <img src={card.art.src} alt={card.art.alt} style={{ maxWidth: "100%", height: "auto" }} />
-                {card.art.credit && (
-                  <figcaption style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>
-                    {card.art.credit}
-                  </figcaption>
-                )}
-              </figure>
-            )}
-            {card.title !== card.episode && (
-              <div className={styles.cardMeta}>The Episode: {card.episode}</div>
-            )}
-            {card.humanPractice && (
-              <div className={styles.cardMeta}>The Human Practice: {card.humanPractice}</div>
-            )}
-            {card.coreEnergy && (
-              <div className={styles.cardMeta}>Core Energy: {card.coreEnergy}</div>
-            )}
-            {card.question && (
-              <p>
-                <em>{card.question}</em>
-              </p>
-            )}
+          <DorotCardView key={card.id} card={card}>
             <CommentaryList commentaries={cardCommentaries} showSubject={false} />
-          </div>
+          </DorotCardView>
         );
       })}
 
