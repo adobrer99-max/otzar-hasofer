@@ -1,13 +1,12 @@
 import { Link } from "react-router-dom";
 import type { LetterCard } from "../../types/letter";
-import styles from "./LetterTile.module.css";
 
 export function LetterTile({ letter }: { letter: LetterCard }) {
   return (
-    <Link to={`/guide/letters/${letter.id}`} className={styles.tile}>
-      <span className={styles.glyph}>{letter.glyph}</span>
-      <span className={styles.name}>{letter.name}</span>
-      <span className={styles.keyword}>{letter.keyword}</span>
+    <Link to={`/guide/letters/${letter.id}`} className="otz-letter">
+      <span className="otz-letter__glyph">{letter.glyph}</span>
+      <span className="otz-letter__name">{letter.name}</span>
+      <span className="otz-letter__meaning">{letter.keyword}</span>
     </Link>
   );
 }

@@ -9,13 +9,22 @@
 .kicker {
   color: var(--accent);
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 0.75rem;
+  letter-spacing: 0.28em;
+  font-weight: 600;
+  font-size: 0.72rem;
 }
 .title {
-  font-size: var(--font-size-xxl);
-  margin: var(--space-1) 0 0;
-  line-height: 1.15;
+  font-size: clamp(2.3rem, 4.5vw, 3.4rem);
+  font-weight: 600;
+  margin: var(--space-2) 0 0;
+  line-height: 1.05;
+  letter-spacing: 0.01em;
+}
+/* Hebrew subtitle beside the title — the illuminated header's second voice. */
+.headerHeb {
+  margin-top: var(--space-1);
+  font-size: 1.4rem;
+  color: color-mix(in srgb, var(--accent) 82%, var(--text-muted));
 }
 .lede {
   color: var(--text-muted);

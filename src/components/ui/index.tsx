@@ -1,20 +1,25 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import styles from "./ui.module.css";
 
-/** The kicker + title (+ optional lede) block that opens nearly every page. */
+/** The eyebrow + title (+ optional Hebrew subtitle + lede) block that opens
+ *  nearly every page — the illuminated header treatment from the design canon. */
 export function PageHeader({
   kicker,
   title,
+  hebrew,
   lede,
 }: {
   kicker: ReactNode;
   title: ReactNode;
+  /** A Hebrew subtitle set beside/under the title (e.g. כ״ב אותיות). */
+  hebrew?: ReactNode;
   lede?: ReactNode;
 }) {
   return (
     <header className={styles.pageHeader}>
       <div className={styles.kicker}>{kicker}</div>
       <h1 className={styles.title}>{title}</h1>
+      {hebrew && <div className={`${styles.headerHeb} hebrew`}>{hebrew}</div>}
       {lede && <p className={styles.lede}>{lede}</p>}
     </header>
   );
