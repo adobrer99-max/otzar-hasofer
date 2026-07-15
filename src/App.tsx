@@ -10,10 +10,14 @@ function App() {
         Skip to content
       </a>
       <Nav />
-      <main id="main" style={{ flex: 1 }}>
-        <Suspense fallback={<div className="route-fallback" aria-live="polite">Loading…</div>}>
-          <Outlet />
-        </Suspense>
+      <main id="main" className="otz-page" style={{ flex: 1 }}>
+        {/* The illuminated plate — every routed surface is framed as one lit,
+            gold-filletted document on the softly lit ground. */}
+        <div className="otz-panel">
+          <Suspense fallback={<div className="route-fallback" aria-live="polite">Loading…</div>}>
+            <Outlet />
+          </Suspense>
+        </div>
       </main>
       <Footer />
     </>

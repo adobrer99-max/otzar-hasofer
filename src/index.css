@@ -1,4 +1,5 @@
 @import "./styles/theme.css";
+@import "./styles/otzar.css";
 
 * {
   box-sizing: border-box;
