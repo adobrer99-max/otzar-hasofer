@@ -80,12 +80,18 @@
 .heroSigil {
   justify-self: center;
   width: 100%;
-  max-width: 300px;
+  max-width: 360px;
 }
 .heroSigil svg {
   width: 100%;
   height: auto;
   filter: drop-shadow(var(--shadow-lg));
+}
+.seal {
+  width: 100%;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 24px 55px rgba(0, 0, 0, 0.55));
 }
 
 /* ——— Doorway sections ——— */

@@ -7,7 +7,7 @@ import { ushpizinBySefirah } from "../../data/ushpizin";
 export function Encounters() {
   return (
     <div className="page">
-      <PageHeader kicker="The Onboarding" title="The Seven Encounters of Bereshit" />
+      <PageHeader kicker="The Onboarding" title="The Seven Encounters of Bereshit" hebrew="בראשית" />
       <p>
         The Herald is not formed by accumulating information. It is formed
         through the participant's gradual participation in the unfolding

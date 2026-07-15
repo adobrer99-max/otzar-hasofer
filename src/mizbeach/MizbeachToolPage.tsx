@@ -7,6 +7,7 @@ import { EncounterPanel } from "../herald/form/EncounterPanel";
 import { HeraldCanvas } from "../herald/render/HeraldCanvas";
 import { Button, PageHeader, SegmentedControl, Callout } from "../components/ui";
 import { InteractiveMizbeach } from "./interactive/InteractiveMizbeach";
+import { ReadingStations } from "./interactive/ReadingStations";
 import { emptyReadingState, toSnapshot, type MizbeachReadingState } from "./interactive/reading";
 import { stepDay, stepMonth } from "./interactive/ringDate";
 import styles from "./MizbeachToolPage.module.css";
@@ -129,6 +130,8 @@ export function MizbeachToolPage() {
               />
             </label>
           </div>
+
+          <ReadingStations state={state} />
 
           <InteractiveMizbeach state={state} onChange={patch} readingIndex={layers.length} />
 

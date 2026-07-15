@@ -19,7 +19,8 @@ import { HeraldCanvas } from "./render/HeraldCanvas";
 import { deriveHeraldForm } from "./synthesis/deriveHeraldForm";
 import { resolveShoresh } from "./shoresh/resolveShoresh";
 import { ParticipantPicker } from "./history/ParticipantPicker";
-import { HistoryScrubber } from "./history/HistoryScrubber";
+import { SevenStations } from "./history/SevenStations";
+import { Biography } from "./history/Biography";
 import { LayerCaption } from "./history/LayerCaption";
 import { LifeCycleEventsPanel } from "./lifeCycle/LifeCycleEventsPanel";
 import { EpithetPanel } from "./epithet/EpithetPanel";
@@ -157,7 +158,7 @@ export function HeraldPage() {
 
   return (
     <div className="page page--wide">
-      <PageHeader kicker="The Herald" title="The Living Herald" />
+      <PageHeader kicker="The Herald" title="The Living Herald" hebrew="הכרוז החי" />
       <p>
         The Herald forms across a participant's first seven readings — the
         unfolding order of Creation — and is revealed at the seventh. It is
@@ -192,6 +193,10 @@ export function HeraldPage() {
         />
       )}
 
+      {selectedParticipantId && layers.length > 0 && (
+        <SevenStations readingCount={layers.length} />
+      )}
+
       {selectedParticipantId ? (
         <div className={styles.layout}>
           <div>
@@ -202,6 +207,15 @@ export function HeraldPage() {
             />
           </div>
           <div className={styles.canvasCol}>
+            {!viewingSynthesis && heraldForm && (
+              <button
+                type="button"
+                className={styles.returnBtn}
+                onClick={() => setSelectedLayerId(undefined)}
+              >
+                ◆ Return to the whole Herald
+              </button>
+            )}
             {selectedParticipant && layers.length >= 7 && !sealedEpithet && (
               <EpithetPanel
                 participant={selectedParticipant}
@@ -327,15 +341,6 @@ export function HeraldPage() {
                   dirty={styleDirty}
                   sealed={!!selectedParticipant?.heraldStyle}
                 />
-                <h3>History</h3>
-                <HistoryScrubber
-                  layers={layers}
-                  form={heraldForm}
-                  selectedId={selectedLayerId}
-                  synthesisSelected={viewingSynthesis}
-                  onSelect={setSelectedLayerId}
-                  onSelectSynthesis={() => setSelectedLayerId(undefined)}
-                />
               </>
             ) : (
               <p className={styles.empty}>
@@ -347,6 +352,14 @@ export function HeraldPage() {
         </div>
       ) : (
         <p className={styles.empty}>Select or create a participant to begin.</p>
+      )}
+
+      {selectedParticipantId && heraldForm && (
+        <Biography
+          layers={layers}
+          selectedId={selectedLayerId}
+          onSelect={setSelectedLayerId}
+        />
       )}
     </div>
   );

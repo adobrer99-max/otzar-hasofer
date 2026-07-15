@@ -275,8 +275,8 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
         <svg className={styles.overlay} viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`} role="group" aria-label="Turnable rings">
           <TurnableRing
             label="Turn to a Hebrew month"
-            radius={RINGS.mazalot.radius}
-            thickness={RINGS.mazalot.thickness}
+            radius={RINGS.month.radius}
+            thickness={RINGS.month.thickness}
             count={12}
             valueNow={monthSlice}
             valueText={formatHebrewDateEnglish(sacredTime.hebrewDate)}

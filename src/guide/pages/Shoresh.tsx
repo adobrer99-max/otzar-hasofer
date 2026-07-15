@@ -4,7 +4,7 @@ import { PageHeader } from "../../components/ui";
 export function Shoresh() {
   return (
     <div className="page">
-      <PageHeader kicker="The Nikkudot" title="Shoresh — The Root of the Reading" />
+      <PageHeader kicker="The Nikkudot" title="Shoresh — The Root of the Reading" hebrew="שורש" />
       <p>
         Within Derekh Eretz, the Hebrew letters form the symbolic grammar of
         each reading. Individually, each letter is contemplated for its own
@@ -30,43 +30,51 @@ export function Shoresh() {
         </em>
       </p>
 
-      <h3>I. Canonical Root</h3>
-      <p>
-        If the three letters, in the order drawn, form an attested Hebrew
-        root, the corresponding word becomes the Word of the Reading.
-      </p>
+      <div className="otz-pillar" style={{ marginBottom: 14 }}>
+        <div className="otz-pillar__head">I · Canonical Root</div>
+        <p style={{ margin: 0 }}>
+          If the three letters, in the order drawn, form an attested Hebrew
+          root, the corresponding word becomes the Word of the Reading.
+        </p>
+      </div>
 
-      <h3>II. Canonical Name</h3>
-      <p>
-        If no root exists, but the letters form a recognized biblical name or
-        established sacred term, the participant reflects upon that figure or
-        concept instead.
-      </p>
+      <div className="otz-pillar" style={{ marginBottom: 14 }}>
+        <div className="otz-pillar__head">II · Canonical Name</div>
+        <p style={{ margin: 0 }}>
+          If no root exists, but the letters form a recognized biblical name or
+          established sacred term, the participant reflects upon that figure or
+          concept instead.
+        </p>
+      </div>
 
-      <h3>III. Related Correspondence</h3>
-      <p>
-        If neither a root nor a name exists, the Scribe may explore related
-        linguistic correspondences: two-letter roots, roots the same letters
-        would form in a different order, gematria (numeric coincidences), and
-        established symbolic associations already recorded for each letter.
-        These are offered as avenues of contemplation rather than definitive
-        interpretations.
-      </p>
+      <div className="otz-pillar" style={{ marginBottom: 14 }}>
+        <div className="otz-pillar__head">III · Related Correspondence</div>
+        <p style={{ margin: 0 }}>
+          If neither a root nor a name exists, the Scribe may explore related
+          linguistic correspondences: two-letter roots, roots the same letters
+          would form in a different order, gematria (numeric coincidences), and
+          established symbolic associations already recorded for each letter.
+          These are offered as avenues of contemplation rather than definitive
+          interpretations.
+        </p>
+      </div>
 
-      <h3>IV. Shoresh Nistar — The Hidden Root</h3>
-      <blockquote>
-        Not every combination of three Hebrew letters forms an attested
-        Hebrew root. When no authentic root can be identified, the reading
-        does not fail. Instead, the participant enters the contemplative
-        state known as Shoresh Nistar (שורש נסתר) — The Hidden Root. The
-        Scribe does not invent a word or force an interpretation. Instead, the
-        Treasury faithfully records the letters exactly as they were
-        received. The participant is invited to live with the unresolved
-        letters, trusting that understanding may emerge through future
-        readings, sacred time, personal experience, or continued study. The
-        Hidden Root becomes an intentional part of the liturgy rather than an
-        exception to it.
-      </blockquote>
+      <div className="otz-pillar" style={{ marginBottom: 26 }}>
+        <div className="otz-pillar__head">IV · Shoresh Nistar — The Hidden Root</div>
+        <p style={{ margin: 0 }}>
+          Not every combination of three Hebrew letters forms an attested
+          Hebrew root. When no authentic root can be identified, the reading
+          does not fail. Instead, the participant enters the contemplative
+          state known as Shoresh Nistar (שורש נסתר) — The Hidden Root. The
+          Scribe does not invent a word or force an interpretation. Instead, the
+          Treasury faithfully records the letters exactly as they were
+          received. The participant is invited to live with the unresolved
+          letters, trusting that understanding may emerge through future
+          readings, sacred time, personal experience, or continued study. The
+          Hidden Root becomes an intentional part of the liturgy rather than an
+          exception to it.
+        </p>
+      </div>
 
       <p>
         The veiled fourth letter, drawn privately by the Scribe, is never

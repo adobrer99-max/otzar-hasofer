@@ -1,0 +1,97 @@
+.wrap {
+  margin: var(--space-4) 0 var(--space-5);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+.count {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.rail {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 22px 6px 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+/* the unlit track + the gold progress fill, centered on the node row */
+.track,
+.trackFill {
+  position: absolute;
+  left: 22px;
+  top: 41px;
+  height: 1.5px;
+}
+.track {
+  right: 22px;
+  background: var(--border-hairline);
+}
+.trackFill {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 66%, #000), var(--accent));
+  transition: width 400ms ease;
+}
+
+.station {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+}
+
+.node {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-hebrew);
+  font-size: 18px;
+}
+.formed {
+  background: radial-gradient(circle at 40% 35%, var(--color-gold-bright), var(--color-gold));
+  color: var(--color-charcoal);
+}
+.current {
+  width: 40px;
+  height: 40px;
+  margin-top: -1px;
+  background: var(--bg-sunken);
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 40%, transparent);
+  color: var(--accent-bright);
+}
+.future {
+  background: var(--bg-sunken);
+  border: 1.5px dashed color-mix(in srgb, var(--color-blue-bright) 70%, var(--text-muted));
+  color: var(--text-muted);
+}
+
+.label {
+  font-size: 15px;
+  color: var(--text-muted);
+}
+
+@media (max-width: 640px) {
+  .label {
+    font-size: 12px;
+  }
+  .node {
+    width: 32px;
+    height: 32px;
+    font-size: 15px;
+  }
+}

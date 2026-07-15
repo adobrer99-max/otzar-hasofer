@@ -6,7 +6,7 @@ import { FestivalCard } from "../components/FestivalCard";
 export function SacredTime() {
   return (
     <div className="page">
-      <PageHeader kicker="Guidebook 06" title="Sacred Time" />
+      <PageHeader kicker="Guidebook 06" title="Sacred Time" hebrew="מועדים" />
       <p>
         The Jewish calendar is not a backdrop to a reading — it changes how
         the reading itself is conducted. No reading occurs outside of sacred

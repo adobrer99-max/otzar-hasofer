@@ -4,7 +4,7 @@ import { PageHeader } from "../../components/ui";
 export function Foundations() {
   return (
     <div className="page">
-      <PageHeader kicker="Guidebook 00–01" title="Foundations" />
+      <PageHeader kicker="Guidebook 00–01" title="Foundations" hebrew="יסודות" />
 
       <h2>Vision</h2>
       <p>

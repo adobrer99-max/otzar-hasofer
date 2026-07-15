@@ -10,7 +10,7 @@ const pillarOrder = ["chesed", "gevurah", "tiferet", "netzach", "hod", "yesod", 
 export function Dorot() {
   return (
     <div className="page">
-      <PageHeader kicker="The Second Deck" title="Derekh Ha'Dorot" />
+      <PageHeader kicker="The Second Deck" title="Derekh Ha'Dorot" hebrew="דרך הדורות" />
       <p>
         Where Derekh Eretz reveals the eternal symbolic grammar of Creation,
         Derekh Ha'Dorot reveals how those eternal principles have been lived
@@ -94,25 +94,27 @@ export function Dorot() {
           const matriarchal = houses.find((h) => h.kind === "matriarchal");
           const encounter = encounters[i];
           return (
-            <div key={sefirah} className={styles.pillar}>
-              <div className={styles.pillarName}>
+            <div key={sefirah} className="otz-pillar">
+              <div className="otz-pillar__head">
                 Pillar of {ushpizinBySefirah[sefirah].sefirahName} — opens with
                 Encounter {encounter.number}: {encounter.aspect}
               </div>
-              <div className={styles.houseLinks}>
+              <div className="otz-houses">
                 {patriarchal && (
-                  <Link to={`/guide/dorot/${patriarchal.id}`}>
-                    House of {patriarchal.figure}
-                    <span className={styles.houseKind}>
+                  <Link className="otz-house" to={`/guide/dorot/${patriarchal.id}`}>
+                    <span className="otz-house__name">House of {patriarchal.figure}</span>
+                    <span className="otz-house__count">
                       {cardsByHouse(patriarchal.id).length} cards
                     </span>
                   </Link>
                 )}
                 {matriarchal && (
-                  <Link to={`/guide/dorot/${matriarchal.id}`}>
-                    House of {matriarchal.figure}
-                    {matriarchal.houseName && ` — ${matriarchal.houseName}`}
-                    <span className={styles.houseKind}>
+                  <Link className="otz-house" to={`/guide/dorot/${matriarchal.id}`}>
+                    <span className="otz-house__name">
+                      House of {matriarchal.figure}
+                      {matriarchal.houseName && ` — ${matriarchal.houseName}`}
+                    </span>
+                    <span className="otz-house__count">
                       {cardsByHouse(matriarchal.id).length} episodes
                     </span>
                   </Link>

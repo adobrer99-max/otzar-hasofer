@@ -36,11 +36,21 @@ function inlineBrandVars(svg: string): string {
   return svg.replace(/var\((--[a-z-]+)\)/g, (_, name) => BRAND[name] ?? "#000");
 }
 
-/** Serialise an SVG React element to a self-contained data URL at a fixed pixel size. */
+/**
+ * How much larger than the viewBox to rasterise. The plate can display near the
+ * viewBox's own CSS size on a wide screen, and again ×2 on a HiDPI panel, so a
+ * 1:1 raster visibly softens. Rasterising at ×2 keeps the gold linework and
+ * Hebrew type crisp up to that display size without an unreasonable texture.
+ */
+const SUPERSAMPLE = 2;
+
+/** Serialise an SVG React element to a self-contained data URL, rasterised above viewBox size so it stays crisp when the plate is displayed large / on HiDPI. */
 export function svgElementToDataUrl(element: ReactElement, width: number, height: number): string {
   let markup = renderToStaticMarkup(element);
-  // Ensure the raster has explicit intrinsic dimensions (not the 300×150 default).
-  markup = markup.replace(/^<svg /, `<svg width="${width}" height="${height}" `);
+  // Give the raster explicit intrinsic dimensions (not the 300×150 default), at
+  // the supersampled size — the viewBox keeps the coordinate space unchanged, so
+  // only the pixel resolution grows.
+  markup = markup.replace(/^<svg /, `<svg width="${width * SUPERSAMPLE}" height="${height * SUPERSAMPLE}" `);
   markup = inlineBrandVars(markup);
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
 }
