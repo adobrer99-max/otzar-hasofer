@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Otzar Ha'Sofer — Stylesheet Preview</title>
+<link rel="stylesheet" href="otzar.css">
+</head>
+<body class="otz">
+<div class="otz-page">
+  <div class="otz-panel">
+
+    <!-- NAV -->
+    <nav class="otz-nav">
+      <div class="otz-nav__group">
+        <a class="otz-brand" href="#"><span class="otz-brand__mark">א</span><span class="otz-brand__word">אוצר הסופר</span></a>
+        <div class="otz-nav__links">
+          <a href="#">The Treasury</a>
+          <a class="is-active" href="#">The Guide ▾</a>
+          <a href="#">The Practice ▾</a>
+          <a href="#">The Sefarim</a>
+          <a href="#">Commentaries</a>
+        </div>
+      </div>
+      <div class="otz-nav__right">
+        <a class="otz-nav__account" href="#">Account</a>
+        <span class="otz-nav__toggle">☀</span>
+      </div>
+    </nav>
+
+    <!-- READING COLUMN -->
+    <div class="otz-read otz-prose">
+      <div class="otz-eyebrow">Stylesheet Reference</div>
+      <h1 class="otz-title">Extending the Design</h1>
+      <div class="otz-heb">גיליון סגנון</div>
+      <div class="otz-rule"></div>
+
+      <p>This page is styled entirely by <em>otzar.css</em>. Every element below is either a semantic tag inside <em>.otz-prose</em> or an <em>.otz-*</em> class — link the stylesheet from a reference slug and its markup inherits the prototype look.</p>
+
+      <div class="otz-callout"><p>Callouts, section labels, and note panels carry the same reverent hierarchy as the built pages.</p></div>
+
+      <div class="otz-section-label">I · A Sample Section</div>
+      <p>Body copy sits at a measured width in the Visual Canon: Frank Ruhl Libre for Latin, David Libre for Hebrew. Every color pulls from your <em>theme.css</em> tokens, so this layer follows both the charcoal and vellum grounds. Links look like <a href="#">this one</a>.</p>
+
+      <div class="otz-note-panel"><p>A bordered note panel, used for set-apart passages such as the Shoresh Nistar.</p></div>
+    </div>
+
+    <!-- CARDS -->
+    <div class="otz-content" style="padding-top:0">
+      <div class="otz-section-label">Cards</div>
+      <div class="otz-grid otz-grid--3" style="margin-bottom:22px">
+        <a class="otz-letter" href="#"><span class="otz-letter__glyph">א</span><span class="otz-letter__name">Aleph</span><span class="otz-letter__meaning">The Silent Genesis</span></a>
+        <a class="otz-letter" href="#"><span class="otz-letter__glyph">מ</span><span class="otz-letter__name">Mem</span><span class="otz-letter__meaning">The Flow of Time</span></a>
+        <a class="otz-letter" href="#"><span class="otz-letter__glyph">ש</span><span class="otz-letter__name">Shin</span><span class="otz-letter__meaning">Transformation</span></a>
+      </div>
+      <a class="otz-card otz-card--gold" href="#" style="display:block;margin-bottom:26px">
+        <div><span class="otz-card__title">Sefer HaShorashim</span><span class="otz-card__heb">ספר השורשים</span></div>
+        <p class="otz-card__body">The canonical lexicon of Hebrew roots. Each root opens as a four-tier page.</p>
+        <div class="otz-pips" style="margin-top:14px"><span class="otz-pip">פשט</span><span class="otz-pip">רמז</span><span class="otz-pip">דרש</span><span class="otz-pip">סוד</span></div>
+      </a>
+
+      <!-- SHELF -->
+      <div class="otz-section-label">Shelf</div>
+      <div class="otz-shelf" style="height:230px">
+        <a class="otz-spine otz-spine--gold" href="#" style="height:210px"><span class="otz-spine__title">ספר השורשים</span><span class="otz-spine__latin">Sefer HaShorashim</span></a>
+        <a class="otz-spine otz-spine--copper" href="#" style="height:224px"><span class="otz-spine__title">בלגן האוצר</span><span class="otz-spine__latin">Balagan HaOtzar</span></a>
+        <a class="otz-spine otz-spine--blue" href="#" style="height:216px"><span class="otz-spine__title">אוצר המילים</span><span class="otz-spine__latin">Otzar HaMilim</span></a>
+        <a class="otz-spine otz-spine--silver" href="#" style="height:222px"><span class="otz-spine__title">ספר המועדים</span><span class="otz-spine__latin">Sefer HaMo'adim</span></a>
+      </div>
+      <div class="otz-ledge" style="margin-top:0;margin-bottom:26px"></div>
+
+      <!-- CHIPS + BUTTONS -->
+      <div class="otz-section-label">Chips &amp; Buttons</div>
+      <div class="otz-chips" style="margin-bottom:16px">
+        <span class="otz-chip is-active">All</span>
+        <span class="otz-chip">Letters</span>
+        <span class="otz-chip">Roots</span>
+        <span class="otz-chip">Balagan</span>
+      </div>
+      <div style="display:flex;gap:14px;margin-bottom:26px">
+        <a class="otz-btn otz-btn--primary" href="#">Enter the Guide</a>
+        <a class="otz-btn otz-btn--ghost" href="#">Begin a Reading</a>
+      </div>
+
+      <!-- FEED -->
+      <div class="otz-section-label">Feed</div>
+      <div class="otz-feed">
+        <div class="otz-feed-card otz-card--copper">
+          <div class="otz-feed-card__title">Why?</div>
+          <div class="otz-feed-card__byline">Commentary of Aleph Yud · 29 Tammuz 5786 · <a class="otz-link" href="#">Balagan HaOtzar</a></div>
+          <p class="otz-feed-card__body">A question kept here so it is not lost.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="otz-statusbar">
+      <span class="otz-statusbar__dot"></span>
+      <span>29 Tammuz 5786 · Tuesday · Parashat Devarim</span>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
