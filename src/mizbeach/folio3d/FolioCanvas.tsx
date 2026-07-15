@@ -54,10 +54,15 @@ export function FolioCanvas({ fallbackArt, layers, viewBox, children }: FolioCan
       layerCount,
     });
     sceneRef.current = scene;
-    const onResize = () => scene.resize();
-    window.addEventListener("resize", onResize);
+    // Track the canvas's own box, not just window resizes: the plate is sized by
+    // its grid cell, which reflows on font load, container growth, and column
+    // collapse — none of which fire a window resize. Without this the drawing
+    // buffer can stay stuck at its (possibly pre-layout) mount size and CSS
+    // stretches it, so the folio renders badly upscaled/pixelated.
+    const observer = new ResizeObserver(() => scene.resize());
+    observer.observe(canvasRef.current);
     return () => {
-      window.removeEventListener("resize", onResize);
+      observer.disconnect();
       scene.dispose();
       sceneRef.current = null;
     };

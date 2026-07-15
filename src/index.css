@@ -25,6 +25,11 @@ body {
   min-height: 100svh;
   display: flex;
   flex-direction: column;
+  /* Never let a wide child (e.g. the 3D folio's plate) open a horizontal
+     scroll of the whole page. `clip` (not `hidden`) prevents the pan without
+     creating a scroll container, so the sticky nav keeps sticking and inner
+     `overflow-x: auto` regions still scroll on their own. */
+  overflow-x: clip;
 }
 
 h1,
