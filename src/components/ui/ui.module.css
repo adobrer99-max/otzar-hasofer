@@ -231,3 +231,25 @@
     transition: none;
   }
 }
+
+/* Authored rich text (Scriptorium). Formatting is constrained to the reading
+   column: headings are scaled into the type ramp so an authored H1 can't
+   dominate, and block spacing stays tight. */
+.richText :global(h1),
+.richText :global(h2),
+.richText :global(h3),
+.richText :global(h4) {
+  font-family: var(--font-latin);
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 0.6em 0 0.3em;
+  color: var(--text);
+}
+.richText :global(h1) { font-size: 1.5rem; }
+.richText :global(h2) { font-size: 1.3rem; }
+.richText :global(h3) { font-size: 1.15rem; }
+.richText :global(h4) { font-size: 1.02rem; }
+.richText :global(p) { margin: 0 0 0.5em; }
+.richText :global(p):last-child { margin-bottom: 0; }
+.richText :global(u) { text-underline-offset: 2px; }
+.richText > :first-child { margin-top: 0; }

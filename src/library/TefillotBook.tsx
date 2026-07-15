@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { liturgies, liturgiesById, LITURGY_SECTIONS } from "../data/liturgies";
+import { RichText } from "../components/ui";
 import { PardesEntry } from "./PardesEntry";
 import styles from "./library.module.css";
 
@@ -45,7 +46,7 @@ export function TefillotBook({ entryId }: { entryId?: string }) {
               <p className="hebrew" dir="rtl" style={{ fontSize: "1.25rem", lineHeight: 1.9 }}>
                 {selected.hebrew}
               </p>
-              <p>{selected.english}</p>
+              <RichText html={selected.english} />
               <p style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>
                 The Hebrew is the traditional, public-domain formula, given unvowelized — verify
                 against your own siddur before ritual use. The English rendering is a first
@@ -54,7 +55,7 @@ export function TefillotBook({ entryId }: { entryId?: string }) {
             </>
           }
           remez={<p>{selected.occasionNote}</p>}
-          sod={<p>{selected.sodPrompt}</p>}
+          sod={<RichText html={selected.sodPrompt} />}
         />
       </div>
     );

@@ -231,3 +231,83 @@
 .muted {
   color: var(--text-muted);
 }
+
+/* ——— Rich-text composition field ——— */
+.richEditor {
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  overflow: hidden;
+}
+.richToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  border-bottom: 1px solid var(--border-hairline);
+  background: var(--bg-sunken);
+}
+.richToolbar button,
+.richToolbar select {
+  min-width: 30px;
+  height: 30px;
+  padding: 0 6px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+.richToolbar button:hover,
+.richToolbar select:hover {
+  border-color: var(--accent);
+}
+.toolGroup {
+  display: inline-flex;
+  gap: 4px;
+}
+.colorControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 30px;
+  padding: 0 4px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  cursor: pointer;
+}
+.colorControl input[type="color"] {
+  width: 22px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+.richSurface {
+  min-height: 7rem;
+  max-height: 22rem;
+  overflow-y: auto;
+  padding: var(--space-2);
+  color: var(--text);
+  font-family: var(--font-latin);
+  line-height: var(--line-height);
+  outline: none;
+}
+.richSurface:focus {
+  box-shadow: inset 0 0 0 2px var(--focus-ring);
+}
+.richSurface h1 { font-size: 1.5rem; margin: 0.5em 0 0.3em; }
+.richSurface h2 { font-size: 1.3rem; margin: 0.5em 0 0.3em; }
+.richSurface h3 { font-size: 1.15rem; margin: 0.5em 0 0.3em; }
+.richSurface h4 { font-size: 1.02rem; margin: 0.5em 0 0.3em; }
+.richSurface p { margin: 0 0 0.5em; }
+.richSurface:empty::before {
+  content: "Write here…";
+  color: var(--text-muted);
+  opacity: 0.6;
+}

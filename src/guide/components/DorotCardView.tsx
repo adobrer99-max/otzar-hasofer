@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { DorotCard } from "../../types/dorot";
+import { RichText } from "../../components/ui";
 import styles from "../pages/Dorot.module.css";
 
 /**
@@ -28,14 +29,12 @@ export function DorotCardView({ card, children }: { card: DorotCard; children?: 
         <div className={styles.cardMeta}>The Episode: {card.episode}</div>
       )}
       {card.humanPractice && (
-        <div className={styles.cardMeta}>The Human Practice: {card.humanPractice}</div>
+        <div className={styles.cardMeta}>
+          The Human Practice: <RichText as="span" html={card.humanPractice} />
+        </div>
       )}
       {card.coreEnergy && <div className={styles.cardMeta}>Core Energy: {card.coreEnergy}</div>}
-      {card.question && (
-        <p>
-          <em>{card.question}</em>
-        </p>
-      )}
+      {card.question && <RichText html={card.question} />}
       {children}
     </div>
   );

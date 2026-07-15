@@ -1,4 +1,5 @@
 import type { FestivalOverride } from "../../types/festival";
+import { RichText } from "../../components/ui";
 import styles from "./FestivalCard.module.css";
 
 export function FestivalCard({ festival }: { festival: FestivalOverride }) {
@@ -16,7 +17,7 @@ export function FestivalCard({ festival }: { festival: FestivalOverride }) {
       <p className={styles.mechanic}>{festival.ritualMechanic}</p>
       {festival.gesture && <span className={styles.gesture}>{festival.gesture}</span>}
       {festival.contemplativeQuestion && (
-        <p className={styles.question}>{festival.contemplativeQuestion}</p>
+        <RichText className={styles.question} html={festival.contemplativeQuestion} />
       )}
     </article>
   );

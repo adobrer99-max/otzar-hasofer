@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { sanitizeRichHtml } from "../../scriptorium/richText";
 import styles from "./ui.module.css";
 
 /** The eyebrow + title (+ optional Hebrew subtitle + lede) block that opens
@@ -120,6 +121,30 @@ export function DecoratedRule() {
 /** Wraps a paragraph so its opening letter is set as an illuminated initial. */
 export function DropCap({ children, className }: { children: ReactNode; className?: string }) {
   return <p className={[styles.dropCap, className ?? ""].filter(Boolean).join(" ")}>{children}</p>;
+}
+
+/**
+ * Renders authored rich text (Scriptorium prose) as sanitized HTML. Shipped
+ * content is plain text and renders identically; once an author formats a
+ * field the bold/heading/colour/alignment show here. Sanitized again at render
+ * (defense in depth), and scoped so an authored heading can't blow out the
+ * reading column. `as` picks the wrapper element (default a block div).
+ */
+export function RichText({
+  html,
+  className,
+  as: Tag = "div",
+}: {
+  html: string;
+  className?: string;
+  as?: "div" | "span" | "p";
+}) {
+  return (
+    <Tag
+      className={[styles.richText, className ?? ""].filter(Boolean).join(" ")}
+      dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(html) }}
+    />
+  );
 }
 
 export { styles as uiStyles };

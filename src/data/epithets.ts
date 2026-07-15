@@ -33,6 +33,20 @@ export const sefirahHonorifics: Partial<Record<SefirahId, string>> = {
 
 export const DEFAULT_HONORIFIC = "Keeper of the Treasury";
 
+/**
+ * The live default honorific. Equals DEFAULT_HONORIFIC unless the Scriptorium
+ * overrides it (see applyOverrides.ts) — `deriveEpithet` reads it through
+ * `getDefaultHonorific()` so an authored default takes effect app-wide, while
+ * the constant above stays the pristine base the content registry reports.
+ */
+let defaultHonorificOverride: string | undefined;
+export function getDefaultHonorific(): string {
+  return defaultHonorificOverride ?? DEFAULT_HONORIFIC;
+}
+export function setDefaultHonorific(value: string | undefined): void {
+  defaultHonorificOverride = value && value.trim() ? value : undefined;
+}
+
 /** One emblem phrase per letter, composed as "under the Sign of {emblem}". */
 export const letterEmblems: Record<string, string> = {
   aleph: "the Breath Before Speech",

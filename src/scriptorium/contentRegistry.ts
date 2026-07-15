@@ -24,8 +24,9 @@ export type DatasetId =
   | "epithets"
   | "letters";
 
-/** How a field is edited (and, in the export, understood). */
-export type FieldKind = "text" | "multiline" | "hebrew";
+/** How a field is edited (and, in the export, understood). `rich` fields carry
+ *  sanitized HTML from the composition editor; the rest are plain strings. */
+export type FieldKind = "text" | "multiline" | "hebrew" | "rich";
 
 export interface FieldDescriptor {
   /** The data field name, e.g. "contemplativeQuestion". */
@@ -76,7 +77,7 @@ const festivalsDataset: DatasetDescriptor = {
     {
       key: "contemplativeQuestion",
       label: "Contemplative question",
-      kind: "multiline",
+      kind: "rich",
       hint: "The question the day asks of the participant.",
     },
   ],
@@ -107,8 +108,8 @@ const dorotDataset: DatasetDescriptor = {
   gapNoun: "gap",
   fields: [
     { key: "title", label: "Card title", kind: "text", hint: "An evocative title (currently equal to the episode name)." },
-    { key: "humanPractice", label: "The Human Practice", kind: "text", hint: "The lived practice the episode points toward." },
-    { key: "question", label: "Contemplative question", kind: "multiline" },
+    { key: "humanPractice", label: "The Human Practice", kind: "rich", hint: "The lived practice the episode points toward." },
+    { key: "question", label: "Contemplative question", kind: "rich" },
   ],
   entries: matriarchalCards.map((c) => {
     const house = dorotHousesById[c.houseId];
@@ -137,8 +138,8 @@ const liturgyDataset: DatasetDescriptor = {
   blurb: "The first-draft English rendering and the Sod prompt for each liturgy.",
   gapNoun: "first-draft",
   fields: [
-    { key: "english", label: "English rendering", kind: "multiline", hint: "The project's own English voice — not a copyrighted translation." },
-    { key: "sodPrompt", label: "Sod prompt", kind: "multiline", hint: "The contemplative question (the Sod tier)." },
+    { key: "english", label: "English rendering", kind: "rich", hint: "The project's own English voice — not a copyrighted translation." },
+    { key: "sodPrompt", label: "Sod prompt", kind: "rich", hint: "The contemplative question (the Sod tier)." },
   ],
   entries: liturgies.map((l) => ({
     id: l.id,
@@ -157,7 +158,7 @@ const encountersDataset: DatasetDescriptor = {
   label: "Encounter questions",
   blurb: "The contemplative question for each of the Seven Encounters of Bereshit.",
   gapNoun: "first-draft",
-  fields: [{ key: "question", label: "Contemplative question", kind: "multiline" }],
+  fields: [{ key: "question", label: "Contemplative question", kind: "rich" }],
   entries: encounters.map((e) => ({
     id: String(e.number),
     label: `${e.name} — ${e.aspect}`,
@@ -203,10 +204,10 @@ const epithetsDataset: DatasetDescriptor = {
 const letterFields: FieldDescriptor[] = [
   { key: "keyword", label: "Keyword", kind: "text" },
   { key: "translationRoot", label: "Translation / root", kind: "text" },
-  { key: "eternalPrinciple", label: "Eternal principle", kind: "multiline" },
-  { key: "question", label: "Contemplative question", kind: "multiline" },
+  { key: "eternalPrinciple", label: "Eternal principle", kind: "rich" },
+  { key: "question", label: "Contemplative question", kind: "rich" },
   { key: "hebrewRoot", label: "Hebrew root", kind: "hebrew" },
-  { key: "scribeNotes", label: "Scribe notes", kind: "multiline" },
+  { key: "scribeNotes", label: "Scribe notes", kind: "rich" },
 ];
 const lettersDataset: DatasetDescriptor = {
   id: "letters",

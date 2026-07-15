@@ -1,5 +1,6 @@
 import { Button } from "../components/ui";
 import type { DatasetDescriptor } from "./contentRegistry";
+import { RichTextField } from "./RichTextField";
 import styles from "./scriptorium.module.css";
 
 /**
@@ -40,7 +41,9 @@ export function DraftEditor({
         return (
           <div className={styles.field} key={field.key}>
             <label htmlFor={id}>{field.label}</label>
-            {field.kind === "multiline" ? (
+            {field.kind === "rich" ? (
+              <RichTextField id={id} value={value} onChange={(html) => onFieldChange(field.key, html)} />
+            ) : field.kind === "multiline" ? (
               <textarea
                 id={id}
                 value={value}

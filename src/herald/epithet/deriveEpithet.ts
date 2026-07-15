@@ -1,6 +1,6 @@
 import type { HeraldLayer } from "../../types/herald";
 import type { SefirahId } from "../../types/letter";
-import { sefirahHonorifics, letterEmblems, DEFAULT_HONORIFIC } from "../../data/epithets";
+import { sefirahHonorifics, letterEmblems, getDefaultHonorific } from "../../data/epithets";
 import { dominant } from "../synthesis/dominant";
 
 export interface DerivedEpithet {
@@ -26,7 +26,7 @@ export function deriveEpithet(layers: HeraldLayer[]): DerivedEpithet {
   const dominantLetterId = dominant(letterSequence);
   const dominantMiddah = dominant(middahSequence);
 
-  const honorific = sefirahHonorifics[dominantMiddah] ?? DEFAULT_HONORIFIC;
+  const honorific = sefirahHonorifics[dominantMiddah] ?? getDefaultHonorific();
   const emblem = letterEmblems[dominantLetterId];
   const text = emblem ? `${honorific}, under the Sign of ${emblem}` : honorific;
 

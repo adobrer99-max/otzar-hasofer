@@ -1,4 +1,5 @@
 import type { LetterCard } from "../types/letter";
+import { richToPlain } from "../scriptorium/richText";
 
 export const REVERSED_FRAMING_LABEL = "Reversed — Turned Inward";
 
@@ -10,7 +11,7 @@ export const REVERSED_FRAMING_LABEL = "Reversed — Turned Inward";
 export function reversedFramingText(letter: Pick<LetterCard, "name" | "eternalPrinciple">): string {
   return (
     `Drawn upside down, ${letter.name} invites the participant to turn its energy inward. ` +
-    `Rather than acting outward on "${letter.eternalPrinciple}", the reading holds it as a private, ` +
+    `Rather than acting outward on "${richToPlain(letter.eternalPrinciple)}", the reading holds it as a private, ` +
     `introspective question — something to sit with rather than something to do.`
   );
 }
