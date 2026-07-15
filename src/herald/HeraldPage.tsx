@@ -9,6 +9,8 @@ import {
   getLayers,
   addLayer,
   setHeraldStyle,
+  deleteParticipant,
+  deleteLayer,
 } from "../storage/participantsRepo";
 import { listLifeCycleEvents } from "../storage/lifeCycleRepo";
 import { listAllCommentaries } from "../storage/commentariesRepo";
@@ -48,6 +50,7 @@ export function HeraldPage() {
   const [justRevealed, setJustRevealed] = useState(false);
   const [styleDraft, setStyleDraft] = useState<HeraldStyle>({});
   const [promptCopied, setPromptCopied] = useState(false);
+  const [confirmDeleteReading, setConfirmDeleteReading] = useState(false);
   const wasRevealed = useRef(false);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -78,6 +81,9 @@ export function HeraldPage() {
     setStyleDraft(p?.heraldStyle ?? {});
   }, [selectedParticipantId, participants]);
 
+  // Drop any pending "delete this reading" confirm when the viewed layer changes.
+  useEffect(() => setConfirmDeleteReading(false), [selectedLayerId]);
+
   async function handleCreateParticipant(displayName: string, path: ReadingPath) {
     const record = await createParticipant(displayName, path);
     setParticipants((prev) => [...prev, record].sort((a, b) => a.displayName.localeCompare(b.displayName)));
@@ -86,6 +92,22 @@ export function HeraldPage() {
 
   function handleParticipantChange(updated: ParticipantRecord) {
     setParticipants((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+  }
+
+  async function handleDeleteParticipant(id: string) {
+    await deleteParticipant(id);
+    setSelectedParticipantId(undefined);
+    setParticipants(await listParticipants());
+  }
+
+  async function handleDeleteReading(layerId: string) {
+    if (!selectedParticipantId) return;
+    await deleteLayer(selectedParticipantId, layerId);
+    const refreshed = await getLayers(selectedParticipantId);
+    setLayers(refreshed);
+    setSelectedLayerId(undefined); // return to the synthesized headline
+    setConfirmDeleteReading(false);
+    wasRevealed.current = refreshed.length >= 7;
   }
 
   async function handleSealStyle() {
@@ -172,6 +194,7 @@ export function HeraldPage() {
         selectedId={selectedParticipantId}
         onSelect={setSelectedParticipantId}
         onCreate={handleCreateParticipant}
+        onDelete={handleDeleteParticipant}
       />
 
       {selectedParticipantId && selectedParticipant && (
@@ -207,14 +230,31 @@ export function HeraldPage() {
             />
           </div>
           <div className={styles.canvasCol}>
-            {!viewingSynthesis && heraldForm && (
-              <button
-                type="button"
-                className={styles.returnBtn}
-                onClick={() => setSelectedLayerId(undefined)}
-              >
-                ◆ Return to the whole Herald
-              </button>
+            {!viewingSynthesis && heraldForm && selectedLayer && (
+              <div className={styles.layerActions}>
+                <button
+                  type="button"
+                  className={styles.returnBtn}
+                  onClick={() => setSelectedLayerId(undefined)}
+                >
+                  ◆ Return to the whole Herald
+                </button>
+                {confirmDeleteReading ? (
+                  <span className={styles.deleteConfirm} role="group" aria-label="Confirm delete reading">
+                    <span>Delete this reading?</span>
+                    <button type="button" className={styles.dangerBtn} onClick={() => handleDeleteReading(selectedLayer.id)}>
+                      Delete
+                    </button>
+                    <button type="button" onClick={() => setConfirmDeleteReading(false)}>
+                      Cancel
+                    </button>
+                  </span>
+                ) : (
+                  <button type="button" className={styles.deleteLink} onClick={() => setConfirmDeleteReading(true)}>
+                    Delete this reading
+                  </button>
+                )}
+              </div>
             )}
             {selectedParticipant && layers.length >= 7 && !sealedEpithet && (
               <EpithetPanel

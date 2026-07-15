@@ -65,6 +65,53 @@ export function darken(hex: string, amt: number): string {
   const [r, g, b] = parse(hex);
   return toHex([r * (1 - amt), g * (1 - amt), b * (1 - amt)]);
 }
+function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return [0, 0, l];
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h = 0;
+  if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  return [h / 6, s, l];
+}
+function hslToRgb(h: number, s: number, l: number): [number, number, number] {
+  if (s === 0) return [l * 255, l * 255, l * 255];
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  const hue = (t: number) => {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+  return [hue(h + 1 / 3) * 255, hue(h) * 255, hue(h - 1 / 3) * 255];
+}
+
+/**
+ * Deepen a letter's signature colour into a rich, saturated heraldic field
+ * tincture — a jewel tone, not the muddy near-black the old flat darken
+ * produced. Saturation is boosted and lightness pulled into a deep band so a
+ * gold charge always reads over it (metal on colour), while the hue — the
+ * letter's own correspondence — stays intact and each field reads distinct.
+ */
+export function jewelTone(hex: string): string {
+  const [r, g, b] = parse(hex);
+  const [h, s, l] = rgbToHsl(r, g, b);
+  const richS = Math.min(1, s * 1.15 + 0.14);
+  const deepL = Math.max(0.16, Math.min(l, 0.29));
+  const [nr, ng, nb] = hslToRgb(h, richS, deepL);
+  return toHex([nr, ng, nb]);
+}
+
 /** The average of several colours — used to tint the field from the drawn letters. */
 export function blend(hexes: string[]): string {
   if (hexes.length === 0) return FALLBACK;
