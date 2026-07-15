@@ -1,0 +1,74 @@
+.rail {
+  position: relative;
+  list-style: none;
+  margin: var(--space-4) 0;
+  padding: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.track {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  top: 18px;
+  height: 1.5px;
+  background: var(--border-hairline);
+}
+
+.station {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  flex: 1;
+}
+
+.node {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-latin);
+  font-size: 1rem;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-hairline);
+  color: var(--text-muted);
+}
+.done {
+  background: radial-gradient(circle at 40% 35%, var(--color-gold-bright), var(--color-gold));
+  border-color: var(--accent);
+  color: var(--color-charcoal);
+}
+.current {
+  border: 2px solid var(--accent);
+  color: var(--accent-bright);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 36%, transparent);
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.en {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+.he {
+  font-size: 0.9rem;
+  color: color-mix(in srgb, var(--accent) 80%, var(--text-muted));
+}
+
+@media (max-width: 640px) {
+  .en {
+    font-size: 0.75rem;
+  }
+}
