@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { PageHeader } from "../../components/ui";
+import { PageHeader, RichText } from "../../components/ui";
 import { encounters } from "../../data/encounters";
 import { housesBySefirah } from "../../data/dorot";
 import { ushpizinBySefirah } from "../../data/ushpizin";
@@ -28,9 +28,7 @@ export function Encounters() {
               {encounter.name} Encounter — {encounter.aspect}
             </h2>
             <p>{encounter.themes}</p>
-            <p>
-              <em>{encounter.question}</em>
-            </p>
+            <RichText html={encounter.question} />
             <p>
               Opens the Pillar of{" "}
               {ushpizinBySefirah[encounter.sefirah].sefirahName}:{" "}

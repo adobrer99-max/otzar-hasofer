@@ -1,4 +1,5 @@
 import { lettersById } from "../data/letters";
+import { RichText } from "../components/ui";
 import { PardesEntry } from "./PardesEntry";
 
 /**
@@ -69,7 +70,7 @@ export function VocabularyTreasuryBook() {
           }
           remez={
             <>
-              <p>{heh.eternalPrinciple}</p>
+              <RichText html={heh.eternalPrinciple} />
               {heh.hebrewRoot && (
                 <p style={{ fontFamily: "var(--font-hebrew)" }}>{heh.hebrewRoot}</p>
               )}
@@ -77,7 +78,7 @@ export function VocabularyTreasuryBook() {
           }
           sod={
             heh.question ? (
-              <p>{heh.question}</p>
+              <RichText html={heh.question} />
             ) : (
               <p>Disclosed through the participant's own life after the reading.</p>
             )

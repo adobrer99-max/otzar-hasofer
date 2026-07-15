@@ -1,5 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { letters, lettersById } from "../../data/letters";
+import { RichText } from "../../components/ui";
 import { ClassificationBadge } from "../components/ClassificationBadge";
 import { ReversedFraming, REVERSED_FRAMING_LABEL } from "../components/ReversedFraming";
 import { CommentarySection } from "../../commentaries/CommentarySection";
@@ -58,14 +59,12 @@ export function LetterChapter() {
       </div>
       <div className={styles.section}>
         <h3>Eternal Principle</h3>
-        <p>{letter.eternalPrinciple}</p>
+        <RichText html={letter.eternalPrinciple} />
       </div>
       {letter.question && (
         <div className={styles.section}>
           <h3>The Question</h3>
-          <p>
-            <em>{letter.question}</em>
-          </p>
+          <RichText html={letter.question} />
         </div>
       )}
       <div className={styles.section}>
@@ -81,7 +80,7 @@ export function LetterChapter() {
       {letter.scribeNotes && (
         <div className={styles.section}>
           <h3>Scribe's Notes</h3>
-          <p>{letter.scribeNotes}</p>
+          <RichText html={letter.scribeNotes} />
         </div>
       )}
       <p className={styles.sources}>

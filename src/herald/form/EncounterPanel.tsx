@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { RichText } from "../../components/ui";
 import { getEncounterForReadingIndex } from "../../data/encounters";
 import { housesBySefirah } from "../../data/dorot";
 import { ushpizinBySefirah } from "../../data/ushpizin";
@@ -16,7 +17,7 @@ export function EncounterPanel({ readingIndex }: { readingIndex: number }) {
         Encounter {encounter.number}: {encounter.aspect}
       </div>
       <div className={styles.encounterThemes}>{encounter.themes}</div>
-      <p className={styles.encounterQuestion}>{encounter.question}</p>
+      <RichText className={styles.encounterQuestion} html={encounter.question} />
       <p className={styles.encounterThemes}>
         With this Encounter, the Pillar of{" "}
         {ushpizinBySefirah[encounter.sefirah].sefirahName} opens —{" "}

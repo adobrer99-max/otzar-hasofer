@@ -9,6 +9,7 @@ import { formatHebrewDateEnglish } from "../../data/hebrewCalendar";
 import { encountersByNumber } from "../../data/encounters";
 import { findTwoLetterRoot } from "../../data/twoLetterRoots";
 import { resolveShoresh } from "../shoresh/resolveShoresh";
+import { richToPlain } from "../../scriptorium/richText";
 import styles from "./history.module.css";
 
 const FOUR_WORLDS = [
@@ -217,11 +218,11 @@ export function LayerCaption({
                     {card.title} (House of {house.figure})
                   </Link>
                   {(card.humanPractice ?? card.coreEnergy) && (
-                    <span className={styles.citation}> — {card.humanPractice ?? card.coreEnergy}</span>
+                    <span className={styles.citation}> — {richToPlain(card.humanPractice ?? card.coreEnergy ?? "")}</span>
                   )}
                   {card.question && (
                     <div>
-                      <em>{card.question}</em>
+                      <em>{richToPlain(card.question)}</em>
                     </div>
                   )}
                 </li>

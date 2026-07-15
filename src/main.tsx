@@ -4,6 +4,8 @@ import { RouterProvider } from "react-router-dom";
 import "./index.css";
 import { router } from "./router";
 import { initCloudSync } from "./cloud/orchestrator";
+import { listDrafts } from "./storage/contentDraftsRepo";
+import { applyContentOverrides } from "./scriptorium/applyOverrides";
 
 // Inert when the deployment has no cloud configured.
 initCloudSync();
@@ -23,8 +25,16 @@ window.addEventListener("vite:preloadError", (event) => {
   }
 });
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <RouterProvider router={router} />
-  </StrictMode>,
-);
+function renderApp() {
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <RouterProvider router={router} />
+    </StrictMode>,
+  );
+}
+
+// Apply any Scriptorium content edits (saved locally) onto the in-memory
+// datasets before first render, so an author's edits are live across the whole
+// app — not only in the studio's preview. A read failure still renders the
+// shipped defaults; the theme pre-paint in index.html is unaffected.
+listDrafts().then(applyContentOverrides).catch(() => {}).finally(renderApp);

@@ -14,6 +14,7 @@ import {
   type DraftRecord,
 } from "../storage/contentDraftsRepo";
 import { overlayForDataset, serializeDataset, serializeAll } from "./exportDrafts";
+import { applyContentOverrides, revertEntry } from "./applyOverrides";
 import { downloadText, copyText } from "../herald/export/blazon";
 import { DraftEditor } from "./DraftEditor";
 import { PreviewPane } from "./PreviewPane";
@@ -21,9 +22,11 @@ import styles from "./scriptorium.module.css";
 
 /**
  * The Scriptorium — a standalone, unlinked drafting studio (reachable only at
- * /scriptorium). Browse every authorable content gap, write into a form, watch
- * the real component render live, and export the drafts as JSON. It only reads
- * the shipped datasets; nothing here changes what the live app renders.
+ * /scriptorium). Browse every authorable content gap, compose into a form with
+ * formatting tools, and watch the real component render live. Saved edits apply
+ * to the running app on this device immediately (see applyOverrides.ts); the
+ * JSON export is how those edits are published to everyone (folded into
+ * src/data/*.ts and deployed).
  */
 export function ScriptoriumPage() {
   const [datasetId, setDatasetId] = useState<DatasetId>("festivals");
@@ -71,13 +74,16 @@ export function ScriptoriumPage() {
   async function handleSave() {
     if (!entry) return;
     await putDraft(datasetId, entry.id, values);
-    await refresh();
-    setSavedNote(`Saved locally · ${new Date().toLocaleTimeString()}`);
+    const updated = await listDrafts();
+    setDrafts(updated);
+    applyContentOverrides(updated); // live on this device, app-wide
+    setSavedNote(`Saved · live on this device · ${new Date().toLocaleTimeString()}`);
   }
 
   async function handleRevert() {
     if (!entry) return;
     await deleteDraft(datasetId, entry.id);
+    revertEntry(datasetId, entry.id); // restore the shipped text live
     await refresh();
     setValues(entry.base);
     setSavedNote("Reverted to the shipped text.");
@@ -101,7 +107,7 @@ export function ScriptoriumPage() {
       <PageHeader
         kicker="The Scriptorium — a drafting studio"
         title="Author the Treasury's content"
-        lede="Write into the gaps and watch the real page render as you type. Drafts are saved in this browser only — export the JSON often; it is the copy that gets folded into the data files."
+        lede="Compose into the gaps with the formatting tools and watch the real page render as you type. Saved edits go live across the app on this device immediately. To publish an edit to everyone, export the JSON and fold it into the data files, then deploy."
       />
 
       <div className={styles.dashboard}>
