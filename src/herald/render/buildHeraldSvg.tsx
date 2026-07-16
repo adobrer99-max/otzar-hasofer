@@ -3,6 +3,7 @@ import type { SefirahId } from "../../types/letter";
 import type { HeraldForm } from "../synthesis/deriveHeraldForm";
 import type { CovenantalForm } from "../covenant/deriveCovenantalForm";
 import { lettersById } from "../../data/letters";
+import { spellWord } from "../../data/hebrewText";
 import { festivalsById } from "../../data/festivals";
 import { dorotCardsById, dorotHousesById } from "../../data/dorot";
 import { resolveShoresh } from "../shoresh/resolveShoresh";
@@ -749,10 +750,9 @@ function HeraldFigure({
   // heraldic-charge device this is the one place the written word appears.
   const fessWord =
     shoresh?.tier === "root" || shoresh?.tier === "name"
-      ? [...divisions]
-          .sort((a, b) => a.drawOrder - b.drawOrder)
-          .map((d) => lettersById[d.letterId]?.glyph ?? "")
-          .join("")
+      ? spellWord(
+          [...divisions].sort((a, b) => a.drawOrder - b.drawOrder).map((d) => d.letterId),
+        )
       : undefined;
   const tentativePairs =
     shoresh?.tier === "related"

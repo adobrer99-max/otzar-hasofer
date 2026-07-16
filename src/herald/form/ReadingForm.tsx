@@ -19,6 +19,7 @@ import { EncounterPanel } from "./EncounterPanel";
 import { DorotDrawPanel, firstCardOfHouse } from "./DorotDrawPanel";
 import { resolveDorotMechanic } from "../dorot/dorotMechanics";
 import { resolveSpread } from "../spreads/resolveSpread";
+import { drawLetters } from "../deck/deck";
 import styles from "./form.module.css";
 
 const drawLabels = ["First drawn", "Second drawn", "Third drawn"];
@@ -126,6 +127,18 @@ export function ReadingForm({ onSubmit, readingIndex, ritualNotes }: ReadingForm
       next[index] = { ...next[index], ...patch };
       return next;
     });
+  }
+
+  // Draw the reading's letters from the deck — a true, random draw of distinct
+  // cards (each landing upright or reversed). The Scribe can still adjust any
+  // card afterward; the drawn result is what the reading records.
+  function handleDrawFromDeck() {
+    if (lettersLocked) return;
+    const openCount = spread === "etz-chaim" ? 4 : 3;
+    const cards = drawLetters(openCount + 1);
+    setDrawnLetters([cards[0], cards[1], cards[2]]);
+    if (spread === "etz-chaim") setFourthLetter(cards[3]);
+    setVeiledLetter(cards[cards.length - 1]);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -259,6 +272,17 @@ export function ReadingForm({ onSubmit, readingIndex, ritualNotes }: ReadingForm
           transparency and the lifting of veils. Four letters, two pairs; the reading looks
           only for synthesis — between each letter in the pair, and between each pair.
         </p>
+      )}
+
+      {!lettersLocked && (
+        <div className={styles.deckDraw}>
+          <button type="button" className={styles.drawBtn} onClick={handleDrawFromDeck}>
+            ✦ Draw from the deck
+          </button>
+          <span className={styles.deckDrawNote}>
+            A true random draw of {spread === "etz-chaim" ? "five" : "four"} cards — adjust any by hand after.
+          </span>
+        </div>
       )}
 
       {drawnLetters.map((draw, index) => (
