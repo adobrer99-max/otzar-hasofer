@@ -3,11 +3,8 @@ import type { LifeCycleEvent } from "../../types/lifeCycle";
 import type { HebrewDate } from "../../data/hebrewCalendar";
 import { lettersById } from "../../data/letters";
 import { findLayersOnRecurringHebrewDate } from "./recurringDates";
+import { todaysObservances } from "./observances";
 import styles from "./lifeCycle.module.css";
-
-function sameMonthDay(a: HebrewDate, b: HebrewDate): boolean {
-  return a.month === b.month && a.day === b.day;
-}
 
 function layerLetters(layer: HeraldLayer): string {
   return layer.input.drawnLetters.map((d) => lettersById[d.letterId]?.name ?? "?").join("–");
@@ -26,37 +23,11 @@ export function SacredTimeBanners({
   events: LifeCycleEvent[];
   onSelectLayer: (layerId: string) => void;
 }) {
-  const banners: { key: string; title: string; pastLayers: HeraldLayer[] }[] = [];
-
-  if (participant.hebrewBirthDate && sameMonthDay(today, participant.hebrewBirthDate)) {
-    const age = today.year - participant.hebrewBirthDate.year;
-    banners.push({
-      key: "birthday",
-      title: `Today is ${participant.displayName}'s Hebrew Birthday${age > 0 ? ` (age ${age})` : ""} — the Annual Treasury Reading.`,
-      pastLayers: findLayersOnRecurringHebrewDate(layers, participant.hebrewBirthDate),
-    });
-  }
-
-  for (const event of events) {
-    if (!sameMonthDay(today, event.hebrewDate)) continue;
-    const years = today.year - event.hebrewDate.year;
-    const nth = years > 0 ? `${years}${ordinalSuffix(years)} ` : "";
-    const since = years > 0 ? `${years} year${years === 1 ? "" : "s"}` : "the day";
-    const name = participant.displayName;
-    const titles: Record<typeof event.type, string> = {
-      yahrzeit: `Today is the ${nth}Yahrzeit of ${event.personName} (${event.relation}).`,
-      "wedding-anniversary": `Today is ${name}'s ${nth}Hebrew wedding anniversary.`,
-      "bar-bat-mitzvah": `Today marks ${since} since ${name}'s Bar/Bat Mitzvah — the first reading conducted together.`,
-      bris: `Today is the ${nth}anniversary of ${name}'s Bris — the covenant remembered. No conclusions; only blessing.`,
-      conversion: `Today marks ${since} since ${name} was grafted into the covenant — nothing erased, everything redeemed.`,
-      aliyah: `Today marks ${since} since ${name}'s Aliyah — the day the reading began with the Letters alone.`,
-    };
-    banners.push({
-      key: event.id,
-      title: titles[event.type],
-      pastLayers: findLayersOnRecurringHebrewDate(layers, event.hebrewDate),
-    });
-  }
+  const banners = todaysObservances(today, participant, events).map((o) => ({
+    key: o.key,
+    title: o.title,
+    pastLayers: findLayersOnRecurringHebrewDate(layers, o.monthDay),
+  }));
 
   if (banners.length === 0) return null;
 
@@ -83,13 +54,4 @@ export function SacredTimeBanners({
       ))}
     </>
   );
-}
-
-function ordinalSuffix(n: number): string {
-  const j = n % 10;
-  const k = n % 100;
-  if (j === 1 && k !== 11) return "st";
-  if (j === 2 && k !== 12) return "nd";
-  if (j === 3 && k !== 13) return "rd";
-  return "th";
 }

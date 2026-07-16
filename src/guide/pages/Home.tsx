@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Card, DecoratedRule } from "../../components/ui";
 import { guideLinks, practiceLinks, libraryLinks, type SiteLink } from "../../components/siteMap";
+import { TodayPanel } from "./TodayPanel";
 import styles from "./Home.module.css";
 
 function DoorGrid({ doors }: { doors: SiteLink[] }) {
@@ -53,6 +54,8 @@ export function Home() {
           />
         </div>
       </section>
+
+      <TodayPanel />
 
       <DecoratedRule />
 
