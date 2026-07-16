@@ -33,5 +33,5 @@ export interface SacredTimeSnapshot {
    * that Shabbat carries a festival reading instead — and on snapshots
    * stored before this field existed (additive). Geography-dependent.
    */
-  parsha?: { ids: string[]; label: string; shabbat: string };
+  parsha?: { ids: string[]; label: string; shabbat: string; festival?: boolean };
 }

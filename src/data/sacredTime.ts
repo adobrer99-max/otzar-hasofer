@@ -106,6 +106,7 @@ export function computeSacredTime(date: Date, geography: GeographyMode): SacredT
           ids: parshaWeek.parshiyot.map((p) => p.id),
           label: parshaWeek.label,
           shabbat: parshaWeek.shabbat,
+          festival: parshaWeek.festival,
         }
       : undefined,
   };

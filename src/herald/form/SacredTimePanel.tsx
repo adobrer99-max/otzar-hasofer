@@ -34,7 +34,10 @@ export function SacredTimePanel({
         {snapshot.omer && ` · Omer day ${snapshot.omer.day}`}
         {snapshot.roshChodesh && " · Rosh Chodesh"}
         {festival && festival.id !== "ordinary" && ` · ${festival.name}`}
-        {snapshot.parsha && ` · Parashat ${snapshot.parsha.label}`}
+        {snapshot.parsha &&
+          (snapshot.parsha.festival
+            ? ` · ${snapshot.parsha.label}`
+            : ` · Parashat ${snapshot.parsha.label}`)}
       </div>
       {showBackdate && (
         <div className={styles.backdateRow}>
