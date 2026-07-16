@@ -20,6 +20,7 @@ import { DorotDrawPanel, firstCardOfHouse } from "./DorotDrawPanel";
 import { resolveDorotMechanic } from "../dorot/dorotMechanics";
 import { resolveSpread } from "../spreads/resolveSpread";
 import { drawLetters } from "../deck/deck";
+import { DealReveal } from "../deck/DealReveal";
 import styles from "./form.module.css";
 
 const drawLabels = ["First drawn", "Second drawn", "Third drawn"];
@@ -89,6 +90,11 @@ export function ReadingForm({ onSubmit, readingIndex, ritualNotes }: ReadingForm
   ]);
   const [councilEnabled, setCouncilEnabled] = useState(true);
   const [councilCard, setCouncilCard] = useState(defaultCard);
+  // The ceremonial reveal for a fresh draw (presentation only).
+  const [reveal, setReveal] = useState<{ cards: LetterDraw[]; nonce: number }>({
+    cards: [],
+    nonce: 0,
+  });
 
   const effectiveDate = backdateEnabled ? parseLocalDateInput(backdateValue) : new Date();
   const sacredTime = computeSacredTime(effectiveDate, geoMode);
@@ -139,6 +145,7 @@ export function ReadingForm({ onSubmit, readingIndex, ritualNotes }: ReadingForm
     setDrawnLetters([cards[0], cards[1], cards[2]]);
     if (spread === "etz-chaim") setFourthLetter(cards[3]);
     setVeiledLetter(cards[cards.length - 1]);
+    setReveal((r) => ({ cards, nonce: r.nonce + 1 }));
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -284,6 +291,12 @@ export function ReadingForm({ onSubmit, readingIndex, ritualNotes }: ReadingForm
           </span>
         </div>
       )}
+
+      <DealReveal
+        cards={reveal.cards}
+        nonce={reveal.nonce}
+        onDone={() => setReveal((r) => ({ ...r, cards: [] }))}
+      />
 
       {drawnLetters.map((draw, index) => (
         <div className={`${styles.drawGroup} ${lettersLocked ? styles.lettersLocked : ""}`} key={index}>

@@ -10,6 +10,7 @@ import { resolveSpread } from "../../herald/spreads/resolveSpread";
 import { resolveDorotMechanic } from "../../herald/dorot/dorotMechanics";
 import { resolveShoresh } from "../../herald/shoresh/resolveShoresh";
 import { drawLetters } from "../../herald/deck/deck";
+import { DealReveal } from "../../herald/deck/DealReveal";
 import { MizbeachCentralPanel, TREE_ON_PANEL } from "../render/centralPanel";
 import { MizbeachSvgContent, type MandalaSlice } from "../render/buildMizbeachSvg";
 import { FolioCanvas } from "../folio3d/FolioCanvas";
@@ -48,6 +49,11 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
   // The Tree of Life is hidden (the Or HaGanuz) until revealed on the rings —
   // it links the folio's dimensions, and its lower Sefirot are the middah picker.
   const [treeRevealed, setTreeRevealed] = useState(false);
+  // The ceremonial reveal for a fresh deal (presentation only).
+  const [reveal, setReveal] = useState<{ cards: LetterDraw[]; nonce: number }>({
+    cards: [],
+    nonce: 0,
+  });
 
   const festivalId = resolvedFestivalId(state);
   const sacredTime = computeSacredTime(state.effectiveDate, state.geoMode);
@@ -71,6 +77,7 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
     };
     if (showFourth) patch.fourth = cards[3];
     onChange(patch);
+    setReveal((r) => ({ cards, nonce: r.nonce + 1 }));
   }
 
   function openZone(id: string) {
@@ -184,6 +191,11 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
 
   return (
     <div className={styles.surface}>
+      <DealReveal
+        cards={reveal.cards}
+        nonce={reveal.nonce}
+        onDone={() => setReveal((r) => ({ ...r, cards: [] }))}
+      />
       {/* Central panel (3D plate, or SVG fallback) + interaction overlay */}
       <div className={styles.panelWrap}>
         <FolioCanvas
