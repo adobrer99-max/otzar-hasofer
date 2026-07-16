@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import { Nav } from "./components/Nav";
 import { Footer } from "./components/Footer";
+import { RouteFallback } from "./components/ui";
 
 function App() {
   return (
@@ -14,7 +15,7 @@ function App() {
         {/* The illuminated plate — every routed surface is framed as one lit,
             gold-filletted document on the softly lit ground. */}
         <div className="otz-panel">
-          <Suspense fallback={<div className="route-fallback" aria-live="polite">Loading…</div>}>
+          <Suspense fallback={<RouteFallback />}>
             <Outlet />
           </Suspense>
         </div>

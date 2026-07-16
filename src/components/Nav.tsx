@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { ThemeToggle } from "./ui/ThemeToggle";
+import { AlephMark } from "./ui";
 import { guideLinks, practiceLinks, libraryLinks, accountLink, type SiteLink } from "./siteMap";
 import styles from "./Nav.module.css";
 
@@ -10,26 +11,7 @@ function linkClass({ isActive }: { isActive: boolean }) {
 
 /** The gold aleph-shield brand mark (the favicon motif, inline). */
 function BrandMark() {
-  return (
-    <svg width="26" height="30" viewBox="0 0 26 30" aria-hidden="true" className={styles.mark}>
-      <path
-        d="M2 3 L24 3 L24 17 C24 24 18 27 13 29 C8 27 2 24 2 17 Z"
-        fill="none"
-        stroke="var(--accent)"
-        strokeWidth="1.6"
-      />
-      <text
-        x="13"
-        y="20"
-        textAnchor="middle"
-        fontFamily="var(--font-hebrew)"
-        fontSize="15"
-        fill="var(--accent)"
-      >
-        א
-      </text>
-    </svg>
-  );
+  return <AlephMark className={styles.mark} />;
 }
 
 /** A labelled disclosure menu of nav links, keyboard- and outside-click-dismissible. */

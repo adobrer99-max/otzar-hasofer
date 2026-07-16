@@ -5,7 +5,7 @@ import { listParticipants, createParticipant, getLayers, addLayer } from "../sto
 import { ParticipantPicker } from "../herald/history/ParticipantPicker";
 import { EncounterPanel } from "../herald/form/EncounterPanel";
 import { HeraldCanvas } from "../herald/render/HeraldCanvas";
-import { Button, PageHeader, SegmentedControl, Callout } from "../components/ui";
+import { Button, PageHeader, SegmentedControl, Callout, EmptyState } from "../components/ui";
 import { InteractiveMizbeach } from "./interactive/InteractiveMizbeach";
 import { ReadingStations } from "./interactive/ReadingStations";
 import { emptyReadingState, toSnapshot, type MizbeachReadingState } from "./interactive/reading";
@@ -86,7 +86,10 @@ export function MizbeachToolPage() {
       />
 
       {!selectedId ? (
-        <p className={styles.empty}>Select or create a participant to begin a reading on the folio.</p>
+        <EmptyState
+          title="Begin with a participant"
+          description="Select or create a participant to conduct a reading on the folio."
+        />
       ) : (
         <>
           <EncounterPanel readingIndex={layers.length} />

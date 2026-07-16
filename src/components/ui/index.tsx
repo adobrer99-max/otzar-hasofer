@@ -147,4 +147,67 @@ export function RichText({
   );
 }
 
+/** The gold aleph-shield brand mark (the favicon motif), inline so it inherits
+ *  the accent colour in both themes. Decorative by default. */
+export function AlephMark({ className, size = 26 }: { className?: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size * (30 / 26)}
+      viewBox="0 0 26 30"
+      aria-hidden="true"
+      className={className}
+    >
+      <path
+        d="M2 3 L24 3 L24 17 C24 24 18 27 13 29 C8 27 2 24 2 17 Z"
+        fill="none"
+        stroke="var(--accent)"
+        strokeWidth="1.6"
+      />
+      <text
+        x="13"
+        y="20"
+        textAnchor="middle"
+        fontFamily="var(--font-hebrew)"
+        fontSize="15"
+        fill="var(--accent)"
+      >
+        א
+      </text>
+    </svg>
+  );
+}
+
+/** The calm, on-brand placeholder shown while a lazy route loads — the aleph
+ *  mark with a gentle pulse (still under prefers-reduced-motion). */
+export function RouteFallback() {
+  return (
+    <div className={styles.routeFallback} role="status" aria-live="polite">
+      <AlephMark className={styles.loadingMark} size={40} />
+      <span className={styles.loadingLabel}>Loading…</span>
+    </div>
+  );
+}
+
+/** A quiet, centered empty-state placeholder: the aleph mark, a title, optional
+ *  guidance, and an optional call to action. */
+export function EmptyState({
+  title,
+  description,
+  action,
+}: {
+  title: string;
+  description?: ReactNode;
+  action?: ReactNode;
+}) {
+  return (
+    <div className={styles.emptyState} role="note">
+      <AlephMark className={styles.emptyMark} size={44} />
+      <p className={styles.emptyTitle}>{title}</p>
+      {description && <div className={styles.emptyDescription}>{description}</div>}
+      {action && <div className={styles.emptyAction}>{action}</div>}
+    </div>
+  );
+}
+
 export { styles as uiStyles };
