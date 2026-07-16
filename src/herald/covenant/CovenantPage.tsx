@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { PageHeader, EmptyState } from "../../components/ui";
+import { PageHeader, EmptyState, ConfirmButton } from "../../components/ui";
 import type { ParticipantRecord, HeraldLayer, Orientation } from "../../types/herald";
 import type { UnionRecord } from "../../types/union";
 import { listParticipants, getLayers } from "../../storage/participantsRepo";
@@ -150,9 +150,13 @@ export function CovenantPage() {
                     {a?.displayName ?? "?"} · {b?.displayName ?? "?"} —{" "}
                     {formatHebrewDateEnglish(u.weddingHebrewDate)}
                   </button>
-                  <button type="button" onClick={() => handleDeleteUnion(u.id)}>
+                  <ConfirmButton
+                    confirmLabel="Remove"
+                    ariaLabel="Confirm remove covenant"
+                    onConfirm={() => handleDeleteUnion(u.id)}
+                  >
                     Remove
-                  </button>
+                  </ConfirmButton>
                 </li>
               );
             })}

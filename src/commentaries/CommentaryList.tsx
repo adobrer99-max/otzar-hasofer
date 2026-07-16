@@ -3,6 +3,7 @@ import type { CommentaryRecord } from "../types/commentary";
 import { isSeedCommentary } from "../data/seedCommentaries";
 import { formatHebrewDateEnglish } from "../data/hebrewCalendar";
 import { subjectLabel } from "./subjectLabel";
+import { ConfirmButton } from "../components/ui";
 import styles from "./commentaries.module.css";
 
 interface CommentaryListProps {
@@ -50,9 +51,13 @@ export function CommentaryList({ commentaries, showSubject = true, onEdit, onDel
                   </button>
                 )}
                 {onDelete && (
-                  <button type="button" onClick={() => onDelete(record)}>
+                  <ConfirmButton
+                    confirmLabel="Delete"
+                    ariaLabel="Confirm delete commentary"
+                    onConfirm={() => onDelete(record)}
+                  >
                     Delete
-                  </button>
+                  </ConfirmButton>
                 )}
               </div>
             )}

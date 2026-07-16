@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader, Button, Callout } from "../components/ui";
+import { toast } from "../components/ui/toast";
 import {
   DATASETS,
   datasetsById,
@@ -33,7 +34,6 @@ export function ScriptoriumPage() {
   const [drafts, setDrafts] = useState<DraftRecord[]>([]);
   const [entryId, setEntryId] = useState<string>();
   const [values, setValues] = useState<Record<string, string>>({});
-  const [savedNote, setSavedNote] = useState<string>();
 
   const dataset = datasetsById[datasetId];
   const draftsByKey = useMemo(() => new Map(drafts.map((d) => [d.key, d])), [drafts]);
@@ -47,7 +47,6 @@ export function ScriptoriumPage() {
   // Selecting a dataset lands on its first entry.
   useEffect(() => {
     setEntryId(dataset.entries[0]?.id);
-    setSavedNote(undefined);
   }, [datasetId, dataset.entries]);
 
   const persisted = useMemo(() => {
@@ -77,7 +76,7 @@ export function ScriptoriumPage() {
     const updated = await listDrafts();
     setDrafts(updated);
     applyContentOverrides(updated); // live on this device, app-wide
-    setSavedNote(`Saved · live on this device · ${new Date().toLocaleTimeString()}`);
+    toast("Saved · live on this device", { tone: "success" });
   }
 
   async function handleRevert() {
@@ -86,7 +85,7 @@ export function ScriptoriumPage() {
     revertEntry(datasetId, entry.id); // restore the shipped text live
     await refresh();
     setValues(entry.base);
-    setSavedNote("Reverted to the shipped text.");
+    toast("Reverted to the shipped text");
   }
 
   function statusOf(e: RegistryEntry): "drafted" | "gap" | undefined {
@@ -135,10 +134,7 @@ export function ScriptoriumPage() {
                 key={e.id}
                 type="button"
                 className={`${styles.entryButton} ${e.id === entryId ? styles.entryButtonActive : ""}`}
-                onClick={() => {
-                  setEntryId(e.id);
-                  setSavedNote(undefined);
-                }}
+                onClick={() => setEntryId(e.id)}
               >
                 <span className={styles.entryButtonLabel}>
                   <span>{e.label}</span>
@@ -162,15 +158,11 @@ export function ScriptoriumPage() {
               <DraftEditor
                 dataset={dataset}
                 values={values}
-                onFieldChange={(key, value) => {
-                  setValues((prev) => ({ ...prev, [key]: value }));
-                  setSavedNote(undefined);
-                }}
+                onFieldChange={(key, value) => setValues((prev) => ({ ...prev, [key]: value }))}
                 onSave={handleSave}
                 onRevert={handleRevert}
                 dirty={dirty}
                 hasDraft={hasDraft}
-                savedNote={savedNote}
               />
               <PreviewPane datasetId={datasetId} entry={entry} values={values} />
             </>
@@ -194,7 +186,10 @@ export function ScriptoriumPage() {
           variant="subtle"
           onClick={async () => {
             const ok = await copyText(serializeAll(drafts));
-            setSavedNote(ok ? "Copied all drafts to the clipboard." : "Clipboard unavailable — use a Download button.");
+            toast(
+              ok ? "Copied all drafts to the clipboard" : "Clipboard unavailable — use a Download button",
+              { tone: ok ? "success" : "error" },
+            );
           }}
         >
           Copy all

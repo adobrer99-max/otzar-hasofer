@@ -173,11 +173,6 @@
   align-items: center;
 }
 
-.savedNote {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
 .previewShell {
   border: 1px solid var(--border-hairline);
   border-radius: var(--radius);

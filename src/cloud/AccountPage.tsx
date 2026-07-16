@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "../components/ui";
+import { toast } from "../components/ui/toast";
 import { isCloudConfigured } from "./config";
 import { syncNow } from "./orchestrator";
 import { getPendingCount, createIdbAdapter } from "./sync";
@@ -98,6 +99,7 @@ export function AccountPage() {
     try {
       await syncNow();
       await refreshStatus();
+      toast("Synced", { tone: "success" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sync failed — your changes remain queued locally.");
     } finally {

@@ -4,6 +4,7 @@ import type { LifeCycleEvent, LifeCycleEventType } from "../../types/lifeCycle";
 import { LIFE_CYCLE_EVENT_LABELS } from "../../types/lifeCycle";
 import { hebrewDateFromGregorian, formatHebrewDateEnglish } from "../../data/hebrewCalendar";
 import { setHebrewBirthDate, setHebrewName } from "../../storage/participantsRepo";
+import { ConfirmButton } from "../../components/ui";
 import {
   addLifeCycleEvent,
   deleteLifeCycleEvent,
@@ -117,9 +118,13 @@ export function LifeCycleEventsPanel({
                 {eventSummary(event)} — {formatHebrewDateEnglish(event.hebrewDate)}
                 {event.notes && ` (${event.notes})`}
               </span>
-              <button type="button" onClick={() => handleDelete(event.id)}>
+              <ConfirmButton
+                confirmLabel="Remove"
+                ariaLabel="Confirm remove event"
+                onConfirm={() => handleDelete(event.id)}
+              >
                 Remove
-              </button>
+              </ConfirmButton>
             </li>
           ))}
         </ul>
