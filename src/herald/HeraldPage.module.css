@@ -3,6 +3,12 @@
   grid-template-columns: 1fr;
   gap: var(--space-5);
 }
+/* Let each column shrink to its track — a grid item defaults to min-width:auto,
+   so a non-shrinkable child (a segmented control, the export buttons) would
+   otherwise push the column wider than a phone viewport. */
+.layout > * {
+  min-width: 0;
+}
 
 @media (min-width: 900px) {
   .layout {
@@ -18,6 +24,7 @@
 
 .exportRow {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 
