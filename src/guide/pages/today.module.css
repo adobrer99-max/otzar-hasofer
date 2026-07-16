@@ -1,0 +1,110 @@
+/* The live "Today" panel at the head of Home. Inherits the theme tokens, so it
+   reads correctly on both the charcoal and vellum grounds. */
+
+.today {
+  margin: var(--space-6, 2rem) 0 var(--space-4, 1rem);
+  padding: var(--space-5, 1.5rem);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-lg, 10px);
+  background: var(--bg-raised);
+  box-shadow: var(--shadow-sm, none);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3, 0.75rem);
+}
+
+.kicker {
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.date {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3, 0.75rem);
+  flex-wrap: wrap;
+  margin: 0 0 var(--space-3, 0.75rem);
+  font-size: clamp(1.3rem, 3.5vw, 1.9rem);
+  line-height: 1.2;
+}
+
+.date .hebrew {
+  font-family: var(--font-hebrew);
+  color: var(--accent-bright, var(--accent));
+}
+
+.dateEnglish {
+  font-family: var(--font-latin);
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.facets {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  padding: 0;
+  margin: 0 0 var(--space-3, 0.75rem);
+}
+
+.facets li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.7rem;
+  border: 1px solid var(--border-hairline);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.facetGlyph {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.facetFestival {
+  border-color: var(--accent);
+  color: var(--accent-bright, var(--accent));
+}
+
+.gesture {
+  font-style: italic;
+  margin: 0 0 0.4rem;
+}
+
+.question {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.observances {
+  display: grid;
+  gap: var(--space-3, 0.75rem);
+  margin: var(--space-4, 1rem) 0 0;
+}
+
+.observanceTitle {
+  margin: 0 0 0.35rem;
+}
+
+.observanceLink {
+  font-size: 0.85rem;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin-top: var(--space-4, 1rem);
+  font-size: 0.9rem;
+}
