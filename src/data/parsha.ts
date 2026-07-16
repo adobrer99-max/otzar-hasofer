@@ -36,21 +36,40 @@ import { PARSHIYOT, parshiyotByOrder, DOUBLING_PAIRS, type Parsha } from "./pars
  *      between Rosh Hashanah and Sukkot; with two, Vayeilech is read on
  *      Shabbat Shuva and Ha'azinu the week after.
  *
- * Known v1 simplifications, stated plainly: the doubling selection follows
- * the count-driven constraints above rather than a transcribed year-type
- * (keviah) table. The test suite pins full-cycle integrity invariants
- * across 5780–5790 for both geographies plus dated fixtures — but before
- * relying on this for real ritual use, cross-check the current year
- * against a published luach (the same posture as the rest of Sacred Time).
+ * A Shabbat that carries a festival reading instead of a weekly portion is
+ * reported as its own reading (Rosh Hashanah, Shabbat Chol HaMoed Sukkot,
+ * Pesach, Shavuot, …) via `festival: true`, rather than as "no parsha".
+ *
+ * Known simplifications, stated plainly:
+ * - The doubling selection follows the count-driven constraints above rather
+ *   than a transcribed year-type (keviah) table. Its output is pinned by the
+ *   integrity invariants in the test suite — including the deterministic
+ *   halachic anchors (Bereshit after Simchat Torah; Bamidbar the Shabbat
+ *   before Shavuot in the Galut always, and in the Land except the spring-
+ *   divergence years where the Land runs a week ahead and reads Naso;
+ *   Devarim = Shabbat Chazon on/before 9 Av; Va'etchanan = Shabbat Nachamu
+ *   after it; Nitzavim before Rosh Hashanah). Before relying on it for real
+ *   ritual use, still cross-check the current year against a published luach.
+ * - The Hebrew day is approximated midnight-to-midnight, not sunset-to-sunset
+ *   (see hebrewCalendar.ts). Practically the parsha shown is the coming
+ *   Shabbat's from Sunday on, so the boundary only matters on Motzei Shabbat,
+ *   where the next week's portion is treated as current from midnight rather
+ *   than from Havdalah.
  */
 
 export interface ParshaWeek {
-  /** One portion, or a doubled pair. */
+  /** The weekly portion(s) — one, or a doubled pair. Empty on a festival Shabbat. */
   parshiyot: Parsha[];
   /** ISO date (local) of the Shabbat this is read on. */
   shabbat: string;
-  /** "Vayakhel–Pekudei" / "Bereshit" — display label. */
+  /** "Vayakhel–Pekudei" / "Bereshit", or the festival reading's name. */
   label: string;
+  /**
+   * True when this Shabbat carries a festival Torah reading (Yom Tov, Chol
+   * HaMoed, or the Yamim Nora'im) in place of a weekly portion — `label` is
+   * then the festival's name and `parshiyot` is empty.
+   */
+  festival?: boolean;
 }
 
 const EARLY_PAIR_PRIORITY = [
@@ -190,12 +209,50 @@ export function computeParsha(date: Date, geography: GeographyMode): ParshaWeek 
   const cycleYear =
     shabbat < simchatTorahDate(hebrewYear, geography) ? hebrewYear - 1 : hebrewYear;
   const portions = cycleSchedule(cycleYear, geography).get(iso(shabbat));
-  if (!portions) return undefined;
-  return {
-    parshiyot: portions,
-    shabbat: iso(shabbat),
-    label: portions.map((p) => p.name).join("–"),
-  };
+  if (portions) {
+    return {
+      parshiyot: portions,
+      shabbat: iso(shabbat),
+      label: portions.map((p) => p.name).join("–"),
+    };
+  }
+  // No weekly portion this Shabbat: it carries a festival reading instead.
+  const festival = festivalReadingFor(shabbat, geography);
+  if (festival) {
+    return { parshiyot: [], shabbat: iso(shabbat), label: festival, festival: true };
+  }
+  return undefined;
+}
+
+/**
+ * The festival Torah reading a Shabbat carries when it displaces the weekly
+ * portion — a Yom Tov, a Chol HaMoed Shabbat, or a day of the Yamim Nora'im.
+ * The fixed festival days are encoded here (with the Galut second days where
+ * they apply); an ordinary Shabbat returns undefined. Names are the displayed
+ * reading, not a parsha.
+ */
+function festivalReadingFor(shabbat: Date, geography: GeographyMode): string | undefined {
+  const { month, day } = hebrewDateFromGregorian(shabbat);
+  const galut = geography === "galut";
+  if (month === "Tishri") {
+    if (day === 1 || day === 2) return "Rosh Hashanah";
+    if (day === 10) return "Yom Kippur";
+    if (day === 15) return "Sukkot";
+    if (day === 16) return galut ? "Sukkot" : "Shabbat Chol HaMoed Sukkot";
+    if (day >= 17 && day <= 21) return "Shabbat Chol HaMoed Sukkot";
+    if (day === 22) return "Shmini Atzeret";
+    if (day === 23 && galut) return "Simchat Torah";
+  } else if (month === "Nisan") {
+    if (day === 15) return "Pesach";
+    if (day === 16) return galut ? "Pesach" : "Shabbat Chol HaMoed Pesach";
+    if (day >= 17 && day <= 20) return "Shabbat Chol HaMoed Pesach";
+    if (day === 21) return "Pesach";
+    if (day === 22 && galut) return "Pesach";
+  } else if (month === "Sivan") {
+    if (day === 6) return "Shavuot";
+    if (day === 7 && galut) return "Shavuot";
+  }
+  return undefined;
 }
 
 /** Exposed for the integrity test suite. */

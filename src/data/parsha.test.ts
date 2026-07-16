@@ -26,6 +26,17 @@ describe("computeParsha — dated fixtures", () => {
     expect(computeParsha(new Date(2025, 9, 15), "galut")?.label).toBe("Bereshit");
   });
 
+  it("labels a festival Shabbat with its festival reading, not a weekly portion", () => {
+    // 15 Nisan 5782 fell on Shabbat (Apr 16 2022) — the first day of Pesach.
+    const pesachI = gregorianFromHebrewDate({ year: 5782, month: "Nisan", day: 15 });
+    for (const geo of GEOS) {
+      const week = computeParsha(pesachI, geo);
+      expect(week?.festival).toBe(true);
+      expect(week?.label).toBe("Pesach");
+      expect(week?.parshiyot).toEqual([]);
+    }
+  });
+
   it("reads Miketz in Hanukkah week 5786 (Dec 20 2025)", () => {
     for (const geo of GEOS) {
       expect(computeParsha(new Date(2025, 11, 20), geo)?.label).toBe("Miketz");
@@ -38,13 +49,17 @@ describe("computeParsha — dated fixtures", () => {
     }
   });
 
-  it("yields no weekly portion on a Shabbat inside Pesach", () => {
-    // Find the Shabbat within 15–21 Nisan 5786 and expect a festival reading (undefined).
+  it("yields a festival reading, not a weekly portion, on a Shabbat inside Pesach", () => {
+    // Find the Shabbat within 15–21 Nisan 5786 and expect a named festival reading.
     for (let day = 15; day <= 21; day++) {
       const date = gregorianFromHebrewDate({ year: 5786, month: "Nisan", day });
       if (date.getDay() === 6) {
-        expect(computeParsha(date, "land")).toBeUndefined();
-        expect(computeParsha(date, "galut")).toBeUndefined();
+        for (const geo of GEOS) {
+          const week = computeParsha(date, geo);
+          expect(week?.festival).toBe(true);
+          expect(week?.parshiyot).toEqual([]);
+          expect(week?.label).toMatch(/Pesach/);
+        }
         return;
       }
     }
@@ -97,6 +112,41 @@ describe("computeParsha — cycle integrity invariants (5780–5790, both geogra
         const gap = (rh.getTime() - shabbat.getTime()) / 86400000;
         expect(gap).toBeGreaterThan(0);
         expect(gap).toBeLessThanOrEqual(7);
+      });
+
+      it(`cycle ${year} (${geo}) reads Bamidbar (or, in a Land divergence year, Naso) the Shabbat before Shavuot`, () => {
+        const schedule = cycleScheduleForTest(year, geo);
+        const shavuot = gregorianFromHebrewDate({ year, month: "Sivan", day: 6 }).getTime();
+        const before = Array.from(schedule.entries()).filter(([d]) => new Date(d).getTime() < shavuot);
+        const lastBefore = before[before.length - 1];
+        const ids = lastBefore[1].map((p) => p.id);
+        // The Diaspora always reads Bamidbar before Shavuot; the Land does too,
+        // except spring-divergence years (e.g. 5782) where it runs a week ahead
+        // and reads Naso. Either way it is never a third portion.
+        expect(ids.some((id) => id === "bemidbar" || id === "naso")).toBe(true);
+        if (geo === "galut") expect(ids).toContain("bemidbar");
+      });
+
+      it(`cycle ${year} (${geo}) reads Va'etchanan (Shabbat Nachamu) the Shabbat after 9 Av`, () => {
+        const schedule = cycleScheduleForTest(year, geo);
+        const nineAv = gregorianFromHebrewDate({ year, month: "Av", day: 9 }).getTime();
+        const after = Array.from(schedule.entries()).filter(([d]) => new Date(d).getTime() > nineAv);
+        expect(after[0][1].map((p) => p.id)).toContain("vaetchanan");
+      });
+
+      it(`cycle ${year} (${geo}): every Shabbat of the cycle is a weekly portion or a named festival reading`, () => {
+        const dates = Array.from(cycleScheduleForTest(year, geo).keys()).sort();
+        const start = new Date(`${dates[0]}T00:00:00Z`).getTime();
+        const end = gregorianFromHebrewDate({
+          year: year + 1,
+          month: "Tishri",
+          day: geo === "land" ? 22 : 23,
+        }).getTime();
+        for (let t = start; t < end; t += 7 * 86400000) {
+          const week = computeParsha(new Date(t), geo);
+          expect(week, `no reading for ${new Date(t).toISOString().slice(0, 10)}`).toBeDefined();
+          expect(week!.parshiyot.length > 0 || week!.festival === true).toBe(true);
+        }
       });
     }
 

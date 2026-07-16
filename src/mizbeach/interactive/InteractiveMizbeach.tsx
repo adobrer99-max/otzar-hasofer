@@ -306,7 +306,10 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
           {formatHebrewDateEnglish(sacredTime.hebrewDate)}
           {sacredTime.omer && ` · Omer ${sacredTime.omer.day}`}
           {festivalId !== "ordinary" && ` · ${festivalId}`}
-          {sacredTime.parsha && ` · Parashat ${sacredTime.parsha.label}`}
+          {sacredTime.parsha &&
+            (sacredTime.parsha.festival
+              ? ` · ${sacredTime.parsha.label}`
+              : ` · Parashat ${sacredTime.parsha.label}`)}
           {spread !== "triadic" && ` · ${spread === "etz-chaim" ? "Etz Chaim spread" : "Yichud spread"}`}
         </div>
         <div className={styles.treeControl}>

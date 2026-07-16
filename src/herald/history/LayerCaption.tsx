@@ -76,7 +76,10 @@ export function LayerCaption({
         {sacredTime && ` (${formatHebrewDateEnglish(sacredTime.hebrewDate)})`}
         {festival.id !== "ordinary" && ` · ${festival.name}`}
         {sacredTime?.omer && ` · Omer day ${sacredTime.omer.day}`}
-        {sacredTime?.parsha && ` · Parashat ${sacredTime.parsha.label}`}
+        {sacredTime?.parsha &&
+          (sacredTime.parsha.festival
+            ? ` · ${sacredTime.parsha.label}`
+            : ` · Parashat ${sacredTime.parsha.label}`)}
         {encounter && ` · Encounter ${encounter.number}: ${encounter.aspect}`}
       </div>
       {encounter?.number === 7 && (
