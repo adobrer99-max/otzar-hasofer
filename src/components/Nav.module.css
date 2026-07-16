@@ -37,7 +37,7 @@
 }
 .wordmark {
   font-family: var(--font-hebrew);
-  color: var(--accent);
+  color: var(--accent-bright);
   font-size: var(--font-size-lg);
 }
 

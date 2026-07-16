@@ -321,6 +321,7 @@ export function ReadingForm({ onSubmit, readingIndex, ritualNotes }: ReadingForm
             type="text"
             className="hebrew"
             dir="rtl"
+            lang="he"
             value={hebrewName}
             onChange={(e) => setHebrewName(e.target.value)}
           />
@@ -541,6 +542,7 @@ export function ReadingForm({ onSubmit, readingIndex, ritualNotes }: ReadingForm
         </div>
         <input
           type="text"
+          aria-label="Place (optional)"
           placeholder="Place (optional)"
           value={place}
           onChange={(e) => setPlace(e.target.value)}

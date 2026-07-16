@@ -21,7 +21,7 @@ export function PageHeader({
     <header className={styles.pageHeader}>
       <div className={styles.kicker}>{kicker}</div>
       <h1 className={styles.title}>{title}</h1>
-      {hebrew && <div className={`${styles.headerHeb} hebrew`}>{hebrew}</div>}
+      {hebrew && <div className={`${styles.headerHeb} hebrew`} lang="he">{hebrew}</div>}
       {lede && <p className={styles.lede}>{lede}</p>}
     </header>
   );

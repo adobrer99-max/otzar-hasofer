@@ -149,7 +149,7 @@ export function DealReveal({
             style={{ animationDelay: `${cards.length * STAGGER_MS + FLIP_MS}ms` }}
           >
             The letters spell{" "}
-            <span className={`${styles.wordHebrew} hebrew`} dir="rtl">
+            <span className={`${styles.wordHebrew} hebrew`} dir="rtl" lang="he">
               {word.text}
             </span>{" "}
             — {word.gloss}

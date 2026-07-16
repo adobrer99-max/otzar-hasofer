@@ -80,7 +80,7 @@ export function TodayPanel() {
       </div>
 
       <h2 className={styles.date}>
-        <span className="hebrew" dir="rtl">
+        <span className="hebrew" dir="rtl" lang="he">
           {formatHebrewDateHebrew(snapshot.hebrewDate)}
         </span>
         <span className={styles.dateEnglish}>

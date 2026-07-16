@@ -225,6 +225,7 @@ export function CovenantPage() {
                         <div className={styles.row}>
                           <input
                             type="text"
+                            aria-label="Reflection (optional)"
                             placeholder="Reflection (optional)"
                             value={dayReflection}
                             onChange={(e) => setDayReflection(e.target.value)}

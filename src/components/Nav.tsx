@@ -94,8 +94,9 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
   return (
     <div className={styles.drawerOverlay} onClick={onClose}>
       <nav
+        id="mobile-drawer"
         className={styles.drawer}
-        aria-label="Primary"
+        aria-label="Site menu"
         onClick={(e) => e.stopPropagation()}
       >
         {[
@@ -136,7 +137,7 @@ export function Nav() {
       <div className={styles.inner}>
         <NavLink to="/" className={styles.brand} end>
           <BrandMark />
-          <span className={styles.wordmark}>אוצר הסופר</span>
+          <span className={styles.wordmark} lang="he">אוצר הסופר</span>
         </NavLink>
 
         <nav className={styles.desktopNav} aria-label="Primary">
@@ -162,6 +163,7 @@ export function Nav() {
             className={styles.hamburger}
             aria-label={drawerOpen ? "Close menu" : "Open menu"}
             aria-expanded={drawerOpen}
+            aria-controls="mobile-drawer"
             onClick={() => setDrawerOpen((v) => !v)}
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">

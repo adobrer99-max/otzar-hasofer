@@ -73,7 +73,7 @@ export function Biography({
                     <span className={styles.title}>
                       {station ? `Day ${layer.layerIndex + 1} · ${station.aspect}` : `Reading ${layer.layerIndex + 1}`}
                     </span>
-                    {station && <span className={`${styles.heb} hebrew`}>{station.hebrew}</span>}
+                    {station && <span className={`${styles.heb} hebrew`} lang="he">{station.hebrew}</span>}
                     <span className={styles.date}>
                       {hebrewDate}
                       {isRecent && layers.length < 7 ? " · most recent" : ""}

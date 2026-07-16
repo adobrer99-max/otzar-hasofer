@@ -2,8 +2,22 @@ import { Link } from "react-router-dom";
 import { guideLinks, practiceLinks, libraryLinks, homeLink, accountLink } from "./siteMap";
 import styles from "./Footer.module.css";
 
+// A calm sitemap, not an exhaustive index — the nav and Home doorways carry the
+// full map. Curate a few essentials per cluster so the columns stay balanced.
+const byPath = (links: typeof guideLinks, ...paths: string[]) =>
+  paths.map((p) => links.find((l) => l.to === p)!).filter(Boolean);
+
 const columns = [
-  { title: "The Guide", links: guideLinks },
+  {
+    title: "The Guide",
+    links: byPath(
+      guideLinks,
+      "/guide/foundations",
+      "/guide/letters",
+      "/guide/sacred-time",
+      "/guide/scribe",
+    ),
+  },
   { title: "The Practice", links: practiceLinks },
   { title: "The Library", links: libraryLinks },
   { title: "The Treasury", links: [homeLink, accountLink] },
@@ -14,7 +28,7 @@ export function Footer() {
     <footer className={styles.footer}>
       <div className={styles.inner}>
         <div className={styles.mast}>
-          <div className={styles.wordmark}>אוצר הסופר</div>
+          <div className={styles.wordmark} lang="he">אוצר הסופר</div>
           <p className={styles.epigraph}>
             The Scribe does not reveal destiny. The Scribe guides the neshama of the person
             seeking it — a companion to the physical Otzar Ha'Sofer, never a fortune-telling

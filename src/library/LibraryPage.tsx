@@ -52,7 +52,7 @@ export function LibraryPage() {
           <Link key={sefer.id} to={seferHref(sefer)} className="otz-card">
             <div>
               <span className="otz-card__title">{sefer.title}</span>
-              <span className="otz-card__heb">{sefer.hebrewName}</span>
+              <span className="otz-card__heb" lang="he">{sefer.hebrewName}</span>
             </div>
             <p className="otz-card__body">{sefer.description}</p>
           </Link>

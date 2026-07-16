@@ -100,6 +100,7 @@ export function LifeCycleEventsPanel({
         <div className={styles.row}>
           <input
             type="date"
+            aria-label="Hebrew birthday date"
             value={birthDateInput}
             onChange={(e) => setBirthDateInput(e.target.value)}
           />
@@ -141,18 +142,20 @@ export function LifeCycleEventsPanel({
             </option>
           ))}
         </select>
-        <input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
+        <input type="date" aria-label="Event date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
       </div>
       {isYahrzeit && (
         <div className={styles.row}>
           <input
             type="text"
+            aria-label="Relation (parent, spouse, ...)"
             placeholder="Relation (parent, spouse, ...)"
             value={relation}
             onChange={(e) => setRelation(e.target.value)}
           />
           <input
             type="text"
+            aria-label="Name of the deceased"
             placeholder="Name"
             value={personName}
             onChange={(e) => setPersonName(e.target.value)}
@@ -168,12 +171,14 @@ export function LifeCycleEventsPanel({
           <div className={styles.row}>
             <input
               type="text"
+              aria-label="Sponsoring community (optional)"
               placeholder="Sponsoring community (optional)"
               value={sponsoringCommunity}
               onChange={(e) => setSponsoringCommunity(e.target.value)}
             />
             <input
               type="text"
+              aria-label="Beit Din (optional, private)"
               placeholder="Beit Din (optional, private)"
               value={beitDin}
               onChange={(e) => setBeitDin(e.target.value)}
@@ -185,6 +190,8 @@ export function LifeCycleEventsPanel({
                 type="text"
                 className="hebrew"
                 dir="rtl"
+                lang="he"
+                aria-label="Hebrew name received (optional)"
                 placeholder="Hebrew name received (optional)"
                 value={hebrewNameReceived}
                 onChange={(e) => setHebrewNameReceived(e.target.value)}
@@ -227,6 +234,7 @@ export function LifeCycleEventsPanel({
       <div className={styles.row}>
         <input
           type="text"
+          aria-label="Notes (optional)"
           placeholder="Notes (optional)"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}

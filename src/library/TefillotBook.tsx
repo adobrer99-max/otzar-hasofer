@@ -34,7 +34,7 @@ export function TefillotBook({ entryId }: { entryId?: string }) {
         </p>
         <h2>
           {selected.title}{" "}
-          <span className="hebrew" dir="rtl" style={{ fontSize: "0.9em" }}>
+          <span className="hebrew" dir="rtl" lang="he" style={{ fontSize: "0.9em" }}>
             {selected.hebrewName}
           </span>
         </h2>
@@ -43,7 +43,7 @@ export function TefillotBook({ entryId }: { entryId?: string }) {
           drashAddLabel="Add a commentary on this liturgy"
           peshat={
             <>
-              <p className="hebrew" dir="rtl" style={{ fontSize: "1.25rem", lineHeight: 1.9 }}>
+              <p className="hebrew" dir="rtl" lang="he" style={{ fontSize: "1.25rem", lineHeight: 1.9 }}>
                 {selected.hebrew}
               </p>
               <RichText html={selected.english} />
@@ -75,7 +75,7 @@ export function TefillotBook({ entryId }: { entryId?: string }) {
           <section key={section.id}>
             <h2>
               {section.title}{" "}
-              <span className="hebrew" dir="rtl" style={{ fontSize: "0.85em", color: "var(--text-muted)" }}>
+              <span className="hebrew" dir="rtl" lang="he" style={{ fontSize: "0.85em", color: "var(--text-muted)" }}>
                 {section.hebrewName}
               </span>
             </h2>
@@ -84,7 +84,7 @@ export function TefillotBook({ entryId }: { entryId?: string }) {
                 <div key={liturgy.id} className={styles.card}>
                   <Link to={`${BASE}/${liturgy.id}`}>
                     <span style={{ color: "var(--accent-bright)" }}>{liturgy.title}</span>{" "}
-                    <span className="hebrew" dir="rtl" style={{ fontSize: "0.85rem" }}>
+                    <span className="hebrew" dir="rtl" lang="he" style={{ fontSize: "0.85rem" }}>
                       {liturgy.hebrewName}
                     </span>
                   </Link>
