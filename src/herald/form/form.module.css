@@ -82,7 +82,6 @@
 }
 
 .submit {
-  align-self: flex-start;
   background: var(--accent);
   color: var(--color-charcoal);
   border: none;
@@ -90,6 +89,7 @@
   padding: var(--space-2) var(--space-4);
   font-size: 1rem;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .submit:hover {
@@ -249,4 +249,93 @@
 .slotDraw:hover {
   background: var(--bg-sunken);
   border-color: var(--accent-bright);
+}
+
+/* ——— Sectioned reading form ——— */
+/* Each fieldset groups a phase of the reading. min-inline-size:0 defeats the
+   native fieldset min-content floor that would otherwise overflow a phone. */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin: 0;
+  min-inline-size: 0;
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-2);
+  color: var(--accent-bright);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.legendNum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6em;
+  height: 1.6em;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  font-size: 0.7rem;
+  color: var(--accent);
+}
+
+/* Progressive disclosure for rarely-edited fields (palm baseline notes). */
+.disclosure > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.disclosure > summary::before {
+  content: "▸";
+  color: var(--accent);
+  transition: transform var(--motion) var(--ease-out);
+}
+.disclosure[open] > summary::before {
+  transform: rotate(90deg);
+}
+.disclosure > summary + * {
+  margin-top: var(--space-3);
+}
+
+/* Always-reachable submit: a bar pinned to the foot of the scrolling form,
+   carrying live draw-progress. z-index stays below DealReveal's overlay. */
+.actionBar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  margin-top: calc(-1 * var(--space-2));
+  background: var(--bg-raised);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  box-shadow: 0 -10px 20px -12px rgba(0, 0, 0, 0.5);
+}
+
+.drawHint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
