@@ -3,6 +3,12 @@ import type { LetterDraw } from "../../types/herald";
 import { lettersById } from "../../data/letters";
 import styles from "./dealReveal.module.css";
 
+/** The Word of the Reading, when the open letters resolve to a root/name. */
+export interface RevealWord {
+  text: string;
+  gloss: string;
+}
+
 /** One card in the reveal. A `sealed` card is the Veiled Anchor — it lands
  *  face-down and is never turned over, so its letter stays the Sod. */
 export interface RevealCard {
@@ -26,12 +32,15 @@ export interface RevealCard {
 export function DealReveal({
   cards,
   nonce,
+  word,
   onDone,
 }: {
   /** The draw to reveal; the veiled anchor is flagged `sealed`. */
   cards: RevealCard[];
   /** Bumped on every draw so an identical result still re-triggers the reveal. */
   nonce: number;
+  /** The Word the open letters spell, shown as a closing flourish (optional). */
+  word?: RevealWord | null;
   onDone: () => void;
 }) {
   const reducedMotion = useMemo(
@@ -51,8 +60,10 @@ export function DealReveal({
 
   // Total = the last card's flip finish + a hold + the fade-out. The overlay's
   // fade keyframe is stretched over this whole span so it stays lit until the
-  // cards have settled, then fades once.
-  const totalMs = cards.length * STAGGER_MS + FLIP_MS + HOLD_MS + FADE_MS;
+  // cards have settled, then fades once. A Word flourish adds a longer hold so
+  // it can be read before the overlay dismisses.
+  const totalMs =
+    cards.length * STAGGER_MS + FLIP_MS + HOLD_MS + FADE_MS + (word ? WORD_HOLD_MS : 0);
 
   useEffect(() => {
     if (nonce === 0 || cards.length === 0) return;
@@ -117,6 +128,14 @@ export function DealReveal({
                     <span className={styles.name}>
                       {card.sealed ? "The Sod — sealed" : (letter?.name ?? "")}
                     </span>
+                    {!card.sealed && letter && (
+                      <>
+                        <span className={styles.keyword}>{letter.keyword}</span>
+                        <span className={styles.orient}>
+                          {card.draw.orientation === "reversed" ? "Reversed — inward" : "Upright"}
+                        </span>
+                      </>
+                    )}
                     {card.sealed && <span className={styles.veil} aria-hidden="true" />}
                   </div>
                 </div>
@@ -124,6 +143,18 @@ export function DealReveal({
             );
           })}
         </div>
+        {word && (
+          <div
+            className={styles.word}
+            style={{ animationDelay: `${cards.length * STAGGER_MS + FLIP_MS}ms` }}
+          >
+            The letters spell{" "}
+            <span className={`${styles.wordHebrew} hebrew`} dir="rtl">
+              {word.text}
+            </span>{" "}
+            — {word.gloss}
+          </div>
+        )}
       </div>
     </>
   );
@@ -133,5 +164,6 @@ const STAGGER_MS = 200;
 const FLIP_MS = 560;
 const HOLD_MS = 750;
 const FADE_MS = 420;
+const WORD_HOLD_MS = 1500;
 
 const reversedStyle = { transform: "rotate(180deg)", display: "inline-block" } as const;

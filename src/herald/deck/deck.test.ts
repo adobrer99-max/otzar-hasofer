@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { DECK, drawLetters, secureRandomInt, secureShuffle } from "./deck";
+import { DECK, drawLetters, drawOne, secureRandomInt, secureShuffle } from "./deck";
 import { lettersById } from "../../data/letters";
 
 describe("deck", () => {
@@ -28,6 +28,34 @@ describe("deck", () => {
 
   it("produces both orientations over many single draws", () => {
     const orientations = new Set(Array.from({ length: 100 }, () => drawLetters(1)[0].orientation));
+    expect(orientations).toEqual(new Set(["upright", "reversed"]));
+  });
+
+  it("drawOne respects the exclusion set", () => {
+    const exclude = DECK.slice(0, 20); // only two letters remain drawable
+    for (let i = 0; i < 200; i++) {
+      const card = drawOne(exclude);
+      expect(exclude).not.toContain(card.letterId);
+      expect(lettersById[card.letterId]).toBeDefined();
+    }
+  });
+
+  it("drawOne chained builds a distinct spread (without replacement)", () => {
+    for (let trial = 0; trial < 200; trial++) {
+      const placed: string[] = [];
+      for (let k = 0; k < 5; k++) {
+        placed.push(drawOne(placed).letterId);
+      }
+      expect(new Set(placed).size).toBe(5); // all distinct
+    }
+  });
+
+  it("drawOne throws when every letter is excluded", () => {
+    expect(() => drawOne(DECK)).toThrow();
+  });
+
+  it("drawOne produces both orientations over many draws", () => {
+    const orientations = new Set(Array.from({ length: 100 }, () => drawOne().orientation));
     expect(orientations).toEqual(new Set(["upright", "reversed"]));
   });
 

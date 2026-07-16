@@ -9,8 +9,8 @@ import { formatHebrewDateEnglish } from "../../data/hebrewCalendar";
 import { resolveSpread } from "../../herald/spreads/resolveSpread";
 import { resolveDorotMechanic } from "../../herald/dorot/dorotMechanics";
 import { resolveShoresh } from "../../herald/shoresh/resolveShoresh";
-import { drawLetters } from "../../herald/deck/deck";
-import { DealReveal, type RevealCard } from "../../herald/deck/DealReveal";
+import { drawLetters, drawOne } from "../../herald/deck/deck";
+import { DealReveal, type RevealCard, type RevealWord } from "../../herald/deck/DealReveal";
 import { MizbeachCentralPanel, TREE_ON_PANEL } from "../render/centralPanel";
 import { MizbeachSvgContent, type MandalaSlice } from "../render/buildMizbeachSvg";
 import { FolioCanvas } from "../folio3d/FolioCanvas";
@@ -50,9 +50,10 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
   // it links the folio's dimensions, and its lower Sefirot are the middah picker.
   const [treeRevealed, setTreeRevealed] = useState(false);
   // The ceremonial reveal for a fresh deal (presentation only).
-  const [reveal, setReveal] = useState<{ cards: RevealCard[]; nonce: number }>({
+  const [reveal, setReveal] = useState<{ cards: RevealCard[]; nonce: number; word: RevealWord | null }>({
     cards: [],
     nonce: 0,
+    word: null,
   });
 
   const festivalId = resolvedFestivalId(state);
@@ -84,7 +85,39 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
       draw,
       sealed: i === cards.length - 1 && veiledSealed,
     }));
-    setReveal((r) => ({ cards: revealCards, nonce: r.nonce + 1 }));
+    const word = wordForOpen([cards[0].letterId, cards[1].letterId, cards[2].letterId]);
+    setReveal((r) => ({ cards: revealCards, nonce: r.nonce + 1, word }));
+  }
+
+  /** The Word the three open letters spell — a triadic-only closing flourish. */
+  function wordForOpen(ids: [string, string, string]): RevealWord | null {
+    if (spread !== "triadic") return null;
+    const r = resolveShoresh(ids);
+    if (r.tier === "root") return { text: r.word, gloss: r.gloss };
+    if (r.tier === "name") return { text: r.name, gloss: r.gloss };
+    return null;
+  }
+
+  /** Letter ids already placed on the folio (for without-replacement draws). */
+  function placedLetterIdsForFolio(excludeZoneId?: string): string[] {
+    const out: string[] = [];
+    state.letters.forEach((d, i) => {
+      if (d && `letter-${i}` !== excludeZoneId) out.push(d.letterId);
+    });
+    if (state.fourth && excludeZoneId !== "fourth") out.push(state.fourth.letterId);
+    if (state.veiled && excludeZoneId !== "veiled") out.push(state.veiled.letterId);
+    return out;
+  }
+
+  /** Draw a single random card into the open zone, then reveal it. */
+  function drawIntoZone() {
+    const id = openZoneId;
+    if (!id) return;
+    const card = drawOne(placedLetterIdsForFolio(id));
+    commit(card);
+    const sealed = id === "veiled" && spread !== "yichud";
+    setReveal((r) => ({ cards: [{ draw: card, sealed }], nonce: r.nonce + 1, word: null }));
+    setOpenZoneId(undefined);
   }
 
   function openZone(id: string) {
@@ -201,6 +234,7 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
       <DealReveal
         cards={reveal.cards}
         nonce={reveal.nonce}
+        word={reveal.word}
         onDone={() => setReveal((r) => ({ ...r, cards: [] }))}
       />
       {/* Central panel (3D plate, or SVG fallback) + interaction overlay */}
@@ -369,7 +403,19 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
       </div>
 
       {popoverTarget && (
-        <PlacementPopover target={popoverTarget} onCommit={commit} onClear={clear} onClose={() => setOpenZoneId(undefined)} />
+        <PlacementPopover
+          target={popoverTarget}
+          onCommit={commit}
+          onClear={clear}
+          onClose={() => setOpenZoneId(undefined)}
+          onDrawRandom={
+            popoverTarget.kind === "letter" ||
+            popoverTarget.kind === "fourth" ||
+            popoverTarget.kind === "veiled"
+              ? drawIntoZone
+              : undefined
+          }
+        />
       )}
     </div>
   );
