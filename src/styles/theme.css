@@ -110,6 +110,14 @@
   --radius-md: 6px;
   --radius-lg: 10px;
 
+  /* Motion: one small scale so hover, press, and page transitions feel tuned
+     together. Theme-independent. Neutralized globally under
+     prefers-reduced-motion (see index.css). */
+  --motion-fast: 120ms;
+  --motion: 180ms;
+  --motion-slow: 280ms;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+
   /*
    * Layout: the reading measure (.page) stays ~860px for prose; tool pages
    * (.page--wide: Herald, Mizbe'ach, Sefarim, Covenant) open to --measure.
