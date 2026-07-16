@@ -3,22 +3,33 @@ import type { LetterDraw } from "../../types/herald";
 import { lettersById } from "../../data/letters";
 import styles from "./dealReveal.module.css";
 
+/** One card in the reveal. A `sealed` card is the Veiled Anchor — it lands
+ *  face-down and is never turned over, so its letter stays the Sod. */
+export interface RevealCard {
+  draw: LetterDraw;
+  sealed?: boolean;
+}
+
 /**
- * A ceremonial reveal for a deck draw: the drawn cards flip over one by one,
- * face-down seal to face-up letter, then fade. Presentation only — it renders
- * whatever `drawLetters` returned and never touches the reading itself, so the
- * settled form-slots / folio remain the source of truth (and stay accessible).
+ * A ceremonial reveal for a deck draw: the cards flip over one by one,
+ * face-down seal to face-up letter. The veiled anchor turns like the rest —
+ * the Scribe needs to see it to perform the reading — but it is set visibly
+ * apart under a veil and labelled the Sod, so it never reads as a public,
+ * open card (and it stays excluded from the rendered Herald elsewhere).
+ * Presentation only — it renders whatever `drawLetters` returned and never
+ * touches the reading itself, so the settled form-slots / folio remain the
+ * source of truth (and stay accessible).
  *
- * Reduced-motion users get no overlay at all (the slots simply fill); the drawn
- * letters are announced politely to assistive tech in both cases.
+ * Reduced-motion users get no overlay at all (the slots simply fill); the open
+ * letters are announced to assistive tech, with the sealed Sod card noted apart.
  */
 export function DealReveal({
   cards,
   nonce,
   onDone,
 }: {
-  /** The draw to reveal — the same LetterDraw[] handed to the reading. */
-  cards: LetterDraw[];
+  /** The draw to reveal; the veiled anchor is flagged `sealed`. */
+  cards: RevealCard[];
   /** Bumped on every draw so an identical result still re-triggers the reveal. */
   nonce: number;
   onDone: () => void;
@@ -32,9 +43,11 @@ export function DealReveal({
 
   const [visible, setVisible] = useState(false);
 
-  const names = cards
-    .map((c) => lettersById[c.letterId]?.name ?? c.letterId)
-    .join(", ");
+  const nameOf = (c: RevealCard) => lettersById[c.draw.letterId]?.name ?? c.draw.letterId;
+  // Open cards are named plainly; the sealed Sod card is noted apart (the Scribe
+  // needs it, but it is never one of the public, open letters).
+  const openNames = cards.filter((c) => !c.sealed).map(nameOf).join(", ");
+  const sealedCard = cards.find((c) => c.sealed);
 
   // Total = the last card's flip finish + a hold + the fade-out. The overlay's
   // fade keyframe is stretched over this whole span so it stays lit until the
@@ -58,9 +71,14 @@ export function DealReveal({
   }, [nonce]);
 
   // Announce the result for assistive tech whether or not the overlay plays.
+  const announceText =
+    nonce > 0 && cards.length > 0
+      ? `Drawn from the deck: ${openNames}.` +
+        (sealedCard ? ` The sealed Sod card: ${nameOf(sealedCard)}.` : "")
+      : "";
   const announce = (
     <span className={styles.srOnly} role="status" aria-live="polite">
-      {nonce > 0 && cards.length > 0 ? `Drawn from the deck: ${names}.` : ""}
+      {announceText}
     </span>
   );
 
@@ -80,7 +98,7 @@ export function DealReveal({
       >
         <div className={styles.row}>
           {cards.map((card, i) => {
-            const letter = lettersById[card.letterId];
+            const letter = lettersById[card.draw.letterId];
             return (
               <div
                 key={i}
@@ -89,14 +107,17 @@ export function DealReveal({
               >
                 <div className={styles.inner} style={{ animationDelay: `${i * STAGGER_MS}ms` }}>
                   <div className={styles.back}>✦</div>
-                  <div className={styles.front}>
+                  <div className={`${styles.front} ${card.sealed ? styles.sealedFront : ""}`}>
                     <span
                       className={styles.glyph}
-                      style={card.orientation === "reversed" ? reversedStyle : undefined}
+                      style={card.draw.orientation === "reversed" ? reversedStyle : undefined}
                     >
                       {letter?.glyph ?? "?"}
                     </span>
-                    <span className={styles.name}>{letter?.name ?? ""}</span>
+                    <span className={styles.name}>
+                      {card.sealed ? "The Sod — sealed" : (letter?.name ?? "")}
+                    </span>
+                    {card.sealed && <span className={styles.veil} aria-hidden="true" />}
                   </div>
                 </div>
               </div>

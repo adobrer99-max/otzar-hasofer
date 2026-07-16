@@ -10,7 +10,7 @@ import { resolveSpread } from "../../herald/spreads/resolveSpread";
 import { resolveDorotMechanic } from "../../herald/dorot/dorotMechanics";
 import { resolveShoresh } from "../../herald/shoresh/resolveShoresh";
 import { drawLetters } from "../../herald/deck/deck";
-import { DealReveal } from "../../herald/deck/DealReveal";
+import { DealReveal, type RevealCard } from "../../herald/deck/DealReveal";
 import { MizbeachCentralPanel, TREE_ON_PANEL } from "../render/centralPanel";
 import { MizbeachSvgContent, type MandalaSlice } from "../render/buildMizbeachSvg";
 import { FolioCanvas } from "../folio3d/FolioCanvas";
@@ -50,7 +50,7 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
   // it links the folio's dimensions, and its lower Sefirot are the middah picker.
   const [treeRevealed, setTreeRevealed] = useState(false);
   // The ceremonial reveal for a fresh deal (presentation only).
-  const [reveal, setReveal] = useState<{ cards: LetterDraw[]; nonce: number }>({
+  const [reveal, setReveal] = useState<{ cards: RevealCard[]; nonce: number }>({
     cards: [],
     nonce: 0,
   });
@@ -77,7 +77,14 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
     };
     if (showFourth) patch.fourth = cards[3];
     onChange(patch);
-    setReveal((r) => ({ cards, nonce: r.nonce + 1 }));
+    // The last card is the veiled anchor — kept sealed in the reveal, except on
+    // Tu B'Av (yichud), when the anchor is drawn openly.
+    const veiledSealed = spread !== "yichud";
+    const revealCards: RevealCard[] = cards.map((draw, i) => ({
+      draw,
+      sealed: i === cards.length - 1 && veiledSealed,
+    }));
+    setReveal((r) => ({ cards: revealCards, nonce: r.nonce + 1 }));
   }
 
   function openZone(id: string) {

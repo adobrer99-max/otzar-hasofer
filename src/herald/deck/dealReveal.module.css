@@ -102,6 +102,30 @@
   font-size: clamp(0.6rem, 1.6vw, 0.8rem);
   letter-spacing: 0.06em;
   color: var(--color-silver);
+  position: relative;
+  z-index: 2; /* stays legible above the veil on a sealed card */
+}
+
+/* The Veiled Anchor — it turns like the rest (the Scribe must read it), but is
+   set apart with a dashed edge and a gauzy veil drawn over the letter, so it is
+   plainly the sealed Sod, not a public open card. */
+.sealedFront {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--color-gold) 60%, transparent);
+}
+
+.veil {
+  position: absolute;
+  inset: 0;
+  z-index: 1; /* over the glyph (veiling it), under the label */
+  border-radius: 8px;
+  pointer-events: none;
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--color-charcoal) 38%, transparent),
+    color-mix(in srgb, var(--color-charcoal) 18%, transparent)
+  );
+  backdrop-filter: blur(0.8px);
 }
 
 .srOnly {

@@ -20,7 +20,7 @@ import { DorotDrawPanel, firstCardOfHouse } from "./DorotDrawPanel";
 import { resolveDorotMechanic } from "../dorot/dorotMechanics";
 import { resolveSpread } from "../spreads/resolveSpread";
 import { drawLetters } from "../deck/deck";
-import { DealReveal } from "../deck/DealReveal";
+import { DealReveal, type RevealCard } from "../deck/DealReveal";
 import styles from "./form.module.css";
 
 const drawLabels = ["First drawn", "Second drawn", "Third drawn"];
@@ -91,7 +91,7 @@ export function ReadingForm({ onSubmit, readingIndex, ritualNotes }: ReadingForm
   const [councilEnabled, setCouncilEnabled] = useState(true);
   const [councilCard, setCouncilCard] = useState(defaultCard);
   // The ceremonial reveal for a fresh draw (presentation only).
-  const [reveal, setReveal] = useState<{ cards: LetterDraw[]; nonce: number }>({
+  const [reveal, setReveal] = useState<{ cards: RevealCard[]; nonce: number }>({
     cards: [],
     nonce: 0,
   });
@@ -145,7 +145,14 @@ export function ReadingForm({ onSubmit, readingIndex, ritualNotes }: ReadingForm
     setDrawnLetters([cards[0], cards[1], cards[2]]);
     if (spread === "etz-chaim") setFourthLetter(cards[3]);
     setVeiledLetter(cards[cards.length - 1]);
-    setReveal((r) => ({ cards, nonce: r.nonce + 1 }));
+    // The last card is the veiled anchor — kept sealed in the reveal, except on
+    // Tu B'Av (yichud), when the anchor is drawn openly.
+    const veiledSealed = spread !== "yichud";
+    const revealCards: RevealCard[] = cards.map((draw, i) => ({
+      draw,
+      sealed: i === cards.length - 1 && veiledSealed,
+    }));
+    setReveal((r) => ({ cards: revealCards, nonce: r.nonce + 1 }));
   }
 
   function handleSubmit(e: React.FormEvent) {
