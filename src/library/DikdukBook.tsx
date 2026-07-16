@@ -1,14 +1,14 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { groupRootsByPattern, ROOT_PATTERNS, type RootPatternId } from "../data/dikduk";
-import { lettersById } from "../data/letters";
+import { spellWord } from "../data/hebrewText";
 import type { ShoreshEntry } from "../data/shorashim.generated";
 import styles from "./library.module.css";
 
 const SAMPLE_SIZE = 24;
 
 function rootGlyphs(entry: ShoreshEntry): string {
-  return entry.letters.map((id) => lettersById[id]?.glyph ?? "").join("");
+  return spellWord(entry.letters);
 }
 
 /**

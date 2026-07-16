@@ -9,6 +9,7 @@ import { formatHebrewDateEnglish } from "../../data/hebrewCalendar";
 import { resolveSpread } from "../../herald/spreads/resolveSpread";
 import { resolveDorotMechanic } from "../../herald/dorot/dorotMechanics";
 import { resolveShoresh } from "../../herald/shoresh/resolveShoresh";
+import { drawLetters } from "../../herald/deck/deck";
 import { MizbeachCentralPanel, TREE_ON_PANEL } from "../render/centralPanel";
 import { MizbeachSvgContent, type MandalaSlice } from "../render/buildMizbeachSvg";
 import { FolioCanvas } from "../folio3d/FolioCanvas";
@@ -58,6 +59,19 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
   // ——— central-panel placements ———
   const placedGlyph = (draw: LetterDraw | null) =>
     draw ? (lettersById[draw.letterId]?.glyph ?? "?") : undefined;
+
+  // Deal the whole reading from the deck — a true random draw of distinct cards
+  // into the three (or four) placement zones and the veiled anchor. Each card
+  // may fall upright or reversed; any can be re-placed by hand afterward.
+  function dealTheCards() {
+    const cards = drawLetters(showFourth ? 5 : 4);
+    const patch: Partial<MizbeachReadingState> = {
+      letters: [cards[0], cards[1], cards[2]],
+      veiled: cards[cards.length - 1],
+    };
+    if (showFourth) patch.fourth = cards[3];
+    onChange(patch);
+  }
 
   function openZone(id: string) {
     setOpenZoneId(id);
@@ -313,6 +327,9 @@ export function InteractiveMizbeach({ state, onChange, readingIndex }: Interacti
           {spread !== "triadic" && ` · ${spread === "etz-chaim" ? "Etz Chaim spread" : "Yichud spread"}`}
         </div>
         <div className={styles.treeControl}>
+          <button type="button" className={styles.revealBtn} onClick={dealTheCards}>
+            ✦ Deal the cards
+          </button>
           <button
             type="button"
             className={styles.revealBtn}

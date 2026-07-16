@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { shorashim, type ShoreshEntry } from "../data/shorashim.generated";
 import { lettersById } from "../data/letters";
+import { spellWord } from "../data/hebrewText";
 import { rootKeyFor } from "../types/commentary";
 import { PardesEntry } from "./PardesEntry";
 import styles from "./library.module.css";
@@ -9,9 +10,9 @@ import styles from "./library.module.css";
 /** Roots are deep-linkable: the open root lives in the URL, so a refresh or a shared link lands on it. */
 const BASE = "/sefarim/hashorashim";
 
-/** The three radicals as Hebrew glyphs, written right-to-left. */
+/** The three radicals as a Hebrew word — the final radical in its sofit form. */
 function rootGlyphs(entry: ShoreshEntry): string {
-  return entry.letters.map((id) => lettersById[id]?.glyph ?? "").join("");
+  return spellWord(entry.letters);
 }
 
 function rootNames(entry: ShoreshEntry): string {

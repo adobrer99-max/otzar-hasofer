@@ -229,3 +229,31 @@
 .lettersLocked {
   opacity: 0.55;
 }
+
+/* ——— Draw from the deck ——— */
+.deckDraw {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2);
+}
+.drawBtn {
+  background: var(--bg-raised);
+  border: 1px solid var(--accent);
+  color: var(--accent-bright);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
+  min-height: 44px;
+  font-family: var(--font-latin);
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+.drawBtn:hover {
+  background: var(--bg-sunken);
+  border-color: var(--accent-bright);
+}
+.deckDrawNote {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
