@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { PageHeader } from "../../components/ui";
+import { PageHeader, EmptyState } from "../../components/ui";
 import type { ParticipantRecord, HeraldLayer, Orientation } from "../../types/herald";
 import type { UnionRecord } from "../../types/union";
 import { listParticipants, getLayers } from "../../storage/participantsRepo";
@@ -159,6 +159,13 @@ export function CovenantPage() {
           </ul>
         )}
       </div>
+
+      {unions.length === 0 && (
+        <EmptyState
+          title="No covenant yet"
+          description="Create a union between two participants above to weave their shared Herald and begin the Sheva Brachot."
+        />
+      )}
 
       {union && (
         <div className={styles.layout}>

@@ -255,3 +255,69 @@
 .richText :global(p):last-child { margin-bottom: 0; }
 .richText :global(u) { text-underline-offset: 2px; }
 .richText > :first-child { margin-top: 0; }
+
+/* ——— Loading & empty states ——— */
+.routeFallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  min-height: 50vh;
+  color: var(--text-muted);
+}
+
+.loadingMark {
+  opacity: 0.9;
+}
+
+.loadingLabel {
+  font-style: italic;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .loadingMark {
+    animation: markPulse 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes markPulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.97); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-4);
+  max-width: 42ch;
+  margin: var(--space-4) auto;
+  color: var(--text-muted);
+}
+
+.emptyMark {
+  opacity: 0.55;
+  margin-bottom: var(--space-1, 0.25rem);
+}
+
+.emptyTitle {
+  margin: 0;
+  font-family: var(--font-latin);
+  font-size: 1.05rem;
+  color: var(--text);
+}
+
+.emptyDescription {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.emptyAction {
+  margin-top: var(--space-3);
+}

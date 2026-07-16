@@ -89,11 +89,6 @@
   filter: saturate(1.12) brightness(1.05) contrast(1.03);
 }
 
-.empty {
-  color: var(--text-muted);
-  font-style: italic;
-}
-
 /* Returns from a single scrubbed reading back to the synthesized Herald. */
 .returnBtn {
   align-self: flex-start;

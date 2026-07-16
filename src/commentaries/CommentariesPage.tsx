@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { PageHeader } from "../components/ui";
+import { PageHeader, EmptyState } from "../components/ui";
 import type { CommentaryRecord, CommentarySubject } from "../types/commentary";
 import {
   listAllCommentaries,
@@ -100,7 +100,10 @@ export function CommentariesPage() {
       </div>
 
       {visible.length === 0 ? (
-        <p>No commentaries here yet.</p>
+        <EmptyState
+          title="No commentaries yet"
+          description="The Drash tier is open — be the first to write one, using the form above."
+        />
       ) : (
         <CommentaryList commentaries={visible} onEdit={setEditing} onDelete={handleDelete} />
       )}

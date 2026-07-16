@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { PageHeader } from "../components/ui";
+import { PageHeader, EmptyState } from "../components/ui";
 import type { ParticipantRecord, HeraldLayer, ReadingPath, HeraldStyle } from "../types/herald";
 import type { LifeCycleEvent } from "../types/lifeCycle";
 import {
@@ -383,15 +383,18 @@ export function HeraldPage() {
                 />
               </>
             ) : (
-              <p className={styles.empty}>
-                No Herald yet for this participant. Fill out the reading form
-                to begin — the Herald forms across the first seven readings.
-              </p>
+              <EmptyState
+                title="No Herald yet"
+                description="Fill out the reading form below to begin — the Herald forms across the first seven readings."
+              />
             )}
           </div>
         </div>
       ) : (
-        <p className={styles.empty}>Select or create a participant to begin.</p>
+        <EmptyState
+          title="Begin with a participant"
+          description="Select a name above, or create a new one to open their Treasury and conduct a reading."
+        />
       )}
 
       {selectedParticipantId && heraldForm && (
