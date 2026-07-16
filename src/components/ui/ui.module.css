@@ -46,15 +46,18 @@
   color: inherit;
   text-decoration: none;
   transition:
-    transform 160ms ease,
-    box-shadow 160ms ease,
-    border-color 160ms ease;
+    transform var(--motion) var(--ease-out),
+    box-shadow var(--motion) var(--ease-out),
+    border-color var(--motion) var(--ease-out);
 }
 .cardInteractive:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
   border-color: var(--accent);
   color: inherit;
+}
+.cardInteractive:active {
+  transform: translateY(0);
 }
 .cardInteractive:focus-visible {
   outline: 2px solid var(--focus-ring);
@@ -77,10 +80,10 @@
   color: var(--text);
   cursor: pointer;
   transition:
-    background 150ms ease,
-    border-color 150ms ease,
-    color 150ms ease,
-    transform 120ms ease;
+    background var(--motion) var(--ease-out),
+    border-color var(--motion) var(--ease-out),
+    color var(--motion) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
 }
 .btn:hover {
   border-color: var(--accent);
@@ -134,7 +137,7 @@
   border: none;
   border-inline-start: 1px solid var(--border-hairline);
   cursor: pointer;
-  transition: background 140ms ease, color 140ms ease;
+  transition: background var(--motion) var(--ease-out), color var(--motion) var(--ease-out);
 }
 .segmented button:first-child {
   border-inline-start: none;
@@ -214,7 +217,7 @@
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  transition: color 140ms ease, border-color 140ms ease;
+  transition: color var(--motion) var(--ease-out), border-color var(--motion) var(--ease-out);
 }
 .themeToggle:hover {
   color: var(--accent-bright);
@@ -362,7 +365,7 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .toast {
-    animation: toastIn 220ms ease;
+    animation: toastIn var(--motion-slow) var(--ease-out);
   }
 }
 
@@ -388,7 +391,7 @@
   padding: 0.25rem 0.6rem;
   background: none;
   border: 1px solid transparent;
-  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+  transition: border-color var(--motion) var(--ease-out), background var(--motion) var(--ease-out), color var(--motion) var(--ease-out);
 }
 
 .confirmTrigger {
