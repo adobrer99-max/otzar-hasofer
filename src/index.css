@@ -129,6 +129,20 @@ input[type="radio"] {
   color: var(--text-muted);
 }
 
+/* Visually hidden but available to screen readers — for labels a sighted user
+   reads from context but assistive tech needs spelled out. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* Skip-to-content: hidden until focused, then slides in at the top-left. */
 .skip-link {
   position: absolute;

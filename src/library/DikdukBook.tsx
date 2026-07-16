@@ -47,7 +47,7 @@ export function DikdukBook() {
               style={{ font: "inherit", background: "none", border: "none", color: "inherit", cursor: "pointer", padding: 0 }}
             >
               {openPattern === pattern.id ? "▾" : "▸"} {pattern.name}{" "}
-              <span className="hebrew" dir="rtl" style={{ fontSize: "0.85em" }}>
+              <span className="hebrew" dir="rtl" lang="he" style={{ fontSize: "0.85em" }}>
                 {pattern.hebrewName}
               </span>{" "}
               <span style={{ color: "var(--text-muted)", fontSize: "0.8em" }}>

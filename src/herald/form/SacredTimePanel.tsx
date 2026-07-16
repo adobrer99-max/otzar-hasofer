@@ -28,7 +28,7 @@ export function SacredTimePanel({
     <div className={styles.sacredTimePanel}>
       <div className={styles.sacredTimeLine}>
         {backdateEnabled ? "This reading is set to" : "Today is"}{" "}
-        <span className={styles.hebrewDate}>{formatHebrewDateHebrew(snapshot.hebrewDate)}</span>
+        <span className={styles.hebrewDate} lang="he">{formatHebrewDateHebrew(snapshot.hebrewDate)}</span>
         {" "}({formatHebrewDateEnglish(snapshot.hebrewDate)}) ·{" "}
         {snapshot.dayOfWeek.charAt(0).toUpperCase() + snapshot.dayOfWeek.slice(1)}
         {snapshot.omer && ` · Omer day ${snapshot.omer.day}`}

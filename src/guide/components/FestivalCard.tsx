@@ -8,7 +8,7 @@ export function FestivalCard({ festival }: { festival: FestivalOverride }) {
       <div className={styles.title}>
         <h3>{festival.name}</h3>
         {festival.hebrewName && (
-          <span className={`${styles.hebrew} hebrew`}>
+          <span className={`${styles.hebrew} hebrew`} lang="he">
             {festival.hebrewName}
           </span>
         )}
