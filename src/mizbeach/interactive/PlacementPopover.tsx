@@ -18,10 +18,12 @@ export interface PlacementPopoverProps {
   onCommit: (value: LetterDraw | SefirahId | string) => void;
   onClear: () => void;
   onClose: () => void;
+  /** Draw a random card into this zone from the deck (letter zones only). */
+  onDrawRandom?: () => void;
 }
 
 /** The click-to-pick panel a zone opens. Keyboard- and touch-first. */
-export function PlacementPopover({ target, onCommit, onClear, onClose }: PlacementPopoverProps) {
+export function PlacementPopover({ target, onCommit, onClear, onClose, onDrawRandom }: PlacementPopoverProps) {
   return (
     <div className={styles.popoverBackdrop} onClick={onClose}>
       <div
@@ -31,7 +33,7 @@ export function PlacementPopover({ target, onCommit, onClear, onClose }: Placeme
         onClick={(e) => e.stopPropagation()}
       >
         <div className={styles.popoverTitle}>{target.label}</div>
-        <PopoverBody target={target} onCommit={onCommit} onClear={onClear} onClose={onClose} />
+        <PopoverBody target={target} onCommit={onCommit} onClear={onClear} onClose={onClose} onDrawRandom={onDrawRandom} />
         <button type="button" className={styles.popoverClose} aria-label="Close" onClick={onClose}>
           ×
         </button>
@@ -40,12 +42,12 @@ export function PlacementPopover({ target, onCommit, onClear, onClose }: Placeme
   );
 }
 
-function PopoverBody({ target, onCommit, onClear, onClose }: PlacementPopoverProps) {
+function PopoverBody({ target, onCommit, onClear, onClose, onDrawRandom }: PlacementPopoverProps) {
   switch (target.kind) {
     case "letter":
     case "fourth":
     case "veiled":
-      return <LetterEditor value={target.value} onCommit={onCommit} onClear={onClear} onClose={onClose} />;
+      return <LetterEditor value={target.value} onCommit={onCommit} onClear={onClear} onClose={onClose} onDrawRandom={onDrawRandom} />;
     case "tree":
       return <MiddahEditor value={target.value} onCommit={onCommit} onClose={onClose} />;
     case "hand":
@@ -63,16 +65,23 @@ function LetterEditor({
   onCommit,
   onClear,
   onClose,
+  onDrawRandom,
 }: {
   value: LetterDraw | null;
   onCommit: (v: LetterDraw) => void;
   onClear: () => void;
   onClose: () => void;
+  onDrawRandom?: () => void;
 }) {
   const [letterId, setLetterId] = useState(value?.letterId ?? "aleph");
   const [orientation, setOrientation] = useState<Orientation>(value?.orientation ?? "upright");
   return (
     <>
+      {onDrawRandom && (
+        <Button variant="primary" onClick={onDrawRandom}>
+          ✦ Draw a card
+        </Button>
+      )}
       <label className={styles.field}>
         Letter
         <select value={letterId} onChange={(e) => setLetterId(e.target.value)}>

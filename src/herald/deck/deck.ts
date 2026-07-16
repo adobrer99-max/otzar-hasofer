@@ -73,3 +73,18 @@ export function drawLetters(count: number): LetterDraw[] {
     .slice(0, count)
     .map((letterId) => ({ letterId, orientation: randomOrientation() }));
 }
+
+/**
+ * Draws a single letter from the deck, uniformly at random, excluding any letter
+ * ids in `exclude` (so drawing card-by-card stays without replacement across a
+ * spread). Each card lands with a randomly chosen orientation. Throws if every
+ * letter is already excluded.
+ */
+export function drawOne(exclude: readonly string[] = []): LetterDraw {
+  const excluded = new Set(exclude);
+  const pool = DECK.filter((id) => !excluded.has(id));
+  if (pool.length === 0) {
+    throw new Error("No letters remain in the deck to draw");
+  }
+  return { letterId: pool[secureRandomInt(pool.length)], orientation: randomOrientation() };
+}
