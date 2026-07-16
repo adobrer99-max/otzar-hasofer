@@ -7,6 +7,7 @@ import {
   deleteCommentary,
 } from "../storage/commentariesRepo";
 import { CommentaryList } from "../commentaries/CommentaryList";
+import { toast } from "../components/ui/toast";
 import commentaryStyles from "../commentaries/commentaries.module.css";
 
 /**
@@ -77,12 +78,10 @@ export function DrashTier({
   }
 
   async function handleDelete(record: CommentaryRecord) {
-    if (!window.confirm(`Delete "${record.title ?? `Commentary of ${record.author}`}"? This cannot be undone.`)) {
-      return;
-    }
     await deleteCommentary(record.id);
     if (editing?.id === record.id) resetForm();
     await refresh();
+    toast("Commentary deleted");
   }
 
   return (

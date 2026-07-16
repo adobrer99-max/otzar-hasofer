@@ -16,7 +16,6 @@ export function DraftEditor({
   onRevert,
   dirty,
   hasDraft,
-  savedNote,
 }: {
   dataset: DatasetDescriptor;
   values: Record<string, string>;
@@ -25,7 +24,6 @@ export function DraftEditor({
   onRevert: () => void;
   dirty: boolean;
   hasDraft: boolean;
-  savedNote?: string;
 }) {
   return (
     <form
@@ -70,7 +68,6 @@ export function DraftEditor({
         <Button type="button" variant="ghost" onClick={onRevert} disabled={!hasDraft}>
           Revert to shipped
         </Button>
-        {savedNote && <span className={styles.savedNote}>{savedNote}</span>}
       </div>
     </form>
   );

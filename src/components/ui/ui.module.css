@@ -321,3 +321,98 @@
 .emptyAction {
   margin-top: var(--space-3);
 }
+
+/* ——— Toasts ——— */
+.toaster {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-5, 1.5rem);
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  pointer-events: none;
+  max-width: min(92vw, 30rem);
+}
+
+.toast {
+  pointer-events: auto;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: center;
+  color: var(--text);
+  background: var(--bg-raised);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md, 6px);
+  padding: var(--space-2, 0.5rem) var(--space-4, 1rem);
+  box-shadow: var(--shadow-md, 0 6px 22px rgba(0, 0, 0, 0.35));
+}
+
+.toast_success {
+  border-color: var(--accent-bright, var(--accent));
+}
+
+.toast_error {
+  border-color: #b5504a;
+  color: var(--text);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .toast {
+    animation: toastIn 220ms ease;
+  }
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ——— Inline confirm ——— */
+.confirmGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.confirmTrigger,
+.confirmYes,
+.confirmNo {
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border-radius: var(--radius-md, 6px);
+  padding: 0.25rem 0.6rem;
+  background: none;
+  border: 1px solid transparent;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+.confirmTrigger {
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.confirmTrigger:hover {
+  color: #b5504a;
+}
+
+.confirmYes {
+  color: #fff;
+  background: #9a3b36;
+  border-color: #9a3b36;
+}
+.confirmYes:hover {
+  background: #b5504a;
+}
+
+.confirmNo {
+  color: var(--text-muted);
+  border-color: var(--border-hairline);
+}
+.confirmNo:hover {
+  background: var(--bg-sunken);
+}

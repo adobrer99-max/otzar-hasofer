@@ -1,5 +1,6 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { sanitizeRichHtml } from "../../scriptorium/richText";
+import { subscribeToasts, dismissToast, type ToastItem } from "./toast";
 import styles from "./ui.module.css";
 
 /** The eyebrow + title (+ optional Hebrew subtitle + lede) block that opens
@@ -207,6 +208,101 @@ export function EmptyState({
       {description && <div className={styles.emptyDescription}>{description}</div>}
       {action && <div className={styles.emptyAction}>{action}</div>}
     </div>
+  );
+}
+
+/** The single toast region — mounted once in App. Subscribes to the toast
+ *  store and renders transient, click-dismissible notices. */
+export function Toaster() {
+  const [items, setItems] = useState<ToastItem[]>([]);
+  useEffect(() => subscribeToasts(setItems), []);
+  if (items.length === 0) return null;
+  return (
+    <div className={styles.toaster} role="status" aria-live="polite">
+      {items.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          className={[styles.toast, styles[`toast_${t.tone}`] ?? ""].filter(Boolean).join(" ")}
+          onClick={() => dismissToast(t.id)}
+          aria-label={`${t.message} (dismiss)`}
+        >
+          {t.message}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * A destructive action guarded by an inline two-step confirm — the single
+ * confirm pattern app-wide (no blocking window.confirm). First click arms an
+ * inline Confirm/Cancel; it disarms on Escape or blur.
+ */
+export function ConfirmButton({
+  children,
+  confirmLabel = "Confirm",
+  cancelLabel = "Cancel",
+  onConfirm,
+  ariaLabel,
+  className,
+}: {
+  children: ReactNode;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  onConfirm: () => void;
+  ariaLabel?: string;
+  className?: string;
+}) {
+  const [armed, setArmed] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!armed) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setArmed(false);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [armed]);
+
+  if (!armed) {
+    return (
+      <button
+        type="button"
+        className={[styles.confirmTrigger, className ?? ""].filter(Boolean).join(" ")}
+        onClick={() => setArmed(true)}
+      >
+        {children}
+      </button>
+    );
+  }
+
+  return (
+    <span
+      ref={ref}
+      className={styles.confirmGroup}
+      role="group"
+      aria-label={ariaLabel ?? "Confirm this action"}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setArmed(false);
+      }}
+    >
+      <button
+        type="button"
+        className={styles.confirmYes}
+        autoFocus
+        onClick={() => {
+          setArmed(false);
+          onConfirm();
+        }}
+      >
+        {confirmLabel}
+      </button>
+      <button type="button" className={styles.confirmNo} onClick={() => setArmed(false)}>
+        {cancelLabel}
+      </button>
+    </span>
   );
 }
 

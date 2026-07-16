@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ParticipantRecord, ReadingPath } from "../../types/herald";
+import { ConfirmButton } from "../../components/ui";
 import styles from "./history.module.css";
 
 export function ParticipantPicker({
@@ -16,17 +17,13 @@ export function ParticipantPicker({
   onDelete?: (id: string) => void;
 }) {
   const [newName, setNewName] = useState("");
-  const [confirming, setConfirming] = useState(false);
   const selected = participants.find((p) => p.id === selectedId);
 
   return (
     <div className={styles.picker}>
       <select
         value={selectedId ?? ""}
-        onChange={(e) => {
-          setConfirming(false);
-          onSelect(e.target.value);
-        }}
+        onChange={(e) => onSelect(e.target.value)}
         aria-label="Select participant"
       >
         <option value="" disabled>
@@ -54,30 +51,14 @@ export function ParticipantPicker({
       >
         + New participant
       </button>
-      {onDelete && selected && !confirming && (
-        <button type="button" className={styles.dangerLink} onClick={() => setConfirming(true)}>
+      {onDelete && selected && (
+        <ConfirmButton
+          confirmLabel="Delete"
+          ariaLabel={`Delete ${selected.displayName} and all their readings`}
+          onConfirm={() => onDelete(selected.id)}
+        >
           Remove participant
-        </button>
-      )}
-      {onDelete && selected && confirming && (
-        <span className={styles.confirm} role="group" aria-label="Confirm removal">
-          <span className={styles.confirmText}>
-            Delete <strong>{selected.displayName}</strong> and all their readings?
-          </span>
-          <button
-            type="button"
-            className={styles.dangerBtn}
-            onClick={() => {
-              setConfirming(false);
-              onDelete(selected.id);
-            }}
-          >
-            Delete
-          </button>
-          <button type="button" onClick={() => setConfirming(false)}>
-            Cancel
-          </button>
-        </span>
+        </ConfirmButton>
       )}
     </div>
   );

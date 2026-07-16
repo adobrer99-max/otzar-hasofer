@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { PageHeader, EmptyState } from "../components/ui";
+import { PageHeader, EmptyState, ConfirmButton } from "../components/ui";
+import { toast } from "../components/ui/toast";
 import type { ParticipantRecord, HeraldLayer, ReadingPath, HeraldStyle } from "../types/herald";
 import type { LifeCycleEvent } from "../types/lifeCycle";
 import {
@@ -49,8 +50,6 @@ export function HeraldPage() {
   const [commentaries, setCommentaries] = useState<CommentaryRecord[]>([]);
   const [justRevealed, setJustRevealed] = useState(false);
   const [styleDraft, setStyleDraft] = useState<HeraldStyle>({});
-  const [promptCopied, setPromptCopied] = useState(false);
-  const [confirmDeleteReading, setConfirmDeleteReading] = useState(false);
   const wasRevealed = useRef(false);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -81,8 +80,6 @@ export function HeraldPage() {
     setStyleDraft(p?.heraldStyle ?? {});
   }, [selectedParticipantId, participants]);
 
-  // Drop any pending "delete this reading" confirm when the viewed layer changes.
-  useEffect(() => setConfirmDeleteReading(false), [selectedLayerId]);
 
   async function handleCreateParticipant(displayName: string, path: ReadingPath) {
     const record = await createParticipant(displayName, path);
@@ -98,6 +95,7 @@ export function HeraldPage() {
     await deleteParticipant(id);
     setSelectedParticipantId(undefined);
     setParticipants(await listParticipants());
+    toast("Participant removed");
   }
 
   async function handleDeleteReading(layerId: string) {
@@ -106,8 +104,8 @@ export function HeraldPage() {
     const refreshed = await getLayers(selectedParticipantId);
     setLayers(refreshed);
     setSelectedLayerId(undefined); // return to the synthesized headline
-    setConfirmDeleteReading(false);
     wasRevealed.current = refreshed.length >= 7;
+    toast("Reading deleted");
   }
 
   async function handleSealStyle() {
@@ -239,21 +237,13 @@ export function HeraldPage() {
                 >
                   ◆ Return to the whole Herald
                 </button>
-                {confirmDeleteReading ? (
-                  <span className={styles.deleteConfirm} role="group" aria-label="Confirm delete reading">
-                    <span>Delete this reading?</span>
-                    <button type="button" className={styles.dangerBtn} onClick={() => handleDeleteReading(selectedLayer.id)}>
-                      Delete
-                    </button>
-                    <button type="button" onClick={() => setConfirmDeleteReading(false)}>
-                      Cancel
-                    </button>
-                  </span>
-                ) : (
-                  <button type="button" className={styles.deleteLink} onClick={() => setConfirmDeleteReading(true)}>
-                    Delete this reading
-                  </button>
-                )}
+                <ConfirmButton
+                  confirmLabel="Delete"
+                  ariaLabel="Confirm delete reading"
+                  onConfirm={() => handleDeleteReading(selectedLayer.id)}
+                >
+                  Delete this reading
+                </ConfirmButton>
               </div>
             )}
             {selectedParticipant && layers.length >= 7 && !sealedEpithet && (
@@ -362,16 +352,15 @@ export function HeraldPage() {
                       const prompt = blazonToImagePrompt(blazon, name);
                       const ok = await copyText(prompt);
                       if (ok) {
-                        setPromptCopied(true);
-                        window.setTimeout(() => setPromptCopied(false), 2000);
+                        toast("Image prompt copied", { tone: "success" });
                       } else {
                         downloadText(prompt, `${name}-image-prompt.txt`);
+                        toast("Clipboard unavailable — downloaded the prompt instead");
                       }
                     }}
                     title="A rich image-generation prompt — paste into ChatGPT or DALL·E to render an illuminated plate"
-                    aria-live="polite"
                   >
-                    {promptCopied ? "Copied!" : "Copy image prompt"}
+                    Copy image prompt
                   </button>
                 </div>
                 <HeraldStylePanel

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader, EmptyState } from "../components/ui";
+import { toast } from "../components/ui/toast";
 import type { CommentaryRecord, CommentarySubject } from "../types/commentary";
 import {
   listAllCommentaries,
@@ -52,12 +53,10 @@ export function CommentariesPage() {
   }
 
   async function handleDelete(record: CommentaryRecord) {
-    if (!window.confirm(`Delete "${record.title ?? `Commentary of ${record.author}`}"? This cannot be undone.`)) {
-      return;
-    }
     await deleteCommentary(record.id);
     if (editing?.id === record.id) setEditing(undefined);
     await refresh();
+    toast("Commentary deleted");
   }
 
   const visible =
