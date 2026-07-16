@@ -271,6 +271,10 @@ export function ReadingForm({ onSubmit, readingIndex, ritualNotes }: ReadingForm
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
+      <fieldset className={styles.section}>
+      <legend className={styles.legend}>
+        <span className={styles.legendNum}>I</span> The Timing
+      </legend>
       <SacredTimePanel
         snapshot={sacredTime}
         backdateEnabled={backdateEnabled}
@@ -298,7 +302,12 @@ export function ReadingForm({ onSubmit, readingIndex, ritualNotes }: ReadingForm
           The participant conducts this reading with the Scribe. Not alone. Together.
         </p>
       )}
+      </fieldset>
 
+      <fieldset className={styles.section}>
+      <legend className={styles.legend}>
+        <span className={styles.legendNum}>II</span> The Participant
+      </legend>
       <div className={styles.field}>
         <label>Path</label>
         <PathToggle value={path} onChange={setPath} />
@@ -342,15 +351,23 @@ export function ReadingForm({ onSubmit, readingIndex, ritualNotes }: ReadingForm
         </label>
       </div>
 
-      <div className={styles.field}>
-        <label htmlFor="palm-notes">Palm Baseline Notes (Chai · Lev · Rosh)</label>
-        <textarea
-          id="palm-notes"
-          value={palmNotes}
-          onChange={(e) => setPalmNotes(e.target.value)}
-        />
-      </div>
+      <details className={styles.disclosure}>
+        <summary>Palm baseline notes (optional)</summary>
+        <div className={styles.field}>
+          <label htmlFor="palm-notes">Chai · Lev · Rosh</label>
+          <textarea
+            id="palm-notes"
+            value={palmNotes}
+            onChange={(e) => setPalmNotes(e.target.value)}
+          />
+        </div>
+      </details>
+      </fieldset>
 
+      <fieldset className={styles.section}>
+      <legend className={styles.legend}>
+        <span className={styles.legendNum}>III</span> The Draw
+      </legend>
       {spread === "etz-chaim" && (
         <p className={styles.hebrewNameNote}>
           Tu Bishvat — the Etz Chaim. The standard spread gives way to the Vertical Four-Card
@@ -496,7 +513,12 @@ export function ReadingForm({ onSubmit, readingIndex, ritualNotes }: ReadingForm
           ))}
         </select>
       </div>
+      </fieldset>
 
+      <fieldset className={styles.section}>
+      <legend className={styles.legend}>
+        <span className={styles.legendNum}>IV</span> The Setting
+      </legend>
       <div className={styles.field}>
         <label>Geography</label>
         <div className={styles.segmented} role="group" aria-label="Geography">
@@ -535,10 +557,16 @@ export function ReadingForm({ onSubmit, readingIndex, ritualNotes }: ReadingForm
           onChange={(e) => setReflection(e.target.value)}
         />
       </div>
+      </fieldset>
 
-      <button type="submit" className={styles.submit}>
-        Create this Reading's Herald
-      </button>
+      <div className={styles.actionBar}>
+        <span className={styles.drawHint} aria-live="polite">
+          ✦ {drawnCount} of {activeKeys.length} letters placed
+        </span>
+        <button type="submit" className={styles.submit}>
+          Create this Reading's Herald
+        </button>
+      </div>
     </form>
   );
 }
