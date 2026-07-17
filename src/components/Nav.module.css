@@ -126,6 +126,28 @@
   align-items: center;
   gap: var(--space-3);
 }
+.searchButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 34px;
+  padding: 0 0.55rem;
+  background: transparent;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--motion) var(--ease-out), border-color var(--motion) var(--ease-out);
+}
+.searchButton:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+.kbdHint {
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
 .accountLink {
   color: var(--text-muted);
   text-decoration: none;
