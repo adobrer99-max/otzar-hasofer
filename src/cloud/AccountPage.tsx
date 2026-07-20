@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { PageHeader, SegmentedControl } from "../components/ui";
+import { PageHeader, SegmentedControl, ConfirmButton } from "../components/ui";
 import { toast } from "../components/ui/toast";
 import { isCloudConfigured } from "./config";
 import { syncNow } from "./orchestrator";
@@ -219,6 +219,24 @@ export function AccountPage() {
     setSession(null);
   }
 
+  async function handleDeleteAccount() {
+    await withBusy(async () => {
+      const { getSupabase } = await import("./supabaseClient");
+      const supabase = getSupabase();
+      const { error: err } = await supabase.rpc("delete_my_account");
+      if (err) throw new Error(err.message);
+      // Reset this device's sync bookkeeping so a future account link runs a
+      // fresh initial full push rather than assuming one already happened.
+      const adapter = createIdbAdapter();
+      await adapter.setState("initialPushDone", false);
+      await adapter.setState("lastPullAt", undefined);
+      await adapter.setState("lastSyncAt", undefined);
+      await supabase.auth.signOut();
+      setSession(null);
+      toast("Account removed — your Treasury remains on this device", { tone: "success" });
+    });
+  }
+
   async function handleSyncNow() {
     setBusy(true);
     resetMessages();
@@ -416,6 +434,22 @@ export function AccountPage() {
                 </button>
               </div>
             </form>
+          </details>
+          <details className={`${styles.disclosure} ${styles.danger}`}>
+            <summary>Remove the account</summary>
+            <p className={styles.statusLine}>
+              This deletes the account and every row it owns in the Scribes'
+              Cloud — participants, readings, drafts, shares. It cannot be
+              undone. <strong>The local Treasury on this device remains</strong>{" "}
+              — the app keeps working fully offline, exactly as before.
+            </p>
+            <ConfirmButton
+              onConfirm={() => void handleDeleteAccount()}
+              confirmLabel="Delete forever"
+              ariaLabel="Confirm deleting the account and its cloud data"
+            >
+              Delete the account and its cloud data
+            </ConfirmButton>
           </details>
           {notice && <p className={styles.sent}>{notice}</p>}
           {error && <p className={styles.error}>{error}</p>}

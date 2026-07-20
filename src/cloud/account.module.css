@@ -53,6 +53,14 @@
   margin-bottom: var(--space-3);
 }
 
+.danger summary {
+  color: var(--color-copper);
+}
+.danger[open] {
+  border-inline-start: 2px solid var(--color-copper);
+  padding-inline-start: var(--space-3);
+}
+
 .statusLine {
   color: var(--text-muted);
   font-size: 0.9rem;

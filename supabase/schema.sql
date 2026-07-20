@@ -141,3 +141,20 @@ create policy "card-art authed update" on storage.objects
   for update to authenticated using (bucket_id = 'card-art');
 create policy "card-art authed delete" on storage.objects
   for delete to authenticated using (bucket_id = 'card-art');
+
+-- ————— delete_my_account —————
+-- Deleting the auth user cascades through every owner_id FK, removing the
+-- Scribe's cloud rows (participants, readings, drafts, shares, all of it).
+-- Security definer: runs as the function owner, which may delete from
+-- auth.users; auth.uid() scopes it to the caller alone. Existing
+-- deployments: run just this block.
+create or replace function public.delete_my_account()
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  delete from auth.users where id = auth.uid();
+$$;
+revoke execute on function public.delete_my_account() from public, anon;
+grant execute on function public.delete_my_account() to authenticated;
