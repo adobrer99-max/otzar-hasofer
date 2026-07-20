@@ -78,13 +78,9 @@ export function CardArtStudio() {
       return;
     }
     let unsub: (() => void) | undefined;
+    // Auth first — it reads the local session, so the signed-in/out state
+    // never waits on the network. The registry fetch fills thumbnails after.
     void (async () => {
-      try {
-        const fetched = await fetchCardArtRows();
-        setRows(new Map(fetched.map((r) => [r.id, r])));
-      } catch {
-        // offline — the registry list just shows no thumbnails
-      }
       try {
         const { getSupabase } = await import("../cloud/supabaseClient");
         const supabase = getSupabase();
@@ -101,6 +97,11 @@ export function CardArtStudio() {
       }
       setChecked(true);
     })();
+    void fetchCardArtRows()
+      .then((fetched) => setRows(new Map(fetched.map((r) => [r.id, r]))))
+      .catch(() => {
+        // offline — the registry list just shows no thumbnails
+      });
     return () => unsub?.();
   }, [configured]);
 
