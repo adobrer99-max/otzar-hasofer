@@ -41,6 +41,44 @@ describe("sanitizeRichHtml", () => {
     expect(sanitizeRichHtml("a<br/>b")).toBe("a<br>b");
     expect(sanitizeRichHtml("<marquee>x</marquee>")).toBe("x");
   });
+
+  it("keeps lists, blockquote, and strikethrough", () => {
+    expect(sanitizeRichHtml("<ul><li>one</li><li>two</li></ul>")).toBe(
+      "<ul><li>one</li><li>two</li></ul>",
+    );
+    expect(sanitizeRichHtml("<ol><li>first</li></ol>")).toBe("<ol><li>first</li></ol>");
+    expect(sanitizeRichHtml("<blockquote>a teaching</blockquote>")).toBe(
+      "<blockquote>a teaching</blockquote>",
+    );
+    expect(sanitizeRichHtml("<s>struck</s> and <strike>old</strike>")).toBe(
+      "<s>struck</s> and <strike>old</strike>",
+    );
+  });
+
+  it("keeps https/http/mailto links, rewritten to open safely in a new tab", () => {
+    expect(sanitizeRichHtml('<a href="https://example.com/page">go</a>')).toBe(
+      '<a href="https://example.com/page" target="_blank" rel="noopener noreferrer">go</a>',
+    );
+    expect(sanitizeRichHtml('<a href="mailto:scribe@example.com">mail</a>')).toBe(
+      '<a href="mailto:scribe@example.com" target="_blank" rel="noopener noreferrer">mail</a>',
+    );
+  });
+
+  it("drops links with dangerous or missing hrefs, keeping the text (no orphan close tag)", () => {
+    expect(sanitizeRichHtml('<a href="javascript:alert(1)">x</a>')).toBe("x");
+    expect(sanitizeRichHtml('<a href="data:text/html,evil">x</a>')).toBe("x");
+    expect(sanitizeRichHtml("<a>bare</a>")).toBe("bare");
+    // Other attributes on a valid link are discarded; only the safe href survives.
+    expect(sanitizeRichHtml('<a href="https://ok.net" onclick="x()" style="color:red">y</a>')).toBe(
+      '<a href="https://ok.net" target="_blank" rel="noopener noreferrer">y</a>',
+    );
+  });
+
+  it("keeps the direction style prop for RTL blocks", () => {
+    expect(sanitizeRichHtml('<p style="direction: rtl; text-align: right">שלום</p>')).toBe(
+      '<p style="direction: rtl; text-align: right">שלום</p>',
+    );
+  });
 });
 
 describe("richToPlain", () => {
@@ -53,6 +91,10 @@ describe("richToPlain", () => {
   });
   it("passes plain text through unchanged", () => {
     expect(richToPlain("just words")).toBe("just words");
+  });
+  it("flattens lists with mid-dot separators and no trailing separator", () => {
+    expect(richToPlain("<ul><li>one</li><li>two</li></ul>")).toBe("one · two");
+    expect(richToPlain("<blockquote>quoted</blockquote>after")).toBe("quoted after");
   });
 });
 

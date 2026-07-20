@@ -257,6 +257,26 @@
 .richText :global(p) { margin: 0 0 0.5em; }
 .richText :global(p):last-child { margin-bottom: 0; }
 .richText :global(u) { text-underline-offset: 2px; }
+.richText :global(ul),
+.richText :global(ol) {
+  margin: 0.3em 0 0.5em;
+  padding-inline-start: 1.4em;
+}
+.richText :global(li) { margin: 0.15em 0; }
+.richText :global(blockquote) {
+  margin: 0.5em 0;
+  padding: 0.2em 0 0.2em 0.85em;
+  border-inline-start: 2px solid var(--accent);
+  color: var(--text-muted);
+  font-style: italic;
+}
+.richText :global(a) {
+  color: var(--accent-bright, var(--accent));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.richText :global(s),
+.richText :global(strike) { opacity: 0.75; }
 .richText > :first-child { margin-top: 0; }
 
 /* ——— Loading & empty states ——— */

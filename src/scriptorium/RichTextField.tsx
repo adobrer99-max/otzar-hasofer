@@ -1,15 +1,17 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { sanitizeRichHtml } from "./richText";
 import styles from "./scriptorium.module.css";
 
 /**
  * A small rich-text field for the Scriptorium's prose. A contentEditable
- * surface plus a composition toolbar — bold / italic / underline, heading
- * level, text alignment, font size, and colour. Formatting is applied with
- * `document.execCommand` (with styleWithCSS, so it emits inline CSS, not legacy
- * <font>): deprecated but universally supported in the target browsers and
- * dependency-free under the app's CSP. The stored value is always sanitized
- * HTML; paste is coerced to plain text so no foreign markup enters.
+ * surface plus a composition toolbar — bold / italic / underline / strike,
+ * heading level and blockquote, bulleted and numbered lists, links, text
+ * alignment, an RTL/LTR direction toggle, font size, colour, undo/redo, and
+ * clear formatting. Formatting is applied with `document.execCommand` (with
+ * styleWithCSS, so it emits inline CSS, not legacy <font>): deprecated but
+ * universally supported in the target browsers and dependency-free under the
+ * app's CSP. The stored value is always sanitized HTML; paste is coerced to
+ * plain text so no foreign markup enters.
  */
 
 const FONT_SIZES: { label: string; value: string }[] = [
@@ -24,6 +26,7 @@ const HEADINGS: { label: string; value: string }[] = [
   { label: "Heading 2", value: "h2" },
   { label: "Heading 3", value: "h3" },
   { label: "Heading 4", value: "h4" },
+  { label: "Quote", value: "blockquote" },
 ];
 
 export function RichTextField({
@@ -38,6 +41,8 @@ export function RichTextField({
   const ref = useRef<HTMLDivElement>(null);
   const lastEmitted = useRef<string>("");
   const savedRange = useRef<Range | null>(null);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("https://");
 
   // Write the value into the DOM only when it changed outside this editor
   // (switching entries, Revert) — never on our own keystrokes, so the caret
@@ -84,6 +89,54 @@ export function RichTextField({
   // Keep the toolbar from stealing the selection when a control is pressed.
   const keepSelection = (e: React.MouseEvent) => e.preventDefault();
 
+  /**
+   * Toggle the current block between LTR and RTL. execCommand has no direction
+   * command, so this walks from the selection anchor up to the block-level
+   * child of the surface and toggles inline direction + alignment (both are
+   * allowlisted style props, so they survive sanitization).
+   */
+  function toggleDirection() {
+    const el = ref.current;
+    if (!el) return;
+    el.focus();
+    restoreSelection();
+    const findBlock = (): HTMLElement | null => {
+      let node: Node | null = window.getSelection()?.anchorNode ?? null;
+      while (node && node.parentNode !== el) node = node.parentNode;
+      return node instanceof HTMLElement ? node : null;
+    };
+    let block = findBlock();
+    if (!block) {
+      // Bare text at the root — wrap it in a paragraph first.
+      document.execCommand("formatBlock", false, "p");
+      block = findBlock();
+    }
+    if (!block) return;
+    const toRtl = block.style.direction !== "rtl";
+    block.style.direction = toRtl ? "rtl" : "ltr";
+    block.style.textAlign = toRtl ? "right" : "left";
+    saveSelection();
+    emit();
+  }
+
+  function applyLink() {
+    const url = linkUrl.trim();
+    setLinkOpen(false);
+    if (!url || url === "https://") return;
+    exec("createLink", url);
+    setLinkUrl("https://");
+  }
+
+  function clearFormatting() {
+    ref.current?.focus();
+    restoreSelection();
+    document.execCommand("removeFormat");
+    document.execCommand("unlink");
+    document.execCommand("formatBlock", false, "p");
+    saveSelection();
+    emit();
+  }
+
   function handlePaste(e: React.ClipboardEvent) {
     e.preventDefault();
     const text = e.clipboardData.getData("text/plain");
@@ -97,6 +150,7 @@ export function RichTextField({
         <button type="button" aria-label="Bold" title="Bold" onClick={() => exec("bold")}><b>B</b></button>
         <button type="button" aria-label="Italic" title="Italic" onClick={() => exec("italic")}><i>I</i></button>
         <button type="button" aria-label="Underline" title="Underline" onClick={() => exec("underline")}><u>U</u></button>
+        <button type="button" aria-label="Strikethrough" title="Strikethrough" onClick={() => exec("strikeThrough")}><s>S</s></button>
         <select
           aria-label="Heading level"
           title="Heading level"
@@ -111,10 +165,30 @@ export function RichTextField({
           ))}
         </select>
         <span className={styles.toolGroup}>
+          <button type="button" aria-label="Bulleted list" title="Bulleted list" onClick={() => exec("insertUnorderedList")}>•≡</button>
+          <button type="button" aria-label="Numbered list" title="Numbered list" onClick={() => exec("insertOrderedList")}>1.</button>
+        </span>
+        <span className={styles.toolGroup}>
+          <button
+            type="button"
+            aria-label="Insert link"
+            title="Insert link"
+            aria-expanded={linkOpen}
+            onClick={() => {
+              saveSelection();
+              setLinkOpen((v) => !v);
+            }}
+          >
+            🔗
+          </button>
+          <button type="button" aria-label="Remove link" title="Remove link" onClick={() => exec("unlink")}>⛓︎✕</button>
+        </span>
+        <span className={styles.toolGroup}>
           <button type="button" aria-label="Align left" title="Align left" onClick={() => exec("justifyLeft")}>⇤</button>
           <button type="button" aria-label="Align center" title="Align center" onClick={() => exec("justifyCenter")}>↔</button>
           <button type="button" aria-label="Align right" title="Align right" onClick={() => exec("justifyRight")}>⇥</button>
           <button type="button" aria-label="Justify" title="Justify" onClick={() => exec("justifyFull")}>≡</button>
+          <button type="button" aria-label="Toggle text direction (RTL/LTR)" title="Toggle text direction (RTL/LTR)" onClick={toggleDirection}>⇄א</button>
         </span>
         <select
           aria-label="Font size"
@@ -139,7 +213,35 @@ export function RichTextField({
             onInput={(e) => exec("foreColor", (e.target as HTMLInputElement).value)}
           />
         </label>
+        <span className={styles.toolGroup}>
+          <button type="button" aria-label="Undo" title="Undo" onClick={() => exec("undo")}>↶</button>
+          <button type="button" aria-label="Redo" title="Redo" onClick={() => exec("redo")}>↷</button>
+          <button type="button" aria-label="Clear formatting" title="Clear formatting" onClick={clearFormatting}>⌫A</button>
+        </span>
       </div>
+      {linkOpen && (
+        <div className={styles.linkRow}>
+          <input
+            type="url"
+            className={styles.linkInput}
+            aria-label="Link URL"
+            placeholder="https://…"
+            value={linkUrl}
+            autoFocus
+            onChange={(e) => setLinkUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                applyLink();
+              } else if (e.key === "Escape") {
+                setLinkOpen(false);
+              }
+            }}
+          />
+          <button type="button" onClick={applyLink}>Apply</button>
+          <button type="button" onClick={() => setLinkOpen(false)}>Cancel</button>
+        </div>
+      )}
       <div
         id={id}
         ref={ref}
