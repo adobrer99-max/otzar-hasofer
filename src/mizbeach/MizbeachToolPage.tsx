@@ -10,6 +10,7 @@ import { InteractiveMizbeach } from "./interactive/InteractiveMizbeach";
 import { ReadingStations } from "./interactive/ReadingStations";
 import { emptyReadingState, toSnapshot, type MizbeachReadingState } from "./interactive/reading";
 import { stepDay, stepMonth } from "./interactive/ringDate";
+import { MizrachFinder } from "./MizrachFinder";
 import styles from "./MizbeachToolPage.module.css";
 
 function toDateInput(d: Date): string {
@@ -132,6 +133,7 @@ export function MizbeachToolPage() {
                 }}
               />
             </label>
+            <MizrachFinder />
           </div>
 
           <ReadingStations state={state} />
