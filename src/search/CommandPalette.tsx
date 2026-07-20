@@ -69,7 +69,62 @@ export function CommandPalette() {
     return undefined;
   }, [open]);
 
-  const results = useMemo(() => searchEntries(query, RESULT_LIMIT), [query]);
+  // User-authored content (commentaries, Scriptorium drafts) lives in IDB —
+  // load it fresh on each open and merge it into the searchable set. All
+  // imports are dynamic so the eager App chunk carries none of it.
+  const [userEntries, setUserEntries] = useState<SearchEntry[]>([]);
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [{ listAllCommentaries }, { listDrafts }, { datasetsById, parseDraftKey }] =
+          await Promise.all([
+            import("../storage/commentariesRepo"),
+            import("../storage/contentDraftsRepo"),
+            import("../scriptorium/contentRegistry"),
+          ]);
+        const [commentaries, drafts] = await Promise.all([listAllCommentaries(), listDrafts()]);
+        const entries: SearchEntry[] = [];
+        for (const c of commentaries) {
+          entries.push({
+            id: `commentary:${c.id}`,
+            label: c.title?.trim() || c.subjectKey,
+            sublabel: c.author,
+            category: "Commentaries",
+            to: "/commentaries",
+            keywords: `${c.subjectKey} ${c.author} ${c.body.slice(0, 200)}`,
+          });
+        }
+        for (const d of drafts) {
+          const parsed = parseDraftKey(d.key);
+          if (!parsed) continue;
+          const dataset = datasetsById[parsed.datasetId];
+          if (!dataset) continue;
+          const entry = dataset.entries.find((e) => e.id === parsed.entryId);
+          entries.push({
+            id: `draft:${d.key}`,
+            label: entry?.label ?? parsed.entryId,
+            sublabel: `Draft · ${dataset.label}`,
+            category: "Drafts",
+            to: "/scriptorium",
+            keywords: Object.values(d.fields).join(" ").slice(0, 200),
+          });
+        }
+        if (!cancelled) setUserEntries(entries);
+      } catch {
+        // IDB unavailable — the static catalog still searches
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  const results = useMemo(
+    () => searchEntries(query, RESULT_LIMIT, userEntries),
+    [query, userEntries],
+  );
 
   // Group into fixed category order; flatten for keyboard indexing.
   const groups = useMemo(() => {

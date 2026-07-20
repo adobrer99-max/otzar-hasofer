@@ -14,7 +14,13 @@ import { letters } from "../data/letters";
 import { dorotHouses } from "../data/dorot";
 import { sefarim } from "../data/sefarim";
 
-export type SearchCategory = "Pages" | "Letters" | "Houses of the Dorot" | "Sefarim";
+export type SearchCategory =
+  | "Pages"
+  | "Letters"
+  | "Houses of the Dorot"
+  | "Sefarim"
+  | "Commentaries"
+  | "Drafts";
 
 /** The fixed display order of the result groups. */
 export const CATEGORY_ORDER: SearchCategory[] = [
@@ -22,6 +28,8 @@ export const CATEGORY_ORDER: SearchCategory[] = [
   "Letters",
   "Houses of the Dorot",
   "Sefarim",
+  "Commentaries",
+  "Drafts",
 ];
 
 export interface SearchEntry {
@@ -133,16 +141,18 @@ function haystack(entry: SearchEntry): string {
  * the visible label/hebrew highest (prefix > word-start > substring), then
  * matches found only in the sublabel/keywords, then multi-token matches where
  * every token appears somewhere. An empty query returns the Pages group as
- * default suggestions.
+ * default suggestions. `extra` carries session-loaded user content
+ * (commentaries, drafts) — the default keeps the static behavior unchanged.
  */
-export function searchEntries(query: string, limit = 20): SearchEntry[] {
+export function searchEntries(query: string, limit = 20, extra: SearchEntry[] = []): SearchEntry[] {
   const q = query.trim().toLowerCase();
   if (!q) {
     return searchIndex.filter((e) => e.category === "Pages").slice(0, limit);
   }
 
+  const candidates = extra.length ? [...searchIndex, ...extra] : searchIndex;
   const scored: { entry: SearchEntry; rank: number; order: number }[] = [];
-  searchIndex.forEach((entry, order) => {
+  candidates.forEach((entry, order) => {
     // Best whole-query rank across the two visible fields.
     const nameScore = Math.min(
       scoreField(entry.label, q) ?? Infinity,
