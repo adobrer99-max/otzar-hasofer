@@ -18,8 +18,10 @@ interface SessionInfo {
 
 type SignInMode = "password" | "link";
 
-/** Set by the orchestrator when a password-recovery link lands mid-app. */
-export const RECOVERY_FLAG = "otz-recovery";
+/** Set by the orchestrator when a password-recovery link lands mid-app.
+ *  Kept as a local literal (not exported) so the lazy route's module stays a
+ *  pure component record; the orchestrator writes the same key. */
+const RECOVERY_FLAG = "otz-recovery";
 
 /**
  * "The Scribe's Seal" — the account page. States: this deployment has no
