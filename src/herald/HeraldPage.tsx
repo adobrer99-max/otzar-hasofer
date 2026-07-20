@@ -20,6 +20,9 @@ import { computeSacredTime } from "../data/sacredTime";
 import { ReadingForm } from "./form/ReadingForm";
 import { HeraldCanvas } from "./render/HeraldCanvas";
 import { deriveHeraldForm } from "./synthesis/deriveHeraldForm";
+import { synthesisStatusText } from "./share/sharePayload";
+import { SharePanel } from "./share/SharePanel";
+import { isCloudConfigured } from "../cloud/config";
 import { resolveShoresh } from "./shoresh/resolveShoresh";
 import { ParticipantPicker } from "./history/ParticipantPicker";
 import { SevenStations } from "./history/SevenStations";
@@ -149,11 +152,7 @@ export function HeraldPage() {
   // selected layer (via the scrubber/banner) shows that one reading instead.
   const heraldForm = layers.length ? deriveHeraldForm(layers) : undefined;
   const viewingSynthesis = !selectedLayer && !!heraldForm;
-  const synthesisStatus = heraldForm
-    ? heraldForm.revealed
-      ? "The Herald, revealed"
-      : `The Herald, forming — ${heraldForm.readingCount} of 7`
-    : "";
+  const synthesisStatus = heraldForm ? synthesisStatusText(heraldForm) : "";
   const synthesisEpithet = heraldForm?.revealed ? sealedEpithet?.text : undefined;
   // The blazon of whatever Herald is currently shown — the synthesis, or a
   // scrubbed single reading. Shared by the "Download blazon" and "Copy image
@@ -378,6 +377,9 @@ export function HeraldPage() {
                   dirty={styleDirty}
                   sealed={!!selectedParticipant?.heraldStyle}
                 />
+                {isCloudConfigured() && selectedParticipant && (
+                  <SharePanel participant={selectedParticipant} layers={layers} style={styleDraft} />
+                )}
               </>
             ) : (
               <EmptyState

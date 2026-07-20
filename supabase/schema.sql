@@ -179,3 +179,39 @@ create trigger content_drafts_updated_at
   before update on public.content_drafts
   for each row execute function public.set_updated_at();
 create index content_drafts_owner_updated on public.content_drafts (owner_id, updated_at);
+
+-- ————— shared_heralds —————
+-- Public share links for a Herald. Each row is a snapshot of the DERIVED,
+-- veil-free Herald (exactly what the canvas renders) — never the raw
+-- readings. The unguessable token is the whole secret: there is NO anon
+-- select policy on the table (no enumeration); anonymous read goes only
+-- through the security-definer RPC below, which requires the exact token.
+-- One live link per participant: re-publishing updates in place, keeping
+-- the same token. Existing deployments: run just this block.
+create table public.shared_heralds (
+  token uuid primary key default gen_random_uuid(),
+  owner_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  participant_id text not null,
+  data jsonb not null,
+  updated_at timestamptz not null default now()
+);
+create unique index shared_heralds_owner_participant
+  on public.shared_heralds (owner_id, participant_id);
+alter table public.shared_heralds enable row level security;
+create policy "own rows" on public.shared_heralds
+  for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+create trigger shared_heralds_updated_at
+  before update on public.shared_heralds
+  for each row execute function public.set_updated_at();
+
+create or replace function public.get_shared_herald(share_token uuid)
+returns jsonb
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select data from public.shared_heralds where token = share_token;
+$$;
+revoke execute on function public.get_shared_herald(uuid) from public;
+grant execute on function public.get_shared_herald(uuid) to anon, authenticated;

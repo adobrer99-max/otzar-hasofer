@@ -1,0 +1,65 @@
+.panel {
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  background: var(--bg-raised);
+  padding: var(--space-3);
+  margin-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.title {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--accent-bright);
+}
+
+.note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.note a {
+  color: var(--accent-bright);
+}
+
+.linkLine {
+  margin: 0;
+  overflow-x: auto;
+}
+
+.link {
+  font-size: 0.78rem;
+  word-break: break-all;
+  color: var(--text);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+/* ——— The public shared page ——— */
+.sharedCaption {
+  text-align: center;
+  color: var(--text-muted);
+  margin-top: var(--space-3);
+}
+
+.sharedCaption strong {
+  color: var(--text);
+}
+
+.sharedEpithet {
+  color: var(--accent-bright);
+  font-style: italic;
+}
+
+.sharedCanvas {
+  max-width: 30rem;
+  margin: 0 auto;
+}

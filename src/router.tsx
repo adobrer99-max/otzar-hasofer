@@ -35,6 +35,8 @@ const SeferPage = lazyPage(() => import("./library/SeferPage"), "SeferPage");
 const AccountPage = lazyPage(() => import("./cloud/AccountPage"), "AccountPage");
 // Unlinked drafting studio — reachable by URL only, deliberately absent from the nav.
 const ScriptoriumPage = lazyPage(() => import("./scriptorium/ScriptoriumPage"), "ScriptoriumPage");
+// Public, read-only shared Herald — reached only by its tokenized URL.
+const SharedHeraldPage = lazyPage(() => import("./herald/share/SharedHeraldPage"), "SharedHeraldPage");
 
 export const router = createHashRouter([
   {
@@ -62,6 +64,7 @@ export const router = createHashRouter([
       { path: "sefarim/:id/:entryId?", element: <SeferPage /> },
       { path: "account", element: <AccountPage /> },
       { path: "scriptorium", element: <ScriptoriumPage /> },
+      { path: "shared/:token", element: <SharedHeraldPage /> },
       { path: "*", element: <NotFound /> },
     ],
   },
