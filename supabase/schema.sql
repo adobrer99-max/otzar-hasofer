@@ -100,3 +100,44 @@ create trigger unions_updated_at
   before update on public.unions
   for each row execute function public.set_updated_at();
 create index unions_owner_updated on public.unions (owner_id, updated_at);
+
+-- ————— card_art (global content — deliberately NOT owner-scoped) —————
+-- Added with the card-art upload studio. Existing deployments: run just this
+-- block — it is independent of the rest. Unlike the per-Scribe tables above,
+-- the designer's card art is shipped content: every visitor (anonymous
+-- included) reads it, and any signed-in Scribe may curate it.
+create table public.card_art (
+  id text primary key,            -- "letter:aleph" | "dorot:sarah-3"
+  src text not null,              -- public URL of the storage object
+  alt text not null,
+  credit text,
+  updated_at timestamptz not null default now()
+);
+alter table public.card_art enable row level security;
+create policy "public read" on public.card_art
+  for select using (true);
+create policy "authed insert" on public.card_art
+  for insert to authenticated with check (true);
+create policy "authed update" on public.card_art
+  for update to authenticated using (true);
+create policy "authed delete" on public.card_art
+  for delete to authenticated using (true);
+create trigger card_art_updated_at
+  before update on public.card_art
+  for each row execute function public.set_updated_at();
+
+-- The storage bucket holding the image files themselves: public read,
+-- authenticated write. If the policy statements below are rejected in the
+-- SQL editor (some projects restrict DDL on storage.objects), create the
+-- same four policies in the dashboard under Storage → Policies instead.
+insert into storage.buckets (id, name, public)
+  values ('card-art', 'card-art', true)
+  on conflict (id) do nothing;
+create policy "card-art public read" on storage.objects
+  for select using (bucket_id = 'card-art');
+create policy "card-art authed insert" on storage.objects
+  for insert to authenticated with check (bucket_id = 'card-art');
+create policy "card-art authed update" on storage.objects
+  for update to authenticated using (bucket_id = 'card-art');
+create policy "card-art authed delete" on storage.objects
+  for delete to authenticated using (bucket_id = 'card-art');
