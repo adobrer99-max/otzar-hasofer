@@ -158,3 +158,24 @@ as $$
 $$;
 revoke execute on function public.delete_my_account() from public, anon;
 grant execute on function public.delete_my_account() to authenticated;
+
+-- ————— content_drafts —————
+-- Scriptorium drafts. Draft ids ("dataset::entry") are only unique per
+-- Scribe, so — unlike the uuid tables above — the primary key is composite;
+-- the app pushes owner_id explicitly and upserts on (owner_id, id).
+-- Existing deployments: run just this block.
+create table public.content_drafts (
+  id text not null,
+  owner_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  data jsonb not null,
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz,
+  primary key (owner_id, id)
+);
+alter table public.content_drafts enable row level security;
+create policy "own rows" on public.content_drafts
+  for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+create trigger content_drafts_updated_at
+  before update on public.content_drafts
+  for each row execute function public.set_updated_at();
+create index content_drafts_owner_updated on public.content_drafts (owner_id, updated_at);

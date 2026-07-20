@@ -5,8 +5,7 @@ import "./index.css";
 import { router } from "./router";
 import { initCloudSync } from "./cloud/orchestrator";
 import { initCardArt } from "./cloud/applyCardArt";
-import { listDrafts } from "./storage/contentDraftsRepo";
-import { applyContentOverrides } from "./scriptorium/applyOverrides";
+import { initContentOverrides } from "./scriptorium/liveOverrides";
 
 // Inert when the deployment has no cloud configured.
 initCloudSync();
@@ -38,8 +37,9 @@ function renderApp() {
   );
 }
 
-// Apply any Scriptorium content edits (saved locally) onto the in-memory
-// datasets before first render, so an author's edits are live across the whole
-// app — not only in the studio's preview. A read failure still renders the
-// shipped defaults; the theme pre-paint in index.html is unaffected.
-listDrafts().then(applyContentOverrides).catch(() => {}).finally(renderApp);
+// Apply any Scriptorium content edits onto the in-memory datasets before
+// first render, and keep them in step after every cloud sync (pulled edits go
+// live; pulled deletes revert to the shipped text). A read failure still
+// renders the shipped defaults; the theme pre-paint in index.html is
+// unaffected.
+initContentOverrides().catch(() => {}).finally(renderApp);

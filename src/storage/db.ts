@@ -3,10 +3,17 @@ import type { ParticipantRecord, HeraldLayer } from "../types/herald";
 import type { LifeCycleEvent } from "../types/lifeCycle";
 import type { CommentaryRecord } from "../types/commentary";
 import type { UnionRecord } from "../types/union";
+import { isCloudConfigured } from "../cloud/config";
 
 /** One pending outbox entry for the Scribes' Cloud sync (see src/cloud/sync.ts). */
 export interface SyncQueueEntry {
-  store: "participants" | "heraldLayers" | "lifeCycleEvents" | "commentaries" | "unions";
+  store:
+    | "participants"
+    | "heraldLayers"
+    | "lifeCycleEvents"
+    | "commentaries"
+    | "unions"
+    | "contentDrafts";
   id: string;
   op: "put" | "delete";
 }
@@ -38,8 +45,9 @@ interface OtzarHaSoferDB extends DBSchema {
   };
   /**
    * Pre-canonical content drafts authored in the Scriptorium (/scriptorium).
-   * Local-only scratch — deliberately NOT in the sync queue; the durable
-   * artifact is the exported JSON that gets folded into src/data/*.ts.
+   * Synced to the Scribes' Cloud since v7 so an author's edits follow their
+   * account across devices; the exported JSON remains the durable artifact
+   * that gets folded into src/data/*.ts.
    */
   contentDrafts: {
     key: string;
@@ -61,8 +69,8 @@ let dbPromise: Promise<IDBPDatabase<OtzarHaSoferDB>> | undefined;
 
 export function getDb() {
   if (!dbPromise) {
-    dbPromise = openDB<OtzarHaSoferDB>("otzar-hasofer", 6, {
-      upgrade(db, oldVersion) {
+    dbPromise = openDB<OtzarHaSoferDB>("otzar-hasofer", 7, {
+      async upgrade(db, oldVersion, _newVersion, tx) {
         if (oldVersion < 1) {
           db.createObjectStore("participants", { keyPath: "id" });
           const layers = db.createObjectStore("heraldLayers", { keyPath: "id" });
@@ -85,6 +93,25 @@ export function getDb() {
         }
         if (oldVersion < 6) {
           db.createObjectStore("contentDrafts", { keyPath: "key" });
+        }
+        if (oldVersion < 7 && oldVersion >= 6) {
+          // Drafts join the Scribes' Cloud: backfill the sync engine's id
+          // (a duplicate of key), and — when a cloud is configured — enqueue
+          // existing drafts so an already-linked device (whose initial full
+          // push has long finished) still pushes them.
+          const drafts = tx.objectStore("contentDrafts");
+          let cursor = await drafts.openCursor();
+          while (cursor) {
+            await cursor.update({ ...cursor.value, id: cursor.value.key });
+            if (isCloudConfigured()) {
+              await tx.objectStore("syncQueue").add({
+                store: "contentDrafts",
+                id: cursor.value.key,
+                op: "put",
+              });
+            }
+            cursor = await cursor.continue();
+          }
         }
       },
     });

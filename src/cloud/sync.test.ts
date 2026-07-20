@@ -16,7 +16,7 @@ function makeLocal(seed?: {
   state?: Record<string, unknown>;
 }) {
   const stores = new Map<string, Map<string, Rec>>();
-  for (const name of ["participants", "heraldLayers", "lifeCycleEvents", "commentaries", "unions"]) {
+  for (const name of ["participants", "heraldLayers", "lifeCycleEvents", "commentaries", "unions", "contentDrafts"]) {
     stores.set(name, new Map((seed?.stores?.[name as SyncQueueEntry["store"]] ?? []).map((r) => [r.id, r])));
   }
   let queue: SyncQueueEntry[] = [...(seed?.queue ?? [])];
@@ -182,6 +182,57 @@ describe("runSync", () => {
     await runSync(adapter, transport);
     expect(pushedRecords.map((r) => r.store)).toEqual(["unions"]);
     expect(stores.get("unions")!.has("u2")).toBe(true);
+  });
+
+  it("syncs contentDrafts by their key-as-id (push queued, pull applies, delete removes)", async () => {
+    const draft = {
+      id: "letters::aleph",
+      key: "letters::aleph",
+      fields: { keyword: "Rewritten" },
+      updatedAt: "2026-07-01T00:00:00Z",
+    };
+    const { adapter, stores } = makeLocal({
+      stores: { contentDrafts: [draft] },
+      queue: [{ store: "contentDrafts", id: "letters::aleph", op: "put" }],
+      state: { initialPushDone: true },
+    });
+    const { transport, pushedRecords } = makeTransport({
+      records: [
+        {
+          store: "contentDrafts",
+          id: "festivals::shabbat",
+          data: {
+            id: "festivals::shabbat",
+            key: "festivals::shabbat",
+            fields: { gesture: "Rest" },
+            updatedAt: "2026-07-02T00:00:00Z",
+          },
+        },
+      ],
+      deletes: [{ store: "contentDrafts", id: "gone::draft" }],
+    });
+    stores.get("contentDrafts")!.set("gone::draft", { id: "gone::draft", key: "gone::draft" });
+    await runSync(adapter, transport);
+    // The queued local draft was pushed with its full record…
+    expect(pushedRecords).toEqual([
+      { store: "contentDrafts", id: "letters::aleph", data: draft },
+    ]);
+    // …the pulled draft landed locally, and the tombstone removed by key.
+    expect(stores.get("contentDrafts")!.has("festivals::shabbat")).toBe(true);
+    expect(stores.get("contentDrafts")!.has("gone::draft")).toBe(false);
+  });
+
+  it("includes contentDrafts in the initial full push", async () => {
+    const { adapter } = makeLocal({
+      stores: {
+        contentDrafts: [
+          { id: "letters::bet", key: "letters::bet", fields: {}, updatedAt: "x" },
+        ],
+      },
+    });
+    const { transport, pushedRecords } = makeTransport();
+    await runSync(adapter, transport);
+    expect(pushedRecords.map((r) => r.id)).toContain("letters::bet");
   });
 
   it("is idempotent when there is nothing to do", async () => {
