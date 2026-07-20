@@ -1,28 +1,48 @@
 import { useEffect, useState } from "react";
-import { PageHeader } from "../components/ui";
+import { PageHeader, SegmentedControl } from "../components/ui";
 import { toast } from "../components/ui/toast";
 import { isCloudConfigured } from "./config";
 import { syncNow } from "./orchestrator";
 import { getPendingCount, createIdbAdapter } from "./sync";
+import {
+  validateNewPassword,
+  mapAuthError,
+  isAlreadyRegistered,
+  MIN_PASSWORD_LENGTH,
+} from "./authHelpers";
 import styles from "./account.module.css";
 
 interface SessionInfo {
   email: string;
 }
 
+type SignInMode = "password" | "link";
+
+/** Set by the orchestrator when a password-recovery link lands mid-app. */
+export const RECOVERY_FLAG = "otz-recovery";
+
 /**
- * "The Scribe's Seal" — the account page. Three states: this deployment has
- * no cloud configured (calm explainer); signed out (email magic link);
- * signed in (sync status + controls). The local Treasury always remains
- * primary and offline-capable — signing in adds private sync, nothing more.
+ * "The Scribe's Seal" — the account page. States: this deployment has no
+ * cloud configured (calm explainer); signed out (password sign-in / sign-up,
+ * or the email magic link); recovering (set a new password from a reset
+ * link); signed in (sync status + controls + change password). The local
+ * Treasury always remains primary and offline-capable — signing in adds
+ * private sync, nothing more.
  */
 export function AccountPage() {
   const configured = isCloudConfigured();
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [checked, setChecked] = useState(false);
+  const [mode, setMode] = useState<SignInMode>("password");
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState("");
+  const [notice, setNotice] = useState<string>();
   const [error, setError] = useState<string>();
+  const [showResend, setShowResend] = useState(false);
+  const [recovery, setRecovery] = useState(false);
+  const [newPw, setNewPw] = useState("");
+  const [newPw2, setNewPw2] = useState("");
+  const [pwOpen, setPwOpen] = useState(false);
   const [pending, setPending] = useState(0);
   const [lastSyncAt, setLastSyncAt] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -38,6 +58,11 @@ export function AccountPage() {
       setChecked(true);
       return;
     }
+    // A recovery link may have redirected here before this page mounted.
+    if (sessionStorage.getItem(RECOVERY_FLAG)) {
+      sessionStorage.removeItem(RECOVERY_FLAG);
+      setRecovery(true);
+    }
     let unsub: (() => void) | undefined;
     void (async () => {
       try {
@@ -50,8 +75,9 @@ export function AccountPage() {
         setChecked(true);
         const {
           data: { subscription },
-        } = supabase.auth.onAuthStateChange((_event, s2) => {
+        } = supabase.auth.onAuthStateChange((event, s2) => {
           setSession(s2?.user?.email ? { email: s2.user.email } : null);
+          if (event === "PASSWORD_RECOVERY") setRecovery(true);
         });
         unsub = () => subscription.unsubscribe();
       } catch {
@@ -68,23 +94,121 @@ export function AccountPage() {
     };
   }, [configured]);
 
-  async function handleSignIn(e: React.FormEvent) {
-    e.preventDefault();
+  function resetMessages() {
     setError(undefined);
+    setNotice(undefined);
+    setShowResend(false);
+  }
+
+  async function withBusy(fn: () => Promise<void>) {
+    resetMessages();
     setBusy(true);
     try {
+      await fn();
+    } catch (err) {
+      setError(mapAuthError(err instanceof Error ? err.message : undefined));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handlePasswordSignIn(e: React.FormEvent) {
+    e.preventDefault();
+    await withBusy(async () => {
+      const { getSupabase } = await import("./supabaseClient");
+      const { error: err } = await getSupabase().auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (err) {
+        if (/not confirmed/i.test(err.message)) setShowResend(true);
+        throw new Error(err.message);
+      }
+      setPassword("");
+    });
+  }
+
+  async function handleSignUp() {
+    await withBusy(async () => {
+      if (password.length < MIN_PASSWORD_LENGTH) {
+        throw new Error(`Password should be at least ${MIN_PASSWORD_LENGTH} characters`);
+      }
+      const { getSupabase } = await import("./supabaseClient");
+      const { data, error: err } = await getSupabase().auth.signUp({
+        email: email.trim(),
+        password,
+        options: { emailRedirectTo: window.location.origin },
+      });
+      if (err) throw new Error(err.message);
+      if (isAlreadyRegistered(data.user)) {
+        throw new Error("User already registered");
+      }
+      setNotice(
+        "Account created. A verification email is on its way — open its link to confirm the account, then sign in here.",
+      );
+      setPassword("");
+    });
+  }
+
+  async function handleForgot() {
+    await withBusy(async () => {
+      if (!email.trim()) {
+        throw new Error("Enter the account's email first, then choose “Forgot password”.");
+      }
+      const { getSupabase } = await import("./supabaseClient");
+      const { error: err } = await getSupabase().auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: window.location.origin,
+      });
+      if (err) throw new Error(err.message);
+      setNotice("A password-reset email is on its way — open its link on this device to set a new password.");
+    });
+  }
+
+  async function handleResend() {
+    await withBusy(async () => {
+      const { getSupabase } = await import("./supabaseClient");
+      const { error: err } = await getSupabase().auth.resend({
+        type: "signup",
+        email: email.trim(),
+        options: { emailRedirectTo: window.location.origin },
+      });
+      if (err) throw new Error(err.message);
+      setNotice("Verification email resent.");
+    });
+  }
+
+  async function handleMagicLink(e: React.FormEvent) {
+    e.preventDefault();
+    await withBusy(async () => {
       const { getSupabase } = await import("./supabaseClient");
       const { error: err } = await getSupabase().auth.signInWithOtp({
         email: email.trim(),
         options: { emailRedirectTo: window.location.origin },
       });
       if (err) throw new Error(err.message);
-      setSent(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Sign-in failed.");
-    } finally {
-      setBusy(false);
+      setNotice(
+        "Sent. Open the link from this device to complete sign-in; your local Treasury will sync to the account on first sign-in.",
+      );
+    });
+  }
+
+  async function handleSetNewPassword(e: React.FormEvent) {
+    e.preventDefault();
+    const invalid = validateNewPassword(newPw, newPw2);
+    if (invalid) {
+      setError(invalid);
+      return;
     }
+    await withBusy(async () => {
+      const { getSupabase } = await import("./supabaseClient");
+      const { error: err } = await getSupabase().auth.updateUser({ password: newPw });
+      if (err) throw new Error(err.message);
+      setNewPw("");
+      setNewPw2("");
+      setRecovery(false);
+      setPwOpen(false);
+      toast("Password updated", { tone: "success" });
+    });
   }
 
   async function handleSignOut() {
@@ -95,7 +219,7 @@ export function AccountPage() {
 
   async function handleSyncNow() {
     setBusy(true);
-    setError(undefined);
+    resetMessages();
     try {
       await syncNow();
       await refreshStatus();
@@ -106,6 +230,29 @@ export function AccountPage() {
       setBusy(false);
     }
   }
+
+  const newPasswordFields = (
+    <>
+      <label htmlFor="account-new-pw">New password ({MIN_PASSWORD_LENGTH}+ characters)</label>
+      <input
+        id="account-new-pw"
+        type="password"
+        value={newPw}
+        onChange={(e) => setNewPw(e.target.value)}
+        autoComplete="new-password"
+        required
+      />
+      <label htmlFor="account-new-pw2">Repeat the new password</label>
+      <input
+        id="account-new-pw2"
+        type="password"
+        value={newPw2}
+        onChange={(e) => setNewPw2(e.target.value)}
+        autoComplete="new-password"
+        required
+      />
+    </>
+  );
 
   return (
     <div className="page">
@@ -138,33 +285,104 @@ export function AccountPage() {
 
       {configured && !checked && <p className={styles.statusLine}>Checking session…</p>}
 
-      {configured && checked && !session && (
-        <form className={styles.panel} onSubmit={handleSignIn}>
-          <label htmlFor="account-email">Email — a sign-in link will be sent (no password)</label>
-          <input
-            id="account-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="scribe@example.com"
-            required
-          />
+      {configured && checked && recovery && (
+        <form className={styles.panel} onSubmit={handleSetNewPassword}>
+          <p className={styles.statusLine}>
+            <strong>Set a new password</strong> — the reset link has verified you.
+          </p>
+          {newPasswordFields}
           <div className={styles.actions}>
-            <button type="submit" disabled={busy || !email.trim()}>
-              Send sign-in link
+            <button type="submit" disabled={busy}>
+              Set the new password
             </button>
           </div>
-          {sent && (
-            <p className={styles.sent}>
-              Sent. Open the link from this device to complete sign-in; your
-              local Treasury will sync to the account on first sign-in.
-            </p>
-          )}
           {error && <p className={styles.error}>{error}</p>}
         </form>
       )}
 
-      {configured && checked && session && (
+      {configured && checked && !session && !recovery && (
+        <div className={styles.panel}>
+          <SegmentedControl<SignInMode>
+            value={mode}
+            onChange={(m) => {
+              setMode(m);
+              resetMessages();
+            }}
+            ariaLabel="Sign-in method"
+            options={[
+              { value: "password", label: "Password" },
+              { value: "link", label: "Email link" },
+            ]}
+          />
+
+          {mode === "password" ? (
+            <form className={styles.innerForm} onSubmit={handlePasswordSignIn}>
+              <label htmlFor="account-email">Email</label>
+              <input
+                id="account-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="scribe@example.com"
+                autoComplete="email"
+                required
+              />
+              <label htmlFor="account-password">Password</label>
+              <input
+                id="account-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+              />
+              <div className={styles.actions}>
+                <button type="submit" disabled={busy || !email.trim() || !password}>
+                  Sign in
+                </button>
+                <button type="button" onClick={handleSignUp} disabled={busy || !email.trim() || !password}>
+                  Create an account
+                </button>
+              </div>
+              <button type="button" className={styles.quietBtn} onClick={handleForgot} disabled={busy}>
+                Forgot password?
+              </button>
+              {showResend && (
+                <button type="button" className={styles.quietBtn} onClick={handleResend} disabled={busy}>
+                  Resend the verification email
+                </button>
+              )}
+              <p className={styles.statusLine}>
+                Creating an account sends a verification email — the account
+                signs in once its link is opened.
+              </p>
+            </form>
+          ) : (
+            <form className={styles.innerForm} onSubmit={handleMagicLink}>
+              <label htmlFor="account-email">Email — a sign-in link will be sent (no password)</label>
+              <input
+                id="account-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="scribe@example.com"
+                autoComplete="email"
+                required
+              />
+              <div className={styles.actions}>
+                <button type="submit" disabled={busy || !email.trim()}>
+                  Send sign-in link
+                </button>
+              </div>
+            </form>
+          )}
+
+          {notice && <p className={styles.sent}>{notice}</p>}
+          {error && <p className={styles.error}>{error}</p>}
+        </div>
+      )}
+
+      {configured && checked && session && !recovery && (
         <div className={styles.panel}>
           <p className={styles.statusLine}>
             Signed in as <strong>{session.email}</strong>
@@ -182,6 +400,22 @@ export function AccountPage() {
               Sign out
             </button>
           </div>
+          <details
+            className={styles.disclosure}
+            open={pwOpen}
+            onToggle={(e) => setPwOpen((e.target as HTMLDetailsElement).open)}
+          >
+            <summary>Change password</summary>
+            <form className={styles.innerForm} onSubmit={handleSetNewPassword}>
+              {newPasswordFields}
+              <div className={styles.actions}>
+                <button type="submit" disabled={busy}>
+                  Update the password
+                </button>
+              </div>
+            </form>
+          </details>
+          {notice && <p className={styles.sent}>{notice}</p>}
           {error && <p className={styles.error}>{error}</p>}
         </div>
       )}
