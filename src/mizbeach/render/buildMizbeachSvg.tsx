@@ -371,7 +371,9 @@ function ShivatHaminimBorder() {
   );
 }
 
-/** Fixed reference symbol — not a computed compass bearing (would need geolocation, out of scope). */
+/** Fixed reference symbol — deliberately not rotated by geolocation (the
+ *  renderer is deterministic/export-frozen); the live computed bearing lives
+ *  in the MizrachFinder panel beside the folio. */
 function MizrachVector() {
   const tipY = CENTER.y - RINGS.border.radius - 8;
   const baseY = tipY + 16;

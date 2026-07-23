@@ -11,7 +11,8 @@ import { dorotCards, dorotHousesById } from "../data/dorot";
 const matriarchal = dorotCards.find((c) => dorotHousesById[c.houseId]?.kind === "matriarchal")!;
 
 function draft(datasetId: Parameters<typeof draftKey>[0], entryId: string, fields: Record<string, string>): DraftRecord {
-  return { key: draftKey(datasetId, entryId), fields, updatedAt: new Date().toISOString() };
+  const key = draftKey(datasetId, entryId);
+  return { key, id: key, fields, updatedAt: new Date().toISOString() };
 }
 
 describe("applyContentOverrides", () => {

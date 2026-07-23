@@ -1,0 +1,165 @@
+/* The command palette — a modal jump-to over the whole catalogue. Sits above
+   the toast layer (z-index 200). Entrance fade gated by the reduced-motion
+   safety net in index.css. */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(3rem, 12vh, 9rem) var(--space-3, 1rem) var(--space-3, 1rem);
+  background: color-mix(in srgb, var(--bg-sunken, #000) 72%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.dialog {
+  width: min(40rem, 100%);
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-raised);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-lg, 10px);
+  box-shadow: var(--shadow-lg, 0 16px 44px rgba(0, 0, 0, 0.5));
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dialog {
+    animation: paletteIn var(--motion-slow) var(--ease-out);
+  }
+}
+
+@keyframes paletteIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.inputRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-3, 1rem) var(--space-4, 1.5rem);
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.searchIcon {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 1.05rem;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0.2rem 0;
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.escHint {
+  flex: none;
+  font: inherit;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius, 3px);
+  padding: 0.1rem 0.4rem;
+}
+
+.results {
+  overflow-y: auto;
+  padding: var(--space-2, 0.5rem);
+}
+
+.group + .group {
+  margin-top: var(--space-2, 0.5rem);
+}
+
+.groupHeader {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  padding: var(--space-2, 0.5rem) var(--space-3, 1rem) 0.3rem;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 1rem);
+  padding: var(--space-2, 0.5rem) var(--space-3, 1rem);
+  border-radius: var(--radius-md, 6px);
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.optionActive {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.optionHebrew {
+  flex: none;
+  width: 1.7rem;
+  text-align: center;
+  font-family: var(--font-hebrew);
+  font-size: 1.3rem;
+  color: var(--accent);
+}
+
+.optionText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.optionLabel {
+  color: var(--text);
+  font-size: 0.98rem;
+}
+
+.optionSublabel {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.noResults {
+  padding: var(--space-4, 1.5rem);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 560px) {
+  .optionSublabel {
+    white-space: normal;
+  }
+}

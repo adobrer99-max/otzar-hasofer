@@ -1,6 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { LetterDraw } from "../../types/herald";
 import { lettersById } from "../../data/letters";
+import {
+  isDealSoundOn,
+  setDealSoundOn,
+  ensureAudio,
+  scheduleDealFeedback,
+} from "./dealFeedback";
 import styles from "./dealReveal.module.css";
 
 /** The Word of the Reading, when the open letters resolve to a root/name. */
@@ -51,6 +57,8 @@ export function DealReveal({
   );
 
   const [visible, setVisible] = useState(false);
+  const [soundOn, setSoundOn] = useState(isDealSoundOn);
+  const cancelFeedbackRef = useRef<(() => void) | undefined>(undefined);
 
   const nameOf = (c: RevealCard) => lettersById[c.draw.letterId]?.name ?? c.draw.letterId;
   // Open cards are named plainly; the sealed Sod card is noted apart (the Scribe
@@ -73,11 +81,17 @@ export function DealReveal({
       return;
     }
     setVisible(true);
+    cancelFeedbackRef.current =
+      soundOn ? scheduleDealFeedback(cards.length, STAGGER_MS, FLIP_MS) : undefined;
     const timer = setTimeout(() => {
       setVisible(false);
       onDone();
     }, totalMs);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      cancelFeedbackRef.current?.();
+      cancelFeedbackRef.current = undefined;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nonce]);
 
@@ -98,11 +112,31 @@ export function DealReveal({
   return (
     <>
       {announce}
+      <button
+        type="button"
+        className={styles.soundToggle}
+        aria-pressed={soundOn}
+        aria-label="Deal sound"
+        title={soundOn ? "Mute the deal" : "Sound the deal"}
+        onClick={(e) => {
+          e.stopPropagation();
+          const next = !soundOn;
+          setSoundOn(next);
+          setDealSoundOn(next);
+          // Creating/resuming the AudioContext here — inside a user gesture —
+          // satisfies autoplay policies for the ticks that follow.
+          if (next) ensureAudio();
+        }}
+      >
+        {soundOn ? "🔔" : "🔕"}
+      </button>
       <div
         className={styles.overlay}
         aria-hidden="true"
         style={{ animationDuration: `${totalMs}ms` }}
         onClick={() => {
+          cancelFeedbackRef.current?.();
+          cancelFeedbackRef.current = undefined;
           setVisible(false);
           onDone();
         }}

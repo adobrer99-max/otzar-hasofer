@@ -19,6 +19,7 @@ import { applyContentOverrides, revertEntry } from "./applyOverrides";
 import { downloadText, copyText } from "../herald/export/blazon";
 import { DraftEditor } from "./DraftEditor";
 import { PreviewPane } from "./PreviewPane";
+import { CardArtStudio } from "./CardArtStudio";
 import styles from "./scriptorium.module.css";
 
 /**
@@ -31,6 +32,7 @@ import styles from "./scriptorium.module.css";
  */
 export function ScriptoriumPage() {
   const [datasetId, setDatasetId] = useState<DatasetId>("festivals");
+  const [showArt, setShowArt] = useState(false);
   const [drafts, setDrafts] = useState<DraftRecord[]>([]);
   const [entryId, setEntryId] = useState<string>();
   const [values, setValues] = useState<Record<string, string>>({});
@@ -114,15 +116,30 @@ export function ScriptoriumPage() {
           <button
             key={d.id}
             type="button"
-            className={`${styles.datasetTab} ${d.id === datasetId ? styles.datasetTabActive : ""}`}
-            onClick={() => setDatasetId(d.id)}
+            className={`${styles.datasetTab} ${d.id === datasetId && !showArt ? styles.datasetTabActive : ""}`}
+            onClick={() => {
+              setShowArt(false);
+              setDatasetId(d.id);
+            }}
           >
             <span className={styles.datasetName}>{d.label}</span>
             <span className={styles.datasetCount}>{datasetSummary(d.id)}</span>
           </button>
         ))}
+        <button
+          type="button"
+          className={`${styles.datasetTab} ${showArt ? styles.datasetTabActive : ""}`}
+          onClick={() => setShowArt(true)}
+        >
+          <span className={styles.datasetName}>The Card Art</span>
+          <span className={styles.datasetCount}>publishes instantly</span>
+        </button>
       </div>
 
+      {showArt ? (
+        <CardArtStudio />
+      ) : (
+        <>
       <p className={styles.muted}>{dataset.blurb}</p>
 
       <div className={styles.workspace}>
@@ -201,6 +218,8 @@ export function ScriptoriumPage() {
         The exported JSON is the durable artifact — hand it back to have it folded
         into <code>src/data/*.ts</code>.
       </Callout>
+        </>
+      )}
     </div>
   );
 }

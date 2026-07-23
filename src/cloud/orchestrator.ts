@@ -53,6 +53,15 @@ export function initCloudSync(): void {
       if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
         void syncNow().catch(() => undefined);
       }
+      // A password-reset email lands at the origin (HashRouter sees the token
+      // fragment, not a route), so the user is dropped on Home. Flag it and
+      // steer to the Account page, whose "set a new password" panel takes over.
+      if (event === "PASSWORD_RECOVERY") {
+        sessionStorage.setItem("otz-recovery", "1");
+        if (!window.location.hash.startsWith("#/account")) {
+          window.location.hash = "#/account";
+        }
+      }
     });
   })();
 }

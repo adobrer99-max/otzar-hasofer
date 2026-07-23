@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { Nav } from "./components/Nav";
 import { Footer } from "./components/Footer";
 import { RouteFallback, Toaster } from "./components/ui";
+import { CommandPalette } from "./search/CommandPalette";
 
 function App() {
   // Keyed on pathname (not search/hash) so each real navigation replays the
@@ -28,6 +29,7 @@ function App() {
       </main>
       <Footer />
       <Toaster />
+      <CommandPalette />
     </>
   );
 }

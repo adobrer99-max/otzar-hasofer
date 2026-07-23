@@ -4,6 +4,7 @@ import { PageHeader } from "../../components/ui";
 import type { GeographyMode } from "../../types/herald";
 import { computeSacredTime } from "../../data/sacredTime";
 import { MizbeachCanvas } from "../../mizbeach/MizbeachCanvas";
+import { MizrachFinder } from "../../mizbeach/MizrachFinder";
 import { MizbeachCentralPanel } from "../../mizbeach/render/centralPanel";
 import { SacredTimePanel } from "../../herald/form/SacredTimePanel";
 import { exportHeraldSvg } from "../../herald/export/exportSvg";
@@ -180,8 +181,10 @@ export function Mizbeach() {
         The border traces the <strong>Shivat HaMinim</strong> — the seven
         species of Deuteronomy 8:8, the fruits of the covenant. A small
         arrow at the top marks <strong>Mizrach</strong>, facing Jerusalem —
-        a fixed reference symbol here, not a computed compass bearing.
+        the engraved arrow is a fixed symbol, and the finder below computes
+        your actual bearing from wherever you stand.
       </p>
+      <MizrachFinder />
 
       <h2>Heraldry</h2>
       <p>

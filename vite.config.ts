@@ -29,6 +29,19 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,woff2}"],
+        // Uploaded card art (public Supabase Storage objects) caches on first
+        // view so an installed PWA keeps showing it offline. Object paths are
+        // timestamped on replace, so CacheFirst never serves a stale image.
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/[^/]+\.supabase\.co\/storage\/v1\/object\/public\/card-art\/.*/,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "card-art",
+              expiration: { maxEntries: 220, maxAgeSeconds: 60 * 60 * 24 * 90 },
+            },
+          },
+        ],
       },
     }),
   ],

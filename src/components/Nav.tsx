@@ -3,6 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { ThemeToggle } from "./ui/ThemeToggle";
 import { AlephMark } from "./ui";
 import { guideLinks, practiceLinks, libraryLinks, accountLink, type SiteLink } from "./siteMap";
+import { openPalette } from "../search/paletteStore";
 import styles from "./Nav.module.css";
 
 function linkClass({ isActive }: { isActive: boolean }) {
@@ -154,6 +155,13 @@ export function Nav() {
         </nav>
 
         <div className={styles.actions}>
+          <button type="button" className={styles.searchButton} aria-label="Search" onClick={() => openPalette()}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" />
+              <line x1="16.5" y1="16.5" x2="21" y2="21" strokeLinecap="round" />
+            </svg>
+            <kbd className={`${styles.kbdHint} ${styles.desktopOnly}`} aria-hidden="true">⌘K</kbd>
+          </button>
           <NavLink to={accountLink.to} className={`${styles.accountLink} ${styles.desktopOnly}`}>
             {accountLink.label}
           </NavLink>

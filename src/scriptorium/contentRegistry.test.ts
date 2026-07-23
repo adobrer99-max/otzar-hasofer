@@ -50,6 +50,7 @@ describe("content registry", () => {
 describe("export overlay", () => {
   const draft = (key: string, fields: Record<string, string>): DraftRecord => ({
     key,
+    id: key,
     fields,
     updatedAt: "2026-07-11T00:00:00.000Z",
   });

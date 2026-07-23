@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { PageHeader, EmptyState, ConfirmButton } from "../components/ui";
 import { toast } from "../components/ui/toast";
 import type { ParticipantRecord, HeraldLayer, ReadingPath, HeraldStyle } from "../types/herald";
@@ -20,6 +20,9 @@ import { computeSacredTime } from "../data/sacredTime";
 import { ReadingForm } from "./form/ReadingForm";
 import { HeraldCanvas } from "./render/HeraldCanvas";
 import { deriveHeraldForm } from "./synthesis/deriveHeraldForm";
+import { synthesisStatusText } from "./share/sharePayload";
+import { SharePanel } from "./share/SharePanel";
+import { isCloudConfigured } from "../cloud/config";
 import { resolveShoresh } from "./shoresh/resolveShoresh";
 import { ParticipantPicker } from "./history/ParticipantPicker";
 import { SevenStations } from "./history/SevenStations";
@@ -52,10 +55,18 @@ export function HeraldPage() {
   const [styleDraft, setStyleDraft] = useState<HeraldStyle>({});
   const wasRevealed = useRef(false);
   const svgRef = useRef<SVGSVGElement>(null);
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    listParticipants().then(setParticipants);
+    listParticipants().then((list) => {
+      setParticipants(list);
+      // An entry hint (?participant=<id>, e.g. from a Today-panel observance)
+      // preselects that participant once, on load; the picker stays in charge.
+      const want = searchParams.get("participant");
+      if (want && list.some((p) => p.id === want)) setSelectedParticipantId(want);
+    });
     listAllCommentaries().then(setCommentaries);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -141,11 +152,7 @@ export function HeraldPage() {
   // selected layer (via the scrubber/banner) shows that one reading instead.
   const heraldForm = layers.length ? deriveHeraldForm(layers) : undefined;
   const viewingSynthesis = !selectedLayer && !!heraldForm;
-  const synthesisStatus = heraldForm
-    ? heraldForm.revealed
-      ? "The Herald, revealed"
-      : `The Herald, forming — ${heraldForm.readingCount} of 7`
-    : "";
+  const synthesisStatus = heraldForm ? synthesisStatusText(heraldForm) : "";
   const synthesisEpithet = heraldForm?.revealed ? sealedEpithet?.text : undefined;
   // The blazon of whatever Herald is currently shown — the synthesis, or a
   // scrubbed single reading. Shared by the "Download blazon" and "Copy image
@@ -370,6 +377,9 @@ export function HeraldPage() {
                   dirty={styleDirty}
                   sealed={!!selectedParticipant?.heraldStyle}
                 />
+                {isCloudConfigured() && selectedParticipant && (
+                  <SharePanel participant={selectedParticipant} layers={layers} style={styleDraft} />
+                )}
               </>
             ) : (
               <EmptyState

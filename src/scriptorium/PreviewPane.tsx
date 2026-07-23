@@ -7,6 +7,7 @@ import { liturgiesById } from "../data/liturgies";
 import { encountersByNumber } from "../data/encounters";
 import { lettersById } from "../data/letters";
 import type { DatasetId, RegistryEntry } from "./contentRegistry";
+import { RichText } from "../components/ui";
 import pardes from "../library/pardes.module.css";
 import styles from "./scriptorium.module.css";
 
@@ -70,15 +71,23 @@ export function PreviewPane({
           <div className={pardes.entry}>
             <Tier hebrew="פְּשָׁט" name="Peshat" gloss="The Letter — as it is">
               <p className={styles.previewHebrew}>{base.hebrew}</p>
-              <p>{v("english") ?? <span className={styles.muted}>(no English yet)</span>}</p>
+              {v("english") ? (
+                <RichText as="p" html={v("english")!} />
+              ) : (
+                <p><span className={styles.muted}>(no English yet)</span></p>
+              )}
             </Tier>
             <Tier hebrew="רֶמֶז" name="Remez" gloss="The Tradition — when and why it is said">
               <p>{base.occasionNote}</p>
             </Tier>
             <Tier hebrew="סוֹד" name="Sod" gloss="The Participant — disclosed through lived experience">
-              <p className={pardes.sod}>
-                {v("sodPrompt") ?? <span className={styles.muted}>(no Sod prompt yet)</span>}
-              </p>
+              {v("sodPrompt") ? (
+                <RichText as="p" html={v("sodPrompt")!} className={pardes.sod} />
+              ) : (
+                <p className={pardes.sod}>
+                  <span className={styles.muted}>(no Sod prompt yet)</span>
+                </p>
+              )}
             </Tier>
           </div>
         );
@@ -93,7 +102,11 @@ export function PreviewPane({
             </h3>
             <Field label="Themes">{base.themes}</Field>
             <Field label="Question">
-              <em>{v("question") ?? <span className={styles.muted}>(no question yet)</span>}</em>
+              {v("question") ? (
+                <RichText html={v("question")!} />
+              ) : (
+                <em><span className={styles.muted}>(no question yet)</span></em>
+              )}
             </Field>
           </div>
         );
@@ -123,16 +136,20 @@ export function PreviewPane({
             <div className={styles.previewGlyph}>{base?.glyph ?? entry.hebrew}</div>
             <Field label="Keyword">{v("keyword")}</Field>
             <Field label="Translation / root">{v("translationRoot")}</Field>
-            <Field label="Eternal principle">{v("eternalPrinciple")}</Field>
+            <Field label="Eternal principle">
+              {v("eternalPrinciple") ? <RichText html={v("eternalPrinciple")!} /> : undefined}
+            </Field>
             <Field label="Question">
-              {v("question") ? <em>{v("question")}</em> : undefined}
+              {v("question") ? <RichText html={v("question")!} /> : undefined}
             </Field>
             <Field label="Hebrew root">
               {v("hebrewRoot") ? (
                 <span className={styles.previewHebrew}>{v("hebrewRoot")}</span>
               ) : undefined}
             </Field>
-            <Field label="Scribe notes">{v("scribeNotes")}</Field>
+            <Field label="Scribe notes">
+              {v("scribeNotes") ? <RichText html={v("scribeNotes")!} /> : undefined}
+            </Field>
           </div>
         );
       }

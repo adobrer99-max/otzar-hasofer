@@ -36,17 +36,19 @@ export function TodayPanel() {
   const todayKey = new Date().toDateString();
   const snapshot = useMemo(() => computeSacredTime(new Date(), geo), [geo, todayKey]);
 
-  const [observances, setObservances] = useState<{ key: string; title: string }[]>([]);
+  const [observances, setObservances] = useState<
+    { key: string; title: string; participantId: string }[]
+  >([]);
   const { year, month, day } = snapshot.hebrewDate;
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const participants = await listParticipants();
-      const matches: { key: string; title: string }[] = [];
+      const matches: { key: string; title: string; participantId: string }[] = [];
       for (const p of participants) {
         const events = await listLifeCycleEvents(p.id);
         for (const o of todaysObservances(snapshot.hebrewDate, p, events)) {
-          matches.push({ key: `${p.id}:${o.key}`, title: o.title });
+          matches.push({ key: `${p.id}:${o.key}`, title: o.title, participantId: p.id });
         }
       }
       if (!cancelled) setObservances(matches);
@@ -121,8 +123,8 @@ export function TodayPanel() {
           {observances.map((o) => (
             <Card key={o.key}>
               <p className={styles.observanceTitle}>{o.title}</p>
-              <Link to="/herald" className={styles.observanceLink}>
-                Open the Herald →
+              <Link to={`/herald?participant=${o.participantId}`} className={styles.observanceLink}>
+                Open their Herald →
               </Link>
             </Card>
           ))}

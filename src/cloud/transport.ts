@@ -7,9 +7,20 @@ export const REMOTE_TABLES: Record<SyncQueueEntry["store"], string> = {
   lifeCycleEvents: "life_cycle_events",
   commentaries: "commentaries",
   unions: "unions",
+  contentDrafts: "content_drafts",
 };
 
 export const SYNC_STORES = Object.keys(REMOTE_TABLES) as SyncQueueEntry["store"][];
+
+/**
+ * Stores whose remote ids are only unique per Scribe (draft keys like
+ * "letters::aleph"), unlike the uuid tables. Their table's primary key is
+ * (owner_id, id), so the push must carry owner_id explicitly and upsert on
+ * that pair — never the default conflict target.
+ */
+export const OWNER_COMPOSITE_STORES: ReadonlySet<SyncQueueEntry["store"]> = new Set([
+  "contentDrafts",
+]);
 
 export interface RemoteRecord {
   store: SyncQueueEntry["store"];

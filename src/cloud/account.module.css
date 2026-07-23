@@ -10,7 +10,8 @@
   max-width: 480px;
 }
 
-.panel input[type="email"] {
+.panel input[type="email"],
+.panel input[type="password"] {
   background: var(--bg);
   border: 1px solid var(--border-hairline);
   border-radius: var(--radius-md);
@@ -18,6 +19,46 @@
   padding: var(--space-2);
   font-family: var(--font-latin);
   font-size: 1rem;
+}
+
+.innerForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Small tertiary actions — "Forgot password?", "Resend the verification email". */
+.quietBtn {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.quietBtn:hover {
+  color: var(--accent-bright);
+}
+
+.disclosure summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+.disclosure[open] summary {
+  margin-bottom: var(--space-3);
+}
+
+.danger summary {
+  color: var(--color-copper);
+}
+.danger[open] {
+  border-inline-start: 2px solid var(--color-copper);
+  padding-inline-start: var(--space-3);
 }
 
 .statusLine {

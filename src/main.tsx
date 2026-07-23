@@ -4,11 +4,15 @@ import { RouterProvider } from "react-router-dom";
 import "./index.css";
 import { router } from "./router";
 import { initCloudSync } from "./cloud/orchestrator";
-import { listDrafts } from "./storage/contentDraftsRepo";
-import { applyContentOverrides } from "./scriptorium/applyOverrides";
+import { initCardArt } from "./cloud/applyCardArt";
+import { initContentOverrides } from "./scriptorium/liveOverrides";
 
 // Inert when the deployment has no cloud configured.
 initCloudSync();
+
+// Uploaded card art: cached copy applies synchronously (offline-safe), then a
+// background refresh from the registry. Inert when no cloud is configured.
+initCardArt();
 
 // A code-split route chunk failed to load — almost always because a new deploy
 // renamed the hashed chunks while this page was still open on the old build, so
@@ -33,8 +37,9 @@ function renderApp() {
   );
 }
 
-// Apply any Scriptorium content edits (saved locally) onto the in-memory
-// datasets before first render, so an author's edits are live across the whole
-// app — not only in the studio's preview. A read failure still renders the
-// shipped defaults; the theme pre-paint in index.html is unaffected.
-listDrafts().then(applyContentOverrides).catch(() => {}).finally(renderApp);
+// Apply any Scriptorium content edits onto the in-memory datasets before
+// first render, and keep them in step after every cloud sync (pulled edits go
+// live; pulled deletes revert to the shipped text). A read failure still
+// renders the shipped defaults; the theme pre-paint in index.html is
+// unaffected.
+initContentOverrides().catch(() => {}).finally(renderApp);

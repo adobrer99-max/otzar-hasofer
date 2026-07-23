@@ -2,6 +2,7 @@ import { getSupabase } from "./supabaseClient";
 import {
   REMOTE_TABLES,
   SYNC_STORES,
+  OWNER_COMPOSITE_STORES,
   type CloudTransport,
   type PullResult,
   type RemoteDelete,
@@ -17,11 +18,33 @@ import {
 export class SupabaseTransport implements CloudTransport {
   async pushRecords(records: RemoteRecord[]): Promise<void> {
     const supabase = getSupabase();
+    let ownerId: string | undefined;
     for (const store of SYNC_STORES) {
-      const rows = records
-        .filter((r) => r.store === store)
-        .map((r) => ({ id: r.id, data: r.data, deleted_at: null }));
-      if (rows.length === 0) continue;
+      const stored = records.filter((r) => r.store === store);
+      if (stored.length === 0) continue;
+      if (OWNER_COMPOSITE_STORES.has(store)) {
+        // (owner_id, id) tables: carry owner_id explicitly and name the
+        // composite conflict target — draft ids alone aren't globally unique.
+        if (!ownerId) {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          ownerId = session?.user.id;
+          if (!ownerId) throw new Error("No session for the composite-key push.");
+        }
+        const rows = stored.map((r) => ({
+          id: r.id,
+          owner_id: ownerId,
+          data: r.data,
+          deleted_at: null,
+        }));
+        const { error } = await supabase
+          .from(REMOTE_TABLES[store])
+          .upsert(rows, { onConflict: "owner_id,id" });
+        if (error) throw new Error(`Push to ${REMOTE_TABLES[store]} failed: ${error.message}`);
+        continue;
+      }
+      const rows = stored.map((r) => ({ id: r.id, data: r.data, deleted_at: null }));
       const { error } = await supabase.from(REMOTE_TABLES[store]).upsert(rows);
       if (error) throw new Error(`Push to ${REMOTE_TABLES[store]} failed: ${error.message}`);
     }

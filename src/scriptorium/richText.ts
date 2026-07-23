@@ -12,7 +12,10 @@
  * unknown elements survive. It runs both on save and again at render.
  */
 
-const ALLOWED_TAGS = new Set(["p", "br", "b", "strong", "i", "em", "u", "h1", "h2", "h3", "h4", "span", "div"]);
+const ALLOWED_TAGS = new Set([
+  "p", "br", "b", "strong", "i", "em", "u", "h1", "h2", "h3", "h4", "span", "div",
+  "ul", "ol", "li", "blockquote", "s", "strike", "a",
+]);
 const VOID_TAGS = new Set(["br"]);
 const ALLOWED_STYLE_PROPS = new Set([
   "color",
@@ -21,7 +24,19 @@ const ALLOWED_STYLE_PROPS = new Set([
   "font-weight",
   "font-style",
   "text-decoration",
+  "direction",
 ]);
+
+/** Only these link protocols survive; everything else drops the <a> entirely. */
+const ALLOWED_HREF = /^(https:|http:|mailto:)/i;
+
+/** Validate an href; returns the safe value or null (drop the link). */
+function sanitizeHref(raw: string): string | null {
+  const href = raw.trim();
+  if (!href || /[<>"]/.test(href)) return null;
+  if (!ALLOWED_HREF.test(href)) return null; // rejects javascript:, data:, relative, protocol-relative
+  return href;
+}
 
 function escapeText(s: string): string {
   return s
@@ -58,6 +73,7 @@ export function sanitizeRichHtml(html: string): string {
   const tagRe = /<(\/?)([a-zA-Z][a-zA-Z0-9]*)((?:[^>"']|"[^"]*"|'[^']*')*)>/g;
   let out = "";
   let last = 0;
+  let droppedAnchors = 0; // open <a> tags rejected for a bad href; swallow their close
   let m: RegExpExecArray | null;
   while ((m = tagRe.exec(html))) {
     out += escapeText(html.slice(last, m.index));
@@ -66,6 +82,10 @@ export function sanitizeRichHtml(html: string): string {
     const tag = m[2].toLowerCase();
     if (!ALLOWED_TAGS.has(tag)) continue; // drop the tag, keep surrounding text
     if (closing) {
+      if (tag === "a" && droppedAnchors > 0) {
+        droppedAnchors--;
+        continue;
+      }
       if (!VOID_TAGS.has(tag)) out += `</${tag}>`;
       continue;
     }
@@ -74,6 +94,19 @@ export function sanitizeRichHtml(html: string): string {
       continue;
     }
     const attrs = m[3] || "";
+    if (tag === "a") {
+      // Links keep exactly one attribute — a protocol-allowlisted href — and
+      // are rewritten to open safely in a new tab. An invalid or missing href
+      // drops the tag (its text survives via the closing-tag path).
+      const hrefMatch = attrs.match(/\shref\s*=\s*("([^"]*)"|'([^']*)')/i);
+      const href = hrefMatch ? sanitizeHref(hrefMatch[2] ?? hrefMatch[3] ?? "") : null;
+      if (!href) {
+        droppedAnchors++;
+        continue;
+      }
+      out += `<a href="${href}" target="_blank" rel="noopener noreferrer">`;
+      continue;
+    }
     const styleMatch = attrs.match(/\sstyle\s*=\s*("([^"]*)"|'([^']*)')/i);
     const style = styleMatch ? sanitizeStyle(styleMatch[2] ?? styleMatch[3] ?? "") : "";
     out += style ? `<${tag} style="${style}">` : `<${tag}>`;
@@ -91,7 +124,8 @@ export function richToPlain(html: string): string {
   if (!html) return "";
   return html
     .replace(/<\s*br\s*\/?>/gi, " ")
-    .replace(/<\/(p|div|h[1-4])>/gi, " ")
+    .replace(/<\/li>\s*(?=<li)/gi, " · ") // separators between items, none trailing
+    .replace(/<\/(p|div|h[1-4]|ul|ol|blockquote|li)>/gi, " ")
     .replace(/<[^>]*>/g, "")
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")

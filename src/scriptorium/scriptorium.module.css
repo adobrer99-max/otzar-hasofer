@@ -301,8 +301,108 @@
 .richSurface h3 { font-size: 1.15rem; margin: 0.5em 0 0.3em; }
 .richSurface h4 { font-size: 1.02rem; margin: 0.5em 0 0.3em; }
 .richSurface p { margin: 0 0 0.5em; }
+.richSurface ul,
+.richSurface ol {
+  margin: 0.3em 0 0.5em;
+  padding-inline-start: 1.4em;
+}
+.richSurface li { margin: 0.15em 0; }
+.richSurface blockquote {
+  margin: 0.5em 0;
+  padding: 0.2em 0 0.2em 0.85em;
+  border-inline-start: 2px solid var(--accent);
+  color: var(--text-muted);
+  font-style: italic;
+}
+.richSurface a {
+  color: var(--accent-bright, var(--accent));
+  text-decoration: underline;
+}
+.linkRow {
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  border-bottom: 1px solid var(--border-hairline);
+  background: var(--bg-sunken);
+}
+.linkRow input.linkInput {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--text);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius);
+}
+.linkRow button {
+  height: 30px;
+  padding: 0 10px;
+  font-size: 0.85rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius);
+  color: var(--text);
+  cursor: pointer;
+}
+.linkRow button:hover {
+  border-color: var(--accent);
+}
 .richSurface:empty::before {
   content: "Write here…";
   color: var(--text-muted);
   opacity: 0.6;
+}
+
+/* ——— The Card Art studio ——— */
+.artGroupTitle {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  padding: var(--space-3) var(--space-2) 0.3rem;
+}
+.artEditor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.artEditor label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: var(--space-2);
+}
+.artEditor input[type="text"] {
+  background: var(--bg);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: var(--space-2);
+  font: inherit;
+  font-size: 0.95rem;
+}
+.artEditor input[type="file"] {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.artEditorTitle {
+  margin: 0;
+  font-size: 1.1rem;
+}
+.artFigure {
+  margin: 0;
+}
+.artImage {
+  max-width: min(100%, 20rem);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  display: block;
+}
+.artActions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin-top: var(--space-2);
 }
