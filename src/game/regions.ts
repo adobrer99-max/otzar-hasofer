@@ -26,6 +26,12 @@ export interface Region {
   middah: string;
   /** The letters found here, in the order their alcoves appear. */
   letters: string[];
+  /**
+   * Fragments of the torn scroll strewn here (see `scroll.ts`). Three across
+   * the whole ascent assemble into Peh, the Mouth — the one letter that is
+   * never simply found.
+   */
+  fragments?: number;
   /** How many body screens the region is built from. */
   length: number;
   /** The three supernals stand above the Abyss and hold no House. */
@@ -40,8 +46,9 @@ export const regions: Region[] = [
     name: "Malchut",
     hebrew: "מלכות",
     middah: "Sovereignty / Receiving",
-    letters: ["aleph", "tav", "resh"],
-    length: 5,
+    letters: ["aleph", "tav"],
+    fragments: 2,
+    length: 6,
     hasHouse: true,
     teaching:
       "The kingdom — the world exactly as it is. Nothing is climbed that was not first stood upon. The breath is given here, at the bottom, because nothing rises without it.",
@@ -52,8 +59,9 @@ export const regions: Region[] = [
     name: "Yesod",
     hebrew: "יסוד",
     middah: "Foundation / Connection",
-    letters: ["chet", "samech"],
-    length: 5,
+    letters: ["chet", "samech", "resh"],
+    fragments: 1,
+    length: 6,
     hasHouse: true,
     teaching:
       "The foundation — the narrow channel everything above must pass through to reach the world. Here you learn to hold a wall instead of resenting it.",
@@ -112,7 +120,7 @@ export const regions: Region[] = [
     name: "Chesed",
     hebrew: "חסד",
     middah: "Loving-kindness",
-    letters: ["mem", "nun", "peh"],
+    letters: ["mem", "nun"],
     length: 7,
     hasHouse: true,
     teaching:
@@ -167,6 +175,11 @@ export function regionAt(index: number): Region {
   return region;
 }
 
+/** How many scroll fragments lie in the regions *before* this one. */
+export function fragmentsBefore(regionIndex: number): number {
+  return regions.slice(0, regionIndex - 1).reduce((n, r) => n + (r.fragments ?? 0), 0);
+}
+
 /** Every letter found at or before a region — what the Scribe carries into it. */
 export function lettersThrough(regionIndex: number): string[] {
   return regions.slice(0, regionIndex).flatMap((r) => r.letters);
@@ -182,7 +195,11 @@ export function housesFor(region: Region) {
   return region.hasHouse ? housesBySefirah(region.sefirah) : [];
 }
 
-/** Sanity: the ten regions between them give all twenty-two letters, once each. */
+/**
+ * The letters lying in alcoves — twenty-one of the twenty-two. Peh is not
+ * among them; it is assembled from the torn scroll (see `scroll.ts`), which
+ * is why this and `SCROLL_LETTER` together must account for all 22.
+ */
 export function allRegionLetters(): string[] {
   return regions.flatMap((r) => r.letters);
 }

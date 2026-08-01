@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { allRegionLetters, lettersOnEntering, regions, TOTAL_REGIONS } from "../regions";
+import { SCROLL_LETTER, SCROLL_TOTAL } from "../scroll";
 import { abilities, abilityByLetter } from "../abilities";
 import { letters } from "../../data/letters";
 import { buildRegion, tileAt, verbsOf } from "./build";
@@ -24,13 +25,32 @@ function run(world: World, ctx: StepContext, ticks: number, input: Partial<Input
 }
 
 describe("the letters and the regions", () => {
-  it("gives every one of the twenty-two letters exactly once across the ascent", () => {
+  it("accounts for all twenty-two letters: twenty-one in alcoves, Peh assembled", () => {
     const given = allRegionLetters();
-    expect(given).toHaveLength(22);
-    expect(new Set(given).size).toBe(22);
+    expect(given).toHaveLength(21);
+    expect(new Set(given).size).toBe(21);
+    // Peh is deliberately absent from every alcove — it is the one letter that
+    // must be put together, from the fragments of the torn scroll.
+    expect(given).not.toContain(SCROLL_LETTER);
+
+    const all = [...given, SCROLL_LETTER];
+    expect(new Set(all).size).toBe(22);
     for (const letter of letters) {
-      expect(given, `${letter.name} is never found`).toContain(letter.id);
+      expect(all, `${letter.name} can never be had`).toContain(letter.id);
     }
+  });
+
+  it("strews exactly as many fragments as the scroll has pieces", () => {
+    const strewn = regions.reduce((n, r) => n + (r.fragments ?? 0), 0);
+    expect(strewn).toBe(SCROLL_TOTAL);
+  });
+
+  it("finishes the scroll early, so the Houses are not mute for most of the climb", () => {
+    // The whole point of assembling Peh rather than finding it: the Dorot
+    // episodes are the richest content the game draws on, and they were
+    // behind six regions of silence when Peh sat in Chesed.
+    const lastFragmentRegion = regions.filter((r) => r.fragments).at(-1)?.index ?? 0;
+    expect(lastFragmentRegion).toBeLessThanOrEqual(2);
   });
 
   it("defines an ability for every letter, and every verb exactly once", () => {

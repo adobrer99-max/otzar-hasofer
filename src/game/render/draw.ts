@@ -390,7 +390,7 @@ function drawLowGap(ctx: CanvasRenderingContext2D, x: number, y: number, palette
 // ---------------------------------------------------------------------------
 
 function drawEntity(ctx: CanvasRenderingContext2D, e: Entity, palette: Palette, tick: number): void {
-  if (e.taken && (e.kind === "mote" || e.kind === "letter")) return;
+  if (e.taken && (e.kind === "mote" || e.kind === "letter" || e.kind === "fragment")) return;
   const cx = e.x + TILE_SIZE / 2;
   const cy = e.y + TILE_SIZE / 2;
 
@@ -420,6 +420,43 @@ function drawEntity(ctx: CanvasRenderingContext2D, e: Entity, palette: Palette, 
       ctx.arc(cx, cy + bob, 13, 0, Math.PI * 2);
       ctx.fill();
       if (letter) glyph(ctx, letter.glyph, cx, cy + bob, 22, palette.goldBright);
+      break;
+    }
+    case "fragment": {
+      // A torn scrap of a scroll, standing in its niche: a small rolled sheet
+      // with a ragged edge, lit like the letters because it is a piece of one.
+      const bob = Math.sin(tick / 24 + e.x / 60) * 2.2;
+      const top = cy + bob - 9;
+      ctx.fillStyle = alpha(palette.goldBright, 0.14);
+      ctx.beginPath();
+      ctx.arc(cx, cy + bob, 13, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = palette.light ? alpha(palette.stone, 0.9) : alpha(palette.text, 0.14);
+      ctx.strokeStyle = palette.gold;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(cx - 6, top);
+      ctx.lineTo(cx + 6, top);
+      ctx.lineTo(cx + 6, top + 14);
+      // The tear along the foot — never a clean edge.
+      ctx.lineTo(cx + 3, top + 11);
+      ctx.lineTo(cx, top + 15);
+      ctx.lineTo(cx - 3, top + 11);
+      ctx.lineTo(cx - 6, top + 14);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Ruled lines of writing, too small to read — as a fragment should be.
+      ctx.strokeStyle = alpha(palette.gold, 0.6);
+      ctx.lineWidth = 0.9;
+      for (const dy of [3.5, 6.5, 9.5]) {
+        ctx.beginPath();
+        ctx.moveTo(cx - 4, top + dy);
+        ctx.lineTo(cx + 4, top + dy);
+        ctx.stroke();
+      }
       break;
     }
     case "mark": {

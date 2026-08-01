@@ -16,14 +16,17 @@ export interface Body {
   vy: number;
 }
 
-export type EntityKind = "letter" | "mote" | "mark" | "house" | "exit";
+export type EntityKind = "letter" | "mote" | "mark" | "house" | "exit" | "fragment";
 
 export interface Entity {
   id: string;
   kind: EntityKind;
   x: number;
   y: number;
-  /** Letter pickups carry the letter they give; house figures their card id. */
+  /**
+   * Letter pickups carry the letter they give, house figures their card id,
+   * and scroll fragments their index in the verse.
+   */
   ref?: string;
   taken?: boolean;
   /** Marks light when the Scribe sets them. */

@@ -338,6 +338,43 @@
   font-size: 0.88rem;
 }
 
+.plateFragment {
+  margin: var(--space-3) 0;
+  padding: var(--space-3);
+  font-size: 1.7rem;
+  line-height: 1.6;
+  color: var(--accent-bright);
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
+}
+
+.plateVerse {
+  margin: var(--space-3) 0;
+  padding: var(--space-3);
+  font-size: 1.5rem;
+  line-height: 1.9;
+  color: var(--accent-bright);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
+}
+
+.plateCitation {
+  margin: 0 0 var(--space-3);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.plateCount {
+  margin: 0 0 var(--space-4);
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
 .sealedLetters {
   display: flex;
   flex-wrap: wrap;

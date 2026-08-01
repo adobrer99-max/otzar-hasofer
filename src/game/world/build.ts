@@ -1,13 +1,14 @@
 import { cardsByHouse, housesBySefirah } from "../../data/dorot";
 import type { Verb } from "../abilities";
 import { abilityByLetter } from "../abilities";
-import { lettersOnEntering, regionAt } from "../regions";
+import { fragmentsBefore, lettersOnEntering, regionAt } from "../regions";
 import { makeRng, randomInt, shuffle } from "../rng";
 import {
   CHUNK_H,
   CHUNK_W,
   CHUNKS,
   END_CHUNK,
+  FRAGMENT_CHUNK,
   HOUSE_CHUNK,
   LETTER_CHUNK,
   SHRINE_CHUNK,
@@ -61,13 +62,26 @@ export function buildRegion(regionIndex: number, seed: number, lightOfTheDay = 1
     previous = pick.id;
   }
 
-  // The fixed screens are inserted at distinct positions within the body.
+  // The fixed screens are inserted at positions within the body. Their *order*
+  // here is their order on the ground, because the chosen slots are sorted
+  // ascending — and that ordering carries a rule: the genizah niches always
+  // come before the House. A region that strews scroll fragments is a region
+  // where the Mouth can be assembled before its figure is reached, so the
+  // House will speak rather than stand mute for want of a letter lying a
+  // hundred tiles further on.
   const fixed: Chunk[] = [
+    ...Array.from({ length: region.fragments ?? 0 }, () => FRAGMENT_CHUNK),
     ...region.letters.map(() => LETTER_CHUNK),
     SHRINE_CHUNK,
     ...(region.hasHouse ? [HOUSE_CHUNK] : []),
   ];
-  const slots = shuffle(rng, Array.from({ length: body.length + 1 }, (_, i) => i)).slice(0, fixed.length);
+  // Distinct slots when there is room; otherwise several fixed screens share a
+  // position and simply follow one another, which the painter below handles.
+  const positions = Array.from({ length: body.length + 1 }, (_, i) => i);
+  const slots =
+    fixed.length <= positions.length
+      ? shuffle(rng, positions).slice(0, fixed.length)
+      : Array.from({ length: fixed.length }, (_, i) => positions[randomInt(rng, positions.length)] ?? i);
   slots.sort((a, b) => a - b);
 
   const laid: Chunk[] = [START_CHUNK];
@@ -81,7 +95,7 @@ export function buildRegion(regionIndex: number, seed: number, lightOfTheDay = 1
   }
   laid.push(END_CHUNK);
 
-  return paint(laid, region.index, region.sefirah, region.letters, rng, region.hasHouse, lightOfTheDay);
+  return paint(laid, region.index, region.sefirah, region.letters, rng, region.hasHouse, lightOfTheDay, fragmentsBefore(region.index));
 }
 
 /** Writes the laid chunks into a tile grid and lifts the markers into entities. */
@@ -93,6 +107,7 @@ function paint(
   rng: () => number,
   hasHouse: boolean,
   lightOfTheDay: number,
+  firstFragmentIndex: number,
 ): World {
   const width = laid.length * CHUNK_W;
   const height = CHUNK_H;
@@ -101,6 +116,7 @@ function paint(
 
   let spawn = { x: TILE_SIZE * 2, y: TILE_SIZE * 14 };
   let letterCursor = 0;
+  let fragmentCursor = firstFragmentIndex;
   let entityId = 0;
 
   // The House figure, when the region has one: a card from either of the
@@ -134,6 +150,15 @@ function paint(
               if (letterId) entities.push({ id: `e${entityId++}`, kind: "letter", x: px, y: py, ref: letterId });
               break;
             }
+            case "F":
+              entities.push({
+                id: `e${entityId++}`,
+                kind: "fragment",
+                x: px,
+                y: py,
+                ref: String(fragmentCursor++),
+              });
+              break;
             case "T":
               entities.push({ id: `e${entityId++}`, kind: "mark", x: px, y: py });
               break;

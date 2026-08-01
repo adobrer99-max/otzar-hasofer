@@ -12,6 +12,7 @@ import { abilityByLetter, type Grace, type Verb } from "./abilities";
 import { GameCanvas, type HudSample } from "./GameCanvas";
 import { ABYSS_AFTER_REGION, regionAt, regions, TOTAL_REGIONS } from "./regions";
 import { readAscentTime } from "./sacredAscent";
+import { fragmentAt, SCROLL_LETTER, SCROLL_TOTAL, SCROLL_VERSE } from "./scroll";
 import { buildRegion, verbsOf } from "./world/build";
 import type { World } from "./world/types";
 import styles from "./GamePage.module.css";
@@ -29,6 +30,8 @@ import styles from "./GamePage.module.css";
 
 type Plate =
   | { kind: "letter"; letterId: string }
+  | { kind: "fragment"; index: number; held: number }
+  | { kind: "scroll-whole" }
   | { kind: "house"; cardId: string }
   | { kind: "region-done" }
   | { kind: "abyss" }
@@ -130,6 +133,28 @@ export function GamePage() {
     [],
   );
 
+  /**
+   * A fragment lifted from its niche. The third one is not merely the third —
+   * it completes the verse, and the scroll becomes Peh, which is then held
+   * exactly like a letter found in an alcove (so the grace, the HUD belt and
+   * the saved run all need no special case for it).
+   */
+  const onFragment = useCallback((index: number) => {
+    setAscent((prev) => {
+      if (!prev) return prev;
+      const already = prev.scrollFragments ?? [];
+      if (already.includes(index)) return prev;
+      const held = [...already, index].sort((a, b) => a - b);
+      const whole = held.length >= SCROLL_TOTAL;
+      const lettersHeld =
+        whole && !prev.lettersHeld.includes(SCROLL_LETTER)
+          ? [...prev.lettersHeld, SCROLL_LETTER]
+          : prev.lettersHeld;
+      setPlate(whole ? { kind: "scroll-whole" } : { kind: "fragment", index, held: held.length });
+      return { ...prev, scrollFragments: held, lettersHeld, updatedAt: new Date().toISOString() };
+    });
+  }, []);
+
   const onHouse = useCallback((cardId: string) => {
     setPlate({ kind: "house", cardId });
     setAscent((prev) =>
@@ -195,7 +220,14 @@ export function GamePage() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Enter" && e.key !== "Escape" && e.code !== "Space") return;
       e.preventDefault();
-      if (plate.kind === "letter" || plate.kind === "house") setPlate(null);
+      if (
+        plate.kind === "letter" ||
+        plate.kind === "house" ||
+        plate.kind === "fragment" ||
+        plate.kind === "scroll-whole"
+      ) {
+        setPlate(null);
+      }
       else if (plate.kind === "sealed") sealAscent();
       else climbOn();
     };
@@ -207,7 +239,7 @@ export function GamePage() {
   const lastSaved = useRef("");
   useEffect(() => {
     if (!ascent) return;
-    const signature = `${ascent.regionIndex}|${ascent.lettersHeld.join(",")}|${ascent.housesMet.length}`;
+    const signature = `${ascent.regionIndex}|${ascent.lettersHeld.join(",")}|${ascent.housesMet.length}|${(ascent.scrollFragments ?? []).join(",")}`;
     if (signature === lastSaved.current) return;
     lastSaved.current = signature;
     void saveAscent(ascent).catch(() => undefined);
@@ -264,6 +296,7 @@ export function GamePage() {
             graces={graces}
             paused={plate !== null}
             onLetter={onLetter}
+            onFragment={onFragment}
             onHouse={onHouse}
             onFinish={onFinish}
             onSample={setHud}
@@ -456,6 +489,10 @@ function PlateOverlay({
     <div className={styles.plateScrim} role="dialog" aria-modal="true">
       <div className={styles.plate}>
         {plate.kind === "letter" && <LetterPlate letterId={plate.letterId} onClose={onClose} />}
+        {plate.kind === "fragment" && (
+          <FragmentPlate index={plate.index} held={plate.held} onClose={onClose} />
+        )}
+        {plate.kind === "scroll-whole" && <ScrollWholePlate onClose={onClose} />}
         {plate.kind === "house" && <HousePlate cardId={plate.cardId} onClose={onClose} />}
         {plate.kind === "region-done" && ascent && <RegionDonePlate ascent={ascent} onNext={onNext} />}
         {plate.kind === "abyss" && <AbyssPlate onNext={onNext} />}
@@ -488,6 +525,64 @@ function LetterPlate({ letterId, onClose }: { letterId: string; onClose: () => v
       </p>
       <Button variant="primary" onClick={onClose} autoFocus>
         Take it up
+      </Button>
+    </>
+  );
+}
+
+function FragmentPlate({ index, held, onClose }: { index: number; held: number; onClose: () => void }) {
+  const fragment = fragmentAt(index);
+  if (!fragment) return null;
+  return (
+    <>
+      <p className={styles.plateKicker}>A fragment of the scroll</p>
+      <div className={`${styles.plateFragment} hebrew`} lang="he">
+        {fragment.hebrew}
+      </div>
+      <p className={styles.plateUse}>&ldquo;{fragment.english}&rdquo;</p>
+      <p className={styles.plateDerivation}>
+        A scrap set aside in a genizah — worn writing is never destroyed, only laid down. Torn from
+        something longer, and not the whole of it.
+      </p>
+      <p className={styles.plateCount}>
+        {held} of {SCROLL_TOTAL} gathered
+      </p>
+      <Button variant="primary" onClick={onClose} autoFocus>
+        Fold it away
+      </Button>
+    </>
+  );
+}
+
+function ScrollWholePlate({ onClose }: { onClose: () => void }) {
+  const letter = lettersById[SCROLL_LETTER];
+  const ability = abilityByLetter[SCROLL_LETTER];
+  return (
+    <>
+      <p className={styles.plateKicker}>The scroll is whole</p>
+      <div className={`${styles.plateVerse} hebrew`} lang="he">
+        {SCROLL_VERSE.hebrew}
+      </div>
+      <p className={styles.plateUse}>&ldquo;{SCROLL_VERSE.english}&rdquo;</p>
+      <p className={styles.plateCitation}>{SCROLL_VERSE.citation}</p>
+      {letter && ability && (
+        <>
+          <DecoratedRule />
+          <div className={`${styles.plateGlyph} hebrew`} lang="he">
+            {letter.glyph}
+          </div>
+          <h2 className={styles.plateTitle}>
+            {letter.name} — {ability.name}
+          </h2>
+          <p className={styles.plateUse}>{ability.use}</p>
+          <p className={styles.plateDerivation}>{ability.derivation}</p>
+          <p className={styles.plateSource}>
+            <Link to={`/guide/letters/${letter.id}`}>Read the chapter on {letter.name} →</Link>
+          </p>
+        </>
+      )}
+      <Button variant="primary" onClick={onClose} autoFocus>
+        Speak
       </Button>
     </>
   );

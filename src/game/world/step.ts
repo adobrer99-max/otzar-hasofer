@@ -68,6 +68,8 @@ export interface StepContext {
   graces: readonly Grace[];
   /** Raised when a letter is taken, so the page can show its plate. */
   onLetter?: (letterId: string) => void;
+  /** Raised when a fragment of the torn scroll is lifted from its niche. */
+  onFragment?: (index: number) => void;
   onHouse?: (cardId: string) => void;
   onFinish?: () => void;
 }
@@ -561,10 +563,19 @@ function touchEntities(world: World, ctx: StepContext): void {
           say(world, "Your mark is set here.");
         }
         break;
+      case "fragment":
+        e.taken = true;
+        if (e.ref) ctx.onFragment?.(Number(e.ref));
+        break;
       case "house":
-        if (!e.taken && ctx.graces.includes("speech") && e.ref) {
+        if (e.ref && ctx.graces.includes("speech")) {
           e.taken = true;
           ctx.onHouse?.(e.ref);
+        } else if (!e.taken) {
+          // Without the Mouth the figure cannot answer — and saying so is the
+          // whole reason to go looking for the torn scroll. Not marked taken:
+          // come back with Peh and they will speak.
+          say(world, "The figure inclines their head and says nothing. The Mouth is not yet yours.");
         }
         break;
       case "exit":

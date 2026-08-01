@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { abilityByLetter } from "../abilities";
 import { lettersOnEntering, regions, TOTAL_REGIONS } from "../regions";
+import { SCROLL_TOTAL } from "../scroll";
 import { buildRegion, PLAYER_H, tileAt, verbsOf } from "./build";
 import { MAX_JUMP_RISE, step, type StepContext } from "./step";
 import { Tile, TILE_SIZE } from "./tiles";
@@ -47,10 +48,12 @@ function probe(
     stuckFor = progressing ? 0 : stuckFor + 1;
     mark = Math.max(mark, p.x);
 
-    // Look two strides ahead for a floor that isn't there. Without this the
+    // Look one stride ahead for a floor that isn't there. Without this the
     // probe walks into every pit at full speed, which tests nothing except
-    // that pits exist.
-    const aheadX = Math.floor((p.x + p.w / 2) / TILE_SIZE) + 2;
+    // that pits exist — but looking *two* ahead is no better, because then it
+    // leaves the ground a whole tile early and spends the arc clearing runway
+    // instead of the gap. One ahead, plus coyote time, is where a hand jumps.
+    const aheadX = Math.floor((p.x + p.w / 2) / TILE_SIZE) + 1;
     const footRow = Math.floor((p.y + p.h + 1) / TILE_SIZE);
     const gapAhead =
       p.onGround &&
@@ -233,5 +236,64 @@ describe("what the regions place", () => {
         expect(withinJump(world, shrine), `region ${region}: shrine out of reach`).toBe(true);
       }
     }
+  });
+});
+
+describe("the torn scroll", () => {
+  it("strews every fragment exactly once, in order, across the ascent", () => {
+    for (const seed of [3, 91, 555, 12345]) {
+      const found: string[] = [];
+      for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
+        const world = buildRegion(region, seed);
+        for (const e of world.entities.filter((x) => x.kind === "fragment")) {
+          found.push(e.ref ?? "");
+        }
+      }
+      // Three pieces, numbered 0..2, each laid down once — never a duplicate
+      // (which would let the scroll complete a fragment short) and never a
+      // gap (which would leave Peh forever unobtainable).
+      expect(found.sort(), `seed ${seed}`).toEqual(["0", "1", "2"]);
+    }
+  });
+
+  it("never hangs a fragment higher than a plain jump can reach", () => {
+    for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
+      for (const seed of [3, 91, 555, 12345, 60606]) {
+        const world = buildRegion(region, seed);
+        for (const piece of world.entities.filter((e) => e.kind === "fragment")) {
+          expect(
+            withinJump(world, piece),
+            `region ${region} seed ${seed}: fragment ${piece.ref} is out of reach`,
+          ).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("lays every fragment before the House figure that needs it", () => {
+    // The ordering guarantee from `build.ts`. If a niche were ever laid after
+    // the House in the same region, that House would stand silent for want of
+    // a fragment lying further along the very same ground.
+    for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
+      for (const seed of [3, 91, 555, 12345, 60606, 777]) {
+        const world = buildRegion(region, seed);
+        const house = world.entities.find((e) => e.kind === "house");
+        if (!house) continue;
+        for (const piece of world.entities.filter((e) => e.kind === "fragment")) {
+          expect(
+            piece.x,
+            `region ${region} seed ${seed}: fragment ${piece.ref} lies past its House`,
+          ).toBeLessThan(house.x);
+        }
+      }
+    }
+  });
+
+  it("completes the scroll before the Houses of all but the first region", () => {
+    // Malchut's figure is meant to be met in silence — that is the prompt to
+    // go looking. Everything above it must be able to speak.
+    const { fragments: inMalchut = 0 } = regions[0];
+    const strewnByEndOfYesod = inMalchut + (regions[1].fragments ?? 0);
+    expect(strewnByEndOfYesod).toBe(SCROLL_TOTAL);
   });
 });

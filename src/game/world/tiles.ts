@@ -57,7 +57,7 @@ export const TILE_CHARS: Record<string, Tile> = {
 };
 
 /** Markers that become entities at load rather than tiles in the grid. */
-export const MARKER_CHARS = new Set(["S", "E", "L", "*", "T", "H"]);
+export const MARKER_CHARS = new Set(["S", "E", "L", "*", "T", "H", "F"]);
 
 /**
  * Whether a tile stops a body, given what the Scribe carries and how they are

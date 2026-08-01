@@ -86,6 +86,20 @@ export const LETTER_CHUNK: Chunk = chunk("letter-alcove", [], [
   F,
 ]);
 
+/**
+ * A genizah niche: a fragment of the torn scroll, set where worn writing is
+ * set aside rather than destroyed. Kept to the same low shelf as the letter
+ * alcove, for the same reason — a fragment out of reach is an ability lost.
+ */
+export const FRAGMENT_CHUNK: Chunk = chunk("genizah-niche", [], [
+  E, E, E, E, E, E, E, E, E, E, E, E, E,
+  ".........F......",
+  "........===.....",
+  E,
+  F,
+  F,
+]);
+
 /** Where the House's figure stands, in the seven lower regions. */
 export const HOUSE_CHUNK: Chunk = chunk("house", [], [
   E, E, E, E, E, E, E, E, E, E, E, E, E, E,
@@ -273,5 +287,5 @@ export const CHUNKS: Chunk[] = [
 ];
 
 export const chunksById: Record<string, Chunk> = Object.fromEntries(
-  [...CHUNKS, START_CHUNK, END_CHUNK, SHRINE_CHUNK, LETTER_CHUNK, HOUSE_CHUNK].map((c) => [c.id, c]),
+  [...CHUNKS, START_CHUNK, END_CHUNK, SHRINE_CHUNK, LETTER_CHUNK, FRAGMENT_CHUNK, HOUSE_CHUNK].map((c) => [c.id, c]),
 );

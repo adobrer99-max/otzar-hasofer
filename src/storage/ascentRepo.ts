@@ -20,6 +20,14 @@ export interface AscentRecord {
   regionIndex: number;
   /** Letter ids found so far, in the order they were taken. */
   lettersHeld: string[];
+  /**
+   * Indices of the torn scroll's fragments lifted so far (see
+   * `src/game/scroll.ts`). Stored as identities rather than a count so that
+   * resuming a region — which rebuilds its niches — cannot double-count a
+   * fragment already taken. When all three are held they become Peh, and
+   * "peh" joins `lettersHeld` like any other letter.
+   */
+  scrollFragments?: number[];
   /** Light gathered across the whole ascent. */
   or: number;
   /** Region indices whose exit has been reached. */

@@ -34,6 +34,7 @@ export interface GameCanvasProps {
   /** Suspends the loop for a plate, a pause, or an end-of-region panel. */
   paused: boolean;
   onLetter: (letterId: string) => void;
+  onFragment: (index: number) => void;
   onHouse: (cardId: string) => void;
   onFinish: () => void;
   onSample: (sample: HudSample) => void;
@@ -69,6 +70,7 @@ export function GameCanvas({
   graces,
   paused,
   onLetter,
+  onFragment,
   onHouse,
   onFinish,
   onSample,
@@ -80,16 +82,17 @@ export function GameCanvas({
   const palette = useRef<Palette>(readPalette());
   const view = useRef({ w: 960, h: 432 });
   const pausedRef = useRef(paused);
-  const callbacks = useRef({ onLetter, onHouse, onFinish, onSample });
+  const callbacks = useRef({ onLetter, onFragment, onHouse, onFinish, onSample });
 
   pausedRef.current = paused;
-  callbacks.current = { onLetter, onHouse, onFinish, onSample };
+  callbacks.current = { onLetter, onFragment, onHouse, onFinish, onSample };
 
   const ctxRef = useRef<StepContext>({ verbs, graces });
   ctxRef.current = {
     verbs,
     graces,
     onLetter: (id) => callbacks.current.onLetter(id),
+    onFragment: (i) => callbacks.current.onFragment(i),
     onHouse: (id) => callbacks.current.onHouse(id),
     onFinish: () => callbacks.current.onFinish(),
   };
