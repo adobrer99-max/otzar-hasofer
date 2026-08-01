@@ -100,6 +100,29 @@ export const FRAGMENT_CHUNK: Chunk = chunk("genizah-niche", [], [
   F,
 ]);
 
+/**
+ * A Word-Gate and the chamber it seals.
+ *
+ * The chamber is raised and reached by a stepping ledge; the gate stands at
+ * its mouth, and `?` is the porch you inscribe from. Note what the ground
+ * floor does: **nothing.** Rows 13–15 are clear the whole width, so a Scribe
+ * who never solves a gate — or never wants to — walks straight past at ground
+ * level. That is not politeness, it is the traversal guarantee: a gate that
+ * could bar the exit would be a soft-lock the moment a clue proved too hard.
+ */
+export const WORD_GATE_CHUNK: Chunk = chunk("word-gate", [], [
+  E, E, E, E, E, E, E, E, E,
+  ".....######.....",
+  "......W...#.....",
+  ".....?W.**#.....",
+  ".....######.....",
+  E,
+  "...==...........",
+  E,
+  F,
+  F,
+]);
+
 /** Where the House's figure stands, in the seven lower regions. */
 export const HOUSE_CHUNK: Chunk = chunk("house", [], [
   E, E, E, E, E, E, E, E, E, E, E, E, E, E,
@@ -287,5 +310,7 @@ export const CHUNKS: Chunk[] = [
 ];
 
 export const chunksById: Record<string, Chunk> = Object.fromEntries(
-  [...CHUNKS, START_CHUNK, END_CHUNK, SHRINE_CHUNK, LETTER_CHUNK, FRAGMENT_CHUNK, HOUSE_CHUNK].map((c) => [c.id, c]),
+  [...CHUNKS, START_CHUNK, END_CHUNK, SHRINE_CHUNK, LETTER_CHUNK, FRAGMENT_CHUNK, WORD_GATE_CHUNK, HOUSE_CHUNK].map(
+    (c) => [c.id, c],
+  ),
 );

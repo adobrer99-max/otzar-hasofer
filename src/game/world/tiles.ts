@@ -34,6 +34,8 @@ export const Tile = {
   LowGap: 10,
   /** A stone the Scribe set with Bet. Solid, and retrievable. */
   Placed: 11,
+  /** A Word-Gate's barrier. Solid until the right root is inscribed. */
+  WordGate: 12,
 } as const;
 
 export type Tile = (typeof Tile)[keyof typeof Tile];
@@ -54,10 +56,14 @@ export const TILE_CHARS: Record<string, Tile> = {
   D: Tile.Door,
   A: Tile.Anchor,
   c: Tile.LowGap,
+  W: Tile.WordGate,
 };
 
 /** Markers that become entities at load rather than tiles in the grid. */
-export const MARKER_CHARS = new Set(["S", "E", "L", "*", "T", "H", "F"]);
+// NB: lowercase `w` is already water and `c` already a low gap — a marker
+// must not collide with a tile character, so the Word-Gate's porch is `?`,
+// which is also what it is: the place a question is asked.
+export const MARKER_CHARS = new Set(["S", "E", "L", "*", "T", "H", "F", "?"]);
 
 /**
  * Whether a tile stops a body, given what the Scribe carries and how they are
@@ -79,6 +85,9 @@ export function isSolid(
     case Tile.Veiled:
       return opts.revealed;
     case Tile.Door:
+    case Tile.WordGate:
+      // Both stay solid until the world replaces them — a door when Dalet
+      // opens it, a Word-Gate when the root is spelled.
       return true;
     case Tile.LowGap:
       return !opts.crawling;

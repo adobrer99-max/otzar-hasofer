@@ -1,5 +1,6 @@
 import type { SefirahId } from "../../types/letter";
 import type { Verb } from "../abilities";
+import type { WordGateTarget } from "../wordGate";
 
 export interface Vec {
   x: number;
@@ -16,7 +17,7 @@ export interface Body {
   vy: number;
 }
 
-export type EntityKind = "letter" | "mote" | "mark" | "house" | "exit" | "fragment";
+export type EntityKind = "letter" | "mote" | "mark" | "house" | "exit" | "fragment" | "word-gate";
 
 export interface Entity {
   id: string;
@@ -73,8 +74,29 @@ export interface World {
   revealed: boolean;
   /** The single stone Bet has set, plus the second the Palm allows. */
   placed: Vec[];
+  /**
+   * The root this region's Word-Gate names, if it has one. Chosen at build
+   * time from what the Scribe could already spell, so it is always solvable.
+   */
+  wordGate?: WordGateTarget;
+  /** Set once the gate's chamber has been opened. */
+  wordGateOpen?: boolean;
   /** Light gathered in this region. */
   or: number;
+  /**
+   * How much light a single mote is worth here. Two in the region the run's
+   * Encounter illuminates, one everywhere else — set by the page, which is
+   * what knows the Encounter.
+   */
+  orPerMote: number;
+  /**
+   * Running counts a vow is judged against at the exit (see
+   * `ushpizinOffers.ts`). Cumulative for the region; the page snapshots them
+   * when a vow is taken and compares at the way out.
+   */
+  orGathered: number;
+  veilings: number;
+  marksSet: number;
   /** Ticks elapsed — the simulation's own clock, never wall time. */
   tick: number;
   /** Set when the Scribe reaches the exit. */

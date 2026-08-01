@@ -35,6 +35,7 @@ export interface GameCanvasProps {
   paused: boolean;
   onLetter: (letterId: string) => void;
   onFragment: (index: number) => void;
+  onWordGate: () => void;
   onHouse: (cardId: string) => void;
   onFinish: () => void;
   onSample: (sample: HudSample) => void;
@@ -71,6 +72,7 @@ export function GameCanvas({
   paused,
   onLetter,
   onFragment,
+  onWordGate,
   onHouse,
   onFinish,
   onSample,
@@ -82,10 +84,10 @@ export function GameCanvas({
   const palette = useRef<Palette>(readPalette());
   const view = useRef({ w: 960, h: 432 });
   const pausedRef = useRef(paused);
-  const callbacks = useRef({ onLetter, onFragment, onHouse, onFinish, onSample });
+  const callbacks = useRef({ onLetter, onFragment, onWordGate, onHouse, onFinish, onSample });
 
   pausedRef.current = paused;
-  callbacks.current = { onLetter, onFragment, onHouse, onFinish, onSample };
+  callbacks.current = { onLetter, onFragment, onWordGate, onHouse, onFinish, onSample };
 
   const ctxRef = useRef<StepContext>({ verbs, graces });
   ctxRef.current = {
@@ -93,6 +95,7 @@ export function GameCanvas({
     graces,
     onLetter: (id) => callbacks.current.onLetter(id),
     onFragment: (i) => callbacks.current.onFragment(i),
+    onWordGate: () => callbacks.current.onWordGate(),
     onHouse: (id) => callbacks.current.onHouse(id),
     onFinish: () => callbacks.current.onFinish(),
   };

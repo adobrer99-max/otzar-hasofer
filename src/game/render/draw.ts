@@ -179,6 +179,9 @@ function drawTile(
     case Tile.LowGap:
       drawLowGap(ctx, x, y, palette);
       break;
+    case Tile.WordGate:
+      drawWordGate(ctx, x, y, palette, world.tick);
+      break;
     default:
       break;
   }
@@ -385,12 +388,34 @@ function drawLowGap(ctx: CanvasRenderingContext2D, x: number, y: number, palette
   }
 }
 
+/** The barrier of a Word-Gate: three empty sockets, waiting to be inscribed. */
+function drawWordGate(ctx: CanvasRenderingContext2D, x: number, y: number, palette: Palette, tick: number): void {
+  ctx.fillStyle = alpha(palette.blue, palette.light ? 0.4 : 0.62);
+  ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+  ctx.strokeStyle = palette.gold;
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(x + 1.5, y + 1.5, TILE_SIZE - 3, TILE_SIZE - 3);
+
+  // Three sockets, breathing — the shape of the question the gate asks.
+  const pulse = 0.5 + Math.sin(tick / 30 + y / 40) * 0.22;
+  ctx.strokeStyle = alpha(palette.goldBright, pulse);
+  ctx.lineWidth = 1.2;
+  for (let i = 0; i < 3; i += 1) {
+    ctx.beginPath();
+    ctx.arc(x + TILE_SIZE / 2, y + 6 + i * 6, 2.1, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
 // ---------------------------------------------------------------------------
 // entities
 // ---------------------------------------------------------------------------
 
 function drawEntity(ctx: CanvasRenderingContext2D, e: Entity, palette: Palette, tick: number): void {
   if (e.taken && (e.kind === "mote" || e.kind === "letter" || e.kind === "fragment")) return;
+  // The gate's porch is a place, not a thing — nothing is drawn for it; the
+  // barrier tiles beside it already say what it is.
+  if (e.kind === "word-gate") return;
   const cx = e.x + TILE_SIZE / 2;
   const cy = e.y + TILE_SIZE / 2;
 

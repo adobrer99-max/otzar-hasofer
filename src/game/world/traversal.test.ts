@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { abilityByLetter } from "../abilities";
 import { lettersOnEntering, regions, TOTAL_REGIONS } from "../regions";
 import { SCROLL_TOTAL } from "../scroll";
+import { solvableRoots } from "../wordGate";
 import { buildRegion, PLAYER_H, tileAt, verbsOf } from "./build";
-import { MAX_JUMP_RISE, step, type StepContext } from "./step";
+import { MAX_JUMP_RISE, openWordGate, step, type StepContext } from "./step";
 import { Tile, TILE_SIZE } from "./tiles";
 import { NO_INPUT, type Input, type World } from "./types";
 
@@ -86,11 +87,18 @@ function probe(
           e.x - (p.x + p.w) < TILE_SIZE * 2.5,
       );
 
+    // Optional pockets — a Word-Gate's porch above all — are places a body
+    // holding right can climb into and then press against a sealed wall
+    // forever. A player simply steps back down; the probe has to be told to.
+    // After a long stall it backs off leftward in bursts until it is free.
+    const backingOff = stuckFor > 90 && stuckFor % 150 < 45;
+
     // Jump for a reason — a gap, a letter on its shelf, a wall caught, or
     // plain stalling — and never on an idle rhythm: a probe that hops
     // constantly is almost never grounded once it has the second jump, and
     // every reason above is only visible while grounded.
-    const wantJump = gapAhead || letterAhead || p.clinging !== 0 || (stuckFor > 6 && i % 9 === 0);
+    const wantJump =
+      !backingOff && (gapAhead || letterAhead || p.clinging !== 0 || (stuckFor > 6 && i % 9 === 0));
     if (wantJump) holdJump = 20;
     else if (holdJump > 0) holdJump -= 1;
 
@@ -111,7 +119,8 @@ function probe(
       // Holding right is also holding *into* a wall on the right, which is
       // exactly what climbing one asks for — so the probe needs no special
       // case for the Fence.
-      right: true,
+      right: !backingOff,
+      left: backingOff,
       jump: wantJump,
       jumpHeld: holdJump > 0 || stuckFor > 6,
       // Rise in water and up vines.
@@ -295,5 +304,107 @@ describe("the torn scroll", () => {
     const { fragments: inMalchut = 0 } = regions[0];
     const strewnByEndOfYesod = inMalchut + (regions[1].fragments ?? 0);
     expect(strewnByEndOfYesod).toBe(SCROLL_TOTAL);
+  });
+});
+
+describe("the Word-Gates", () => {
+  it("places one wherever the Scribe could already spell something, and nowhere else", () => {
+    for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
+      for (const seed of [3, 91, 555, 12345]) {
+        const world = buildRegion(region, seed);
+        const gates = world.entities.filter((e) => e.kind === "word-gate");
+        const spellable = solvableRoots(region).length > 0;
+        expect(gates.length, `region ${region} seed ${seed}`).toBe(spellable ? 1 : 0);
+        // The target is always one the Scribe can spell on arrival.
+        if (spellable) {
+          expect(world.wordGate).toBeDefined();
+          const held = new Set(lettersOnEntering(region));
+          for (const letter of world.wordGate?.letterIds ?? []) {
+            expect(held.has(letter), `region ${region}: target needs ${letter}`).toBe(true);
+          }
+        }
+      }
+    }
+  });
+
+  it("leaves Malchut and Yesod gateless — two letters spell nothing", () => {
+    for (const region of [1, 2]) {
+      const world = buildRegion(region, 777);
+      expect(world.entities.filter((e) => e.kind === "word-gate")).toHaveLength(0);
+      expect(world.wordGate).toBeUndefined();
+    }
+  });
+
+  it("keeps every gate's porch within a plain jump of the ground", () => {
+    for (let region = 3; region <= TOTAL_REGIONS; region += 1) {
+      for (const seed of [3, 91, 555, 12345, 60606]) {
+        const world = buildRegion(region, seed);
+        for (const gate of world.entities.filter((e) => e.kind === "word-gate")) {
+          expect(withinJump(world, gate), `region ${region} seed ${seed}: porch out of reach`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("opens the whole barrier at once, and only once", () => {
+    const world = buildRegion(5, 3);
+    expect(world.tiles.includes(Tile.WordGate)).toBe(true);
+    openWordGate(world, "opened");
+    expect(world.wordGateOpen).toBe(true);
+    // Not a notch in the wall — the way in is a way in.
+    expect(world.tiles.includes(Tile.WordGate)).toBe(false);
+    openWordGate(world, "again");
+    expect(world.wordGateOpen).toBe(true);
+  });
+});
+
+describe("standing in a Word-Gate's porch", () => {
+  it("asks once on arriving, not on every tick you remain there", () => {
+    const world = buildRegion(5, 3);
+    const porch = world.entities.find((e) => e.kind === "word-gate");
+    expect(porch).toBeDefined();
+    if (!porch) return;
+
+    let asked = 0;
+    const ctx: StepContext = { verbs: [], graces: [], onWordGate: () => { asked += 1; } };
+    world.player.x = porch.x;
+    world.player.y = porch.y;
+    for (let i = 0; i < 40; i += 1) step(world, NO_INPUT, ctx);
+    // Level-triggering this would reopen the panel every frame and trap the
+    // Scribe in the porch with no way to dismiss it.
+    expect(asked).toBe(1);
+  });
+
+  it("asks again once the Scribe has left and come back", () => {
+    const world = buildRegion(5, 3);
+    const porch = world.entities.find((e) => e.kind === "word-gate");
+    if (!porch) return;
+    let asked = 0;
+    const ctx: StepContext = { verbs: [], graces: [], onWordGate: () => { asked += 1; } };
+
+    world.player.x = porch.x;
+    world.player.y = porch.y;
+    step(world, NO_INPUT, ctx);
+    expect(asked).toBe(1);
+
+    world.player.x = porch.x + TILE_SIZE * 6;
+    step(world, NO_INPUT, ctx);
+    world.player.x = porch.x;
+    world.player.y = porch.y;
+    step(world, NO_INPUT, ctx);
+    expect(asked).toBe(2);
+  });
+
+  it("stops asking once the chamber is open", () => {
+    const world = buildRegion(5, 3);
+    const porch = world.entities.find((e) => e.kind === "word-gate");
+    if (!porch) return;
+    let asked = 0;
+    const ctx: StepContext = { verbs: [], graces: [], onWordGate: () => { asked += 1; } };
+    openWordGate(world, "opened");
+    world.player.x = porch.x;
+    world.player.y = porch.y;
+    for (let i = 0; i < 20; i += 1) step(world, NO_INPUT, ctx);
+    expect(asked).toBe(0);
   });
 });

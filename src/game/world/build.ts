@@ -3,6 +3,7 @@ import type { Verb } from "../abilities";
 import { abilityByLetter } from "../abilities";
 import { fragmentsBefore, lettersOnEntering, regionAt } from "../regions";
 import { makeRng, randomInt, shuffle } from "../rng";
+import { chooseTarget, type WordGateTarget } from "../wordGate";
 import {
   CHUNK_H,
   CHUNK_W,
@@ -13,6 +14,7 @@ import {
   LETTER_CHUNK,
   SHRINE_CHUNK,
   START_CHUNK,
+  WORD_GATE_CHUNK,
 } from "./chunks";
 import { MARKER_CHARS, Tile, TILE_CHARS, TILE_SIZE } from "./tiles";
 import type { Chunk, Entity, Player, World } from "./types";
@@ -62,6 +64,13 @@ export function buildRegion(regionIndex: number, seed: number, lightOfTheDay = 1
     previous = pick.id;
   }
 
+  // The gate's answer is chosen first, from roots the Scribe can already
+  // spell with the letters they arrive holding. No target, no gate — which is
+  // why Malchut and Yesod carry none: with two letters there is nothing to
+  // spell. This is the same shape as `requires` on a chunk: the generator is
+  // not permitted to express an unsolvable one.
+  const wordGateTarget = chooseTarget(regionIndex, rng);
+
   // The fixed screens are inserted at positions within the body. Their *order*
   // here is their order on the ground, because the chosen slots are sorted
   // ascending — and that ordering carries a rule: the genizah niches always
@@ -72,6 +81,7 @@ export function buildRegion(regionIndex: number, seed: number, lightOfTheDay = 1
   const fixed: Chunk[] = [
     ...Array.from({ length: region.fragments ?? 0 }, () => FRAGMENT_CHUNK),
     ...region.letters.map(() => LETTER_CHUNK),
+    ...(wordGateTarget ? [WORD_GATE_CHUNK] : []),
     SHRINE_CHUNK,
     ...(region.hasHouse ? [HOUSE_CHUNK] : []),
   ];
@@ -95,7 +105,17 @@ export function buildRegion(regionIndex: number, seed: number, lightOfTheDay = 1
   }
   laid.push(END_CHUNK);
 
-  return paint(laid, region.index, region.sefirah, region.letters, rng, region.hasHouse, lightOfTheDay, fragmentsBefore(region.index));
+  return paint(
+    laid,
+    region.index,
+    region.sefirah,
+    region.letters,
+    rng,
+    region.hasHouse,
+    lightOfTheDay,
+    fragmentsBefore(region.index),
+    wordGateTarget,
+  );
 }
 
 /** Writes the laid chunks into a tile grid and lifts the markers into entities. */
@@ -108,6 +128,7 @@ function paint(
   hasHouse: boolean,
   lightOfTheDay: number,
   firstFragmentIndex: number,
+  wordGateTarget: WordGateTarget | undefined,
 ): World {
   const width = laid.length * CHUNK_W;
   const height = CHUNK_H;
@@ -158,6 +179,11 @@ function paint(
                 y: py,
                 ref: String(fragmentCursor++),
               });
+              break;
+            case "?":
+              if (wordGateTarget) {
+                entities.push({ id: `e${entityId++}`, kind: "word-gate", x: px, y: py });
+              }
               break;
             case "T":
               entities.push({ id: `e${entityId++}`, kind: "mark", x: px, y: py });
@@ -217,7 +243,12 @@ function paint(
     respawn: { ...spawn },
     revealed: false,
     placed: [],
+    wordGate: wordGateTarget,
     or: 0,
+    orPerMote: 1,
+    orGathered: 0,
+    veilings: 0,
+    marksSet: 0,
     tick: 0,
     finished: false,
   };

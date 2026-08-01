@@ -70,6 +70,8 @@ export interface StepContext {
   onLetter?: (letterId: string) => void;
   /** Raised when a fragment of the torn scroll is lifted from its niche. */
   onFragment?: (index: number) => void;
+  /** Raised at the porch of an unopened Word-Gate, to ask for an inscription. */
+  onWordGate?: () => void;
   onHouse?: (cardId: string) => void;
   onFinish?: () => void;
 }
@@ -545,12 +547,28 @@ function touchEntities(world: World, ctx: StepContext): void {
       e.kind === "exit"
         ? p.x < e.x + TILE_SIZE && p.x + p.w > e.x
         : overlaps(p, e, e.kind === "mote" ? pull : 0);
+
+    // The Word-Gate's porch is a place you *stand* — so it must be triggered
+    // on arriving, not on every tick you remain there. Level-triggering it
+    // reopens the panel the instant it is dismissed, and there is no way back
+    // out of the porch at all. `active` here means "currently standing in it".
+    if (e.kind === "word-gate") {
+      if (!near) {
+        e.active = false;
+      } else if (!e.active) {
+        e.active = true;
+        if (!world.wordGateOpen) ctx.onWordGate?.();
+      }
+      continue;
+    }
+
     if (!near) continue;
 
     switch (e.kind) {
       case "mote":
         e.taken = true;
-        world.or += 1;
+        world.or += world.orPerMote;
+        world.orGathered += world.orPerMote;
         break;
       case "letter":
         e.taken = true;
@@ -559,6 +577,7 @@ function touchEntities(world: World, ctx: StepContext): void {
       case "mark":
         if (!e.active) {
           e.active = true;
+          world.marksSet += 1;
           world.respawn = { x: e.x, y: e.y - 6 };
           say(world, "Your mark is set here.");
         }
@@ -599,9 +618,25 @@ function overlaps(p: Player, e: Entity, slack: number): boolean {
   );
 }
 
+/**
+ * Opens a Word-Gate's chamber: the whole barrier is dissolved, not one tile
+ * of it, so the way in is a way in rather than a notch. Idempotent.
+ */
+export function openWordGate(world: World, message: string): void {
+  if (world.wordGateOpen) return;
+  world.wordGateOpen = true;
+  for (let ty = 0; ty < world.height; ty += 1) {
+    for (let tx = 0; tx < world.width; tx += 1) {
+      if (tileAt(world, tx, ty) === Tile.WordGate) setTile(world, tx, ty, Tile.Empty);
+    }
+  }
+  say(world, message);
+}
+
 function veil(world: World, message: string): void {
   if (world.player.veiled > 0) return;
   world.player.veiled = VEIL_TICKS;
+  world.veilings += 1;
   world.or = Math.max(0, world.or - 2);
   say(world, message);
 }
