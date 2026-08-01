@@ -1,0 +1,91 @@
+.stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 20 / 9;
+  min-height: 260px;
+  max-height: 62vh;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg-sunken);
+  box-shadow: var(--shadow-lg);
+}
+
+/* The illuminated rule along the top edge, as on every plate in the Treasury. */
+.stage::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--accent) 60%, #000),
+    var(--accent),
+    color-mix(in srgb, var(--accent) 60%, #000),
+    transparent
+  );
+  opacity: 0.75;
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+/* Touch controls. Hidden wherever there is a real pointer — a keyboard player
+   should never see thumb pads laid over the page. */
+.pad {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: none;
+  justify-content: space-between;
+  padding: var(--space-3);
+  gap: var(--space-3);
+  pointer-events: none;
+}
+
+.padCluster {
+  display: flex;
+  gap: var(--space-2);
+  pointer-events: auto;
+}
+
+.padKey {
+  width: 3.25rem;
+  height: 3.25rem;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-latin);
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--accent-bright);
+  background: color-mix(in srgb, var(--bg-raised) 72%, transparent);
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  backdrop-filter: blur(2px);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.padKey:active {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+@media (pointer: coarse) {
+  .pad {
+    display: flex;
+  }
+}
+
+@media (max-width: 40rem) {
+  .stage {
+    aspect-ratio: 16 / 10;
+    max-height: 56vh;
+  }
+}

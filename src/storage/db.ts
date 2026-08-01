@@ -53,6 +53,16 @@ interface OtzarHaSoferDB extends DBSchema {
     key: string;
     value: import("./contentDraftsRepo").DraftRecord;
   };
+  /**
+   * Ascents of the Tree — the game's saved climbs (see `src/game`).
+   * Deliberately *not* synced to the Scribes' Cloud: a Treasury is a record
+   * of readings, and a half-finished platforming run is not one. It stays on
+   * the device it was played on.
+   */
+  ascents: {
+    key: string;
+    value: import("./ascentRepo").AscentRecord;
+  };
   /** Outbox of local changes awaiting a push to the Scribes' Cloud. */
   syncQueue: {
     key: number;
@@ -69,7 +79,7 @@ let dbPromise: Promise<IDBPDatabase<OtzarHaSoferDB>> | undefined;
 
 export function getDb() {
   if (!dbPromise) {
-    dbPromise = openDB<OtzarHaSoferDB>("otzar-hasofer", 7, {
+    dbPromise = openDB<OtzarHaSoferDB>("otzar-hasofer", 8, {
       async upgrade(db, oldVersion, _newVersion, tx) {
         if (oldVersion < 1) {
           db.createObjectStore("participants", { keyPath: "id" });
@@ -112,6 +122,9 @@ export function getDb() {
             }
             cursor = await cursor.continue();
           }
+        }
+        if (oldVersion < 8) {
+          db.createObjectStore("ascents", { keyPath: "id" });
         }
       },
     });
