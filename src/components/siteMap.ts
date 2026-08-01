@@ -71,6 +71,11 @@ export const practiceLinks: SiteLink[] = [
     blurb: "Conduct a reading on the folio itself — place the letters and the veiled anchor on the surface, turn the rings to the sacred time, and seal the Herald.",
   },
   {
+    to: "/game",
+    label: "Ma'alot — The Ascent",
+    blurb: "Climb the Tree from Malchut to Keter on the twenty-two letters, each one a power drawn from its own ancient sense. Nothing here can kill you.",
+  },
+  {
     to: "/covenant",
     label: "The Covenant",
     blurb: "At marriage, a shared Herald is created — derived from both partners' Treasuries and grown through the seven blessings of the Sheva Brachot.",

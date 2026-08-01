@@ -28,6 +28,7 @@ const VisualCanon = lazyPage(() => import("./guide/pages/VisualCanon"), "VisualC
 const StylesheetPreview = lazyPage(() => import("./guide/pages/StylesheetPreview"), "StylesheetPreview");
 const HeraldPage = lazyPage(() => import("./herald/HeraldPage"), "HeraldPage");
 const CovenantPage = lazyPage(() => import("./herald/covenant/CovenantPage"), "CovenantPage");
+const GamePage = lazyPage(() => import("./game/GamePage"), "GamePage");
 const MizbeachToolPage = lazyPage(() => import("./mizbeach/MizbeachToolPage"), "MizbeachToolPage");
 const CommentariesPage = lazyPage(() => import("./commentaries/CommentariesPage"), "CommentariesPage");
 const LibraryPage = lazyPage(() => import("./library/LibraryPage"), "LibraryPage");
@@ -59,6 +60,7 @@ export const router = createHashRouter([
       { path: "herald", element: <HeraldPage /> },
       { path: "mizbeach", element: <MizbeachToolPage /> },
       { path: "covenant", element: <CovenantPage /> },
+      { path: "game", element: <GamePage /> },
       { path: "commentaries", element: <CommentariesPage /> },
       { path: "sefarim", element: <LibraryPage /> },
       { path: "sefarim/:id/:entryId?", element: <SeferPage /> },

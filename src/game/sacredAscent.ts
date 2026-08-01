@@ -1,0 +1,103 @@
+import { festivalsById } from "../data/festivals";
+import { formatHebrewDateEnglish, resolveAdar } from "../data/hebrewCalendar";
+import { mazalotByMonth } from "../data/mazalot";
+import { computeSacredTime } from "../data/sacredTime";
+import type { GeographyMode } from "../types/herald";
+import type { SacredTimeSnapshot } from "../types/sacredTime";
+import { hashSeed } from "./rng";
+
+/**
+ * Sacred Time, as the Ascent meets it.
+ *
+ * No reading occurs outside of sacred time, and neither does a climb. The
+ * run's seed *is* the Hebrew date, so every Scribe who begins on the same day
+ * ascends the same Tree — the same episodes stand at the same stations, the
+ * letters come in the same order — and the day's own character is on the
+ * board: the month's zodiac letter rises, Shabbat grants its rest, a fast
+ * narrows the hand.
+ */
+export interface AscentTime {
+  snapshot: SacredTimeSnapshot;
+  seed: number;
+  /** "14 Nisan 5786" — the seed in words, shown on the board. */
+  seedLabel: string;
+  /** The Simple letter whose month this is. */
+  ascendantLetterId?: string;
+  /**
+   * How much light the day itself strews through the regions, as a multiplier
+   * on the ordinary scattering. A festival is brighter; a fast is darker. The
+   * ground is the same ground either way — only what is lying on it changes.
+   */
+  lightOfTheDay: number;
+  notes: string[];
+}
+
+/**
+ * Days that reach onto the board. The rest of the calendar is still shown —
+ * every active festival is named in the notes — but only these change play,
+ * and each change is the one the day already means in the practice.
+ */
+const DAY_EFFECTS: Record<string, { light: number; note: string }> = {
+  shabbat: { light: 1.4, note: "Shabbat — the regions lie brighter than on any working day." },
+  hanukkah: { light: 1.5, note: "Hanukkah — the light that lasted longer than it had any right to." },
+  tubishvat: { light: 1.3, note: "Tu Bishvat — the sap rises in the Tree, and the Tree is lit." },
+  sukkot: { light: 1.3, note: "Sukkot — the guests are welcomed, and the booth is hung with light." },
+  pesach: { light: 1.3, note: "Pesach — the narrow place is behind you." },
+  shavuot: { light: 1.4, note: "Shavuot — the letters themselves were given on this day." },
+  "rosh-hashanah": { light: 1.2, note: "Rosh Hashanah — the year turns." },
+  purim: { light: 1.2, note: "Purim — the hidden face; even the light is in disguise." },
+  "yom-kippur": { light: 0.7, note: "Yom Kippur — the regions are spare. Little is strewn, and little is needed." },
+  tishabav: { light: 0.55, note: "Tisha B'Av — the light is scarce. What is destroyed is climbed through, not around." },
+  "fast-of-gedaliah": { light: 0.75, note: "A fast day — less lies waiting on the ground." },
+  "tenth-of-tevet": { light: 0.75, note: "A fast day — less lies waiting on the ground." },
+  "seventeenth-of-tammuz": { light: 0.75, note: "A fast day — less lies waiting on the ground." },
+  "fast-of-esther": { light: 0.75, note: "A fast day — less lies waiting on the ground." },
+};
+
+/**
+ * Reads a date into everything the run needs from it.
+ *
+ * `variant` distinguishes the day's shared ascent (0 — the daily run every
+ * Scribe meets) from a Scribe's own further climbs on the same day, which
+ * shuffle differently while keeping the day's character.
+ */
+export function readAscentTime(
+  date: Date,
+  geography: GeographyMode = "galut",
+  variant = 0,
+): AscentTime {
+  const snapshot = computeSacredTime(date, geography);
+  const { hebrewDate } = snapshot;
+  const seedLabel = formatHebrewDateEnglish(hebrewDate);
+  const seed = hashSeed(`${seedLabel}#${variant}`);
+
+  const month = resolveAdar(hebrewDate.year, hebrewDate.month);
+  const ascendantLetterId = mazalotByMonth[month]?.letterId;
+
+  const notes: string[] = [];
+  let lightOfTheDay = 1;
+
+  if (ascendantLetterId) {
+    const mazal = mazalotByMonth[month];
+    notes.push(
+      `The month of ${hebrewDate.month} — its letter rises under ${mazal?.zodiacName} (${mazal?.zodiacHebrew}).`,
+    );
+  }
+
+  for (const id of snapshot.activeFestivalIds) {
+    const effect = DAY_EFFECTS[id];
+    if (effect) {
+      lightOfTheDay *= effect.light;
+      notes.push(effect.note);
+    } else {
+      const festival = festivalsById[id];
+      if (festival) notes.push(`${festival.name} — the day is named, though the board is unchanged.`);
+    }
+  }
+
+  if (snapshot.omer) {
+    notes.push(`Day ${snapshot.omer.day} of the Omer — the count itself is an ascent.`);
+  }
+
+  return { snapshot, seed, seedLabel, ascendantLetterId, lightOfTheDay, notes };
+}
