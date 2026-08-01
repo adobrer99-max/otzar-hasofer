@@ -1,4 +1,4 @@
-import type { Chunk } from "./types";
+import type { Chunk, Edge } from "./types";
 
 /**
  * The level vocabulary: hand-authored screens, assembled per seed.
@@ -12,37 +12,109 @@ import type { Chunk } from "./types";
  * merely intended:
  *
  * 1. Exactly `CHUNK_W` × `CHUNK_H` characters.
- * 2. The two bottom rows are stone under the outermost two columns of each
- *    edge, and rows 12–15 of those columns are clear. So the Scribe always
- *    walks *into* a screen at ground level and always walks *out* of one at
- *    ground level, and any chunk may follow any other.
+ * 2. Its `entry` and `exit` edges hold the shape of their profile, so any
+ *    chunk may follow any other whose `exit` matches its `entry`.
  * 3. `requires` lists the verbs without which the screen cannot be crossed.
  *    A chunk is only ever laid into a region once the Scribe already holds
  *    them, which is what makes a soft-lock structurally impossible rather
  *    than something to test for.
+ * 4. `demand` says what it asks of the hands, and a region draws only from
+ *    its own band — which is what makes the crown harder than the foot.
  *
  * Optional side-routes may ask for anything at all — a mote behind a low
  * crawl, a shelf above a vine — because nothing on the way to the exit
  * depends on reaching them.
+ *
+ * ## The numbers you are authoring against
+ *
+ * Read off the constants in `step.ts`, and the reason every letterless step
+ * in this file is exactly two tiles:
+ *
+ * These are **measured against the simulation**, not derived on paper — the
+ * paper numbers were wrong by a tile in both directions:
+ *
+ * | motion | crosses |
+ * |---|---|
+ * | plain running jump | 4 tiles, and 2 tiles of rise |
+ * | double jump (Aleph)| **7 tiles** in open air, 5 under a ceiling |
+ * | double jump + dash | **14 tiles**, 13 under a ceiling |
+ * | wall catch (Chet)  | any sheer face, indefinitely |
+ *
+ * Two consequences run through everything below.
+ *
+ * **A body standing on a floor row has its feet on that row's top edge**, so a
+ * two-tile block is a 48 px step and a three-tile block is 72 px — and 72 is
+ * past a plain jump. Every letterless rise here is therefore two tiles.
+ *
+ * **The Breath is found in Malchut, so from the second region on, every Scribe
+ * has it.** A plain gap can therefore never gate anything narrower than eight
+ * tiles, which is why the Bridge's chasm is roofed rather than widened: under
+ * a ceiling there is no room to jump, a body that walks off the lip falls, and
+ * the dash — which holds `vy` at zero for twelve ticks — is the one motion
+ * that crosses. The same reasoning is why a sheer stone face gates nothing at
+ * all: anyone carrying the Fence climbs it by holding toward it.
  */
 
 export const CHUNK_W = 16;
 export const CHUNK_H = 18;
 
-/** The rows the edge columns must keep clear, so an entering body fits. */
+/** The rows a `ground` edge must keep clear, so an entering body fits. */
 export const EDGE_CLEAR_ROWS = [12, 13, 14, 15];
-/** The rows the edge columns must keep solid, so there is ground to land on. */
+/** The rows a `ground` edge must keep solid, so there is ground to land on. */
 export const EDGE_FLOOR_ROWS = [16, 17];
+/** The same shape, lifted: a `high` edge is a ledge four tiles up. */
+export const HIGH_CLEAR_ROWS = [6, 7, 8, 9];
+export const HIGH_FLOOR_ROWS = [10, 11];
+/**
+ * And beneath a high edge, nothing. That absence is the whole point: a high
+ * stretch is only high if falling off it costs something. It costs a veiling
+ * — time and ground, never a letter and never the run — which is the most a
+ * game with no failure state is allowed to charge.
+ */
+export const HIGH_VOID_ROWS = [12, 13, 14, 15, 16, 17];
+
+/**
+ * A note on gaps, learned the hard way.
+ *
+ * A hole in a screen must go through **both** floor rows. A hole in row 16
+ * with stone under it at row 17 is not a gap at all — it is a trench, and a
+ * Scribe who misses the jump simply walks along the bottom and climbs out the
+ * far side. Measured: it defeated every gated screen in the library at once,
+ * because the Hook and the Bridge were both optional the moment there was
+ * anything to stand on down there. Falling costs a veiling, which is the whole
+ * price this game charges for anything.
+ */
+
+/** The columns both profiles are measured at. */
+export const EDGE_COLUMNS = [0, 1, CHUNK_W - 2, CHUNK_W - 1];
 
 const E = "................";
 const F = "################";
 
-function chunk(id: string, requires: Chunk["requires"], rows: string[]): Chunk {
-  return { id, requires, rows };
+interface Spec {
+  requires?: Chunk["requires"];
+  demand: Chunk["demand"];
+  entry?: Edge;
+  exit?: Edge;
 }
 
+function chunk(id: string, spec: Spec, rows: string[]): Chunk {
+  return {
+    id,
+    requires: spec.requires ?? [],
+    demand: spec.demand,
+    entry: spec.entry ?? "ground",
+    exit: spec.exit ?? "ground",
+    rows,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// the fixed screens
+// ---------------------------------------------------------------------------
+
 /** The screen every region opens on. */
-export const START_CHUNK: Chunk = chunk("start", [], [
+export const START_CHUNK: Chunk = chunk("start", { demand: 1 }, [
   E, E, E, E, E, E, E, E, E, E, E, E, E, E,
   "..S.............",
   E,
@@ -51,7 +123,7 @@ export const START_CHUNK: Chunk = chunk("start", [], [
 ]);
 
 /** The screen every region closes on. */
-export const END_CHUNK: Chunk = chunk("end", [], [
+export const END_CHUNK: Chunk = chunk("end", { demand: 1 }, [
   E, E, E, E, E, E, E, E, E, E, E, E, E, E,
   "..........E.....",
   E,
@@ -59,10 +131,31 @@ export const END_CHUNK: Chunk = chunk("end", [], [
   F,
 ]);
 
-/** The Tav shrine — laid once per region, wherever the seed puts it. */
-export const SHRINE_CHUNK: Chunk = chunk("shrine", [], [
+/**
+ * The Tav shrine, at the foot of the Tree: on the ground, walked into.
+ *
+ * There is exactly one mark per region and it is the only thing standing
+ * between a veiling and the whole region walked again, so the early ones are
+ * given freely.
+ */
+export const SHRINE_LOW: Chunk = chunk("shrine-low", { demand: 1 }, [
   E, E, E, E, E, E, E, E, E, E, E, E, E, E,
   ".......T........",
+  E,
+  F,
+  F,
+]);
+
+/**
+ * The same mark, higher up the Tree, on a shelf — so setting it is a choice
+ * rather than an accident. Two tiles up, inside a plain jump and therefore
+ * never gated, but you have to want it: go up for the safety, or press on and
+ * risk walking the region again.
+ */
+export const SHRINE_HIGH: Chunk = chunk("shrine-high", { demand: 2 }, [
+  E, E, E, E, E, E, E, E, E, E, E, E, E,
+  "......T.........",
+  "......===.......",
   E,
   F,
   F,
@@ -77,7 +170,7 @@ export const SHRINE_CHUNK: Chunk = chunk("shrine", [], [
  * it can only be reached by the power it grants. Every later region inherits
  * the same alcove, so no letter is ever locked behind itself.
  */
-export const LETTER_CHUNK: Chunk = chunk("letter-alcove", [], [
+export const LETTER_CHUNK: Chunk = chunk("letter-alcove", { demand: 1 }, [
   E, E, E, E, E, E, E, E, E, E, E, E, E,
   "......L.........",
   "......===.......",
@@ -91,7 +184,7 @@ export const LETTER_CHUNK: Chunk = chunk("letter-alcove", [], [
  * set aside rather than destroyed. Kept to the same low shelf as the letter
  * alcove, for the same reason — a fragment out of reach is an ability lost.
  */
-export const FRAGMENT_CHUNK: Chunk = chunk("genizah-niche", [], [
+export const FRAGMENT_CHUNK: Chunk = chunk("genizah-niche", { demand: 1 }, [
   E, E, E, E, E, E, E, E, E, E, E, E, E,
   ".........F......",
   "........===.....",
@@ -110,7 +203,7 @@ export const FRAGMENT_CHUNK: Chunk = chunk("genizah-niche", [], [
  * level. That is not politeness, it is the traversal guarantee: a gate that
  * could bar the exit would be a soft-lock the moment a clue proved too hard.
  */
-export const WORD_GATE_CHUNK: Chunk = chunk("word-gate", [], [
+export const WORD_GATE_CHUNK: Chunk = chunk("word-gate", { demand: 1 }, [
   E, E, E, E, E, E, E, E, E,
   ".....######.....",
   "......W...#.....",
@@ -124,7 +217,7 @@ export const WORD_GATE_CHUNK: Chunk = chunk("word-gate", [], [
 ]);
 
 /** Where the House's figure stands, in the seven lower regions. */
-export const HOUSE_CHUNK: Chunk = chunk("house", [], [
+export const HOUSE_CHUNK: Chunk = chunk("house", { demand: 1 }, [
   E, E, E, E, E, E, E, E, E, E, E, E, E, E,
   ".....H..........",
   E,
@@ -132,9 +225,13 @@ export const HOUSE_CHUNK: Chunk = chunk("house", [], [
   F,
 ]);
 
+// ---------------------------------------------------------------------------
+// the taught porch — a first ascent only
+// ---------------------------------------------------------------------------
+
 /**
- * The porch of a first ascent — three screens laid before the seeded body of
- * Malchut, and only for a Scribe who has never climbed.
+ * Three screens laid before the seeded body of Malchut, and only for a Scribe
+ * who has never climbed.
  *
  * They exist so the teaching has somewhere to land. A coaching line that says
  * "press ▲ to leap" has to arrive where there is something to leap, and the
@@ -142,16 +239,13 @@ export const HOUSE_CHUNK: Chunk = chunk("house", [], [
  * screens of a first climb are fixed: flat ground to find the walk in, a low
  * step that must be jumped, and a gap that must be cleared.
  *
- * They ask for nothing. `requires: []` is not a formality here: the Breath is
- * found *inside* Malchut, so the porch has to be crossable by a Scribe holding
- * no letters at all, and the pit is the same three tiles as `pit` — a plain
- * running jump with room to spare.
- *
- * Note what this costs: a first Malchut is three screens longer than the one
- * everyone else climbs that day. The daily seed still governs the whole Tree
- * past the porch; it is only the porch that is a Scribe's own.
+ * They ask for nothing, and they are the only screens left in the library that
+ * are deliberately gentle — everything else Malchut can draw now asks
+ * something. Note what this costs: a first Malchut is three screens longer
+ * than the one everyone else climbs that day. The daily seed still governs the
+ * whole Tree past the porch; it is only the porch that is a Scribe's own.
  */
-export const TEACH_WALK: Chunk = chunk("teach-walk", [], [
+export const TEACH_WALK: Chunk = chunk("teach-walk", { demand: 1 }, [
   E, E, E, E, E, E, E, E, E, E, E, E, E, E,
   "....*......*....",
   E,
@@ -159,7 +253,7 @@ export const TEACH_WALK: Chunk = chunk("teach-walk", [], [
   F,
 ]);
 
-export const TEACH_STEP: Chunk = chunk("teach-step", [], [
+export const TEACH_STEP: Chunk = chunk("teach-step", { demand: 1 }, [
   E, E, E, E, E, E, E, E, E, E, E, E, E,
   ".......*........",
   ".....######.....",
@@ -168,7 +262,7 @@ export const TEACH_STEP: Chunk = chunk("teach-step", [], [
   F,
 ]);
 
-export const TEACH_PIT: Chunk = chunk("teach-pit", [], [
+export const TEACH_PIT: Chunk = chunk("teach-pit", { demand: 1 }, [
   E, E, E, E, E, E, E, E, E, E, E, E, E,
   ".......*........",
   E,
@@ -180,21 +274,24 @@ export const TEACH_PIT: Chunk = chunk("teach-pit", [], [
 /** The porch, in order. Laid only on a first ascent, only in Malchut. */
 export const TEACH_CHUNKS: Chunk[] = [TEACH_WALK, TEACH_STEP, TEACH_PIT];
 
+// ---------------------------------------------------------------------------
+// the body: ground, demand 1 — the gentlest ground still asks a jump
+// ---------------------------------------------------------------------------
+
 /**
  * The body of a region. Each is crossable with the verbs it names and no
  * others; several are crossable with none at all, which is what keeps the
  * first descent through Malchut walkable by a Scribe who holds nothing.
+ *
+ * **Two screens used to be here that asked nothing whatsoever** — `open-field`
+ * was sixteen columns of flat floor with two motes on it, and `pillars` hung
+ * three ledges in the air above an unbroken floor you simply walked under.
+ * Between them they were a third of everything Malchut could draw. They are
+ * gone; `pillars` came back as `pillar-crossing`, with the floor removed, so
+ * the pillars are the road rather than the scenery.
  */
 export const CHUNKS: Chunk[] = [
-  chunk("open-field", [], [
-    E, E, E, E, E, E, E, E, E, E, E, E, E,
-    "......*..*......",
-    E, E,
-    F,
-    F,
-  ]),
-
-  chunk("stepped-rise", [], [
+  chunk("stepped-rise", { demand: 1 }, [
     E, E, E, E, E, E, E, E,
     "........*.......",
     ".......====.....",
@@ -207,7 +304,7 @@ export const CHUNKS: Chunk[] = [
     F,
   ]),
 
-  chunk("pit", [], [
+  chunk("pit", { demand: 1 }, [
     E, E, E, E, E, E, E, E, E, E, E, E, E,
     ".......*........",
     E, E,
@@ -217,15 +314,7 @@ export const CHUNKS: Chunk[] = [
     "######...#######",
   ]),
 
-  chunk("pillars", [], [
-    E, E, E, E, E, E, E, E, E, E,
-    "...==...==...==.",
-    E, E, E, E, E,
-    F,
-    F,
-  ]),
-
-  chunk("upper-shelf", [], [
+  chunk("upper-shelf", { demand: 1 }, [
     E, E, E, E, E, E, E, E, E, E,
     ".....*..*.......",
     "....========....",
@@ -236,7 +325,7 @@ export const CHUNKS: Chunk[] = [
     F,
   ]),
 
-  chunk("crawl-nook", [], [
+  chunk("crawl-nook", { demand: 1 }, [
     E, E, E, E, E, E, E, E, E, E, E, E, E, E,
     "...#######......",
     "...cc*cc........",
@@ -244,17 +333,121 @@ export const CHUNKS: Chunk[] = [
     F,
   ]),
 
-  chunk("thorn-hedge", ["cut"], [
+  // -------------------------------------------------------------------------
+  // ground, demand 2 — Malchut's teeth. Letterless, and still demanding.
+  // -------------------------------------------------------------------------
+
+  /**
+   * Four tiles of nothing — and the reason for the step before it.
+   *
+   * 96 px of gap against 110 px of running jump leaves fourteen pixels, and a
+   * hand that commits a tile early spends all of them: measured, the jump
+   * misses by two. The single raised tile at the lip is what makes it fair.
+   * Taking off from a tile higher than the landing buys another twenty-four
+   * pixels of carry, because the body is in the air for longer on the way
+   * down. Demanding, and not a coin toss.
+   */
+  chunk("long-pit", { demand: 2 }, [
     E, E, E, E, E, E, E, E, E, E, E, E,
+    E,
+    ".......*........",
+    E,
+    "...###..........",
+    "######....######",
+    "######....######",
+  ]),
+
+  /**
+   * Two ledges at the same height with four tiles between them, over a basin.
+   * The jump needs the coyote grace at the lip to make it comfortably — which
+   * the physics has always had and nothing has ever asked for.
+   */
+  chunk("broken-ledges", { demand: 2 }, [
+    E, E, E, E, E, E, E, E, E, E, E, E, E,
+    E,
+    "....==....===...",
+    "...*........*...",
+    "###.........####",
+    "###.........####",
+  ]),
+
+  /**
+   * A staircase in two-tile steps, over a basin. Nothing here is beyond a
+   * plain jump; all of it is beyond walking.
+   */
+  chunk("ledge-stair", { demand: 2 }, [
+    E, E, E, E, E, E, E, E, E, E, E,
+    "........*.......",
+    "........===.....",
+    E,
+    "....===.........",
+    E,
+    "###.........####",
+    "###.........####",
+  ]),
+
+  /**
+   * The pillars, rebuilt. The floor between them is gone, so the three stumps
+   * are the way across rather than decoration hanging over an unbroken road.
+   */
+  chunk("pillar-crossing", { demand: 2 }, [
+    E, E, E, E, E, E, E, E, E, E, E, E, E,
+    E,
+    "...==..==..==...",
+    "....*...*...*...",
+    "##...........###",
+    "##...........###",
+  ]),
+
+  /**
+   * Two stacks standing in the void, each two tiles wide. Nothing here is
+   * beyond a plain jump and every one of them has to be aimed — you leave the
+   * second stack on a jump, not by walking off it, because walking off lands
+   * forty pixels short of the far side.
+   */
+  chunk("narrow-stacks", { demand: 2 }, [
+    E, E, E, E, E, E, E, E, E, E, E, E, E,
+    "..*.....*.......",
+    "..###...###.....",
+    "..###...###.....",
+    "##..........####",
+    "##..........####",
+  ]),
+
+  // -------------------------------------------------------------------------
+  // ground, one verb — the library as it stood
+  // -------------------------------------------------------------------------
+
+  // Eight tiles of it. A barrier four tiles high is not a barrier: the Breath
+  // is found in Malchut, and a double jump tops six.
+  chunk("thorn-hedge", { requires: ["cut"], demand: 1 }, [
+    E, E, E, E, E, E, E, E,
+    ".......^........",
+    ".......^........",
     ".......^........",
     ".......^....*...",
+    ".......^........",
+    ".......^........",
     ".......^........",
     ".......^........",
     F,
     F,
   ]),
 
-  chunk("vine-wall", ["climb"], [
+  /**
+   * A wall with a vine on it — and, honestly, `requires: []`.
+   *
+   * This screen claimed to gate the Ascent for as long as it existed, and it
+   * never did: the Fence climbs *any* sheer stone face by holding toward it,
+   * and every Scribe carries the Fence from Yesod on. So it is what it always
+   * was — a wall with two answers, the vine and the catch — and it says so:
+   * the Fence is what it needs, which also keeps it out of Malchut, where
+   * neither letter has been found. Because the Fence is *had* rather than
+   * reached for, it no longer counts toward a region's quota of screens that
+   * ask for a letter. `vine-ascent` and `flooded-shaft` are the real gates on
+   * Kuf: both put the vine in open air, where there is no face to catch.
+   */
+  chunk("vine-wall", { requires: ["wall-cling"], demand: 2 }, [
     E, E, E, E,
     "........*.......",
     "......####......",
@@ -272,13 +465,13 @@ export const CHUNKS: Chunk[] = [
     F,
   ]),
 
-  chunk("deep-channel", ["swim"], [
+  chunk("deep-channel", { requires: ["swim"], demand: 1 }, [
     E, E, E, E, E, E, E, E, E, E, E, E, E, E, E, E,
     "###wwwwwwwwww###",
     "###wwwwwwwwww###",
   ]),
 
-  chunk("veiled-span", ["reveal"], [
+  chunk("veiled-span", { requires: ["reveal"], demand: 1 }, [
     E, E, E, E, E, E, E, E, E, E, E, E, E, E,
     "....V..V..V.....",
     E,
@@ -286,7 +479,7 @@ export const CHUNKS: Chunk[] = [
     "###..........###",
   ]),
 
-  chunk("anchor-gap", ["grapple"], [
+  chunk("anchor-gap", { requires: ["grapple"], demand: 1 }, [
     E, E, E, E, E, E, E, E, E, E,
     "....A....A......",
     E, E, E, E, E,
@@ -297,7 +490,7 @@ export const CHUNKS: Chunk[] = [
   // One sheer face, six tiles of it. Hold toward the wall and jump: the
   // Fence is climbed by catching it again and again, not by bouncing between
   // two of them.
-  chunk("sheer-wall", ["wall-cling"], [
+  chunk("sheer-wall", { requires: ["wall-cling"], demand: 1 }, [
     E, E, E, E, E, E, E, E, E,
     ".......##.......",
     ".......##.......",
@@ -310,16 +503,33 @@ export const CHUNKS: Chunk[] = [
     F,
   ]),
 
-  // Six tiles. Beyond a running jump, and comfortably within a jump carried
-  // by the Bridge — the dash should feel decisive, not frame-perfect.
-  chunk("wide-chasm", ["dash"], [
-    E, E, E, E, E, E, E, E, E, E, E, E, E, E, E, E,
-    "#####......#####",
-    "#####......#####",
+  /**
+   * A gap under a ceiling — and the ceiling is the whole point.
+   *
+   * Six tiles of open air used to be enough to call a screen dash-gated, and
+   * it was not: the Breath is found in Malchut and carries a body eight tiles,
+   * so every "dash" chasm in the game was being cleared by a Scribe who never
+   * pressed the key. A ceiling settles it. There is no room to jump at all,
+   * and a body that walks off the lip falls; the dash is flat — it holds `vy`
+   * at zero for twelve ticks — so it is the one motion that crosses this.
+   */
+  chunk("wide-chasm", { requires: ["dash"], demand: 1 }, [
+    E, E, E, E, E, E, E, E, E, E, E,
+    E,
+    "..############..",
+    "..############..",
+    E,
+    E,
+    "####........####",
+    "####........####",
   ]),
 
-  chunk("overgrown-pass", ["flame"], [
-    E, E, E, E, E, E, E, E, E, E, E, E,
+  chunk("overgrown-pass", { requires: ["flame"], demand: 1 }, [
+    E, E, E, E, E, E, E, E,
+    ".......GG.......",
+    ".......GG.......",
+    ".......GG.......",
+    ".......GG...*...",
     ".......GG.......",
     ".......GG.......",
     ".......GG.......",
@@ -328,8 +538,12 @@ export const CHUNKS: Chunk[] = [
     F,
   ]),
 
-  chunk("sealed-gate", ["open"], [
-    E, E, E, E, E, E, E, E, E, E, E, E,
+  chunk("sealed-gate", { requires: ["open"], demand: 1 }, [
+    E, E, E, E, E, E, E, E,
+    ".......DD.......",
+    ".......DD.......",
+    ".......DD.......",
+    ".......DD...*...",
     ".......DD.......",
     ".......DD.......",
     ".......DD.......",
@@ -338,7 +552,7 @@ export const CHUNKS: Chunk[] = [
     F,
   ]),
 
-  chunk("high-vault", ["double-jump"], [
+  chunk("high-vault", { requires: ["double-jump"], demand: 1 }, [
     E, E, E, E, E, E, E, E,
     "...=========....",
     E, E, E,
@@ -350,10 +564,390 @@ export const CHUNKS: Chunk[] = [
     F,
   ]),
 
-  chunk("set-stone", ["block"], [
+  chunk("set-stone", { requires: ["block"], demand: 1 }, [
     E, E, E, E, E, E, E, E, E, E, E, E, E, E, E, E,
     "#####.....######",
     "#####.....######",
+  ]),
+
+  // -------------------------------------------------------------------------
+  // ground, one verb, demand 2 — the same letter asked twice
+  // -------------------------------------------------------------------------
+
+  /** Two thickets with a step between them, so the Edge is drawn more than once. */
+  chunk("thorn-tangle", { requires: ["cut"], demand: 2 }, [
+    E, E, E, E, E, E,
+    "....^.......^...",
+    "....^.......^...",
+    "....^.......^...",
+    "....^.......^...",
+    "....^...*...^...",
+    "....^..===..^...",
+    "....^.......^...",
+    "....^.......^...",
+    "....^.......^...",
+    "....^.......^...",
+    F,
+    F,
+  ]),
+
+  /** A door at the top of a two-tile step, and another beyond it. */
+  chunk("double-seal", { requires: ["open"], demand: 2 }, [
+    E, E, E, E, E, E,
+    "....D.......D...",
+    "....D.......D...",
+    "....D.......D...",
+    "....D.......D...",
+    "....D...*...D...",
+    "....D.......D...",
+    "....D.......D...",
+    "....D.......D...",
+    "....D.......D...",
+    "....D.......D...",
+    F,
+    F,
+  ]),
+
+  /** Anchors over a long span, taken one after another rather than singly. */
+  chunk("anchor-chain", { requires: ["grapple"], demand: 2 }, [
+    E, E, E, E, E, E, E, E,
+    "...A...A...A....",
+    E, E, E, E, E, E, E,
+    "##............##",
+    "##............##",
+  ]),
+
+  /** A face twice as tall as the first, caught and caught again. */
+  chunk("sheer-face", { requires: ["wall-cling"], demand: 2 }, [
+    E,
+    "......###.......",
+    "......###.......",
+    "......###.......",
+    "......###.......",
+    "......###.......",
+    "......###.......",
+    "......###.......",
+    "......###.......",
+    "......###.......",
+    "......###.......",
+    "......###.......",
+    "......###.......",
+    "......###.......",
+    "......###.......",
+    "......###.......",
+    F,
+    F,
+  ]),
+
+  /** A channel with a shelf in the middle of it — surface, cross, sink again. */
+  chunk("deep-crossing", { requires: ["swim"], demand: 2 }, [
+    E, E, E, E, E, E, E, E, E, E, E,
+    ".......*........",
+    "......===.......",
+    E,
+    E,
+    E,
+    "##wwwwwwwwwww###",
+    "##wwwwwwwwwww###",
+  ]),
+
+  // -------------------------------------------------------------------------
+  // ground, two verbs — the teeth of the upper Tree
+  // -------------------------------------------------------------------------
+
+  /** Nine tiles. Beyond the Bridge alone, and beyond the Breath alone. */
+  chunk("chasm-vault", { requires: ["dash", "double-jump"], demand: 3 }, [
+    E, E, E, E, E, E, E, E, E, E, E, E, E, E,
+    "......*..*......",
+    E,
+    "###.........####",
+    "###.........####",
+  ]),
+
+  /**
+   * Swim the flooded floor, then climb out of it onto the high road. The two
+   * letters do not merely both appear here — neither is any use without the
+   * other, because the water has no bank and the vine has no footing.
+   */
+  chunk("flooded-shaft", { requires: ["swim", "climb"], demand: 3, exit: "high" }, [
+    E, E, E, E, E, E,
+    "..........v.....",
+    "..........v.....",
+    "..........v.....",
+    "..........v.....",
+    "..........v#####",
+    "..........v#####",
+    "..........v.....",
+    "..........v.....",
+    "..wwwwwwwwv.....",
+    "..wwwwwwwwv.....",
+    "##wwwwwwwww.....",
+    "##wwwwwwwww.....",
+  ]),
+
+  /**
+   * Hook across the gap, and meet a wall on the far side that has to be caught
+   * and caught again. The ring sits low enough to be in reach from the ground —
+   * the Hook carries seven tiles, and from a standing body that is measured
+   * diagonally.
+   */
+  chunk("hooked-face", { requires: ["grapple", "wall-cling"], demand: 3 }, [
+    E, E, E, E, E, E, E, E, E, E, E,
+    ".....A...A......",
+    E,
+    "............##..",
+    "............##..",
+    "............##..",
+    "###..........###",
+    "###..........###",
+  ]),
+
+  /** Thorn standing on ledges that must be climbed as they are cleared. */
+  chunk("thicket-stair", { requires: ["cut", "double-jump"], demand: 3 }, [
+    E, E, E, E, E,
+    "..........^.....",
+    "..........^.....",
+    ".........===....",
+    "......^.........",
+    "......^.........",
+    ".....===........",
+    "...^............",
+    "...^............",
+    "..===...........",
+    E,
+    E,
+    F,
+    F,
+  ]),
+
+  /**
+   * Overgrowth across the way and no floor beyond it. Burn through, and only
+   * then is there anything to see — and only then anything to stand on.
+   */
+  chunk("dark-vault", { requires: ["flame", "reveal"], demand: 3 }, [
+    E, E, E, E, E, E,
+    "..GGGG..........",
+    "..GGGG..........",
+    "..GGGG..........",
+    "..GGGG..........",
+    "..GGGG..........",
+    "..GGGG..........",
+    "..GGGG..........",
+    "..GGGG..........",
+    "..GGGG..........",
+    "..GGGG..........",
+    "##VVVVVVVVVV####",
+    "##..........####",
+  ]),
+
+  /** A door at the bottom of the water, which will not be walked around. */
+  chunk("sealed-deep", { requires: ["open", "swim"], demand: 3 }, [
+    E, E, E, E, E, E, E, E, E, E, E, E,
+    E,
+    "...wwwDDwwww....",
+    "...wwwDDwwww....",
+    "...wwwDDwwww....",
+    "###wwwDDwwww####",
+    "###wwwDDwwww####",
+  ]),
+
+  /** Set a stone in the middle of nothing, cross to it, and set the next. */
+  chunk("stone-chain", { requires: ["block", "dash"], demand: 3 }, [
+    E, E, E, E, E, E, E, E, E, E, E, E, E, E,
+    "......*..*......",
+    E,
+    "##............##",
+    "##............##",
+  ]),
+
+  // -------------------------------------------------------------------------
+  // recognition — screens that are a question rather than a label
+  // -------------------------------------------------------------------------
+
+  /**
+   * Thorn, and then bramble — the Edge and the Flame, one after the other.
+   *
+   * An earlier version of this screen tried to be a genuine fork, a low road
+   * under a thorn and a high road over overgrowth, either of which would do.
+   * It did not survive contact: the high road put the Scribe on a ledge with
+   * the growth at head height and no way to read which of six things the act
+   * key was about to do. Two barriers in a row is the honest version of "this
+   * screen wants more than one letter", and `decoy-door` and `two-answers`
+   * still carry the fork.
+   */
+  chunk("hedge-and-bramble", { requires: ["cut", "flame"], demand: 2 }, [
+    E, E, E, E, E, E,
+    "....^......G....",
+    "....^......G....",
+    "....^......G....",
+    "....^......G....",
+    "....^..*...G....",
+    "....^......G....",
+    "....^......G....",
+    "....^......G....",
+    "....^......G....",
+    "....^......G....",
+    F,
+    F,
+  ]),
+
+  /**
+   * A sealed door standing in plain sight, and a low crawl beneath it that
+   * answers the same passage for nothing. The Door is the obvious reading and
+   * the wrong one — or the lazy one, which in a game with no failure state is
+   * the same lesson.
+   */
+  chunk("decoy-door", { requires: ["open"], demand: 2 }, [
+    E, E, E, E, E, E, E, E,
+    ".....DD.........",
+    ".....DD.........",
+    ".....DD.........",
+    ".....DD...*.....",
+    ".....DD.........",
+    ".....DD.........",
+    ".....DD.........",
+    ".....cc.........",
+    F,
+    F,
+  ]),
+
+  /**
+   * A ring above a gap the Bridge would also cross. The Hook is slower and
+   * lands you on the mote; the Bridge is quicker and carries you past it.
+   * Both are right, and they are right about different things.
+   */
+  chunk("two-answers", { requires: ["grapple", "dash"], demand: 2 }, [
+    E, E, E, E, E, E, E, E, E, E,
+    ".....A....A.....",
+    E,
+    E,
+    ".......*........",
+    E,
+    E,
+    "###..........###",
+    "###..........###",
+  ]),
+
+  // -------------------------------------------------------------------------
+  // height — where the Tree stops being a corridor
+  //
+  // All demand 3, which keeps them out of Malchut and Yesod by the band
+  // rather than by a special case. A high stretch has nothing beneath it: fall
+  // and you are veiled and wake at your mark, which is why `build.ts` never
+  // lets one run more than two screens.
+  // -------------------------------------------------------------------------
+
+  /**
+   * A vine hanging in open air over nothing, rising to the high road.
+   *
+   * This is what gating the Ascent actually takes. There is no stone beside
+   * the vine to catch, and the ledge it leads to is six tiles above the last
+   * floor — so a Scribe without Kuf jumps at it, touches nothing, and falls.
+   */
+  chunk("vine-ascent", { requires: ["climb"], demand: 3, exit: "high" }, [
+    E, E, E, E, E, E,
+    "......v.........",
+    "......v.........",
+    "......v.....*...",
+    "......v.........",
+    "......v.########",
+    "......v.########",
+    "......v.........",
+    "......v.........",
+    "......v.........",
+    "......v.........",
+    "#####...........",
+    "#####...........",
+  ]),
+
+  /**
+   * Up onto the high road, two tiles at a time — the letterless way up, and
+   * the reason a Scribe can never be stranded below a high stretch.
+   */
+  chunk("rise-to-high", { demand: 3, exit: "high" }, [
+    E, E, E, E, E, E,
+    E,
+    E,
+    "..........*.....",
+    E,
+    "..........######",
+    "..........######",
+    "........==......",
+    E,
+    "....==..........",
+    E,
+    "####............",
+    "####............",
+  ]),
+
+  /** The same climb, taken in two motions by a Scribe who carries the Breath. */
+  chunk("vault-to-high", { requires: ["double-jump"], demand: 3, exit: "high" }, [
+    E, E, E, E, E, E,
+    E,
+    E,
+    ".......*........",
+    E,
+    "......##########",
+    "......##########",
+    E,
+    E,
+    "..==............",
+    E,
+    "#####...........",
+    "#####...........",
+  ]),
+
+  /** A gap in the high road, with a very long way down. */
+  chunk("high-span", { demand: 3, entry: "high", exit: "high" }, [
+    E, E, E, E, E, E,
+    E,
+    "...*........*...",
+    E,
+    E,
+    "######....######",
+    "######....######",
+    E, E, E, E, E, E,
+  ]),
+
+  /** The high road, taken ring by ring with nothing at all underneath. */
+  chunk("high-anchors", { requires: ["grapple"], demand: 3, entry: "high", exit: "high" }, [
+    E, E, E, E, E,
+    ".....A....A.....",
+    E, E, E, E,
+    "##............##",
+    "##............##",
+    E, E, E, E, E, E,
+  ]),
+
+  /** And down again — the way back that every high stretch is guaranteed. */
+  chunk("fall-to-ground", { demand: 3, entry: "high", exit: "ground" }, [
+    E, E, E, E, E, E,
+    E,
+    "....*...........",
+    E,
+    E,
+    "######..........",
+    "######..........",
+    E, E, E, E,
+    "......##########",
+    "......##########",
+  ]),
+
+  /** A stepped descent, taken ledge by ledge as the ground comes back up. */
+  chunk("step-to-ground", { demand: 3, entry: "high", exit: "ground" }, [
+    E, E, E, E, E, E,
+    E,
+    "...*............",
+    E,
+    E,
+    "####............",
+    "####............",
+    ".....===........",
+    E,
+    ".........===....",
+    E,
+    ".............###",
+    ".............###",
   ]),
 ];
 
@@ -363,7 +957,8 @@ export const chunksById: Record<string, Chunk> = Object.fromEntries(
     ...TEACH_CHUNKS,
     START_CHUNK,
     END_CHUNK,
-    SHRINE_CHUNK,
+    SHRINE_LOW,
+    SHRINE_HIGH,
     LETTER_CHUNK,
     FRAGMENT_CHUNK,
     WORD_GATE_CHUNK,

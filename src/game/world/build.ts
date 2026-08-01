@@ -12,13 +12,14 @@ import {
   FRAGMENT_CHUNK,
   HOUSE_CHUNK,
   LETTER_CHUNK,
-  SHRINE_CHUNK,
+  SHRINE_HIGH,
+  SHRINE_LOW,
   START_CHUNK,
   TEACH_CHUNKS,
   WORD_GATE_CHUNK,
 } from "./chunks";
 import { MARKER_CHARS, Tile, TILE_CHARS, TILE_SIZE } from "./tiles";
-import type { Chunk, Entity, Player, World } from "./types";
+import type { Chunk, Edge, Entity, Player, World } from "./types";
 
 export const PLAYER_W = 16;
 export const PLAYER_H = 30;
@@ -57,6 +58,37 @@ export function buildRegion(
 ): World {
   const region = regionAt(regionIndex);
   const rng = makeRng((seed ^ (regionIndex * 0x9e3779b9)) >>> 0);
+  const { laid, wordGateTarget } = layout(region, rng, teaching);
+
+  return paint(
+    laid,
+    region.index,
+    region.sefirah,
+    region.letters,
+    rng,
+    region.hasHouse,
+    lightOfTheDay,
+    fragmentsBefore(region.index),
+    wordGateTarget,
+  );
+}
+
+/**
+ * The screens a region is made of, in order — separated from painting them so
+ * that the assembly can be inspected directly rather than inferred from tiles.
+ * `build.test.ts` reads the chain and the demand curve straight off this.
+ */
+export function layoutOf(regionIndex: number, seed: number, teaching = false): Chunk[] {
+  const region = regionAt(regionIndex);
+  return layout(region, makeRng((seed ^ (regionIndex * 0x9e3779b9)) >>> 0), teaching).laid;
+}
+
+function layout(
+  region: ReturnType<typeof regionAt>,
+  rng: () => number,
+  teaching: boolean,
+): { laid: Chunk[]; wordGateTarget: WordGateTarget | undefined } {
+  const regionIndex = region.index;
   const held = lettersOnEntering(regionIndex);
   const verbs = verbsOf(held);
 
@@ -65,16 +97,20 @@ export function buildRegion(
     throw new Error(`Region ${regionIndex} has no passable chunks — the letter order is wrong`);
   }
 
-  // The body: `length` screens drawn from what the Scribe can cross, biased
-  // away from repeating the one just laid so a region does not stutter.
-  const body: Chunk[] = [];
-  let previous = "";
-  for (let i = 0; i < region.length; i += 1) {
-    const pool = passable.filter((c) => c.id !== previous);
-    const pick = (pool.length > 0 ? pool : passable)[randomInt(rng, pool.length > 0 ? pool.length : passable.length)];
-    body.push(pick);
-    previous = pick.id;
-  }
+  // Then the band. A region draws only from screens that ask what it is meant
+  // to ask — and the *floor* is the part that matters, because it is what
+  // keeps a flat walk out of the crown. If the band leaves too little to
+  // choose from the region widens it rather than repeating itself; it never
+  // starves, and it never throws.
+  const banded = withinBand(passable, region.demand);
+
+  const body = layBody(
+    banded,
+    region.length,
+    rng,
+    region.demand.bias === "hard",
+    gatedQuota(region.length, region.demand),
+  );
 
   // The gate's answer is chosen first, from roots the Scribe can already
   // spell with the letters they arrive holding. No target, no gate — which is
@@ -94,12 +130,17 @@ export function buildRegion(
     ...Array.from({ length: region.fragments ?? 0 }, () => FRAGMENT_CHUNK),
     ...region.letters.map(() => LETTER_CHUNK),
     ...(wordGateTarget ? [WORD_GATE_CHUNK] : []),
-    SHRINE_CHUNK,
+    // One mark per region below the Abyss, and none above it. Low at the foot
+    // of the Tree where it is walked into, on a shelf higher up where taking
+    // it is a choice.
+    ...(region.hasShrine ? [region.index <= 3 ? SHRINE_LOW : SHRINE_HIGH] : []),
     ...(region.hasHouse ? [HOUSE_CHUNK] : []),
   ];
-  // Distinct slots when there is room; otherwise several fixed screens share a
-  // position and simply follow one another, which the painter below handles.
-  const positions = Array.from({ length: body.length + 1 }, (_, i) => i);
+
+  // Every fixed screen is entered and left on the ground, so they may only be
+  // slotted where the body is *already* on the ground. `groundSlots` is those
+  // positions; `layBody` guarantees there are enough of them.
+  const positions = groundSlots(body);
   const slots =
     fixed.length <= positions.length
       ? shuffle(rng, positions).slice(0, fixed.length)
@@ -117,17 +158,184 @@ export function buildRegion(
   }
   laid.push(END_CHUNK);
 
-  return paint(
-    laid,
-    region.index,
-    region.sefirah,
-    region.letters,
-    rng,
-    region.hasHouse,
-    lightOfTheDay,
-    fragmentsBefore(region.index),
-    wordGateTarget,
-  );
+  return { laid, wordGateTarget };
+}
+
+/** The fewest distinct screens a region may draw on before it starts to stutter. */
+const MIN_POOL = 5;
+/** How many screens a high stretch may run before it must come back down. */
+const MAX_HIGH_RUN = 2;
+
+/**
+ * The two verbs that are *had* rather than *reached for*.
+ *
+ * The Breath and the Fence live on the leap key, so a Scribe carrying them
+ * uses them without ever deciding to — hold toward a wall and jump, and you
+ * have climbed it. Every other verb needs a key pressed on purpose. That
+ * distinction is what `asksForALetter` is about, and it is the difference
+ * between a region that uses the alphabet and one that merely stands next to
+ * it: a body screen gated only on the Breath asks nothing a plain jump does
+ * not already ask.
+ */
+const HAD_NOT_REACHED_FOR: readonly Verb[] = ["double-jump", "wall-cling"];
+
+function asksForALetter(c: Chunk): boolean {
+  return c.requires.some((v) => !HAD_NOT_REACHED_FOR.includes(v));
+}
+
+/**
+ * How many screens in a region must actually ask for a letter.
+ *
+ * Without this the seed is free to fill a region entirely with screens that
+ * ask nothing but walking and jumping — and it did: measured across the upper
+ * Tree, better than half of all assemblies could be crossed holding only the
+ * two movement keys, because the nine letterless screens in the library were
+ * enough to build a whole region out of. A region that gives you twelve verbs
+ * and then never asks for one is the flat feeling this whole change is about.
+ */
+function gatedQuota(length: number, band: { min: number }): number {
+  return Math.ceil(length * (band.min >= 2 ? 0.6 : 0.5));
+}
+
+/**
+ * The screens inside a region's demand band — widening the band rather than
+ * starving if there are too few.
+ *
+ * The floor is dropped before the ceiling is raised, because the ceiling is
+ * what the band is *for*: a region is allowed to end up gentler than intended,
+ * and never harder.
+ */
+function withinBand(pool: readonly Chunk[], band: { min: number; max: number }): Chunk[] {
+  for (let min = band.min; min >= 1; min -= 1) {
+    const found = pool.filter((c) => c.demand >= min && c.demand <= band.max);
+    if (found.length >= MIN_POOL || min === 1) return found.length > 0 ? found : [...pool];
+  }
+  return [...pool];
+}
+
+/**
+ * The body of a region, as a walk on the edge profiles.
+ *
+ * Every chunk is entered where the last one was left, so a screen can hand the
+ * Scribe on four tiles above the floor instead of resetting them to it — which
+ * is the whole reason the Tree stopped being a corridor. Two rules keep it
+ * honest:
+ *
+ * - It **begins and ends on the ground**, so `START_CHUNK` and `END_CHUNK`
+ *   always connect and every excursion comes home.
+ * - A high stretch runs at most `MAX_HIGH_RUN` screens. There is nothing
+ *   beneath a high edge, so falling costs a veiling; a long stretch of that
+ *   would be a punishment rather than a demand.
+ *
+ * If the pool cannot honour those — no way up, or no way down — the body is
+ * simply laid on the ground, which is what the game did before there were
+ * profiles at all. That fallback is why this can never fail to terminate.
+ */
+function layBody(
+  pool: readonly Chunk[],
+  length: number,
+  rng: () => number,
+  hard: boolean,
+  quota: number,
+): Chunk[] {
+  const ground = pool.filter((c) => c.entry === "ground" && c.exit === "ground");
+  if (ground.length === 0) return [];
+
+  const body: Chunk[] = [];
+  let at: Edge = "ground";
+  let highRun = 0;
+  let previous = "";
+  let gated = 0;
+
+  for (let i = 0; i < length; i += 1) {
+    const remaining = length - i;
+    const owed = quota - gated;
+    const candidates = pool.filter((c) => {
+      if (c.entry !== at) return false;
+      // Come down in time to finish on the floor, and never stay up too long.
+      if (c.exit === "high" && (remaining <= 1 || highRun >= MAX_HIGH_RUN)) return false;
+      // Once only just enough screens are left to meet the quota, every one of
+      // them has to ask for something.
+      if (owed >= remaining && !asksForALetter(c)) return false;
+      return true;
+    });
+    // Prefer not to repeat the screen just laid, so a region does not stutter.
+    const fresh = candidates.filter((c) => c.id !== previous);
+    const from = fresh.length > 0 ? fresh : candidates;
+    if (from.length === 0) {
+      // Stranded up high with nothing to come down on — abandon the height and
+      // finish along the floor rather than build something uncrossable.
+      return layGround(ground, length, rng, hard, quota - gated);
+    }
+    const pick = draw(from, rng, hard);
+    body.push(pick);
+    at = pick.exit;
+    highRun = pick.exit === "high" ? highRun + 1 : 0;
+    if (asksForALetter(pick)) gated += 1;
+    previous = pick.id;
+  }
+
+  return at === "ground" ? body : layGround(ground, length, rng, hard, quota);
+}
+
+/**
+ * The body laid flat, when the profiles cannot be honoured.
+ *
+ * It keeps the quota, which the first version of it did not — and that was
+ * quietly the reason Tiferet asked for a letter less often than Netzach, one
+ * region below it: any assembly that fell back to this path lost its gating
+ * entirely, and the fallback fires more often than you would guess.
+ */
+function layGround(
+  ground: readonly Chunk[],
+  length: number,
+  rng: () => number,
+  hard: boolean,
+  quota: number,
+): Chunk[] {
+  const body: Chunk[] = [];
+  let previous = "";
+  let gated = 0;
+  for (let i = 0; i < length; i += 1) {
+    const owed = quota - gated;
+    const remaining = length - i;
+    const eligible = ground.filter((c) => !(owed >= remaining && !asksForALetter(c)));
+    const pool = eligible.length > 0 ? eligible : ground;
+    const fresh = pool.filter((c) => c.id !== previous);
+    const pick = draw(fresh.length > 0 ? fresh : pool, rng, hard);
+    body.push(pick);
+    if (asksForALetter(pick)) gated += 1;
+    previous = pick.id;
+  }
+  return body;
+}
+
+/**
+ * One screen from the pool — and above the Abyss, the harder of two.
+ *
+ * Drawing twice and keeping the harder is how the supernals end up genuinely
+ * asking more than Gevurah without narrowing what they can draw on: every
+ * screen in the band is still reachable, the distribution simply leans.
+ */
+function draw(pool: readonly Chunk[], rng: () => number, hard: boolean): Chunk {
+  const first = pool[randomInt(rng, pool.length)];
+  if (!hard) return first;
+  const second = pool[randomInt(rng, pool.length)];
+  return second.demand > first.demand ? second : first;
+}
+
+/**
+ * The boundaries a fixed screen may be slotted into — those where the Scribe
+ * is on the ground, since every fixed screen is entered and left there.
+ * Position `i` means "before body screen `i`", so 0 and `body.length` are the
+ * mouth and the tail of the body, both of which are always ground.
+ */
+function groundSlots(body: readonly Chunk[]): number[] {
+  const slots = [0];
+  for (let i = 0; i < body.length; i += 1) {
+    if (body[i].exit === "ground") slots.push(i + 1);
+  }
+  return slots;
 }
 
 /** Writes the laid chunks into a tile grid and lifts the markers into entities. */

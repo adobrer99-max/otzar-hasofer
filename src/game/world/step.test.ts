@@ -92,7 +92,12 @@ describe("the letters and the regions", () => {
         const marks = world.entities.filter((e) => e.kind === "mark");
         const letterDrops = world.entities.filter((e) => e.kind === "letter");
         expect(exits, `region ${i} seed ${seed} exit`).toHaveLength(1);
-        expect(marks.length, `region ${i} seed ${seed} shrine`).toBeGreaterThanOrEqual(1);
+        // One mark below the Abyss, and none above it — Binah, Chochmah and
+        // Keter hold no House and now hold no shrine either, so a veiling
+        // there costs the whole region's ground.
+        expect(marks.length, `region ${i} seed ${seed} shrine`).toBe(
+          regions[i - 1].hasShrine ? 1 : 0,
+        );
         expect(letterDrops.map((e) => e.ref).sort()).toEqual([...regions[i - 1].letters].sort());
       }
     }

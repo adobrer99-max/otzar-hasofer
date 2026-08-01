@@ -130,11 +130,37 @@ export const NO_INPUT: Input = {
   dash: false,
 };
 
+/**
+ * Where a screen is walked into and out of.
+ *
+ * `ground` is the floor every region begins and ends on. `high` is a ledge
+ * four tiles up with nothing beneath it — which is what gives the Tree height
+ * rather than length. A chunk's `exit` must match the next chunk's `entry`,
+ * and `build.ts` chains them accordingly.
+ */
+export type Edge = "ground" | "high";
+
 /** A hand-authored screen. See `chunks.ts` for the connection contract. */
 export interface Chunk {
   id: string;
-  /** Verbs without which this chunk is impassable — it is only laid if held. */
+  /**
+   * Verbs without which this chunk is impassable — it is only laid if held.
+   * More than one is allowed and is where the late Tree gets its teeth: a
+   * screen that asks for the Bridge *and* the Breath cannot be laid until both
+   * are found, which the existing filter already guarantees.
+   */
   requires: Verb[];
+  /**
+   * What the screen asks of the hands: 1 a walk, 2 a demand, 3 a real one.
+   *
+   * Before this existed, `region.length` was the only per-region knob in the
+   * game — it controlled how *long* a region was and nothing about how hard,
+   * so the pool grew with the letters held while every screen in it stayed a
+   * one-press solve, and Keter ended up the easiest ground in the ascent.
+   */
+  demand: 1 | 2 | 3;
+  entry: Edge;
+  exit: Edge;
   /** Rows of characters, `TILE_CHARS` and `MARKER_CHARS`. */
   rows: string[];
 }

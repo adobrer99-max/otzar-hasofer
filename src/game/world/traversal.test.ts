@@ -9,20 +9,25 @@ import { Tile, TILE_SIZE } from "./tiles";
 import { NO_INPUT, type Input, type World } from "./types";
 
 /**
- * A crude Scribe, to prove the ground is walkable.
+ * A **competent** Scribe, to prove the ground is crossable.
  *
- * This is not an attempt at good play — it is a probe. It holds right, jumps
- * when it stops making progress, and reaches for the act key on a rhythm so
- * that hooks are cast, thorns cut and doors opened somewhere along the way.
- * If terrain a real player could cross defeats even this, the region has a
- * hole in it, and that is worth knowing at build time rather than from
- * someone stuck against a wall.
+ * This is the no-soft-lock guarantee and nothing else. It plays properly for
+ * its size: it looks a stride ahead for a floor that is not there, dashes over
+ * a real gap, casts the Hook while falling over nothing, clears a thorn or a
+ * door from a couple of tiles off rather than walking into it, and holds into
+ * a wall to climb it. If terrain defeats *this*, the region has a hole in it.
+ *
+ * What it must not be is the standard the levels are built down to. For most
+ * of this game's life the only traversal test asserted that a bot finishes
+ * every region on every seed — which quietly capped difficulty at whatever a
+ * bot could do, and the levels obliged. `naive` below is the other half: a
+ * Scribe who only walks and jumps, and who is now expected to **fail**.
  */
 function probe(
   world: World,
   ctx: StepContext,
   ticks: number,
-): { reached: number; finished: boolean; lettersTaken: string[] } {
+): { reached: number; finished: boolean; lettersTaken: string[]; ticks: number; veilings: number } {
   const lettersTaken: string[] = [];
   const watching: StepContext = {
     ...ctx,
@@ -143,7 +148,44 @@ function probe(
     reached = Math.max(reached, world.player.x);
   }
 
-  return { reached, finished: world.finished, lettersTaken };
+  return {
+    reached,
+    finished: world.finished,
+    lettersTaken,
+    ticks: world.tick,
+    veilings: world.veilings,
+  };
+}
+
+/**
+ * A Scribe who has learned nothing: hold right, and jump when stalled.
+ *
+ * Its whole job is to fail. Every region of this game used to be crossable
+ * this way — two of the seventeen screens in the library did not obstruct a
+ * walker at all, and each of the rest was a single one-press solve — so a
+ * regression here means the levels have gone soft again, which is exactly the
+ * failure nothing in the suite was watching for.
+ */
+function naive(world: World, _ctx: StepContext, ticks: number): boolean {
+  // A Scribe who has learned nothing uses nothing. The Breath and the Fence
+  // stay, because they live on the leap key and are spent without deciding to;
+  // everything else needs a key pressed on purpose, and this probe never
+  // presses one. So what this measures is exactly the right thing: whether a
+  // region asks for the alphabet at all, or merely stands next to it.
+  const ctx: StepContext = { verbs: ["double-jump", "wall-cling"], graces: [] };
+  let mark = world.player.x;
+  let stuckFor = 0;
+  let holdJump = 0;
+  for (let i = 0; i < ticks && !world.finished; i += 1) {
+    const p = world.player;
+    stuckFor = p.x > mark + 0.5 ? 0 : stuckFor + 1;
+    mark = Math.max(mark, p.x);
+    const wantJump = stuckFor > 6 && i % 9 === 0;
+    if (wantJump) holdJump = 20;
+    else if (holdJump > 0) holdJump -= 1;
+    step(world, { ...NO_INPUT, right: true, jump: wantJump, jumpHeld: holdJump > 0 }, ctx);
+  }
+  return world.finished;
 }
 
 function contextFor(regionIndex: number): StepContext {
@@ -156,15 +198,24 @@ function contextFor(regionIndex: number): StepContext {
   };
 }
 
+/**
+ * How long a competent Scribe is given. The regions ask a great deal more than
+ * they did, and a veiling sends you back to the mark, so a crossing that used
+ * to take a couple of thousand ticks can now take several times that. This is
+ * a budget for *reachability*, not a target: what matters is that the exit is
+ * reached at all.
+ */
+const TICK_BUDGET = 24000;
+
 describe("walking the regions", () => {
-  it("carries a crude Scribe to the exit of every region, on many seeds", () => {
+  it("carries a competent Scribe to the exit of every region, on many seeds", () => {
     const report: string[] = [];
     for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
-      for (const seed of [3, 91, 555, 12345]) {
+      for (const seed of [3, 91, 555, 12345, 777, 40404]) {
         const world = buildRegion(region, seed);
         const ctx = contextFor(region);
         const span = world.width * TILE_SIZE;
-        const { reached, finished, lettersTaken } = probe(world, ctx, 9000);
+        const { reached, finished, lettersTaken } = probe(world, ctx, TICK_BUDGET);
         const fraction = reached / span;
         report.push(`region ${region} seed ${seed}: ${(fraction * 100).toFixed(0)}%${finished ? " (exit)" : ""}`);
         // Not "most of the way" — all the way. Every region, every seed, with
@@ -196,7 +247,7 @@ describe("walking the regions", () => {
       const taught = buildRegion(1, seed, 1, true);
       expect(taught.width, `seed ${seed}: the porch adds three screens`).toBe(plain.width + 3 * 16);
 
-      const { finished } = probe(taught, contextFor(1), 9000);
+      const { finished } = probe(taught, contextFor(1), TICK_BUDGET);
       expect(finished, `taught Malchut, seed ${seed}, stalled`).toBe(true);
     }
   });
@@ -207,6 +258,66 @@ describe("walking the regions", () => {
         buildRegion(region, 7).width,
       );
     }
+  });
+
+  /**
+   * The other half of the guarantee, and the one that was missing.
+   *
+   * Reachability says the ground *can* be crossed. It says nothing about
+   * whether crossing it asks anything, and for most of this game's life
+   * nothing did — so this asserts the complement: past the on-ramp, walking
+   * and jumping is not enough. If this test starts passing, the levels have
+   * gone soft.
+   */
+  it("stops a Scribe who has learned nothing, past the on-ramp", () => {
+    // From Netzach up. Not arbitrary: a Scribe *entering* Malchut, Yesod or
+    // Hod holds no verb that is reached for — Aleph and Chet both live on the
+    // leap key — so those three regions have nothing to gate terrain on and
+    // their difficulty can only ever be execution. The Bridge, found in Hod,
+    // is the first letter that is a decision, and Netzach is the first region
+    // that can ask for one.
+    const FIRST_GATED_REGION = 4;
+    const seeds = [3, 91, 555, 12345, 777, 40404];
+    const crossed: string[] = [];
+    for (let region = FIRST_GATED_REGION; region <= TOTAL_REGIONS; region += 1) {
+      for (const seed of seeds) {
+        const world = buildRegion(region, seed);
+        if (naive(world, contextFor(region), 9000)) {
+          crossed.push(`${regions[region - 1].name}/${seed}`);
+        }
+      }
+    }
+    const total = (TOTAL_REGIONS - FIRST_GATED_REGION + 1) * seeds.length;
+    expect(
+      crossed.length,
+      `walk-and-jump alone crossed ${crossed.length}/${total}: ${crossed.join(", ")}`,
+    ).toBe(0);
+  });
+
+  /**
+   * And the curve itself — the inversion, measured. Keter drew on every chunk
+   * in the library holding every verb in the game, and each of those chunks
+   * was a solved one-press problem, so the crown used to cost a competent
+   * Scribe *less* than the foot of the Tree.
+   */
+  it("costs more the higher the Tree is climbed", () => {
+    const cost = (region: number) => {
+      let ticks = 0;
+      for (const seed of [3, 91, 555, 12345]) {
+        const world = buildRegion(region, seed);
+        const run = probe(world, contextFor(region), TICK_BUDGET);
+        expect(run.finished, `region ${region} seed ${seed} stalled`).toBe(true);
+        // Per screen, so a longer region does not read as a harder one.
+        ticks += run.ticks / (world.width / TILE_SIZE);
+      }
+      return ticks / 4;
+    };
+    const foot = (cost(1) + cost(2)) / 2;
+    const crown = (cost(9) + cost(10)) / 2;
+    expect(
+      crown,
+      `the crown costs ${crown.toFixed(1)} per screen against the foot's ${foot.toFixed(1)}`,
+    ).toBeGreaterThan(foot);
   });
 
   it("never veils a Scribe who simply stands still on the opening ground", () => {

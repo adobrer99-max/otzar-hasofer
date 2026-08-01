@@ -34,8 +34,34 @@ export interface Region {
   fragments?: number;
   /** How many body screens the region is built from. */
   length: number;
+  /**
+   * The band of `Chunk.demand` this region draws from.
+   *
+   * This is the knob the game did not have. `length` was the only per-region
+   * number in the file, and it says how *long* a region is — so as the letters
+   * accumulated the pool of passable screens grew while every screen in it
+   * stayed a one-press solve, and Keter, drawing on all twelve verbs, ended up
+   * the easiest ground in the ascent. The `min` matters more than the `max`:
+   * it is what keeps the gentle screens out of the crown.
+   */
+  demand: {
+    min: 1 | 2 | 3;
+    max: 1 | 2 | 3;
+    /**
+     * Above the Abyss the band alone is not enough — with a floor of 2 the
+     * supernals still average what Gevurah averages. `"hard"` draws twice and
+     * keeps the harder screen, which shifts the region toward the top of its
+     * band without narrowing what it can draw on.
+     */
+    bias?: "hard";
+  };
   /** The three supernals stand above the Abyss and hold no House. */
   hasHouse: boolean;
+  /**
+   * And no mark either. Above the Abyss a veiling costs the whole region's
+   * ground — the only real consequence in a game that will not kill you.
+   */
+  hasShrine: boolean;
   teaching: string;
 }
 
@@ -49,7 +75,9 @@ export const regions: Region[] = [
     letters: ["aleph", "tav"],
     fragments: 2,
     length: 6,
+    demand: { min: 1, max: 2 },
     hasHouse: true,
+    hasShrine: true,
     teaching:
       "The kingdom — the world exactly as it is. Nothing is climbed that was not first stood upon. The breath is given here, at the bottom, because nothing rises without it.",
   },
@@ -62,7 +90,9 @@ export const regions: Region[] = [
     letters: ["chet", "samech", "resh"],
     fragments: 1,
     length: 6,
+    demand: { min: 1, max: 2 },
     hasHouse: true,
+    hasShrine: true,
     teaching:
       "The foundation — the narrow channel everything above must pass through to reach the world. Here you learn to hold a wall instead of resenting it.",
   },
@@ -74,7 +104,9 @@ export const regions: Region[] = [
     middah: "Splendour / Gratitude",
     letters: ["gimel", "heh"],
     length: 6,
+    demand: { min: 1, max: 3 },
     hasHouse: true,
+    hasShrine: true,
     teaching:
       "Splendour — the yielding that makes room, and the thanksgiving that names what was given. What cannot be walked is crossed in one motion.",
   },
@@ -86,7 +118,9 @@ export const regions: Region[] = [
     middah: "Endurance / Victory",
     letters: ["kuf", "lamed"],
     length: 6,
+    demand: { min: 1, max: 3 },
     hasHouse: true,
+    hasShrine: true,
     teaching:
       "Endurance — not the strength of the moment but the strength that outlasts it. The long way up is taken by whoever will make themselves small enough for it.",
   },
@@ -98,7 +132,9 @@ export const regions: Region[] = [
     middah: "Harmony / Truth",
     letters: ["vav", "tzadi"],
     length: 7,
+    demand: { min: 1, max: 3 },
     hasHouse: true,
+    hasShrine: true,
     teaching:
       "Beauty — the balance held between kindness and restraint, which is why it stands at the heart. Its letter is the hook: the one that joins, and holds.",
   },
@@ -110,7 +146,9 @@ export const regions: Region[] = [
     middah: "Discipline / Severity",
     letters: ["zayin", "tet"],
     length: 7,
+    demand: { min: 2, max: 3 },
     hasHouse: true,
+    hasShrine: true,
     teaching:
       "Restraint — the boundary that holds, and the discernment to know where it belongs. The edge given here clears a way; it does not conquer one.",
   },
@@ -122,7 +160,9 @@ export const regions: Region[] = [
     middah: "Loving-kindness",
     letters: ["mem", "nun"],
     length: 7,
+    demand: { min: 2, max: 3 },
     hasHouse: true,
+    hasShrine: true,
     teaching:
       "Loving-kindness — the open tent and the open hand, given without condition. The deep that refused you becomes the way through.",
   },
@@ -134,7 +174,9 @@ export const regions: Region[] = [
     middah: "Understanding",
     letters: ["ayin", "bet", "kaf"],
     length: 8,
+    demand: { min: 2, max: 3, bias: "hard" },
     hasHouse: false,
+    hasShrine: false,
     teaching:
       "Understanding — the womb of forms, where a flash of insight is worked into something that can be held and said. Here the hidden light is simply seen.",
   },
@@ -146,7 +188,9 @@ export const regions: Region[] = [
     middah: "Wisdom",
     letters: ["shin", "dalet"],
     length: 8,
+    demand: { min: 2, max: 3, bias: "hard" },
     hasHouse: false,
+    hasShrine: false,
     teaching:
       "Wisdom — the first point, the flash before the form. Nothing here can be taken; it can only be received, and it arrives as fire.",
   },
@@ -158,7 +202,9 @@ export const regions: Region[] = [
     middah: "Crown / Will",
     letters: ["yod"],
     length: 9,
+    demand: { min: 2, max: 3, bias: "hard" },
     hasHouse: false,
+    hasShrine: false,
     teaching:
       "The crown — will before thought, the silent Aleph beneath all speech. The last letter given is the smallest: the point from which every other letter is written.",
   },
