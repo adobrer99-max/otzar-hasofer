@@ -19,6 +19,7 @@ import { encounterFor, encounterTitle, ILLUMINED_MULTIPLIER, isIllumined, sealed
 import { judge, lightFor, opens, type WordGateTarget, type WordGateVerdict } from "./wordGate";
 import { offerFor, vowKept, type UshpizinOffer } from "./ushpizinOffers";
 import { openWordGate } from "./world/step";
+import { useGameAudio } from "./audio/useGameAudio";
 import { readAscentTime } from "./sacredAscent";
 import { fragmentAt, SCROLL_LETTER, SCROLL_TOTAL, SCROLL_VERSE } from "./scroll";
 import { buildRegion, verbsOf } from "./world/build";
@@ -70,6 +71,10 @@ export function GamePage() {
   // the callback depend on it and re-create on every render.
   const lightRef = useRef(1);
   const encounterRef = useRef<ReturnType<typeof encounterFor>>(undefined);
+  // The audio watches the world on its own frame loop — the HUD sample is far
+  // too slow for a footfall — so it needs the world by reference.
+  const worldRef = useRef<World | null>(null);
+  worldRef.current = world;
 
   // The day's Sacred Time, computed once — the seed, the ascendant letter of
   // the month, and whatever the festival calendar grants.
@@ -112,6 +117,14 @@ export function GamePage() {
     if (time.graceOfTheDay && !lent.includes(time.graceOfTheDay)) lent.push(time.graceOfTheDay);
     return lent;
   }, [letters, granted, time.graceOfTheDay]);
+
+  const audio = useGameAudio(
+    worldRef,
+    world ? regionAt(world.regionIndex).sefirah : undefined,
+    letters,
+    time.snapshot.activeFestivalIds,
+    Boolean(world && isIllumined(encounter, regionAt(world.regionIndex).sefirah)),
+  );
 
   // Persisting is fire-and-forget: a dropped write costs at most one region's
   // progress, and blocking the game on IndexedDB would be far worse.
@@ -164,6 +177,7 @@ export function GamePage() {
 
   const onLetter = useCallback(
     (letterId: string) => {
+      audio.onLetter(letterId);
       setPlate({ kind: "letter", letterId });
       setAscent((prev) =>
         prev && !prev.lettersHeld.includes(letterId)
@@ -171,7 +185,7 @@ export function GamePage() {
           : prev,
       );
     },
-    [],
+    [audio],
   );
 
   /**
@@ -191,10 +205,12 @@ export function GamePage() {
         whole && !prev.lettersHeld.includes(SCROLL_LETTER)
           ? [...prev.lettersHeld, SCROLL_LETTER]
           : prev.lettersHeld;
+      if (whole) audio.onScrollWhole();
+      else audio.onFragment();
       setPlate(whole ? { kind: "scroll-whole" } : { kind: "fragment", index, held: held.length });
       return { ...prev, scrollFragments: held, lettersHeld, updatedAt: new Date().toISOString() };
     });
-  }, []);
+  }, [audio]);
 
   /** The Scribe has stepped into a Word-Gate's porch. */
   const onWordGate = useCallback(() => {
@@ -216,6 +232,7 @@ export function GamePage() {
         world.orGathered += light;
       }
       if (opens(verdict)) {
+        audio.onGateOpened();
         openWordGate(
           world,
           verdict.kind === "target"
@@ -250,7 +267,7 @@ export function GamePage() {
       }
       setPlate({ kind: "word-result", verdict });
     },
-    [world],
+    [world, audio],
   );
 
   /** A guest's bargain accepted — paid for now, or vowed and judged later. */
@@ -284,6 +301,7 @@ export function GamePage() {
   }, []);
 
   const onFinish = useCallback(() => {
+    audio.onArrival();
     // A vow taken at a House is judged here, on the way out, against how the
     // rest of the region was actually crossed.
     if (vow && world) {
@@ -319,7 +337,7 @@ export function GamePage() {
           ? { kind: "abyss" }
           : { kind: "region-done" },
     );
-  }, [ascent?.regionIndex, world, vow]);
+  }, [ascent?.regionIndex, world, vow, audio]);
 
   /**
    * Leave the region. `kindle` spends this region's light to light its
@@ -477,10 +495,39 @@ export function GamePage() {
             <Button variant="subtle" onClick={() => setShowKeys((v) => !v)} aria-expanded={showKeys}>
               {showKeys ? "Hide the keys" : "The keys"}
             </Button>
+            {/* Audio gets its own control, deliberately not tied to
+                prefers-reduced-motion — the deal's sound is currently
+                silenced by that preference with no way to ask for it back. */}
+            <Button
+              variant="subtle"
+              onClick={audio.toggle}
+              aria-pressed={audio.on}
+              title={audio.on ? "Silence the ascent" : "Sound the ascent"}
+            >
+              {audio.on ? "🔔 Sounding" : "🔕 Silent"}
+            </Button>
             <span className={styles.controlsHint}>
               Arrows or WASD to move · Space to leap · X to act · C to cross
             </span>
           </div>
+
+          {audio.on && audio.score && (
+            <p className={styles.nigunLine}>
+              <span className={styles.nigunMode}>
+                {audio.score.mode.name}
+                <span className={`${styles.nigunHeb} hebrew`} lang="he">
+                  {audio.score.mode.hebrew}
+                </span>
+              </span>
+              <span className={styles.nigunNote}>
+                {audio.score.mode.character} The nigun is{" "}
+                <strong>{audio.score.nigun.name}</strong> ({audio.score.nigun.attribution}).{" "}
+                {audio.score.openDegrees.length === 1
+                  ? "You carry no letters yet, so only the tonic sounds."
+                  : `Your letters have opened ${audio.score.openDegrees.length} of the nine degrees.`}
+              </span>
+            </p>
+          )}
 
           {showKeys && <Keys held={ascent.lettersHeld} />}
         </>
