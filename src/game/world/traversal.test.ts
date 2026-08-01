@@ -183,6 +183,32 @@ describe("walking the regions", () => {
     }
   });
 
+  /**
+   * The taught porch is laid for a Scribe on their very first climb — which is
+   * exactly the Scribe holding nothing at all. If the three teaching screens
+   * were crossable only with the Breath, the tutorial would strand the one
+   * person it exists for, so this asks the same question as above with the
+   * porch in place.
+   */
+  it("carries a first-time Scribe across the taught porch of Malchut", () => {
+    for (const seed of [3, 91, 555, 12345]) {
+      const plain = buildRegion(1, seed);
+      const taught = buildRegion(1, seed, 1, true);
+      expect(taught.width, `seed ${seed}: the porch adds three screens`).toBe(plain.width + 3 * 16);
+
+      const { finished } = probe(taught, contextFor(1), 9000);
+      expect(finished, `taught Malchut, seed ${seed}, stalled`).toBe(true);
+    }
+  });
+
+  it("lays the porch in Malchut and nowhere else", () => {
+    for (let region = 2; region <= TOTAL_REGIONS; region += 1) {
+      expect(buildRegion(region, 7, 1, true).width, `region ${region}`).toBe(
+        buildRegion(region, 7).width,
+      );
+    }
+  });
+
   it("never veils a Scribe who simply stands still on the opening ground", () => {
     for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
       const world = buildRegion(region, 42);

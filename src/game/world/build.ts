@@ -14,6 +14,7 @@ import {
   LETTER_CHUNK,
   SHRINE_CHUNK,
   START_CHUNK,
+  TEACH_CHUNKS,
   WORD_GATE_CHUNK,
 } from "./chunks";
 import { MARKER_CHARS, Tile, TILE_CHARS, TILE_SIZE } from "./tiles";
@@ -41,8 +42,19 @@ export function verbsOf(letterIds: readonly string[]): Verb[] {
  * those whose `requires` the Scribe already satisfies **on entering**. A
  * letter found partway through a region is never assumed by that region's own
  * terrain, so there is no order of play that can strand anyone.
+ *
+ * `teaching` prepends the fixed porch (`TEACH_CHUNKS`) to Malchut, so a Scribe
+ * on their first climb meets flat ground, a step and a gap in that order and
+ * the coaching lines have somewhere to land. It changes nothing else: the
+ * seeded body, the letters, the shrine and the exit are exactly what they
+ * would otherwise be.
  */
-export function buildRegion(regionIndex: number, seed: number, lightOfTheDay = 1): World {
+export function buildRegion(
+  regionIndex: number,
+  seed: number,
+  lightOfTheDay = 1,
+  teaching = false,
+): World {
   const region = regionAt(regionIndex);
   const rng = makeRng((seed ^ (regionIndex * 0x9e3779b9)) >>> 0);
   const held = lettersOnEntering(regionIndex);
@@ -94,7 +106,7 @@ export function buildRegion(regionIndex: number, seed: number, lightOfTheDay = 1
       : Array.from({ length: fixed.length }, (_, i) => positions[randomInt(rng, positions.length)] ?? i);
   slots.sort((a, b) => a - b);
 
-  const laid: Chunk[] = [START_CHUNK];
+  const laid: Chunk[] = [START_CHUNK, ...(teaching && regionIndex === 1 ? TEACH_CHUNKS : [])];
   let nextFixed = 0;
   for (let i = 0; i <= body.length; i += 1) {
     while (nextFixed < slots.length && slots[nextFixed] === i) {

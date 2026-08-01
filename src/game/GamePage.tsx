@@ -12,7 +12,24 @@ import {
   type AscentRecord,
   type FormedWord,
 } from "../storage/ascentRepo";
-import { abilityByLetter, type Grace, type Verb } from "./abilities";
+import { abilityByLetter, type Grace, type LetterAbility, type Verb } from "./abilities";
+import {
+  abilitiesFor,
+  BARRIER_OF,
+  controlById,
+  CONTROLS,
+  type Control,
+  type ControlId,
+} from "./controls";
+import {
+  allLearned,
+  forgetTaught,
+  nextLesson,
+  readTaught,
+  retire,
+  writeTaught,
+  type LessonKey,
+} from "./tutorial";
 import { GameCanvas, type HudSample } from "./GameCanvas";
 import { ABYSS_AFTER_REGION, regionAt, regions, TOTAL_REGIONS } from "./regions";
 import { encounterFor, encounterTitle, ILLUMINED_MULTIPLIER, isIllumined, sealedCount } from "./encounter";
@@ -56,8 +73,16 @@ export function GamePage() {
   const [loading, setLoading] = useState(true);
   const [world, setWorld] = useState<World | null>(null);
   const [plate, setPlate] = useState<Plate | null>(null);
-  const [hud, setHud] = useState<HudSample>({ or: 0, veiled: false });
+  const [hud, setHud] = useState<HudSample>({
+    or: 0,
+    veiled: false,
+    x: 0,
+    onGround: false,
+    used: [],
+  });
   const [showKeys, setShowKeys] = useState(false);
+  /** Which lessons this Scribe has already been taught — per Scribe, not per run. */
+  const [taught, setTaught] = useState<LessonKey[]>(() => readTaught());
   /** Graces a guest of the Houses has granted this climb. */
   const [granted, setGranted] = useState<Grace[]>([]);
   /** A vow taken at a House, and the counters it will be judged against. */
@@ -75,6 +100,10 @@ export function GamePage() {
   // too slow for a footfall — so it needs the world by reference.
   const worldRef = useRef<World | null>(null);
   worldRef.current = world;
+  // Read inside callbacks that must not be re-created ten times a second.
+  const taughtRef = useRef<LessonKey[]>(taught);
+  taughtRef.current = taught;
+  const lettersCountRef = useRef(0);
 
   // The day's Sacred Time, computed once — the seed, the ascendant letter of
   // the month, and whatever the festival calendar grants.
@@ -108,7 +137,13 @@ export function GamePage() {
   }, []);
 
   const letters = ascent?.lettersHeld ?? [];
+  lettersCountRef.current = letters.length;
   const verbs: Verb[] = useMemo(() => verbsOf(letters), [letters]);
+  /** The one thing worth saying to a Scribe still finding the keys. */
+  const lesson = useMemo(
+    () => nextLesson({ learned: taught, lettersHeld: letters.length }),
+    [taught, letters.length],
+  );
   // What the Scribe holds, plus whatever the day itself lends and whatever a
   // guest of the Houses has granted. All three are graces, never verbs.
   const graces: Grace[] = useMemo(() => {
@@ -133,9 +168,42 @@ export function GamePage() {
     void saveAscent(next).catch(() => undefined);
   }, []);
 
+  /**
+   * A sample from the loop, ten times a second — and with it, whichever keys
+   * were pressed since the last one. A lesson retires the moment its key is
+   * used, so the teaching answers the hands rather than a timer.
+   */
+  const onSample = useCallback((sample: HudSample) => {
+    setHud(sample);
+    if (sample.used.length === 0) return;
+    setTaught((prev) => {
+      const next = retire({ learned: prev, lettersHeld: lettersCountRef.current }, sample.used);
+      if (next.length === prev.length) return prev;
+      writeTaught(next);
+      return next;
+    });
+  }, []);
+
+  // The last lesson has no key to press — finding a letter is what retires it.
+  useEffect(() => {
+    setTaught((prev) => {
+      const next = retire({ learned: prev, lettersHeld: letters.length }, []);
+      if (next.length === prev.length) return prev;
+      writeTaught(next);
+      return next;
+    });
+  }, [letters.length]);
+
   const enterRegion = useCallback(
     (record: AscentRecord) => {
-      const next = buildRegion(record.regionIndex, record.seed, time.lightOfTheDay);
+      // The porch is laid only for a Scribe who has not finished the teaching,
+      // and `buildRegion` itself limits it to Malchut.
+      const next = buildRegion(
+        record.regionIndex,
+        record.seed,
+        time.lightOfTheDay,
+        !allLearned(taughtRef.current),
+      );
       // The Encounter lights one rung brighter than the rest.
       if (isIllumined(encounter, regionAt(record.regionIndex).sefirah)) {
         next.orPerMote = ILLUMINED_MULTIPLIER;
@@ -451,6 +519,7 @@ export function GamePage() {
           ascent={ascent}
           time={time}
           encounter={encounter}
+          taught={allLearned(taught)}
           onBegin={beginAscent}
           onResume={resumeAscent}
         />
@@ -484,11 +553,17 @@ export function GamePage() {
             onWordGate={onWordGate}
             onHouse={onHouse}
             onFinish={onFinish}
-            onSample={setHud}
+            onSample={onSample}
           />
 
-          <p className={styles.caption} role="status" aria-live="polite">
-            {hud.message ?? region.teaching}
+          {/* A real event always beats coaching, and the region's own teaching
+              is what is left when there is nothing to say. */}
+          <p
+            className={`${styles.caption} ${hud.message === undefined && lesson ? styles.captionLesson : ""}`}
+            role="status"
+            aria-live="polite"
+          >
+            <Press text={hud.message ?? lesson?.text ?? region.teaching} />
           </p>
 
           <div className={styles.controls}>
@@ -506,8 +581,28 @@ export function GamePage() {
             >
               {audio.on ? "🔔 Sounding" : "🔕 Silent"}
             </Button>
+            {allLearned(taught) && (
+              <Button
+                variant="subtle"
+                onClick={() => {
+                  forgetTaught();
+                  setTaught([]);
+                }}
+                title="Walk through the opening lessons again"
+              >
+                Teach me again
+              </Button>
+            )}
+            {/* Seven chips rather than a sentence — the sentence that used to
+                stand here named four of the seven and quietly omitted the two
+                that climb, swim and crawl. */}
             <span className={styles.controlsHint}>
-              Arrows or WASD to move · Space to leap · X to act · C to cross
+              {CONTROLS.map((c) => (
+                <kbd key={c.id} className={styles.kbd} title={`${c.name} — ${c.does}`}>
+                  {c.keys[0]}
+                </kbd>
+              ))}{" "}
+              — all of it under <strong>The keys</strong>.
             </span>
           </div>
 
@@ -558,12 +653,15 @@ function Threshold({
   ascent,
   time,
   encounter,
+  taught,
   onBegin,
   onResume,
 }: {
   ascent: AscentRecord | null;
   time: ReturnType<typeof readAscentTime>;
   encounter: ReturnType<typeof encounterFor>;
+  /** Whether this Scribe has been through the opening lessons before. */
+  taught: boolean;
   onBegin: () => void;
   onResume: () => void;
 }) {
@@ -598,6 +696,13 @@ function Threshold({
           </ul>
         )}
 
+        {/* Open by default for a Scribe who has never climbed — the one place
+            the whole scheme can be read before anything is at stake. */}
+        <details className={styles.waysDetails} open={!taught}>
+          <summary className={styles.waysSummary}>The ways of the body — every key</summary>
+          <Ways held={[]} />
+        </details>
+
         <DecoratedRule />
 
         <div className={styles.thresholdActions}>
@@ -610,7 +715,7 @@ function Threshold({
             </>
           ) : (
             <Button variant="primary" onClick={onBegin}>
-              Begin the ascent
+              {taught ? "Begin the ascent" : "Begin — the way will be shown"}
             </Button>
           )}
         </div>
@@ -688,36 +793,169 @@ function LetterBelt({ held, ascendant }: { held: readonly string[]; ascendant?: 
   );
 }
 
-/** What each letter in hand actually does, for a Scribe who has forgotten. */
-function Keys({ held }: { held: readonly string[] }) {
-  if (held.length === 0) {
-    return (
-      <Callout>
-        You carry no letters yet. Walk right, and the first alcove of Malchut will give you one.
-      </Callout>
-    );
-  }
+/**
+ * Fills `{jump}`, `{act}`, `{up}` and the rest in with the key itself — the
+ * keyboard's name and the pad's glyph, side by side.
+ *
+ * Every instruction in the game goes through here, so a line written once
+ * reads correctly at a desk and on a phone. Text with no tokens simply passes
+ * through, which is why the region's own teaching and the world's messages can
+ * share the same caption.
+ */
+function Press({ text }: { text: string }) {
   return (
-    <ul className={styles.keys}>
-      {held.map((id) => {
-        const ability = abilityByLetter[id];
-        const letter = lettersById[id];
-        if (!ability || !letter) return null;
+    <>
+      {text.split(/(\{[a-z]+\})/).map((part, i) => {
+        const control = /^\{[a-z]+\}$/.test(part)
+          ? controlById[part.slice(1, -1) as ControlId]
+          : undefined;
+        if (!control) return part;
         return (
-          <li key={id} className={styles.key}>
-            <span className={`${styles.keyGlyph} hebrew`} lang="he">
-              {letter.glyph}
-            </span>
-            <div>
-              <p className={styles.keyName}>
-                {ability.name} <span className={styles.keyKind}>{ability.kind === "verb" ? "verb" : "grace"}</span>
-              </p>
-              <p className={styles.keyUse}>{ability.use}</p>
-            </div>
-          </li>
+          <span key={`${part}-${i}`} className={styles.token}>
+            <kbd className={styles.kbd}>{control.keys[0]}</kbd>
+            {/* The arrows are already their own pad glyph — printing both
+                would just read "←←". */}
+            {!control.keys.includes(control.pad) && (
+              <span className={styles.tokenPad} aria-hidden="true">
+                {control.pad}
+              </span>
+            )}
+          </span>
         );
       })}
+    </>
+  );
+}
+
+/**
+ * The ways of the body — every key, what it does, and which letters it serves.
+ *
+ * Generated from `controls.ts` and the `controls` field on each ability, which
+ * is the whole point: the panel cannot fall out of step with the bindings the
+ * canvas actually listens for, and it cannot omit a key the way the old
+ * one-line hint omitted Up and Down.
+ */
+function Ways({ held }: { held: readonly string[] }) {
+  return (
+    <ul className={styles.ways}>
+      {CONTROLS.map((control) => (
+        <Way key={control.id} control={control} held={held} />
+      ))}
     </ul>
+  );
+}
+
+function Way({ control, held }: { control: Control; held: readonly string[] }) {
+  const serves = abilitiesFor(control.id);
+  const waiting = stillWaiting(serves, held);
+  return (
+    <li className={styles.way}>
+      <p className={styles.wayKeys}>
+        {control.keys.map((key) => (
+          <kbd key={key} className={styles.kbd}>
+            {key}
+          </kbd>
+        ))}
+        {!control.keys.includes(control.pad) && (
+          <span className={styles.wayPad} aria-hidden="true" title="On a touch screen">
+            {control.pad}
+          </span>
+        )}
+      </p>
+      <div>
+        <p className={styles.wayName}>{control.name}</p>
+        <p className={styles.wayDoes}>{control.does}</p>
+        {serves.length > 0 && (
+          <ul className={styles.serves}>
+            {serves
+              .filter((ability) => held.includes(ability.letterId))
+              .map((ability) => (
+                <Serves key={ability.letterId} ability={ability} />
+              ))}
+            {/* What the key will become, named by the barriers it will answer
+                rather than by the letters — a Scribe should be able to see
+                that a key has more in it without being told what waits in the
+                next alcove. One line, not one per unfound letter. */}
+            {waiting && (
+              <li className={`${styles.serve} ${styles.serveUnknown}`}>Not yet — {waiting}.</li>
+            )}
+          </ul>
+        )}
+      </div>
+    </li>
+  );
+}
+
+/** What a key will come to answer, once the letters for it are found. */
+function stillWaiting(serves: LetterAbility[], held: readonly string[]): string {
+  const unknown = serves.filter((a) => !held.includes(a.letterId));
+  if (unknown.length === 0) return "";
+  // `crawl` is Tet's grace rather than a verb, and it still answers a tile —
+  // so both sides of the ability are looked up.
+  const barriers = unknown
+    .map((a) => BARRIER_OF[(a.verb ?? a.grace) as keyof typeof BARRIER_OF])
+    .filter((b): b is string => Boolean(b));
+  const nameless = unknown.length - barriers.length;
+  const rest = nameless > 0 ? `${nameless} letter${nameless === 1 ? "" : "s"} you have not found` : "";
+  return [...barriers, rest].filter(Boolean).join(", ");
+}
+
+/** One job the key does, now that its letter is in hand. */
+function Serves({ ability }: { ability: LetterAbility }) {
+  const letter = lettersById[ability.letterId];
+  return (
+    <li className={styles.serve}>
+      {letter && (
+        <>
+          <span className="hebrew" lang="he">
+            {letter.glyph}
+          </span>{" "}
+        </>
+      )}
+      <strong>{ability.name}</strong> — <Press text={ability.press} />
+    </li>
+  );
+}
+
+/** Every key, then what each letter in hand does with it. */
+function Keys({ held }: { held: readonly string[] }) {
+  return (
+    <div className={styles.keysPanel}>
+      <h3 className={styles.keysHeading}>The ways of the body</h3>
+      <Ways held={held} />
+
+      <h3 className={styles.keysHeading}>The letters you carry</h3>
+      {held.length === 0 ? (
+        <Callout>
+          You carry no letters yet. Walk right, and the first alcove of Malchut will give you one.
+        </Callout>
+      ) : (
+        <ul className={styles.keys}>
+          {held.map((id) => {
+            const ability = abilityByLetter[id];
+            const letter = lettersById[id];
+            if (!ability || !letter) return null;
+            return (
+              <li key={id} className={styles.key}>
+                <span className={`${styles.keyGlyph} hebrew`} lang="he">
+                  {letter.glyph}
+                </span>
+                <div>
+                  <p className={styles.keyName}>
+                    {ability.name}{" "}
+                    <span className={styles.keyKind}>{ability.kind === "verb" ? "verb" : "grace"}</span>
+                  </p>
+                  <p className={styles.keyUse}>{ability.use}</p>
+                  <p className={styles.keyPress}>
+                    <Press text={ability.press} />
+                  </p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -801,6 +1039,11 @@ function LetterPlate({ letterId, onClose }: { letterId: string; onClose: () => v
         {ability.hebrew}
       </p>
       <p className={styles.plateUse}>{ability.use}</p>
+      {/* The key, named at the one moment it can be learned. Without this the
+          plate says what the power is and never how to use it. */}
+      <p className={styles.platePress}>
+        <Press text={ability.press} />
+      </p>
       <p className={styles.plateDerivation}>{ability.derivation}</p>
       <p className={styles.plateSource}>
         <Link to={`/guide/letters/${letter.id}`}>Read the chapter on {letter.name} →</Link>

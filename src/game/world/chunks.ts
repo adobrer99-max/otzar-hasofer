@@ -133,6 +133,54 @@ export const HOUSE_CHUNK: Chunk = chunk("house", [], [
 ]);
 
 /**
+ * The porch of a first ascent — three screens laid before the seeded body of
+ * Malchut, and only for a Scribe who has never climbed.
+ *
+ * They exist so the teaching has somewhere to land. A coaching line that says
+ * "press ▲ to leap" has to arrive where there is something to leap, and the
+ * seed cannot be relied on to lay a gap early — or at all. So the first three
+ * screens of a first climb are fixed: flat ground to find the walk in, a low
+ * step that must be jumped, and a gap that must be cleared.
+ *
+ * They ask for nothing. `requires: []` is not a formality here: the Breath is
+ * found *inside* Malchut, so the porch has to be crossable by a Scribe holding
+ * no letters at all, and the pit is the same three tiles as `pit` — a plain
+ * running jump with room to spare.
+ *
+ * Note what this costs: a first Malchut is three screens longer than the one
+ * everyone else climbs that day. The daily seed still governs the whole Tree
+ * past the porch; it is only the porch that is a Scribe's own.
+ */
+export const TEACH_WALK: Chunk = chunk("teach-walk", [], [
+  E, E, E, E, E, E, E, E, E, E, E, E, E, E,
+  "....*......*....",
+  E,
+  F,
+  F,
+]);
+
+export const TEACH_STEP: Chunk = chunk("teach-step", [], [
+  E, E, E, E, E, E, E, E, E, E, E, E, E,
+  ".......*........",
+  ".....######.....",
+  ".....######.....",
+  F,
+  F,
+]);
+
+export const TEACH_PIT: Chunk = chunk("teach-pit", [], [
+  E, E, E, E, E, E, E, E, E, E, E, E, E,
+  ".......*........",
+  E,
+  E,
+  "######...#######",
+  "######...#######",
+]);
+
+/** The porch, in order. Laid only on a first ascent, only in Malchut. */
+export const TEACH_CHUNKS: Chunk[] = [TEACH_WALK, TEACH_STEP, TEACH_PIT];
+
+/**
  * The body of a region. Each is crossable with the verbs it names and no
  * others; several are crossable with none at all, which is what keeps the
  * first descent through Malchut walkable by a Scribe who holds nothing.
@@ -310,7 +358,15 @@ export const CHUNKS: Chunk[] = [
 ];
 
 export const chunksById: Record<string, Chunk> = Object.fromEntries(
-  [...CHUNKS, START_CHUNK, END_CHUNK, SHRINE_CHUNK, LETTER_CHUNK, FRAGMENT_CHUNK, WORD_GATE_CHUNK, HOUSE_CHUNK].map(
-    (c) => [c.id, c],
-  ),
+  [
+    ...CHUNKS,
+    ...TEACH_CHUNKS,
+    START_CHUNK,
+    END_CHUNK,
+    SHRINE_CHUNK,
+    LETTER_CHUNK,
+    FRAGMENT_CHUNK,
+    WORD_GATE_CHUNK,
+    HOUSE_CHUNK,
+  ].map((c) => [c.id, c]),
 );

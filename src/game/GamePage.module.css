@@ -210,8 +210,159 @@
 }
 
 .controlsHint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
   color: var(--text-muted);
   font-size: 0.85rem;
+}
+
+/* ---- the teaching ------------------------------------------------------- */
+
+/* A coaching line is not the region's own voice, so it does not wear it. */
+.captionLesson {
+  color: var(--accent-bright);
+}
+
+.keysPanel {
+  margin-top: var(--space-3);
+}
+
+.keysHeading {
+  margin: var(--space-4) 0 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.keysHeading:first-child {
+  margin-top: 0;
+}
+
+.waysDetails {
+  margin-top: var(--space-3);
+  text-align: left;
+}
+
+.waysSummary {
+  cursor: pointer;
+  color: var(--accent-bright);
+  font-size: 0.9rem;
+}
+
+.ways {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+}
+
+.way {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  background: var(--bg-raised);
+}
+
+.wayKeys {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 7.5rem;
+  max-width: 7.5rem;
+}
+
+.kbd {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  font-family: var(--font-latin);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--accent-bright);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-hairline);
+  border-bottom-width: 2px;
+  border-radius: var(--radius);
+  white-space: nowrap;
+}
+
+.wayPad {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* A key named inside a sentence: the keyboard's and the pad's, together, so
+   one instruction serves both hands. */
+.token {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  white-space: nowrap;
+}
+
+.tokenPad {
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+.wayName {
+  margin: 0;
+  color: var(--text);
+}
+
+.wayDoes {
+  margin: var(--space-1) 0 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.serves {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.serve {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.serveUnknown {
+  opacity: 0.55;
+  font-style: italic;
+}
+
+.keyPress {
+  margin: var(--space-1) 0 0;
+  color: var(--accent-bright);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.platePress {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-hairline);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  color: var(--accent-bright);
+  font-size: 0.92rem;
+  line-height: var(--line-height);
 }
 
 .keys {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { Grace, Verb } from "./abilities";
+import { controlById, KEY_MAP, PAD_LAYOUT, type ControlId } from "./controls";
 import { drawWorld, trackCamera, zoomFor, type Camera } from "./render/draw";
 import { readPalette, type Palette } from "./render/palette";
 import { DT, step, type StepContext } from "./world/step";
@@ -25,6 +26,19 @@ export interface HudSample {
   or: number;
   message?: string;
   veiled: boolean;
+  /** How far along the region the Scribe has come, in pixels. */
+  x: number;
+  onGround: boolean;
+  /**
+   * Which keys have been pressed since the last sample.
+   *
+   * This is the teaching channel and nothing else: a lesson is retired the
+   * moment its key is *used*, so the game stops telling you to press something
+   * you have already pressed. Deliberately read from the keyboard rather than
+   * from the simulation — pressing Up while standing still is still learning
+   * where Up is, and the world would never know.
+   */
+  used: ControlId[];
 }
 
 export interface GameCanvasProps {
@@ -40,28 +54,6 @@ export interface GameCanvasProps {
   onFinish: () => void;
   onSample: (sample: HudSample) => void;
 }
-
-/** Which keys mean what. Arrows and WASD both, because both are expected. */
-const KEY_MAP: Record<string, keyof Input> = {
-  ArrowLeft: "left",
-  ArrowRight: "right",
-  ArrowUp: "up",
-  ArrowDown: "down",
-  KeyA: "left",
-  KeyD: "right",
-  KeyW: "up",
-  KeyS: "down",
-  Space: "jump",
-  KeyZ: "jump",
-  KeyK: "jump",
-  KeyX: "act",
-  KeyJ: "act",
-  KeyE: "act",
-  KeyC: "dash",
-  KeyL: "dash",
-  ShiftLeft: "dash",
-  ShiftRight: "dash",
-};
 
 const MAX_FRAME_SECONDS = 0.25;
 
@@ -80,6 +72,7 @@ export function GameCanvas({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const held = useRef<Set<keyof Input>>(new Set());
   const pressed = useRef<Set<keyof Input>>(new Set());
+  const used = useRef<Set<ControlId>>(new Set());
   const camera = useRef<Camera>({ x: 0, y: 0 });
   const palette = useRef<Palette>(readPalette());
   const view = useRef({ w: 960, h: 432 });
@@ -109,6 +102,7 @@ export function GameCanvas({
       // Edge-triggered actions must fire once per press, not once per repeat.
       if (!held.current.has(action)) pressed.current.add(action);
       held.current.add(action);
+      used.current.add(action);
     } else {
       held.current.delete(action);
     }
@@ -140,10 +134,11 @@ export function GameCanvas({
 
   /** Touch controls: the same actions, pressed with a thumb. */
   const touch = useMemo(
-    () => (action: keyof Input, down: boolean) => {
+    () => (action: ControlId, down: boolean) => {
       if (down) {
         if (!held.current.has(action)) pressed.current.add(action);
         held.current.add(action);
+        used.current.add(action);
       } else {
         held.current.delete(action);
       }
@@ -233,7 +228,11 @@ export function GameCanvas({
           or: world.or,
           message: world.message?.text,
           veiled: world.player.veiled > 0,
+          x: world.player.x,
+          onGround: world.player.onGround,
+          used: [...used.current],
         });
+        used.current.clear();
       }
     };
 
@@ -256,36 +255,40 @@ export function GameCanvas({
     };
   }, [world]);
 
-  const pad = (action: keyof Input, label: string, hint: string) => (
-    <button
-      type="button"
-      className={styles.padKey}
-      aria-label={hint}
-      onPointerDown={(e) => {
-        e.preventDefault();
-        touch(action, true);
-      }}
-      onPointerUp={() => touch(action, false)}
-      onPointerLeave={() => touch(action, false)}
-      onPointerCancel={() => touch(action, false)}
-    >
-      {label}
-    </button>
-  );
+  const pad = (id: ControlId) => {
+    const control = controlById[id];
+    return (
+      <button
+        key={id}
+        type="button"
+        className={`${styles.padKey} ${styles[`pad_${id}`] ?? ""}`}
+        aria-label={control.name}
+        title={control.does}
+        onPointerDown={(e) => {
+          e.preventDefault();
+          touch(id, true);
+        }}
+        onPointerUp={() => touch(id, false)}
+        onPointerLeave={() => touch(id, false)}
+        onPointerCancel={() => touch(id, false)}
+      >
+        {control.pad}
+      </button>
+    );
+  };
 
   return (
     <div className={styles.stage}>
       <canvas ref={canvasRef} className={styles.canvas} aria-label="The Ascent of the Tree" />
+      {/* Every control gets a button — see `PAD_LAYOUT`. The pad is generated
+          rather than written out, which is what keeps a thumb able to reach
+          everything a keyboard can. */}
       <div className={styles.pad} aria-hidden={false}>
-        <div className={styles.padCluster}>
-          {pad("left", "←", "Move left")}
-          {pad("right", "→", "Move right")}
-        </div>
-        <div className={styles.padCluster}>
-          {pad("act", "✶", "Act — hook, cut, burn, open, reveal, set a stone")}
-          {pad("dash", "»", "Dash")}
-          {pad("jump", "▲", "Jump")}
-        </div>
+        {PAD_LAYOUT.map(({ cluster, ids }) => (
+          <div key={cluster} className={`${styles.padCluster} ${styles[cluster]}`}>
+            {ids.map(pad)}
+          </div>
+        ))}
       </div>
     </div>
   );

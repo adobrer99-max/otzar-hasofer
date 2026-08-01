@@ -1,5 +1,8 @@
 import { lettersById } from "../data/letters";
 import type { LetterCard } from "../types/letter";
+// Type-only, so there is no runtime cycle: `controls.ts` reads this file's
+// abilities back to build its reference panel.
+import type { ControlId } from "./controls";
 
 /**
  * The twenty-two letters, as the Scribe's twenty-two verbs.
@@ -59,6 +62,28 @@ export interface LetterAbility {
   use: string;
   /** Why this letter carries this power — the line that earns it. */
   derivation: string;
+  /**
+   * The keys this ability answers to. Absent when it needs none — most graces
+   * are simply true of the Scribe once found. Plural because several powers
+   * genuinely take two: the vine is climbed with Up and descended with Down.
+   */
+  controls?: ControlId[];
+  /**
+   * How to use it **naming the key**, for the plate that grants it.
+   *
+   * This is the field the game was missing. The acquisition plate is the only
+   * moment a new power is ever explained, and until now it said what the power
+   * *was* and never once said which key to press — so eleven of the twelve
+   * verbs arrived undocumented. Every ability has this line, including the
+   * ones whose honest answer is that there is no key.
+   *
+   * `{jump}`, `{act}`, `{up}` and the rest are control ids, filled in at
+   * render with both the keyboard's key and the pad's glyph — so one line
+   * serves a Scribe at a desk and a Scribe with a thumb, and neither is told
+   * to press something their device does not have. The tokens must agree
+   * exactly with `controls` above; the test holds them to it.
+   */
+  press: string;
 }
 
 export const abilities: LetterAbility[] = [
@@ -71,6 +96,8 @@ export const abilities: LetterAbility[] = [
     verb: "double-jump",
     use: "Jump a second time in open air.",
     derivation: "The silent breath that precedes all speech — air itself, and so the only step that needs no ground.",
+    controls: ["jump"],
+    press: "Press {jump} a second time while in open air.",
   },
   {
     letterId: "bet",
@@ -80,6 +107,8 @@ export const abilities: LetterAbility[] = [
     verb: "block",
     use: "Set a standing stone beneath you — one at a time, until you take it back.",
     derivation: "Bet is the house: the first boundary, the container that makes a space able to hold something.",
+    controls: ["act"],
+    press: "{act} sets a stone beneath you; {act} again takes it back.",
   },
   {
     letterId: "gimel",
@@ -89,6 +118,8 @@ export const abilities: LetterAbility[] = [
     verb: "dash",
     use: "Cross a gap in one motion, through the air.",
     derivation: "Gimel is the camel — the beast that crosses what cannot be crossed on foot, and the bridge it makes.",
+    controls: ["dash"],
+    press: "Press {dash} to cross — through the air, and only on dry land.",
   },
   {
     letterId: "dalet",
@@ -98,6 +129,8 @@ export const abilities: LetterAbility[] = [
     verb: "open",
     use: "Open what is sealed.",
     derivation: "Dalet is the door and the threshold — and the poor one who stands at it waiting to be let through.",
+    controls: ["act"],
+    press: "{act} while standing beside a sealed door.",
   },
   {
     letterId: "vav",
@@ -107,6 +140,8 @@ export const abilities: LetterAbility[] = [
     verb: "grapple",
     use: "Cast to an anchor and be drawn to it.",
     derivation: "Vav is the hook, the peg, the connective — the letter that joins one thing to another and holds.",
+    controls: ["act"],
+    press: "{act} within reach of an anchor ring — the nearest one ahead of you is taken.",
   },
   {
     letterId: "zayin",
@@ -116,6 +151,8 @@ export const abilities: LetterAbility[] = [
     verb: "cut",
     use: "Cut through the thorn.",
     derivation: "Zayin is the sword — and the crown upon it. What it clears, it clears in order to pass, not to conquer.",
+    controls: ["act"],
+    press: "{act} while standing beside a thornbrake.",
   },
   {
     letterId: "chet",
@@ -125,6 +162,8 @@ export const abilities: LetterAbility[] = [
     verb: "wall-cling",
     use: "Hold to a sheer wall, and climb it by leaping.",
     derivation: "Chet is the fence, the enclosure — the wall that bounds a life, met here as something to hold rather than resent.",
+    controls: ["jump"],
+    press: "Hold toward the wall to catch it, then {jump} — again and again, up the face.",
   },
   {
     letterId: "kuf",
@@ -134,6 +173,8 @@ export const abilities: LetterAbility[] = [
     verb: "climb",
     use: "Climb the hanging vine and the knotted rope.",
     derivation: "Kuf is the monkey and the eye of the needle — the narrow way up, taken by whoever will make themselves small enough.",
+    controls: ["up", "down"],
+    press: "{up} to climb a hanging vine, {down} to come back down.",
   },
   {
     letterId: "ayin",
@@ -143,6 +184,8 @@ export const abilities: LetterAbility[] = [
     verb: "reveal",
     use: "See what is hidden — the veiled stone becomes solid underfoot.",
     derivation: "Ayin is the eye and the wellspring both. The hidden light, Or HaGanuz, was never absent — only unseen.",
+    controls: ["act"],
+    press: "{act} once, anywhere in a region. What was veiled stays revealed.",
   },
   {
     letterId: "shin",
@@ -152,6 +195,8 @@ export const abilities: LetterAbility[] = [
     verb: "flame",
     use: "Carry fire: the dark opens, and what has overgrown burns back.",
     derivation: "Shin is the tooth and the fire — and Shanah, the year that turns by consuming what came before.",
+    controls: ["act"],
+    press: "{act} while standing beside overgrowth.",
   },
   {
     letterId: "mem",
@@ -161,6 +206,8 @@ export const abilities: LetterAbility[] = [
     verb: "swim",
     use: "Enter the deep water and move within it.",
     derivation: "Mem is water and womb. Without it the deep only refuses you; with it the deep is a way through.",
+    controls: ["up", "down"],
+    press: "In deep water, {up} to rise and {down} to sink.",
   },
   {
     letterId: "tav",
@@ -170,6 +217,7 @@ export const abilities: LetterAbility[] = [
     verb: "mark",
     use: "Set your mark. Whatever befalls you, you wake here.",
     derivation: "Tav is the sign, the mark, and Emet — truth. The last letter, which is why it is the one you can return to.",
+    press: "No key. Walk to a shrine and your mark is set there.",
   },
 
   // ---- the ten graces ----------------------------------------------------
@@ -181,6 +229,7 @@ export const abilities: LetterAbility[] = [
     grace: "light",
     use: "The light you carry reaches further into the dark.",
     derivation: "Yod is the hand, and the smallest letter — the point from which every other letter is written.",
+    press: "No key — the light you carry simply reaches further.",
   },
   {
     letterId: "heh",
@@ -190,6 +239,7 @@ export const abilities: LetterAbility[] = [
     grace: "farsight",
     use: "The view widens; you see the ground before you reach it.",
     derivation: "Heh is the window and the breath of revelation — the opening cut in a wall so that what is outside can be known.",
+    press: "No key — the view is already wider than it was.",
   },
   {
     letterId: "nun",
@@ -199,6 +249,7 @@ export const abilities: LetterAbility[] = [
     grace: "swift-water",
     use: "You move through water as though it were your own element.",
     derivation: "Nun is the fish and the soul — at home in the depth that everything else must hold its breath through.",
+    press: "No key — water stops slowing you.",
   },
   {
     letterId: "samech",
@@ -208,6 +259,8 @@ export const abilities: LetterAbility[] = [
     grace: "slow-fall",
     use: "Hold, and you descend slowly, as though upheld.",
     derivation: "Samech is the prop, the pillar, the closed circle — the support that is there whether or not it is leaned upon.",
+    controls: ["jump"],
+    press: "Hold {jump} as you fall and the descent gentles.",
   },
   {
     letterId: "lamed",
@@ -217,6 +270,7 @@ export const abilities: LetterAbility[] = [
     grace: "high-jump",
     use: "You rise higher from every leap.",
     derivation: "Lamed is the goad and the teacher — the only letter that rises above the line, reaching past where it stands.",
+    press: "No key — every leap is already higher.",
   },
   {
     letterId: "kaf",
@@ -226,6 +280,8 @@ export const abilities: LetterAbility[] = [
     grace: "second-stone",
     use: "You may hold a second standing stone.",
     derivation: "Kaf is the open palm, the hand that bends to hold — capacity itself, which is why it grants one more.",
+    controls: ["act"],
+    press: "No new key: {act} now sets a second stone before the first must be taken back.",
   },
   {
     letterId: "tzadi",
@@ -235,6 +291,7 @@ export const abilities: LetterAbility[] = [
     grace: "draw-motes",
     use: "Light nearby comes to you of its own accord.",
     derivation: "Tzadi is the fishhook and the righteous one — the tzadik, toward whom things quietly gather.",
+    press: "No key — light lying nearby comes to you.",
   },
   {
     letterId: "tet",
@@ -244,6 +301,8 @@ export const abilities: LetterAbility[] = [
     grace: "crawl",
     use: "You can fold yourself into the low passage.",
     derivation: "Tet is the coiled serpent in the basket — the good that is hidden, and reachable only by going low.",
+    controls: ["down"],
+    press: "Hold {down} to fold yourself small, then walk into the low passage.",
   },
   {
     letterId: "peh",
@@ -253,6 +312,7 @@ export const abilities: LetterAbility[] = [
     grace: "speech",
     use: "You can speak with those who keep the Houses, and be answered.",
     derivation: "Peh is the mouth and the opening — speech, without which the figures of the Houses stand silent.",
+    press: "No key — walk up to a figure of the House and they will answer.",
   },
   {
     letterId: "resh",
@@ -262,6 +322,7 @@ export const abilities: LetterAbility[] = [
     grace: "return",
     use: "Return at once to where this region began.",
     derivation: "Resh is the head and the beginning — and the poor one, who is always able to start again.",
+    press: "No key yet — the Beginning is not bound to anything you can press.",
   },
 ];
 
