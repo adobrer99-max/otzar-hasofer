@@ -578,12 +578,30 @@ export const CHUNKS: Chunk[] = [
     "###..........###",
   ]),
 
+  /**
+   * Two rings over ten tiles of nothing — and it was uncrossable by a Scribe
+   * holding the Hook and nothing else, which is all this screen declares.
+   *
+   * Not because the Hook is weak. The graph crosses it: a cast reaches seven
+   * tiles and the rings are within that. What a body cannot do is *make the
+   * distance between casts* — the throw off a ring is three hundred upward
+   * against a jump's four hundred and seventy, so it hangs for about a third of
+   * a second, and five tiles of drift in that third of a second is more than
+   * the throw gives you. Every Scribe who ever crossed this had the Bridge as
+   * well, because on a line the Hook is found at Vav and the Bridge at Gimel,
+   * three rungs earlier.
+   *
+   * So: three rings rather than two, three tiles apart rather than five, and
+   * lower — the cast from the lip is a shorter, flatter line. Measured, six of
+   * six holding only the Hook, and the graph still refuses it to a Scribe
+   * holding nothing, which is what the ten tiles are for.
+   */
   chunk("anchor-gap", { requires: ["grapple"], demand: 1 }, [
-    E, E, E, E, E, E, E, E, E, E,
-    "....A....A......",
-    E, E, E, E, E,
-    "###..........###",
-    "###..........###",
+    E, E, E, E, E, E, E, E, E, E, E, E, E,
+    "...A..A..A......",
+    E, E,
+    "####........####",
+    "####........####",
   ]),
 
   // One sheer face, six tiles of it. Hold toward the wall and jump: the
@@ -713,10 +731,33 @@ export const CHUNKS: Chunk[] = [
     F,
   ]),
 
+  /**
+   * **Bet sets dry land where there was none — and it has to be a rise, not a
+   * gap.** This screen was five tiles of hole and it was uncrossable by a
+   * Scribe holding Bet and nothing else, at every width the hole was tried at.
+   *
+   * The arithmetic is unforgiving and is worth writing down, because the
+   * obvious screen for the House is a gap and the obvious screen cannot work.
+   * A stone goes down *beside* the Scribe at the height of their own feet, so
+   * it is worth exactly one tile across and one tile up. A plain running jump
+   * crosses five. So a hole that Bet is needed for must be six — and the leap
+   * off the stone is then five, which is the plain jump exactly, with no tile
+   * in hand. There is no width at which the gap both needs a stone and gives
+   * the stone anywhere to spare, and measuring found none: the design window is
+   * one tile wide and lands on the limit.
+   *
+   * A **step** has the room the gap does not. Three tiles of wall is a row past
+   * a plain jump and out of reach; from a stone set at its foot, a Scribe
+   * starts a row higher and tops it with a tile to spare. Measured, six of six
+   * holding only the House, and the graph still refuses it to anything less.
+   */
   chunk("set-stone", { requires: ["block"], demand: 1 }, [
-    E, E, E, E, E, E, E, E, E, E, E, E, E, E, E, E,
-    "#####.....######",
-    "#####.....######",
+    E, E, E, E, E, E, E, E, E, E, E, E, E,
+    ".......##.......",
+    ".......##.......",
+    ".......##.......",
+    F,
+    F,
   ]),
 
   // -------------------------------------------------------------------------
@@ -930,15 +971,20 @@ export const CHUNKS: Chunk[] = [
    *
    * Only one stone stands at a time, so "the next" takes back the one underfoot
    * — which is fine in the air and fatal on the ground. The crossing is a leap
-   * from each bank onto its own stone and a leap between them, and twelve tiles
-   * of nothing does not yield to two stones and a dash without the Breath.
+   * from each bank onto its own stone and a leap between them, and ten tiles of
+   * nothing does not yield to two stones and a dash without the Breath.
+   *
+   * Twelve, as first authored, did not yield to a body holding all three either
+   * — measured, none of six. Ten is crossable holding exactly what it asks and
+   * still refused by the graph to anything less, which is the whole of what a
+   * gate has to be.
    */
   chunk("stone-chain", { requires: ["block", "dash", "double-jump"], demand: 3 }, [
     E, E, E, E, E, E, E, E, E, E, E, E, E, E,
     "......*..*......",
     E,
-    "##............##",
-    "##............##",
+    "###..........###",
+    "###..........###",
   ]),
 
   // -------------------------------------------------------------------------
@@ -1136,41 +1182,64 @@ export const CHUNKS: Chunk[] = [
   ]),
 
   /** The same climb, taken in two motions by a Scribe who carries the Breath. */
+  /**
+   * Up onto the high road on the Breath alone — and it was one ledge and a
+   * four-row vault, which nothing could do.
+   *
+   * The Breath rises about four tiles from a standing start and the whole climb
+   * here is six, so it was authored as two steps of three and a bit and
+   * measured as none of six. Two ledges, three rows apart, is two steps the
+   * Breath makes with a tile in hand — and three rows is still a row more than
+   * a plain jump, so a Scribe without it is stopped at the first of them, which
+   * the graph confirms.
+   */
   chunk("vault-to-high", { requires: ["double-jump"], demand: 3, exit: "high" }, [
     E, E, E, E, E, E,
     E,
     E,
     ".......*........",
     E,
-    "......##########",
-    "......##########",
+    "..........######",
+    "..........######",
+    "......===.......",
+    "..===...........",
     E,
-    E,
-    "..==............",
     E,
     "#####...........",
     "#####...........",
   ]),
 
   /** A gap in the high road, with a very long way down. */
+  /**
+   * A gap in the high road, and it was **four tiles** — which is exactly what a
+   * body with no letters at all crosses, and this screen declares none. Exactly
+   * the limit is not a gap a Scribe clears, it is a gap they clear on the seeds
+   * where nothing else went wrong: none of six. Three tiles is still a jump and
+   * it is a jump with a tile in hand.
+   */
   chunk("high-span", { demand: 3, entry: "high", exit: "high" }, [
     E, E, E, E, E, E,
     E,
     "...*........*...",
     E,
     E,
-    "######....######",
-    "######....######",
+    "######...#######",
+    "######...#######",
     E, E, E, E, E, E,
   ]),
 
-  /** The high road, taken ring by ring with nothing at all underneath. */
+  /**
+   * The high road, taken ring by ring with nothing at all underneath — and
+   * spaced the way `anchor-gap` had to be, for the same measured reason: the
+   * throw off a ring hangs a third of a second, and rings five tiles apart are
+   * further than that carries. Three tiles, and three of them.
+   */
   chunk("high-anchors", { requires: ["grapple"], demand: 3, entry: "high", exit: "high" }, [
-    E, E, E, E, E,
-    ".....A....A.....",
-    E, E, E, E,
-    "##............##",
-    "##............##",
+    E, E, E, E, E, E, E,
+    "...A..A..A......",
+    E, E,
+    "####........####",
+    "####........####",
     E, E, E, E, E, E,
   ]),
 

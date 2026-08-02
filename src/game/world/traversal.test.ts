@@ -7,11 +7,11 @@ import { solvableRoots } from "../wordGate";
 import { makeRng, randomInt } from "../rng";
 import { lettersFrom, otherEnd, pathsFrom } from "../tree";
 import type { SefirahId } from "../../types/letter";
-import { buildPath, buildRegion, PLAYER_H, rowsFor, tileAt, verbsOf } from "./build";
+import { buildPath, buildRegion, paintChunks, PLAYER_H, rowsFor, tileAt, verbsOf } from "./build";
 import { MAX_JUMP_RISE, openWordGate, step, type StepContext } from "./step";
-import { CHUNK_H, CHUNK_W } from "./chunks";
+import { CHUNK_H, CHUNK_W, CHUNKS, END_CHUNK, START_CHUNK } from "./chunks";
 import { Tile, TILE_SIZE } from "./tiles";
-import { NO_INPUT, type Input, type World } from "./types";
+import { NO_INPUT, type Chunk, type Input, type World } from "./types";
 
 /**
  * A **competent** Scribe, to prove the ground is crossable.
@@ -183,7 +183,7 @@ export function steering(world: World, verbs: readonly Verb[] = []) {
   };
 }
 
-function probe(
+export function probe(
   world: World,
   ctx: StepContext,
   ticks: number,
@@ -219,6 +219,8 @@ function probe(
   let climbTop = world.player.y;
   let sinceCling = 99;
   let gaveUp = 0;
+  /** Whether this fall has already reached for something — see `act`. */
+  let reached_ = false;
   /**
    * **A veiling is not a reset, and that is a finding rather than an oversight.**
    *
@@ -309,6 +311,84 @@ function probe(
       if (Math.abs(husk.y - p.y) > TILE_SIZE * 2) continue;
       if (nearestHusk === undefined || dx < nearestHusk) nearestHusk = dx;
     }
+
+    /**
+     * **Set a stone at the lip of a gap**, which is the whole of what Bet is
+     * for and the one move this probe could not make.
+     *
+     * `toggleStone` puts a stone beside the Scribe at the height of their own
+     * feet, so the move is: stand at the edge, set, step up onto it, and leap
+     * from a tile further out and a tile higher. Every part of that happens on
+     * the ground, and the probe never stood on the ground at a lip — it sees a
+     * gap and jumps, so the only act it ever pressed was the unsticking rhythm,
+     * by which point it was somewhere a stone did no good. Measured on
+     * `set-stone`, whose entire content is one gap and one stone: none of six,
+     * at every shape the gap was tried in.
+     *
+     * Once per gap, and only while nothing is set — a second press takes back
+     * the stone under your feet, because one stands at a time.
+     */
+    const wantStoneAt = {
+      x: ownX + (towards || p.facing),
+      y: Math.floor((p.y + p.h - 1) / TILE_SIZE),
+    };
+    /** A vine within the body — see `up` below. */
+    const onAVine =
+      ctx.verbs.includes("climb") &&
+      [0, 1].some((up) => tileAt(world, ownX, Math.floor((p.y + p.h - 1) / TILE_SIZE) - up) === Tile.Vine);
+
+    const holdsStone = ctx.verbs.includes("block") && !ctx.verbs.includes("grapple");
+    /**
+     * A step too tall to jump, seen **a stride before reaching it** — which is
+     * the only place a stone can go, since `toggleStone` needs the tile beside
+     * you to be empty and walking up to a wall fills it.
+     */
+    const wallAhead =
+      tileAt(world, ownX + towards * 2, wantStoneAt.y) === Tile.Stone &&
+      tileAt(world, ownX + towards * 2, wantStoneAt.y - 1) === Tile.Stone;
+    /**
+     * **Only where a stone helps.** Setting one whenever the probe felt stuck
+     * was tried and is worse than doing nothing: on open ground it lays a solid
+     * tile at body height directly in its own path, cannot pass it, and cannot
+     * take it back — measured, the probe walled itself in five screens short of
+     * the wall it was walking towards and stood there for the rest of its
+     * budget. A gap at the feet or a step too tall are the two places dry land
+     * is worth making.
+     */
+    const setStone =
+      p.onGround &&
+      holdsStone &&
+      (gapAhead || wallAhead) &&
+      // Not "no stone anywhere" — one already standing somewhere behind is
+      // taken back by setting this one, which is what a Scribe wants. What must
+      // not happen is pressing twice in the same place, because the second
+      // press unmakes the step you are about to climb onto.
+      !world.placed.some((s) => s.x === wantStoneAt.x && s.y === wantStoneAt.y);
+
+    // Reaching out over nothing — and **once per fall only when the reach is
+    // Bet's**, which is the narrowest true statement of it.
+    //
+    // The Hook wants the key held: it self-limits through `grappleTo` while it
+    // is flying, and it wants another cast the moment it has thrown the Scribe
+    // at the next ring. Latching *it* was tried in both obvious shapes — once
+    // per fall, and reset on a throw — and both crossed `set-stone` and broke
+    // `anchor-chain` and `hooked-face`, because a press during the sixteen
+    // ticks of `grappleCooldown` does nothing at all and still counts as the
+    // one press you were allowed.
+    //
+    // Bet is the opposite and is the only verb on this key that is: pressing
+    // again always does something, and what it does is take back the stone you
+    // are standing on. Where a Scribe holds both, `applyVerbs` reaches for the
+    // Hook first, so the latch is off exactly when it would be wrong.
+    const reaching = !p.onGround && p.vy > 0 && !groundBelow && !p.grappleTo;
+    // And **never once a stone already stands**: a second press takes the first
+    // one back, so a Scribe who set a stone at the lip and then pressed again
+    // on the way down destroyed the thing they were falling towards. Measured
+    // on `set-stone`: the lip stone was laid correctly every time, unmade three
+    // ticks later, and the probe went into the pit sixty-seven times.
+    const reachOnce =
+      reaching && (!holdsStone || (!reached_ && world.placed.length === 0));
+    reached_ = p.onGround ? false : reached_ || reaching;
 
     // Optional pockets — a Word-Gate's porch above all — are places a body
     // holding right can climb into and then press against a sealed wall
@@ -456,8 +536,23 @@ function probe(
       left: backingOff || grounding ? towards > 0 : towards < 0,
       jump: wantJump,
       jumpHeld: holdJump > 0 || stuckFor > 6,
-      // Rise in water and up vines.
-      up: p.inWater || p.climbing,
+      /**
+       * Rise in water, and up vines.
+       *
+       * **`p.climbing` alone was a circle and the probe never once climbed a
+       * vine.** `step` starts a climb on `onVine && (up || down || climbing)`,
+       * and this asked for `p.climbing` — which does not become true until the
+       * key has been pressed, which did not happen until it was true. Every
+       * vine in the game was scenery to this probe, which is why `vine-ascent`
+       * came out uncrossable at every shape it was tried in, and it is a little
+       * frightening that the route graph's own note — that leaving vines out
+       * made a third of the Tree unreachable — was written about the *graph*
+       * while the hands could not use one either.
+       *
+       * So: a vine underfoot and the way on above, and the first press is what
+       * begins it.
+       */
+      up: p.inWater || p.climbing || (onAVine && aim.above(p)),
       // And come *down* when backing off. A storey has a floor over it now, so
       // a Scribe who climbs a wall can end up in a pocket against the ceiling
       // with the way on below — where holding away from the wall only shuffles
@@ -465,14 +560,32 @@ function probe(
       // columns at the top of a storey for twenty thousand ticks. A player
       // drops through the ledge; this is that, and no more.
       down: (backingOff || grounding) && p.onGround,
-      // Reach for the hook while falling over nothing — which is when a gap
-      // actually needs it.
-      // On the ground, act clears a barrier (thorn, door, overgrowth) — in the
-      // air it casts the Hook, so it must stay off unless a gap needs it.
+      // Reach out while falling over nothing — which is when a gap actually
+      // needs it. On the ground, act clears a barrier (thorn, door,
+      // overgrowth); in the air it is whichever of the reaching letters the
+      // Scribe holds.
+      //
+      // **Once per fall, not every tick of it**, and that distinction is the
+      // whole of what Bet needed. The Hook is self-limiting — `grappleTo` is
+      // set the moment it catches, and the guard above reads it — so holding
+      // the key down cost nothing and nobody noticed. `toggleStone` has no such
+      // latch and does not want one: it sets a stone *beside the Scribe at the
+      // height of their own feet*, which is exactly the right rule and means a
+      // falling body that presses every tick lays a stone, drops past it, lays
+      // another one lower, and takes the first back — one stone stands at a
+      // time. Measured, the probe rode its own stone to the bottom of every pit
+      // on `set-stone` and crossed none of six. A player presses once. This is
+      // pressing once.
+      // The last clause is the unsticking rhythm, and it is **off for a Scribe
+      // whose act is Bet** — pressing act on a beat toggles the stone on and
+      // off, so the one thing that would free them is the one thing the rhythm
+      // unmakes. `setStone` is their version of it, and it presses once per
+      // place rather than once every seven ticks.
       act:
         barrierAhead ||
-        (!p.onGround && p.vy > 0 && !groundBelow && !p.grappleTo) ||
-        (p.onGround && stuckFor > 10 && i % 7 === 0),
+        reachOnce ||
+        setStone ||
+        (!holdsStone && p.onGround && stuckFor > 10 && i % 7 === 0),
       // Reach for the Bridge on the way down across a gap — but only over a
       // real gap. Dashing on every descent flings the probe past the very
       // alcoves it just jumped for.
@@ -1021,26 +1134,33 @@ describe("walking the Tree", () => {
    * sixty. That is the no-soft-lock guarantee and it is a hard zero, because a
    * path with no way through is a run that cannot be finished.
    *
-   * This asks the other half: whether *this* pair of hands can walk it. And it
-   * is a share, because the honest measurement is a share. Ninety-eight of a
-   * hundred and twenty sampled paths, and the shortfall is understood rather
-   * than mysterious: the library's screens were authored against a Scribe who
-   * had the letters the *line* would have given them by then, and a handful
-   * assume more of a body than they declare. Measured screen by screen, holding
-   * exactly what each one asks and nothing else: `anchor-gap` and `high-anchors`
-   * want the Bridge, `set-stone` and `vault-to-high` want any of the Fence, the
-   * Bridge or the House, `vine-ascent` wants more than any single letter
-   * supplies. None of them is under-declared about the letter it *gates* on —
-   * every one is crossable in the route graph holding exactly what it says, and
-   * `chunks.test.ts` holds them to that. What they assume is a body that can do
-   * more than step and jump.
+   * This asks the other half: whether *this* pair of hands can walk it.
    *
-   * That is level work, screen by screen, of the kind `wide-chasm` has just had:
-   * measured against the hands, reshaped, measured again. It is not done, and
-   * this test says so rather than pretending. What it is for is catching a
-   * *collapse* — a change that makes the Tree broadly unwalkable will take this
-   * well below three quarters, and the named screens above are the list to work
-   * through to raise it.
+   * It stood at eighty-two per cent, and the shortfall was seven named screens
+   * that assumed a body they did not declare — reachable ground that this probe
+   * could not cross holding only the letters the screen asked for. Those are
+   * fixed: `anchor-gap` and `high-anchors` have their rings three tiles apart
+   * rather than five, because the throw off a ring hangs a third of a second
+   * and five tiles is further than that carries; `high-span`'s gap was exactly
+   * what a bare body crosses and is now a tile less; `stone-chain` was two
+   * tiles too wide; `vault-to-high` asked for a four-row vault the Breath does
+   * not have and now asks for two of three; and `set-stone` became a step,
+   * because a single stone cannot gate a *gap* with any margin at all. All
+   * seven are held to it by the assertion below this one.
+   *
+   * Eighty-eight per cent now, and what is left is a different thing entirely
+   * and worth naming rather than chasing: **almost every remaining stall is a
+   * Scribe with no Breath.** Not on any particular screen — on the length of the
+   * walk. `earnedRung` holds them to Malchut's band, which is right, and
+   * Malchut's band is still a dozen screens of pits crossed by a body that
+   * cannot double-jump, and this probe loses a war of attrition it does not
+   * quite lose on any single screen. Whether that is the game being honest
+   * about leaving the kingdom by the wrong door, or the Tree needing to pay the
+   * Breath sooner, is a design question and not a bug.
+   *
+   * The bar is set below the measurement rather than at it, because a probe is
+   * one pair of hands and a seed is a seed. What it is for is catching a
+   * *collapse*.
    *
    * The klipot are cleared, because whether a fight is survivable is
    * `fight.test.ts` and mixing the two makes both unreadable.
@@ -1077,9 +1197,85 @@ describe("walking the Tree", () => {
     }
     expect(walked, "the wander walked nowhere").toBeGreaterThan(100);
     const crossed = (walked - stalled.length) / walked;
-    expect(
+        expect(
       crossed,
       `crossed only ${(crossed * 100).toFixed(0)}% of ${walked} paths walked:\n  ${stalled.slice(0, 10).join("\n  ")}`,
-    ).toBeGreaterThan(0.75);
+    ).toBeGreaterThan(0.85);
   }, 300000);
+});
+
+/**
+ * **Every screen crossable by a body holding exactly what it declares.**
+ *
+ * `chunks.test.ts` asks this of the route graph and gets a clean answer: a way
+ * exists across every screen in the library with nothing in hand but the
+ * letters it names. This asks the same question of the hands, and for most of
+ * this game's life it could not have been asked at all — the climb was a line,
+ * so a screen laid in Gevurah was met by a Scribe holding everything Malchut
+ * through Hod pay out, and no screen was ever offered its own bare minimum.
+ *
+ * The Tree offers exactly that. A path pays one letter, and `earnedRung` caps
+ * the ground by what is carried, so a Scribe holding the Hook and little else
+ * is handed `anchor-gap` — which declares the Hook, is crossable in the graph
+ * holding the Hook, and could not be crossed by this probe holding the Hook.
+ * Seven screens were in that state and they were the whole of why the Tree's
+ * own probe test reports a share rather than a zero.
+ *
+ * The fault in all seven was the same and is worth naming, because it is not
+ * what it looks like: none of them was under-declared about the letter it
+ * *gates* on. Each assumed a body that could do more than step and jump —
+ * general mobility the line guaranteed from the second region and the Tree does
+ * not. Fixed the way `wide-chasm` was: measured against the hands, reshaped,
+ * measured again.
+ *
+ * Husks cleared, because whether a fight is survivable is `fight.test.ts`.
+ */
+describe("the library, against a body holding only what it asks", () => {
+  const chainFor = (chunk: Chunk): Chunk[] | undefined => {
+    const up = CHUNKS.find((c) => c.id === "rise-to-high");
+    const down = CHUNKS.find((c) => c.id === "fall-to-ground");
+    if (!up || !down) throw new Error("the library lost its way up or down");
+    if (chunk.entry === "ground" && chunk.exit === "ground") return [START_CHUNK, chunk, END_CHUNK];
+    if (chunk.entry === "high" && chunk.exit === "high") return [START_CHUNK, up, chunk, down, END_CHUNK];
+    if (chunk.entry === "ground" && chunk.exit === "high") return [START_CHUNK, chunk, down, END_CHUNK];
+    if (chunk.entry === "high" && chunk.exit === "ground") return [START_CHUNK, up, chunk, END_CHUNK];
+    // The branching `both` screens are laid in pairs and are covered by the pair.
+    return undefined;
+  };
+
+  /**
+   * A screen on the high road cannot be reached without whatever the lift
+   * asks, so it is fair to hold that too — and `rise-to-high` asks for nothing,
+   * which is itself part of what is being checked here.
+   */
+  const declares = (chunk: Chunk): Verb[] => {
+    const lift = CHUNKS.filter((c) => c.id === "rise-to-high" || c.id === "fall-to-ground");
+    const extra = chunk.entry === "high" || chunk.exit === "high" ? lift.flatMap((c) => c.requires) : [];
+    return [...new Set([...chunk.requires, ...extra])];
+  };
+
+  it("carries a competent Scribe across every screen, holding only its own letters", () => {
+    const failing: string[] = [];
+    for (const chunk of CHUNKS) {
+      const chain = chainFor(chunk);
+      if (!chain) continue;
+      const verbs = declares(chunk);
+      let crossed = 0;
+      for (let seed = 1; seed <= 6; seed += 1) {
+        const world = paintChunks(chain, seed);
+        world.husks = [];
+        if (probe(world, { verbs, graces: [] }, 20000).finished) crossed += 1;
+      }
+      // Five of six rather than six: a probe is one pair of hands and the odd
+      // seed lays a mote or a fragment somewhere that distracts it. What is
+      // being caught is a screen it cannot do, not one it occasionally fumbles.
+      if (crossed < 5) {
+        failing.push(`${chunk.id} — ${crossed}/6 holding [${verbs.join(", ") || "nothing"}]`);
+      }
+    }
+    expect(
+      failing,
+      `screens that ask for a body they do not declare:\n  ${failing.join("\n  ")}`,
+    ).toEqual([]);
+  }, 600000);
 });
