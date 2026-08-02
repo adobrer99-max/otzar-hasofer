@@ -67,8 +67,22 @@ export function hebrewDateFromGregorian(date: Date): HebrewDate {
   return { year: jd.year, month: jd.monthName, day: jd.day };
 }
 
+/**
+ * A Hebrew date as a Gregorian one, at midnight.
+ *
+ * The normalisation is the whole point. `jewish-date`'s `toGregorianDate`
+ * builds its result from `new Date()` and overwrites only the year, month and
+ * day — so it hands back a date stamped with **the current wall-clock time**,
+ * and anything that measures a span from it against a midnight-anchored date
+ * gets an answer that changes through the day. The parsha cycle's own
+ * integrity tests failed at ten past midnight and passed at half past eleven
+ * for exactly this reason: a Hebrew date has no time of day, so it must not be
+ * given one.
+ */
 export function gregorianFromHebrewDate(hd: HebrewDate): Date {
-  return toGregorianDate({ year: hd.year, monthName: hd.month, day: hd.day });
+  const date = toGregorianDate({ year: hd.year, monthName: hd.month, day: hd.day });
+  date.setHours(0, 0, 0, 0);
+  return date;
 }
 
 export function isLeapYear(hebrewYear: number): boolean {
