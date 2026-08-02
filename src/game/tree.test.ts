@@ -130,9 +130,28 @@ describe("the Tree", () => {
    * library against holding it, and says so: a plain gap can never gate
    * anything narrower than eight tiles *because* the Breath is had early. It
    * has to be one step from the start.
+   *
+   * **One step, and no nearer.** Only one of the three ways out of the kingdom
+   * pays Aleph, and the other two are meant to be the harder opening — a Scribe
+   * who leaves by the Fence or the Mark has chosen them over the second jump
+   * and walks the next few rungs without it. That is a decision and not an
+   * oversight: it is the only place on the Tree where the first move a player
+   * makes has consequences they can feel for the rest of the climb, and a map
+   * whose doors all cost the same is a corridor with decorations.
+   *
+   * `traversal.test.ts` measures what it costs — a probe crosses about
+   * seven-eighths of sampled paths and nearly every miss is a Breath-less
+   * Scribe on a long walk — and holds that as a floor rather than a fault.
+   * Nothing here should be "fixed" by giving Aleph a second path.
    */
-  it("puts the Breath one step from the kingdom", () => {
-    expect(pathsFrom("malchut").map((p) => p.letter)).toContain("aleph");
+  it("puts the Breath one step from the kingdom, and only one", () => {
+    const first = pathsFrom("malchut");
+    expect(first.map((p) => p.letter)).toContain("aleph");
+    expect(
+      first.filter((p) => p.letter === "aleph"),
+      "every way out of Malchut pays the Breath — the first choice costs nothing",
+    ).toHaveLength(1);
+    expect(first.length, "the kingdom has only one door").toBeGreaterThan(1);
   });
 
   /**

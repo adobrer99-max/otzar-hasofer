@@ -1148,15 +1148,30 @@ describe("walking the Tree", () => {
    * because a single stone cannot gate a *gap* with any margin at all. All
    * seven are held to it by the assertion below this one.
    *
-   * Eighty-eight per cent now, and what is left is a different thing entirely
-   * and worth naming rather than chasing: **almost every remaining stall is a
-   * Scribe with no Breath.** Not on any particular screen — on the length of the
-   * walk. `earnedRung` holds them to Malchut's band, which is right, and
-   * Malchut's band is still a dozen screens of pits crossed by a body that
-   * cannot double-jump, and this probe loses a war of attrition it does not
-   * quite lose on any single screen. Whether that is the game being honest
-   * about leaving the kingdom by the wrong door, or the Tree needing to pay the
-   * Breath sooner, is a design question and not a bug.
+   * Eighty-eight per cent now, and what is left is a different thing entirely:
+   * **almost every remaining stall is a Scribe with no Breath.** Not on any
+   * particular screen — on the length of the walk. `earnedRung` holds them to
+   * Malchut's band, which is right, and Malchut's band is still a dozen screens
+   * of pits crossed by a body that cannot double-jump, and this probe loses a
+   * war of attrition it does not quite lose on any single screen.
+   *
+   * **That is meant.** It was an open question — leave it, or have the Tree pay
+   * the Breath sooner — and it has been decided: leave it. Three paths run out
+   * of the kingdom and only one of them pays Aleph, and a Scribe who takes one
+   * of the other two has chosen the Fence or the Mark over the second jump and
+   * will walk the next few rungs the hard way. `tree.test.ts` guarantees the
+   * one thing that must hold, which is that every first step pays a *verb* and
+   * not a grace; it has never guaranteed that every first step is equally kind,
+   * and it should not. A map whose doors all cost the same is a corridor with
+   * decorations.
+   *
+   * So the gap between this number and a hundred is a **property of the game**
+   * and not a list of things to fix. Do not close it by moving Aleph — the
+   * whole letter arrangement in `tree.ts` is built to put the Breath one step
+   * from the kingdom *and no nearer*, and every measured reach in `chunks.ts`
+   * depends on where it sits. Do not close it by softening Malchut's band
+   * either: that band is what a Scribe with no letters is measured against, and
+   * `route.test.ts` proves the ground is always crossable. Hard is not broken.
    *
    * The bar is set below the measurement rather than at it, because a probe is
    * one pair of hands and a seed is a seed. What it is for is catching a

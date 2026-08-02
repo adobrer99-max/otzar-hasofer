@@ -56,6 +56,25 @@ import { regions } from "./regions";
  * the Eye opens the last vertical into the crown, and the Stone that Bet sets
  * lies on the horizontal that holds mercy and severity apart.
  *
+ * ## The Breath sits one step from the kingdom, and only one
+ *
+ * Three paths run out of Malchut and exactly one of them pays Aleph. That is
+ * the arrangement doing the most load-bearing work it does, in both directions
+ * at once, and it should not be softened from either end.
+ *
+ * It has to be **within one step**, because `chunks.ts` measures every reach in
+ * the library against holding the Breath and says so outright. Put it any
+ * further and the first screen of the game is uncrossable.
+ *
+ * It has to be **only one of the three**, because that is where the map first
+ * costs a player something. Leave by the Fence or the Mark and you walk the
+ * next few rungs without a second jump, on ground that is always crossable —
+ * `route.test.ts` proves that over six hundred and sixty sampled paths — and
+ * never generous. `traversal.test.ts` measures the price and holds it as a
+ * floor rather than a fault. Giving Aleph a second path out of the kingdom
+ * would close that gap and would also make the first decision of every climb
+ * decorative, which is a poor trade for a number in a test going up.
+ *
  * This module is **pure**. It knows the shape of the Tree and nothing about
  * tiles, worlds or rendering.
  */
