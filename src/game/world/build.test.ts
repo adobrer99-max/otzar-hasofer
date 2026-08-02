@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { lettersOnEntering, regionAt, regions, TOTAL_REGIONS } from "../regions";
 import { CHUNKS, CHUNK_W } from "./chunks";
 import { buildRegion, layoutOf, verbsOf } from "./build";
+import { ROOM_H, ROOM_W } from "./rooms";
 
 const SEEDS = [3, 91, 555, 12345, 777];
 
@@ -200,12 +201,38 @@ describe("assembling a region", () => {
 
   it("still lays the taught porch in Malchut and nowhere else", () => {
     for (const seed of SEEDS) {
-      expect(buildRegion(1, seed, 1, true).width).toBe(buildRegion(1, seed).width + 3 * CHUNK_W);
+      const taught = buildRegion(1, seed, 1, true).width;
+      const plain = buildRegion(1, seed).width;
+      // Three teaching screens — but a room is two screens, so a rung is
+      // squared up to a whole number of rooms and the porch may cost a fourth
+      // screen of plain ground. Which is a beat after the pit, and no loss.
+      expect(taught - plain, `seed ${seed}`).toBeGreaterThanOrEqual(3 * CHUNK_W);
+      expect(taught - plain, `seed ${seed}`).toBeLessThanOrEqual(4 * CHUNK_W);
     }
     for (let region = 2; region <= TOTAL_REGIONS; region += 1) {
       expect(buildRegion(region, 7, 1, true).width, `region ${region}`).toBe(
         buildRegion(region, 7).width,
       );
+    }
+  });
+
+  /**
+   * The frame. A room is two screens across and one tall, and a rung that came
+   * out half a room wide would leave the camera framing a hole — so the shape
+   * is asserted rather than assumed, on every rung and every seed.
+   */
+  it("builds every rung out of whole rooms", () => {
+    for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
+      for (const seed of [...SEEDS, 40404, 8]) {
+        const world = buildRegion(region, seed);
+        expect(world.width % ROOM_W, `region ${region} seed ${seed} width`).toBe(0);
+        expect(world.height % ROOM_H, `region ${region} seed ${seed} height`).toBe(0);
+        expect(world.rooms.length, `region ${region} seed ${seed}`).toBe(
+          (world.width / ROOM_W) * (world.height / ROOM_H),
+        );
+        // And the Scribe starts inside one of them.
+        expect(world.rooms[world.roomIndex], `region ${region} seed ${seed}`).toBeDefined();
+      }
     }
   });
 });

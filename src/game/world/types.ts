@@ -110,6 +110,51 @@ export interface Mark extends Body {
   glyph: string;
 }
 
+/**
+ * What a room is for. At most one per room, because `spaceOut` in `build.ts`
+ * never lays two screens-you-stop-on back to back and a room is two screens.
+ */
+export type RoomKind =
+  | "way"
+  | "letter"
+  | "niche"
+  | "gate"
+  | "shrine"
+  | "house"
+  | "vessel"
+  | "exit";
+
+/**
+ * A way in or out of a room: whichever tiles along that boundary are empty.
+ *
+ * Read off the painted grid rather than derived from the edge profiles, so a
+ * ground join, a high one, a divided road and a shaft are all just "the empty
+ * tiles along this side" — see `doorsOf` in `rooms.ts`.
+ */
+export interface Door {
+  side: "left" | "right" | "up" | "down";
+  tiles: Vec[];
+}
+
+export interface Room {
+  index: number;
+  col: number;
+  row: number;
+  /** In tiles, so the camera and the sealing both read straight off it. */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  kind: RoomKind;
+  entrance: boolean;
+  /** Whether the way to the exit runs through here. Only the way seals. */
+  onPath: boolean;
+  cleared: boolean;
+  doors: Door[];
+  /** Ids of the klipot standing in this room when it was built. */
+  husks: string[];
+}
+
 export interface World {
   regionIndex: number;
   sefirah: SefirahId;
@@ -119,6 +164,12 @@ export interface World {
   height: number;
   player: Player;
   entities: Entity[];
+  /**
+   * The rooms this rung is built from, and which one the Scribe is standing
+   * in. A one-row floor is a corridor, which is what the lower rungs are.
+   */
+  rooms: Room[];
+  roomIndex: number;
   /** Where the Scribe wakes after a veiling. */
   respawn: Vec;
   /**

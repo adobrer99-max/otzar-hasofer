@@ -20,10 +20,31 @@ import {
 } from "./chunks";
 import { HUSK_CHARS, HUSKS, LAMPS } from "../combat";
 import { MARKER_CHARS, Tile, TILE_CHARS, TILE_SIZE } from "./tiles";
+import { doorsOf, planFloor, roomAtPoint, ROOM_H, ROOM_W } from "./rooms";
 import type { Chunk, Edge, Entity, Husk, Player, World } from "./types";
 
 export const PLAYER_W = 16;
 export const PLAYER_H = 30;
+
+/** Screens to a room. Two, because one is portrait and cannot be framed. */
+export const ROW_SCREENS_PER_ROOM = 2;
+
+/**
+ * How many rows of rooms a rung is built from — **the Tree grows taller.**
+ *
+ * One row is a corridor, which is what every rung was before rooms existed, so
+ * the foot of the Tree is untouched: Malchut goes on teaching in a straight
+ * line and keeps the pacing that was measured and fixed. The map deepens as it
+ * is climbed, which is the whole of what the shape is meant to say.
+ */
+export function rowsFor(regionIndex: number): number {
+  // One row everywhere for now. A second row is only honest once there is a
+  // way up to it: rows arrive with the shafts, and turning them on first would
+  // build a rung whose upper half nobody can reach — which is precisely what
+  // the traversal guarantee exists to forbid.
+  void regionIndex;
+  return 1;
+}
 
 /** The verbs a set of held letters amounts to. */
 export function verbsOf(letterIds: readonly string[]): Verb[] {
@@ -192,6 +213,18 @@ function layout(
     if (i < body.length) laid.push(body[i]);
   }
   laid.push(END_CHUNK);
+
+  // A room is two screens, so an odd count would leave half a room hanging off
+  // the end — a hole in the frame rather than a hole in the level, and worse
+  // for it. One flat screen before the exit squares it, drawn from the same
+  // pool as the rest so it is the region's own ground.
+  if (laid.length % (ROW_SCREENS_PER_ROOM * rowsFor(regionIndex)) !== 0) {
+    const flat = banded.filter((c) => c.entry === "ground" && c.exit === "ground");
+    const filler = flat.length > 0 ? flat : banded;
+    while (laid.length % (ROW_SCREENS_PER_ROOM * rowsFor(regionIndex)) !== 0) {
+      laid.splice(laid.length - 1, 0, draw(filler, rng, region.demand.bias === "hard"));
+    }
+  }
 
   return { laid, wordGateTarget };
 }
@@ -498,8 +531,12 @@ function paint(
   klipot: Region["klipot"],
   quiet: number,
 ): World {
-  const width = laid.length * CHUNK_W;
-  const height = CHUNK_H;
+  // The screens are dealt into a floor before anything is written. One row is
+  // a corridor and is exactly what every rung was before rooms existed, so
+  // this changes nothing until a rung asks for a second row.
+  const floor = planFloor(laid, rowsFor(regionIndex));
+  const width = floor.cols * ROOM_W;
+  const height = floor.rows * ROOM_H;
   const tiles = new Uint8Array(width * height);
   const entities: Entity[] = [];
 
@@ -517,17 +554,19 @@ function paint(
     if (pool.length > 0) dorotCardId = pool[randomInt(rng, pool.length)].id;
   }
 
-  laid.forEach((chunk, chunkIndex) => {
-    const originX = chunkIndex * CHUNK_W;
+  floor.placements.forEach(({ chunk, x: chunkX, y: chunkY }) => {
+    const originX = chunkX * CHUNK_W;
+    const originY = chunkY * CHUNK_H;
     chunk.rows.forEach((row, y) => {
       for (let x = 0; x < CHUNK_W; x += 1) {
         const ch = row[x];
         const worldX = originX + x;
+        const worldY = originY + y;
         const px = worldX * TILE_SIZE;
-        const py = y * TILE_SIZE;
+        const py = worldY * TILE_SIZE;
 
         if (MARKER_CHARS.has(ch)) {
-          tiles[y * width + worldX] = Tile.Empty;
+          tiles[worldY * width + worldX] = Tile.Empty;
           switch (ch) {
             case "S":
               spawn = { x: px, y: py };
@@ -571,7 +610,7 @@ function paint(
         }
 
         if (ch === "*") {
-          tiles[y * width + worldX] = Tile.Empty;
+          tiles[worldY * width + worldX] = Tile.Empty;
           entities.push({ id: `e${entityId++}`, kind: "mote", x: px, y: py });
           continue;
         }
@@ -580,7 +619,7 @@ function paint(
         // holds is not strewn here — it comes out when the shell breaks.
         const huskKind = HUSK_CHARS[ch];
         if (huskKind) {
-          tiles[y * width + worldX] = Tile.Empty;
+          tiles[worldY * width + worldX] = Tile.Empty;
           const spec = HUSKS[huskKind];
           husks.push({
             id: `h${entityId++}`,
@@ -601,7 +640,7 @@ function paint(
           continue;
         }
 
-        tiles[y * width + worldX] = TILE_CHARS[ch] ?? Tile.Empty;
+        tiles[worldY * width + worldX] = TILE_CHARS[ch] ?? Tile.Empty;
       }
     });
   });
@@ -634,6 +673,22 @@ function paint(
     markCooldown: 0,
   };
 
+  // The doors are read off the finished grid, not derived — whatever is empty
+  // along a boundary is a way through, whether it is on the ground, up on the
+  // high road, or a hole in a floor.
+  for (const room of floor.rooms) {
+    room.doors = doorsOf(room, tiles, width, height);
+    room.husks = husks
+      .filter(
+        (h) =>
+          h.x >= room.x * TILE_SIZE &&
+          h.x < (room.x + room.w) * TILE_SIZE &&
+          h.y >= room.y * TILE_SIZE &&
+          h.y < (room.y + room.h) * TILE_SIZE,
+      )
+      .map((h) => h.id);
+  }
+
   return {
     regionIndex,
     sefirah,
@@ -642,6 +697,8 @@ function paint(
     height,
     player,
     entities,
+    rooms: floor.rooms,
+    roomIndex: Math.max(0, roomAtPoint(floor.rooms, spawn.x / TILE_SIZE, spawn.y / TILE_SIZE)),
     respawn: { ...spawn },
     revealed: false,
     placed: [],
