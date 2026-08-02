@@ -68,6 +68,7 @@ const KIND_OF: Record<string, RoomKind> = {
   "shrine-low": "shrine",
   "shrine-high": "shrine",
   house: "house",
+  vessel: "vessel",
   end: "exit",
 };
 

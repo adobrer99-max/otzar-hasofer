@@ -41,6 +41,7 @@ import { useGameAudio } from "./audio/useGameAudio";
 import { readAscentTime } from "./sacredAscent";
 import { fragmentAt, SCROLL_LETTER, SCROLL_TOTAL, SCROLL_VERSE } from "./scroll";
 import { GOING_OUT, LAMPS } from "./combat";
+import { keliById, powersFrom, synergiesIn } from "./items";
 import {
   ABYSS_WORD,
   pleaFor,
@@ -71,6 +72,7 @@ type Plate =
   | { kind: "fragment"; index: number; held: number }
   | { kind: "scroll-whole" }
   | { kind: "house"; cardId: string }
+  | { kind: "vessel"; keliId: string }
   | { kind: "word-gate" }
   | { kind: "word-result"; verdict: WordGateVerdict }
   | { kind: "region-done" }
@@ -227,6 +229,12 @@ export function GamePage() {
       if (isIllumined(encounter, regionAt(record.regionIndex).sefirah)) {
         next.orPerMote = ILLUMINED_MULTIPLIER;
       }
+      // What the vessels come to, applied to the region as it is built: the
+      // lamps a Scribe is made of and what a mote is worth are properties of
+      // the world rather than of a tick, so this is where they belong.
+      const carried = powersFrom(record.items ?? []);
+      next.player.lamps += carried.lamps;
+      next.orPerMote = Math.max(1, Math.round(next.orPerMote * carried.light));
       if (over?.lamps !== undefined) next.player.lamps = over.lamps;
       setWorld(next);
       setVow(null);
@@ -387,6 +395,21 @@ export function GamePage() {
    * exactly like a letter found in an alcove (so the grace, the HUD belt and
    * the saved run all need no special case for it).
    */
+  /**
+   * A vessel lifted off its pedestal. Kept on the ascent exactly as a letter
+   * is, because that is what makes it survive a region change and a reload —
+   * and it needs no other machinery, since everything it does is a number the
+   * step already reads out of the context.
+   */
+  const onVessel = useCallback((keliId: string) => {
+    setPlate({ kind: "vessel", keliId });
+    setAscent((prev) =>
+      prev && !(prev.items ?? []).includes(keliId)
+        ? { ...prev, items: [...(prev.items ?? []), keliId], updatedAt: new Date().toISOString() }
+        : prev,
+    );
+  }, []);
+
   const onFragment = useCallback((index: number) => {
     setAscent((prev) => {
       if (!prev) return prev;
@@ -582,6 +605,7 @@ export function GamePage() {
       e.preventDefault();
       if (
         plate.kind === "letter" ||
+        plate.kind === "vessel" ||
         plate.kind === "house" ||
         plate.kind === "fragment" ||
         plate.kind === "scroll-whole" ||
@@ -685,6 +709,7 @@ export function GamePage() {
               <span aria-hidden="true">✦</span> {hud.or}
             </div>
             <LetterBelt held={ascent.lettersHeld} ascendant={ascent.ascendantLetterId} />
+            <VesselBelt held={ascent.items ?? []} />
           </div>
 
           <GameCanvas
@@ -692,11 +717,13 @@ export function GamePage() {
             verbs={verbs}
             graces={graces}
             markGlyph={lettersById[ascent.ascendantLetterId ?? "aleph"]?.glyph ?? "א"}
+            items={ascent.items ?? []}
             paused={plate !== null}
             onLetter={onLetter}
             onFragment={onFragment}
             onWordGate={onWordGate}
             onHouse={onHouse}
+            onVessel={onVessel}
             onFinish={onFinish}
             onSample={onSample}
           />
@@ -925,6 +952,34 @@ function Threshold({
 // ---------------------------------------------------------------------------
 // HUD pieces
 // ---------------------------------------------------------------------------
+
+/**
+ * The vessels, beside the letters and deliberately not among them. One belt
+ * says what the Scribe *is*; the other says what he is carrying.
+ */
+function VesselBelt({ held }: { held: readonly string[] }) {
+  if (held.length === 0) return null;
+  const lit = new Set(synergiesIn(held).flatMap((s) => [s.keli.id, s.keli.synergy?.with ?? ""]));
+  return (
+    <ul className={styles.belt} aria-label="Vessels carried">
+      {held.map((id) => {
+        const keli = keliById[id];
+        if (!keli) return null;
+        return (
+          <li
+            key={id}
+            className={`${styles.beltLetter} ${lit.has(id) ? styles.beltAscendant : ""}`}
+            title={`${keli.name} — ${keli.found}`}
+          >
+            <span className="hebrew" lang="he">
+              {keli.hebrew.slice(0, 1)}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 function LetterBelt({ held, ascendant }: { held: readonly string[]; ascendant?: string }) {
   return (
@@ -1159,6 +1214,9 @@ function PlateOverlay({
           <FragmentPlate index={plate.index} held={plate.held} onClose={onClose} />
         )}
         {plate.kind === "scroll-whole" && <ScrollWholePlate onClose={onClose} />}
+        {plate.kind === "vessel" && ascent && (
+          <VesselPlate keliId={plate.keliId} held={ascent.items ?? []} onClose={onClose} />
+        )}
         {plate.kind === "house" && ascent && world && (
           <HousePlate
             cardId={plate.cardId}
@@ -1187,6 +1245,44 @@ function PlateOverlay({
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * A vessel found. The same shape as a letter's plate on purpose — it is the
+ * other thing you can pick up — but it names what it *changes* rather than
+ * what it lets you do, and it names any pair it has just completed, because a
+ * synergy nobody is told about is a synergy nobody has.
+ */
+function VesselPlate({
+  keliId,
+  held,
+  onClose,
+}: {
+  keliId: string;
+  held: readonly string[];
+  onClose: () => void;
+}) {
+  const keli = keliById[keliId];
+  if (!keli) return null;
+  const lit = synergiesIn(held).filter((s) => s.keli.id === keliId || s.keli.synergy?.with === keliId);
+  return (
+    <>
+      <p className={styles.plateKicker}>A vessel is found</p>
+      <h2 className={styles.plateTitle}>{keli.name}</h2>
+      <p className={`${styles.plateHeb} hebrew`} lang="he">
+        {keli.hebrew}
+      </p>
+      <p className={styles.plateUse}>{keli.found}</p>
+      {lit.map((s) => (
+        <p key={s.keli.id} className={styles.offerGrants}>
+          {s.line}
+        </p>
+      ))}
+      <Button variant="primary" onClick={onClose} autoFocus>
+        Take it up
+      </Button>
+    </>
   );
 }
 

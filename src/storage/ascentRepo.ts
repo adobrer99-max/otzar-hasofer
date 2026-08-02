@@ -53,6 +53,12 @@ export interface AscentRecord {
    * ascent's own small vocabulary, listed at the crown.
    */
   wordsFormed?: FormedWord[];
+  /**
+   * The vessels lifted off their pedestals — see `game/items.ts`. Objects
+   * rather than letters: they change what the numbers are, never what a body
+   * can do.
+   */
+  items?: string[];
   /** Sacred Time's notes for the day this ascent belongs to. */
   sacredNotes: string[];
   ascendantLetterId?: string;

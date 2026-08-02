@@ -1,4 +1,5 @@
 import type { Grace, Verb } from "./abilities";
+import { powersFrom } from "./items";
 
 /**
  * The klipot, and what a scribe does about them.
@@ -125,20 +126,34 @@ export interface MarkPowers {
   draws: boolean;
   /** Lamed, the Staff: it is thrown further. */
   reach: number;
+  /** And what the vessels come to — multipliers rather than powers. */
+  bite?: number;
+  speed?: number;
+  cooldown?: number;
 }
 
-export function markPowers(verbs: readonly Verb[], graces: readonly Grace[]): MarkPowers {
+export function markPowers(
+  verbs: readonly Verb[],
+  graces: readonly Grace[],
+  items: readonly string[] = [],
+): MarkPowers {
+  // The letters decide what a mark *is*; the vessels decide how much of it
+  // there is. Which is the whole distinction the two systems are built on.
+  const carried = powersFrom(items);
   return {
-    pierces: verbs.includes("cut"),
+    pierces: verbs.includes("cut") || carried.pierces,
     burns: verbs.includes("flame"),
     draws: verbs.includes("grapple"),
-    reach: graces.includes("high-jump") ? MARK_LIFE + 16 : MARK_LIFE,
+    reach: (graces.includes("high-jump") ? MARK_LIFE + 16 : MARK_LIFE) + carried.reach,
+    bite: carried.bite,
+    speed: carried.speed,
+    cooldown: carried.cooldown,
   };
 }
 
 /** How many shells one mark takes off, given what the Scribe carries. */
 export function markBite(powers: MarkPowers): number {
-  return powers.burns ? 2 : 1;
+  return Math.max(1, Math.round((powers.burns ? 2 : 1) * (powers.bite ?? 1)));
 }
 
 /**
@@ -185,10 +200,13 @@ export interface Hit {
  * all — not a reduced hit, no hit — which is what makes a crowded screen
  * survivable rather than a shredder.
  */
-export function takeHit(lamps: number, iframes: number): Hit {
+export function takeHit(lamps: number, iframes: number, grace = 1): Hit {
   if (iframes > 0 || lamps <= 0) return { lamps, iframes, out: lamps <= 0 };
   const left = lamps - 1;
-  return { lamps: left, iframes: IFRAME_TICKS, out: left <= 0 };
+  // `grace` is what the vessels come to — the Wrapper lengthens the moment
+  // after a hit rather than softening the hit itself, which is the difference
+  // between an object and a letter.
+  return { lamps: left, iframes: Math.round(IFRAME_TICKS * grace), out: left <= 0 };
 }
 
 /**

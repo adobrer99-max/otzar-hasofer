@@ -18,9 +18,11 @@ import {
   SHRINE_LOW,
   START_CHUNK,
   TEACH_CHUNKS,
+  VESSEL_CHUNK,
   WORD_GATE_CHUNK,
 } from "./chunks";
 import { HUSK_CHARS, HUSKS, LAMPS } from "../combat";
+import { keliFor } from "../items";
 import { MARKER_CHARS, Tile, TILE_CHARS, TILE_SIZE } from "./tiles";
 import { doorsOf, planFloor, roomAtPoint, ROOM_H, ROOM_W } from "./rooms";
 import type { Chunk, Edge, Entity, Husk, Player, World } from "./types";
@@ -171,6 +173,9 @@ function layout(
     // it is a choice.
     ...(region.hasShrine ? [region.index <= 3 ? SHRINE_LOW : SHRINE_HIGH] : []),
     ...(region.hasHouse ? [HOUSE_CHUNK] : []),
+    // One vessel per rung above the kingdom, on a shelf off the floor. It is
+    // the only fixed screen that gives something the alphabet does not.
+    ...(keliFor(region.index) ? [VESSEL_CHUNK] : []),
   ];
 
   // Every fixed screen is entered and left on the ground, so they may only be
@@ -703,6 +708,11 @@ function paint(
             case "H":
               if (dorotCardId) entities.push({ id: `e${entityId++}`, kind: "house", x: px, y: py, ref: dorotCardId });
               break;
+            case "K": {
+              const keli = keliFor(regionIndex);
+              if (keli) entities.push({ id: `e${entityId++}`, kind: "vessel", x: px, y: py, ref: keli.id });
+              break;
+            }
             default:
               break;
           }

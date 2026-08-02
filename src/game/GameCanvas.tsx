@@ -53,12 +53,15 @@ export interface GameCanvasProps {
    * he throws is the mark Sacred Time put in his hand.
    */
   markGlyph: string;
+  /** The vessels carried — see `items.ts`. They change numbers, never verbs. */
+  items: readonly string[];
   /** Suspends the loop for a plate, a pause, or an end-of-region panel. */
   paused: boolean;
   onLetter: (letterId: string) => void;
   onFragment: (index: number) => void;
   onWordGate: () => void;
   onHouse: (cardId: string) => void;
+  onVessel: (keliId: string) => void;
   onFinish: () => void;
   onSample: (sample: HudSample) => void;
 }
@@ -70,11 +73,13 @@ export function GameCanvas({
   verbs,
   graces,
   markGlyph,
+  items,
   paused,
   onLetter,
   onFragment,
   onWordGate,
   onHouse,
+  onVessel,
   onFinish,
   onSample,
 }: GameCanvasProps) {
@@ -86,15 +91,16 @@ export function GameCanvas({
   const palette = useRef<Palette>(readPalette());
   const view = useRef({ w: 960, h: 432 });
   const pausedRef = useRef(paused);
-  const callbacks = useRef({ onLetter, onFragment, onWordGate, onHouse, onFinish, onSample });
+  const callbacks = useRef({ onLetter, onFragment, onWordGate, onHouse, onVessel, onFinish, onSample });
 
   pausedRef.current = paused;
-  callbacks.current = { onLetter, onFragment, onWordGate, onHouse, onFinish, onSample };
+  callbacks.current = { onLetter, onFragment, onWordGate, onHouse, onVessel, onFinish, onSample };
 
   const ctxRef = useRef<StepContext>({ verbs, graces });
   ctxRef.current = {
     verbs,
     graces,
+    items,
     markGlyph,
     onLetter: (id) => callbacks.current.onLetter(id),
     onFragment: (i) => callbacks.current.onFragment(i),

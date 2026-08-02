@@ -295,6 +295,22 @@ export const LANDING_CHUNK: Chunk = chunk("landing", { demand: 1 }, [
   "######....######",
 ]);
 
+/**
+ * Where a vessel waits on its pedestal — off the floor, on a shelf you have to
+ * want. Nothing here is gated: the object is a reward for looking rather than
+ * for holding a particular letter, and a room that asked for a letter would
+ * hand its object only to whoever needed it least.
+ */
+export const VESSEL_CHUNK: Chunk = chunk("vessel", { demand: 1 }, [
+  E, E, E, E, E, E, E, E, E, E, E, E,
+  ".......K........",
+  "......====......",
+  E,
+  E,
+  F,
+  F,
+]);
+
 /** Where the House's figure stands, in the seven lower regions. */
 export const HOUSE_CHUNK: Chunk = chunk("house", { demand: 1 }, [
   E, E, E, E, E, E, E, E, E, E, E, E, E, E,

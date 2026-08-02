@@ -1,6 +1,7 @@
 import type { Grace, Verb } from "../abilities";
 import { setTile, tileAt } from "./build";
 import { CHUNK_H } from "./chunks";
+import { powersFrom } from "../items";
 import {
   isClimbable,
   isHazard,
@@ -92,6 +93,14 @@ export interface StepContext {
   /** Raised at the porch of an unopened Word-Gate, to ask for an inscription. */
   onWordGate?: () => void;
   onHouse?: (cardId: string) => void;
+  /** Raised when a vessel is lifted off its pedestal. */
+  onVessel?: (keliId: string) => void;
+  /**
+   * The vessels the Scribe carries. They change numbers — the mark's bite and
+   * reach, the lamps, the light — and never grant a verb, which is the whole
+   * line between an object and a letter. See `items.ts`.
+   */
+  items?: readonly string[];
   onFinish?: () => void;
 }
 
@@ -759,6 +768,10 @@ function touchEntities(world: World, ctx: StepContext): void {
           say(world, "The figure inclines their head and says nothing. The Mouth is not yet yours.");
         }
         break;
+      case "vessel":
+        e.taken = true;
+        if (e.ref) ctx.onVessel?.(e.ref);
+        break;
       case "exit":
         if (!world.finished) {
           world.finished = true;
@@ -847,9 +860,9 @@ const bodiesTouch = (a: { x: number; y: number; w: number; h: number }, b: typeo
 function throwMark(world: World, input: Input, ctx: StepContext): void {
   const p = world.player;
   if (!input.strike || p.markCooldown > 0 || p.veiled > 0) return;
-  const powers = markPowers(ctx.verbs, ctx.graces);
+  const powers = markPowers(ctx.verbs, ctx.graces, ctx.items);
   const up = input.up ? -0.62 : input.down ? 0.62 : 0;
-  const speed = MARK_SPEED;
+  const speed = MARK_SPEED * (powers.speed ?? 1);
   world.marks.push({
     id: `m${world.tick}`,
     mine: true,
@@ -865,7 +878,7 @@ function throwMark(world: World, input: Input, ctx: StepContext): void {
     draws: powers.draws,
     glyph: ctx.markGlyph ?? "א",
   });
-  p.markCooldown = MARK_COOLDOWN;
+  p.markCooldown = Math.max(4, Math.round(MARK_COOLDOWN * (powers.cooldown ?? 1)));
 }
 
 function stepMarks(world: World, ctx: StepContext): void {
@@ -932,7 +945,7 @@ function strikeHusk(world: World, husk: Husk, bite: number, push: number, from: 
 /** A lamp goes, and the Scribe is thrown clear. At zero he goes out. */
 function wound(world: World, ctx: StepContext, away: 1 | -1): void {
   const p = world.player;
-  const hit = takeHit(p.lamps, p.iframes);
+  const hit = takeHit(p.lamps, p.iframes, powersFrom(ctx.items ?? []).iframes);
   if (hit.lamps === p.lamps && !hit.out) return;
   p.lamps = hit.lamps;
   p.iframes = hit.iframes;

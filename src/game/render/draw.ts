@@ -573,6 +573,29 @@ function drawEntity(ctx: CanvasRenderingContext2D, e: Entity, palette: Palette, 
       }
       break;
     }
+    case "vessel": {
+      // An object on a pedestal, lit from beneath — the shape says "taken up"
+      // rather than "walked into", which is the difference between a vessel
+      // and everything else lying about a rung.
+      if (e.taken) break;
+      const lift = Math.sin(tick / 26) * 2;
+      ctx.fillStyle = alpha(palette.goldBright, 0.16);
+      ctx.beginPath();
+      ctx.ellipse(cx, e.y + TILE_SIZE, 13, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = palette.goldBright;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(cx - 6, e.y + 12 + lift);
+      ctx.lineTo(cx + 6, e.y + 12 + lift);
+      ctx.lineTo(cx + 3, e.y + 2 + lift);
+      ctx.lineTo(cx - 3, e.y + 2 + lift);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.fillStyle = alpha(palette.goldBright, 0.3);
+      ctx.fill();
+      break;
+    }
     case "house": {
       // A figure standing in the region: a robed silhouette, no face. The
       // Houses are met, not depicted.

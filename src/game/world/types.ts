@@ -26,6 +26,8 @@ export type EntityKind =
   | "exit"
   | "fragment"
   | "word-gate"
+  /** A vessel on its pedestal — see `items.ts`. */
+  | "vessel"
   /** Where a road divides. Resh returns you here. */
   | "fork";
 
