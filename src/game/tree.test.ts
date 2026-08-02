@@ -7,8 +7,12 @@ import {
   lettersFrom,
   pointOf,
   stateOfPath,
+  TREE_CANOPY,
+  TREE_FRAME,
+  TREE_LIMBS,
   TREE_LINES,
   TREE_POINTS,
+  TREE_ROOTS,
   TREE_VIEW,
   letterOfPath,
   nodeOf,
@@ -346,5 +350,96 @@ describe("walking a path", () => {
     // Two Scribes standing in the same place, holding four letters between them
     // and not the same two each.
     expect(new Set([...byPillar, ...byNetzach]).size).toBe(4);
+  });
+});
+
+/**
+ * **The Tree drawn as a tree.**
+ *
+ * The geometry above is the received diagram and is checked against the
+ * printed frame. What is checked here is the layer over it — weight, bend,
+ * root and crown — and the two things about that layer which are not a matter
+ * of taste: it must not move the diagram, and it must fit in its own frame.
+ *
+ * A limb that reached outside `TREE_FRAME` would be clipped by the viewBox,
+ * which on a phone reads as a rendering fault and on a desktop reads as a tree
+ * with a branch sawn off.
+ */
+describe("the Tree, as a tree", () => {
+  /** Every coordinate in a path string, which is all this needs to know. */
+  const numbersIn = (d: string) =>
+    (d.match(/-?\d+\.?\d*/g) ?? []).map(Number);
+
+  it("gives every path a limb, and moves none of them", () => {
+    expect(TREE_LIMBS).toHaveLength(TREE_LINES.length);
+    for (const limb of TREE_LIMBS) {
+      const line = TREE_LINES.find((l) => l.path.id === limb.path.id);
+      expect(line, `${limb.path.id} has a limb and no line`).toBeDefined();
+      // The letter stays exactly where the tested geometry put it — the whole
+      // point of the drawing layer is that it draws the same Tree.
+      expect(limb.labelX).toBe(line?.labelX);
+      expect(limb.labelY).toBe(line?.labelY);
+      expect(limb.d.length, `${limb.path.id} has no outline`).toBeGreaterThan(20);
+      expect(limb.leaves.length).toBeGreaterThan(0);
+    }
+  });
+
+  /**
+   * A limb is thick where it comes out of the ground and fine at the tip, so
+   * the trunk out of the kingdom has to be the widest thing on the drawing and
+   * the ways into the crown the narrowest. Measured off the outlines rather
+   * than off the constants, which is the only way to catch the taper being
+   * applied to the wrong end.
+   */
+  it("makes the trunk thicker than the twigs", () => {
+    const spread = (id: string) => {
+      const limb = TREE_LIMBS.find((l) => l.path.id === id);
+      const xs = numbersIn(limb?.d ?? "").filter((_, i) => i % 2 === 0);
+      return Math.max(...xs) - Math.min(...xs);
+    };
+    // Malchut–Yesod is the first step out of the kingdom; Keter–Chochmah is a
+    // way into the crown. Both are short, so the difference is the taper.
+    expect(spread("malchut-yesod")).toBeGreaterThan(spread("keter-chochmah"));
+  });
+
+  it("keeps the whole drawing — roots and crown — inside its own frame", () => {
+    const all = [...TREE_LIMBS.map((l) => l.d), ...TREE_ROOTS, ...TREE_CANOPY];
+    for (const d of all) {
+      const n = numbersIn(d);
+      for (let i = 0; i < n.length; i += 2) {
+        expect(n[i], `a limb runs off the side: ${d.slice(0, 40)}`).toBeGreaterThanOrEqual(
+          TREE_FRAME.left,
+        );
+        expect(n[i]).toBeLessThanOrEqual(TREE_FRAME.right);
+        expect(n[i + 1], `a limb runs off the end: ${d.slice(0, 40)}`).toBeGreaterThanOrEqual(
+          TREE_FRAME.top,
+        );
+        expect(n[i + 1]).toBeLessThanOrEqual(TREE_FRAME.bottom);
+      }
+    }
+  });
+
+  /** Roots below the kingdom, branches above the crown, and never the reverse. */
+  it("puts the roots under the kingdom and the branches over the crown", () => {
+    expect(TREE_ROOTS.length).toBeGreaterThan(3);
+    expect(TREE_CANOPY.length).toBeGreaterThan(2);
+    const lowest = (ds: readonly string[]) =>
+      Math.max(...ds.flatMap((d) => numbersIn(d).filter((_, i) => i % 2 === 1)));
+    const highest = (ds: readonly string[]) =>
+      Math.min(...ds.flatMap((d) => numbersIn(d).filter((_, i) => i % 2 === 1)));
+    expect(lowest(TREE_ROOTS), "the roots do not go below Malchut").toBeGreaterThan(
+      pointOf.malchut.y,
+    );
+    expect(highest(TREE_CANOPY), "the branches do not rise above Keter").toBeLessThan(
+      pointOf.keter.y,
+    );
+  });
+
+  /** And a limb bends the same way every time it is drawn. */
+  it("draws the same Tree twice", () => {
+    expect(TREE_LIMBS.map((l) => l.d)).toEqual(TREE_LIMBS.map((l) => l.d));
+    expect(new Set(TREE_LIMBS.map((l) => l.d)).size, "two limbs are the same shape").toBe(
+      TREE_LIMBS.length,
+    );
   });
 });

@@ -368,6 +368,199 @@ export const TREE_LINES: readonly TreeLine[] = TREE_PATHS.map((path) => {
   };
 });
 
+// ---------------------------------------------------------------------------
+// the Tree, as a tree
+// ---------------------------------------------------------------------------
+
+/**
+ * **It is called a tree, and it was drawn as a wiring diagram.**
+ *
+ * Ten circles and twenty-two straight rules of identical weight: correct, and
+ * it looked like a schematic of something rather than the thing every reader of
+ * this already carries a picture of. The geometry below is the same geometry —
+ * `TREE_POINTS` and `TREE_LINES` are untouched, and the printed frame they
+ * encode is what everybody knows by sight — with three things added that a
+ * diagram does not have and a tree cannot do without.
+ *
+ * **Weight.** A limb is thick where it comes out of the ground and fine at the
+ * tip. So a path's width is read off the *height* of its ends: the Breath, the
+ * first step out of the kingdom, is the trunk; the paths into the crown are
+ * twigs. Nothing about the game changes and the shape suddenly has a direction
+ * — down is where it grows from.
+ *
+ * **Bend.** Nothing that grew is straight. Each limb bows a little, and the
+ * side it bows to comes off a hash of its own id, so the Tree is irregular in
+ * the way a tree is and identical every time it is drawn.
+ *
+ * **Root and crown.** Below Malchut the roots go into the ground, because the
+ * kingdom is the one rung the game says is *stood upon* before anything is
+ * climbed; above Keter the branches open into nothing, because the crown is
+ * where the drawing stops rather than where the tree does.
+ *
+ * (The Tree is also drawn upside down in the sources — *ilan hafuch*, rooted
+ * above and fruiting below — which is a better idea than this one and belongs
+ * to a game whose Scribe climbs downward. This one climbs up.)
+ */
+
+/** Half-width of a limb in the drawing's units, at the foot and at the crown. */
+const LIMB_FOOT = 0.115;
+const LIMB_CROWN = 0.03;
+/** How far a limb bows off true, at its middle. */
+const LIMB_BOW = 0.055;
+
+const limbHalf = (y: number) =>
+  LIMB_CROWN + (y / TREE_VIEW.height) * (LIMB_FOOT - LIMB_CROWN);
+
+/** Deterministic, so a limb bows the same way every time it is drawn. */
+function bowOf(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i += 1) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return h % 2 === 0 ? LIMB_BOW : -LIMB_BOW;
+}
+
+/**
+ * A tapered, bowed ribbon between two points, as an SVG path.
+ *
+ * Two quadratics — out along one side and back along the other — because SVG
+ * has no tapering stroke and a limb of even width is the thing being fixed.
+ */
+function ribbon(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  wFrom: number,
+  wTo: number,
+  bow: number,
+): string {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const span = Math.hypot(dx, dy) || 1;
+  const nx = -dy / span;
+  const ny = dx / span;
+  const midW = (wFrom + wTo) / 2;
+  const cx = (from.x + to.x) / 2 + nx * bow;
+  const cy = (from.y + to.y) / 2 + ny * bow;
+  const p = (n: number) =>
+    `${(from.x + nx * wFrom * n).toFixed(4)} ${(from.y + ny * wFrom * n).toFixed(4)}`;
+  const q = (n: number) =>
+    `${(cx + nx * midW * n).toFixed(4)} ${(cy + ny * midW * n).toFixed(4)}`;
+  const r = (n: number) =>
+    `${(to.x + nx * wTo * n).toFixed(4)} ${(to.y + ny * wTo * n).toFixed(4)}`;
+  return `M ${p(1)} Q ${q(1)} ${r(1)} L ${r(-1)} Q ${q(-1)} ${p(-1)} Z`;
+}
+
+/**
+ * Everything a limb needs drawn, the line's own fields included.
+ *
+ * It *extends* `TreeLine` rather than sitting beside it because the alternative
+ * was the component holding two lists and matching them up by id on every
+ * render — which is the same data twice and a lookup between them.
+ */
+export interface TreeLimb extends TreeLine {
+  /** The tapered outline, in drawing units. */
+  d: string;
+  /** A leaf sits along the limb, on alternating sides, and turns with it. */
+  leaves: { x: number; y: number; angle: number }[];
+}
+
+/** Where along a limb the leaves come out, and how far off it they sit. */
+const LEAF_ALONG = [0.28, 0.5, 0.72];
+const LEAF_OFF = 0.075;
+
+export const TREE_LIMBS: readonly TreeLimb[] = TREE_LINES.map((line) => {
+  const { path, from, to } = line;
+  const bow = bowOf(path.id);
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const span = Math.hypot(dx, dy) || 1;
+  const nx = -dy / span;
+  const ny = dx / span;
+  const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+  return {
+    ...line,
+    d: ribbon(from, to, limbHalf(from.y), limbHalf(to.y), bow),
+    leaves: LEAF_ALONG.map((t, i) => {
+      const side = i % 2 === 0 ? 1 : -1;
+      const w = limbHalf(from.y + (to.y - from.y) * t);
+      return {
+        x: from.x + dx * t + nx * (w + LEAF_OFF) * side,
+        y: from.y + dy * t + ny * (w + LEAF_OFF) * side,
+        angle: angle + side * 34,
+      };
+    }),
+  };
+});
+
+/**
+ * A root or a crown-branch: the same ribbon, growing out of a Sefirah.
+ *
+ * **Each one leaves the trunk at its own place**, which is the whole of what
+ * makes this a root system rather than a starburst. Drawn from the node's exact
+ * centre — the obvious way, and what was tried first — five tapering ribbons
+ * radiating from one point read as *rays of light*, which is precisely the
+ * wrong thing to put under a kingdom and, at the crown, an accident that looked
+ * intentional. Offsetting each start and bending each one hard settles it.
+ */
+function spray(
+  at: TreePoint,
+  reach: readonly {
+    /** Where along the trunk it leaves, relative to the node. */
+    ox: number;
+    oy: number;
+    dx: number;
+    dy: number;
+    w: number;
+    bow: number;
+  }[],
+): readonly string[] {
+  return reach.map(({ ox, oy, dx, dy, w, bow }) => {
+    const start = { x: at.x + ox, y: at.y + oy };
+    return ribbon(start, { x: start.x + dx, y: start.y + dy }, w, 0.012, bow);
+  });
+}
+
+/**
+ * The roots, under the kingdom.
+ *
+ * Six, uneven, none of them mirroring another, and each bent hard enough to be
+ * a root: they leave the trunk going down and finish going *out*, which is what
+ * a root does and what a ray does not. The kingdom is the one rung this game
+ * says is stood upon before anything is climbed, and this is that sentence
+ * drawn.
+ */
+export const TREE_ROOTS: readonly string[] = spray(pointOf.malchut, [
+  { ox: -0.02, oy: 0.16, dx: -1.15, dy: 0.72, w: 0.085, bow: 0.34 },
+  { ox: -0.05, oy: 0.3, dx: -0.58, dy: 1.12, w: 0.07, bow: 0.19 },
+  { ox: 0.01, oy: 0.1, dx: -0.14, dy: 1.36, w: 0.1, bow: -0.12 },
+  { ox: 0.04, oy: 0.34, dx: 0.46, dy: 1.02, w: 0.075, bow: -0.22 },
+  { ox: 0.06, oy: 0.18, dx: 1.02, dy: 0.86, w: 0.08, bow: -0.31 },
+  { ox: 0.03, oy: 0.62, dx: 0.62, dy: 0.5, w: 0.045, bow: 0.16 },
+]);
+
+/**
+ * And what opens above the crown, which the drawing does not follow.
+ *
+ * Fewer and shorter than the roots, and reaching sideways rather than straight
+ * up: branches into open air, not a halo. Keter has its own light and does not
+ * need help looking radiant.
+ */
+export const TREE_CANOPY: readonly string[] = spray(pointOf.keter, [
+  { ox: -0.01, oy: -0.14, dx: -0.78, dy: -0.34, w: 0.035, bow: -0.22 },
+  { ox: -0.02, oy: -0.2, dx: -0.26, dy: -0.62, w: 0.032, bow: 0.14 },
+  { ox: 0.02, oy: -0.16, dx: 0.34, dy: -0.58, w: 0.034, bow: -0.15 },
+  { ox: 0.03, oy: -0.1, dx: 0.84, dy: -0.28, w: 0.03, bow: 0.2 },
+]);
+
+/**
+ * The frame the whole drawing needs, roots and canopy included — asymmetric,
+ * because a tree is. Used as the viewBox, so nothing has to guess at padding.
+ */
+export const TREE_FRAME = {
+  left: -0.62,
+  top: -1.0,
+  right: TREE_VIEW.width + 0.62,
+  bottom: TREE_VIEW.height + 1.5,
+} as const;
+
 /**
  * How a path stands to the Scribe: the ones out of where they are, the ones
  * they have already walked, and everything else.

@@ -6,9 +6,11 @@ import {
   otherEnd,
   pathsFrom,
   stateOfPath,
-  TREE_LINES,
+  TREE_CANOPY,
+  TREE_FRAME,
+  TREE_LIMBS,
   TREE_POINTS,
-  TREE_VIEW,
+  TREE_ROOTS,
   type TreePath,
 } from "./tree";
 import { keliOnPath } from "./world/build";
@@ -45,17 +47,20 @@ import styles from "./GamePage.module.css";
  * the busiest junction of the diagram.
  */
 
-/** Room around the drawing, in the same units, so glyphs are not clipped. */
-const PAD = 0.55;
 /** Drawing units to user units. Everything below is in the latter. */
 const SCALE = 100;
 
+/** The frame comes from `tree.ts` now, because the roots decide how tall it is. */
 const vb = {
-  x: -PAD * SCALE,
-  y: -PAD * SCALE,
-  w: (TREE_VIEW.width + PAD * 2) * SCALE,
-  h: (TREE_VIEW.height + PAD * 2) * SCALE,
+  x: TREE_FRAME.left * SCALE,
+  y: TREE_FRAME.top * SCALE,
+  w: (TREE_FRAME.right - TREE_FRAME.left) * SCALE,
+  h: (TREE_FRAME.bottom - TREE_FRAME.top) * SCALE,
 };
+
+/** A limb outline, written in drawing units, scaled up for the viewBox. */
+const scaled = (d: string) =>
+  d.replace(/-?\d+\.?\d*/g, (n) => (Number(n) * SCALE).toFixed(1));
 
 const regionOf = Object.fromEntries(regions.map((r) => [r.sefirah, r])) as Record<
   SefirahId,
@@ -129,8 +134,22 @@ export function TreeMap({
           role="img"
           aria-label={`The Tree of Life. You stand in ${here.name}. ${lit.length} of ten Sefirot kindled, ${gathered.length} of twenty-two letters gathered.`}
         >
-          {/* The paths first, so the Sefirot sit on top of them. */}
-          {TREE_LINES.map(({ path, from, to, labelX, labelY }) => {
+          {/* **Under the kingdom, and over the crown.** Neither is walkable and
+              neither is decoration: the roots say the drawing rests on
+              something, and the branches say it stops before the tree does.
+              Drawn first, and dimmest, so nothing ever competes with a way
+              out. */}
+          <g className={styles.treeGround} aria-hidden="true">
+            {TREE_ROOTS.map((d, i) => (
+              <path key={`root${i}`} d={scaled(d)} className={styles.treeRoot} />
+            ))}
+            {TREE_CANOPY.map((d, i) => (
+              <path key={`branch${i}`} d={scaled(d)} className={styles.treeBranch} />
+            ))}
+          </g>
+
+          {/* The limbs, so the Sefirot sit on top of them. */}
+          {TREE_LIMBS.map(({ path, d, leaves, labelX, labelY }) => {
             const state = stateOfPath(path, at, walked);
             const letter = lettersById[path.letter];
             const held = gathered.includes(path.letter);
@@ -144,13 +163,28 @@ export function TreeMap({
             const shows = held || state === "open";
             return (
               <g key={path.id} className={styles[`treePath_${state}`]}>
-                <line
-                  x1={from.x * SCALE}
-                  y1={from.y * SCALE}
-                  x2={to.x * SCALE}
-                  y2={to.y * SCALE}
-                  className={styles.treeLine}
-                />
+                {/* **The limb, not a rule.** Thick where it comes out of the
+                    ground and fine at the tip, and bowed, because the width is
+                    read off the height of its ends — so the Breath out of the
+                    kingdom is the trunk and the ways into the crown are twigs.
+                    Nothing about the game changed and the shape acquired a
+                    direction: down is where it grew from. */}
+                <path d={scaled(d)} className={styles.treeLimb} />
+                {/* A walked path puts out leaves. The route through the Tree is
+                    the one thing about a climb that is wholly the Scribe's, and
+                    this is the only place it can be seen whole. */}
+                {state === "walked" &&
+                  leaves.map((leaf, i) => (
+                    <ellipse
+                      key={i}
+                      cx={leaf.x * SCALE}
+                      cy={leaf.y * SCALE}
+                      rx={9}
+                      ry={4.5}
+                      className={styles.treeLeaf}
+                      transform={`rotate(${leaf.angle.toFixed(1)} ${(leaf.x * SCALE).toFixed(1)} ${(leaf.y * SCALE).toFixed(1)})`}
+                    />
+                  ))}
                 {/* A letter is shown once it has been gathered. Before that the
                     path is a way to somewhere and not yet a letter, which is
                     the whole of what walking one is for. */}
@@ -193,7 +227,27 @@ export function TreeMap({
                     name below says which node this is without ambiguity, and an
                     empty disc that fills when kindled says the one thing the
                     diagram needs to say at a glance. */}
+                {/* **A kindled Sefirah gives off light**, which on a diagram is
+                    a fill and on a tree is a glow. Drawn as a second, wider
+                    disc under the first rather than as a filter: a blur is one
+                    more thing to get wrong on a phone, and a soft ring is what
+                    a small light in a dark orchard actually looks like. */}
+                <circle
+                  cx={point.x * SCALE}
+                  cy={point.y * SCALE}
+                  r={44}
+                  className={styles.treeHalo}
+                />
                 <circle cx={point.x * SCALE} cy={point.y * SCALE} r={24} className={styles.treeDisc} />
+                {/* The catch of light on the shoulder of a round thing. It is
+                    two pixels of highlight and it is the whole difference
+                    between a circle and a fruit. */}
+                <circle
+                  cx={point.x * SCALE - 7.5}
+                  cy={point.y * SCALE - 7.5}
+                  r={7}
+                  className={styles.treeGleam}
+                />
                 <text
                   x={point.x * SCALE}
                   y={point.y * SCALE + 46}
