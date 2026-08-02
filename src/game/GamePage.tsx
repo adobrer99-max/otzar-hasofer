@@ -51,6 +51,7 @@ import {
 } from "./story";
 import { buildRegion, verbsOf } from "./world/build";
 import { readWarp, warpParams, warpRecord, type WarpOptions } from "./dev/warp";
+import { installProbe, neighbourhood, probeOf } from "./dev/probe";
 import type { World } from "./world/types";
 import styles from "./GamePage.module.css";
 
@@ -343,6 +344,20 @@ export function GamePage() {
     warpTo(options);
   }, [loading, params, warpTo]);
 
+  // A live readout for the playtest harness. Installed once and reading refs,
+  // so polling it never costs the page a render — see `dev/probe.ts`.
+  const ascentRef = useRef<AscentRecord | null>(ascent);
+  ascentRef.current = ascent;
+  const plateRef = useRef<Plate | null>(plate);
+  plateRef.current = plate;
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    return installProbe({
+      read: () => probeOf(worldRef.current, ascentRef.current, plateRef.current?.kind),
+      look: (radius) => neighbourhood(worldRef.current, radius),
+    });
+  }, []);
+
   // --- the four events the world raises ------------------------------------
 
   const onLetter = useCallback(
@@ -567,7 +582,12 @@ export function GamePage() {
       ) {
         setPlate(null);
       }
-      else if (plate.kind === "sealed") sealAscent();
+      // Going out ends the climb exactly as the crown does — the plate's own
+      // button calls `onSeal`, and only the keyboard was wrong. Enter used to
+      // fall through to `climbOn`, which carried a Scribe whose last lamp had
+      // just gone out up to the next rung with three fresh ones. Caught by a
+      // harness run that went out in Netzach and finished in Tiferet.
+      else if (plate.kind === "sealed" || plate.kind === "out") sealAscent();
       else climbOn(false);
     };
     window.addEventListener("keydown", onKey);
@@ -1113,9 +1133,19 @@ function PlateOverlay({
   onAccept: (offer: UshpizinOffer) => void;
   onClose: () => void;
 }) {
+  // Every plate autofocuses its button so the game can be played without a
+  // mouse — and on a plate taller than the screen the browser scrolls that
+  // button into view, which opens the crowning at its last line and scrolls
+  // the plea past before it can be read. Put it back to the top; the focus is
+  // still where it was.
+  const body = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    body.current?.scrollTo({ top: 0 });
+  }, [plate]);
+
   return (
     <div className={styles.plateScrim} role="dialog" aria-modal="true">
-      <div className={styles.plate}>
+      <div className={styles.plate} ref={body}>
         {plate.kind === "letter" && <LetterPlate letterId={plate.letterId} onClose={onClose} />}
         {plate.kind === "fragment" && (
           <FragmentPlate index={plate.index} held={plate.held} onClose={onClose} />
@@ -1654,9 +1684,13 @@ function SealedPlate({
         </p>
       ))}
 
+      {/* "Stood for you" is a claim about testimony, and a Scribe who arrives
+          without a mouth got none — the Houses were met and then could not be
+          called on. Saying they stood for him directly contradicts the plea
+          three lines above it. */}
       <p className={styles.plateDerivation}>
-        {ascent.or} light carried · {witnesses.length} of {WITNESSES_POSSIBLE} Houses stood for you
-        · seeded by {ascent.seedLabel}.
+        {ascent.or} light carried · {witnesses.length} of {WITNESSES_POSSIBLE} Houses{" "}
+        {plea.kind === "mute" ? "met on the way" : "stood for you"} · seeded by {ascent.seedLabel}.
       </p>
       <Button variant="primary" onClick={onSeal} autoFocus>
         Seal the ascent
