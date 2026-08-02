@@ -369,8 +369,14 @@ function fold(into: Powers, effect: Effect): Powers {
  * What a set of vessels amounts to — their own effects, and then whichever
  * synergies both halves of are actually held.
  */
-export function powersFrom(held: readonly string[]): Powers {
+export function powersFrom(held: readonly string[], boons: readonly Effect[] = []): Powers {
   let powers = NOTHING;
+  // **The boons fold first**, and they are the same shape as a vessel's effect
+  // on purpose: a guardian broken in some earlier climb is a thing the Scribe
+  // *is* rather than a thing they are carrying, so it is the floor everything
+  // else multiplies up from. See `guardians.ts` — the Encounters change the
+  // world, and these change the Scribe.
+  for (const boon of boons) powers = fold(powers, boon);
   for (const id of held) {
     const keli = keliById[id];
     if (!keli) continue;

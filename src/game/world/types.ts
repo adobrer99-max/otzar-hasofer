@@ -174,6 +174,17 @@ export interface Room {
 export interface World {
   regionIndex: number;
   sefirah: SefirahId;
+  /**
+   * Set when this world is a guardian's room rather than a rung.
+   *
+   * Two things read it. `stepRooms` shuts an arena on *any* unbroken body in
+   * it, where a rung only shuts on the ones that will come to you — a door held
+   * by something that may not be coming is the one thing sealing must never be
+   * on a rung, and in a room holding one creature and nothing else it is not a
+   * risk, it is the fight. And `GamePage` reads it to know that reaching the
+   * way out means a Sefirah has been freed.
+   */
+  arena?: SefirahId;
   /** Column-major-free: `tiles[y * width + x]`. */
   tiles: Uint8Array;
   width: number;

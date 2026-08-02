@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BEASTS,
+  GREAT,
   canBeStruck,
   HUSK_CHARS,
   isBeast,
@@ -24,12 +25,14 @@ import { regions } from "./regions";
 describe("the klipot", () => {
   it("names every shell, each with something in it and something inside that", () => {
     const kinds = Object.keys(HUSKS) as HuskKind[];
-    // Ten klipot and seven creatures. Counted apart rather than together,
-    // because they are two claims: the ten are human failures Tanach names,
-    // and the seven are not failures at all — see `BEASTS`.
+    // Ten klipot, seven creatures and three great ones. Counted apart rather
+    // than together, because they are three claims: the ten are human failures
+    // Tanach names, the seven are not failures at all, and the three were made
+    // on the fifth day and set aside — see `BEASTS` and `GREAT`.
     expect(kinds.filter((k) => !isBeast(k))).toHaveLength(10);
     expect(BEASTS).toHaveLength(7);
-    expect(kinds).toHaveLength(17);
+    expect(GREAT).toHaveLength(3);
+    expect(kinds).toHaveLength(20);
     for (const kind of kinds) {
       const spec = HUSKS[kind];
       expect(spec.kind, `${kind} is filed under the wrong name`).toBe(kind);

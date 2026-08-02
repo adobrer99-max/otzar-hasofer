@@ -77,7 +77,13 @@ export type HuskKind =
   | "rahav"
   | "og"
   | "nefilim"
-  | "arbeh";
+  | "arbeh"
+  // And the three that were made on the fifth day and set aside — Bava Batra
+  // 74b. One holds each Sefirah above the Abyss, and none of them can be
+  // broken at all except by the one letter that answers it.
+  | "livyatan"
+  | "behemot"
+  | "ziz";
 
 /**
  * The seven creatures, as against the ten klipot.
@@ -96,7 +102,18 @@ export const BEASTS: readonly HuskKind[] = [
   "arbeh",
 ];
 
-export const isBeast = (kind: HuskKind): boolean => BEASTS.includes(kind);
+/**
+ * The three great ones, which stand nowhere on a rung.
+ *
+ * Kept apart from `BEASTS` because they are not scattered — nothing lays them,
+ * a Sefirah *holds* them, and they are met one at a time in a room of their
+ * own. See `guardians.ts`.
+ */
+export const GREAT: readonly HuskKind[] = ["livyatan", "behemot", "ziz"];
+
+export const isGreat = (kind: HuskKind): boolean => GREAT.includes(kind);
+export const isBeast = (kind: HuskKind): boolean =>
+  BEASTS.includes(kind) || GREAT.includes(kind);
 
 /**
  * What a screen can ask for, as against what a rung supplies.
@@ -406,6 +423,61 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     light: 2,
     size: { w: 12, h: 12 },
     notices: 320,
+    flies: true,
+  },
+
+  // -------------------------------------------------------------------------
+  // the three great ones
+  // -------------------------------------------------------------------------
+  //
+  // Bava Batra 74b: made on the fifth day, set aside, and kept. They are the
+  // only things in this game a Scribe cannot simply out-write — each is opened
+  // by one letter and by nothing else, and until it is opened the shells do not
+  // come off however many marks are thrown at it. `opened()` in `step.ts` is
+  // where each rule actually lives; these are the numbers.
+
+  livyatan: {
+    kind: "livyatan",
+    name: "Leviathan",
+    hebrew: "לִוְיָתָן",
+    source: "Iyov 41:1 — תִּמְשֹׁךְ לִוְיָתָן בְּחַכָּה, canst thou draw out leviathan with an hook?",
+    is: "Nothing touches it in the water. The question the book asks is whether you can get it out.",
+    reading: "The verse is not a riddle and it is not rhetorical either. It is a list of what you cannot do, and the Hook is the first item on it.",
+    role: "floater",
+    shells: 6,
+    speed: 78,
+    light: 10,
+    size: { w: 34, h: 26 },
+    notices: Infinity,
+  },
+  behemot: {
+    kind: "behemot",
+    name: "Behemoth",
+    hebrew: "בְּהֵמוֹת",
+    source: "Iyov 40:19 — הָעֹשׂוֹ יַגֵּשׁ חַרְבּוֹ, he that made him can make his sword approach",
+    is: "Nothing stops it while it is moving, and nothing marks it either.",
+    reading: "Only the one who made it can bring a blade near it — so the answer is not a blade. It is something set in the way.",
+    role: "charger",
+    shells: 7,
+    speed: 214,
+    light: 12,
+    size: { w: 34, h: 30 },
+    notices: Infinity,
+  },
+  ziz: {
+    kind: "ziz",
+    name: "The Ziz",
+    hebrew: "זִיז",
+    source: "Tehillim 50:11 — וְזִיז שָׂדַי עִמָּדִי, and the ziz of the field is mine",
+    is: "It never comes down. Whether you reach it is a question about how far you can throw.",
+    reading: "The verse says only that it is His. Everything else about it is midrash, and all of the midrash agrees that it is enormous and that it is above you.",
+    role: "floater",
+    shells: 6,
+    speed: 104,
+    light: 10,
+    size: { w: 30, h: 24 },
+    notices: Infinity,
+    throws: 150,
     flies: true,
   },
 };

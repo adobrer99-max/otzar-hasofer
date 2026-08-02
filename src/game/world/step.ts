@@ -644,13 +644,18 @@ function stepRooms(world: World): void {
     (h) =>
       room.husks.includes(h.id) &&
       !h.broken &&
+      // **An arena shuts on whatever is in it.** The rule below is about a rung,
+      // where a door held by something that may be in a far corner and is not
+      // coming would be a door nobody can open. A guardian's room holds one
+      // creature and nothing else, and it is coming.
+      (Boolean(world.arena) ||
       // A door waits only on a klipah that will actually **come to you**: the
       // ones that commit to a charge, and the ones on foot that notice you at
       // all. Cain paces its ledge and has never looked up, and Athaliah is off
       // chasing the loose light — a door held shut by one of those is a door
       // held shut by something that may be on the far side of the room and is
       // not coming, which is the one thing sealing must never be.
-      (HUSKS[h.kind].role === "charger" ||
+        HUSKS[h.kind].role === "charger" ||
         (HUSKS[h.kind].role === "pacer" && Number.isFinite(HUSKS[h.kind].notices))),
   );
   const standing = holding.length > 0;
@@ -666,7 +671,10 @@ function stepRooms(world: World): void {
   // key writes is a locked door with the lesson on the other side of it.
   const closes =
     standing &&
-    world.regionIndex > 1 &&
+    // ...except in an arena, where the kingdom's exemption does not apply: a
+    // Scribe who has walked into a guardian's room has already been taught
+    // everything the porch teaches, and the room is the whole of the thing.
+    (Boolean(world.arena) || world.regionIndex > 1) &&
     !room.cleared &&
     !room.entrance &&
     room.kind !== "exit" &&
@@ -1093,7 +1101,62 @@ function hiddenAt(world: World, husk: Husk): boolean {
   return tileAt(world, tx, ty) === Tile.Veiled;
 }
 
+/** Whether a body is standing in water. */
+const inWaterAt = (world: World, x: number, y: number) =>
+  isWater(tileAt(world, tile(x), tile(y)));
+const inWater = (world: World, body: Husk) =>
+  inWaterAt(world, body.x + body.w / 2, body.y + body.h / 2);
+
+/**
+ * **Whether a great one can be marked at all.**
+ *
+ * Everything else in this game opens to a mark thrown at it, and that is the
+ * one thing the three from the fifth day do not do. Each is opened by a
+ * condition rather than by a number, and the condition is what the letter
+ * arranges — so the letter is the answer to the fight rather than a modifier
+ * on it, which is what the whole game claims about the alphabet and had never
+ * once been true of a fight.
+ *
+ * Nothing here reads the Scribe's letters. It reads the *world*, and Vav and
+ * Bet are how the world gets that way — which is the difference between a
+ * puzzle and a permission check, and it is why the Hook still moves Leviathan
+ * on a strike that takes no shell off it.
+ *
+ * The Ziz is not here on purpose. Its condition is distance, and distance is
+ * already a number the game keeps: `markPowers` gives the Staff sixteen more
+ * ticks of mark life and nothing else in the game throws that far. A rule
+ * saying so would be the same rule written twice and free to drift.
+ */
+function opened(world: World, husk: Husk): boolean {
+  switch (husk.kind) {
+    // Out of the water, and only out of it. The Hook is what puts it there.
+    case "livyatan":
+      return !inWater(world, husk);
+    // Stopped, and only a set stone stops it.
+    case "behemot":
+      return husk.cooldown > 0;
+    default:
+      return true;
+  }
+}
+
 function strikeHusk(world: World, husk: Husk, bite: number, push: number, from: number): void {
+  // A great one still *moves* when it is struck unopened — which is not a
+  // consolation, it is the mechanism: drawing Leviathan is a hit that takes no
+  // shell and pulls it landward, and there is no other way out of the water.
+  if (!opened(world, husk)) {
+    // Long enough for the pull to actually carry it: `stepHusks` yields to
+    // `struck` on the ones a pull is the answer to, and four ticks of that was
+    // four ticks of steering winning the argument on the fifth.
+    husk.struck = 12;
+    // **And only a pull moves it.** A push against something that size is a
+    // push against something that size — which is the verse, and it is also
+    // the only thing that made the rule hold: with an ordinary shove counting,
+    // a Scribe with no Hook simply drove Leviathan across the pool and onto
+    // the far bank, and it broke in nine hundred ticks like anything else.
+    if (push < 0) husk.vx += push * (husk.x < from ? -1 : 1) * 90;
+    return;
+  }
   husk.shells -= bite;
   husk.struck = 8;
   husk.vx += push * (husk.x < from ? -1 : 1) * 90;
@@ -1516,6 +1579,105 @@ function stepHusks(world: World, ctx: StepContext): void {
         const swing = Math.sin((world.tick + husk.home.x) / 14) * 0.55;
         husk.vx = (toward / away) * spec.speed;
         husk.vy = ((p.y - husk.y) / away) * spec.speed + swing * spec.speed;
+        break;
+      }
+
+      // ---------------------------------------------------------------------
+      // the three great ones
+      // ---------------------------------------------------------------------
+
+      // **Leviathan.** תִּמְשֹׁךְ לִוְיָתָן בְּחַכָּה — canst thou draw out leviathan
+      // with an hook? In the water it rides the surface, where it is visible
+      // and can be hit and where a hit does nothing at all except move it. Out
+      // of the water it is heavy, and it wants the water back, so the whole
+      // fight is the seconds between the two.
+      case "livyatan": {
+        // **The pull wins.** Struck, it goes where it was pulled and steers at
+        // nothing — which is the whole mechanism, and it did not work until it
+        // was written down: the case set `vx` outright every tick, so the
+        // Hook's impulse was overwritten on the frame it landed and the thing
+        // oscillated on the waterline forever. Measured: nine hundred ticks of
+        // a Scribe holding every letter in the game, and not one shell.
+        if (husk.struck > 0) {
+          husk.vx *= 0.98;
+          husk.vy = inWater(world, husk) ? 0 : Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
+          break;
+        }
+        if (inWater(world, husk)) {
+          husk.vx = Math.sign(toward || 1) * spec.speed;
+          // Rides just under the surface rather than the bottom: a thing at the
+          // bottom of a pool is a thing nothing can reach, which is a wall.
+          const overhead = inWaterAt(world, husk.x + husk.w / 2, husk.y - TILE_SIZE);
+          husk.vy = overhead ? -spec.speed * 0.7 : spec.speed * 0.3;
+        } else {
+          husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
+          husk.vx = Math.sign(husk.home.x - husk.x) * spec.speed * 0.55;
+        }
+        break;
+      }
+
+      // **Behemoth.** הָעֹשׂוֹ יַגֵּשׁ חַרְבּוֹ — only the one who made him can bring
+      // a blade near him, so the answer is not a blade. It runs, and the walls
+      // of the room do not stop it: it turns at them, because it is vast rather
+      // than stupid. **Only a stone the Scribe set stops it**, and only while
+      // it is stopped is there anything to write on.
+      case "behemot": {
+        husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
+        if (husk.cooldown > 0) {
+          husk.vx = 0;
+          break;
+        }
+        if (husk.charging <= 0) {
+          husk.facing = (toward > 0 ? 1 : -1) as 1 | -1;
+          husk.charging = 240;
+        }
+        husk.charging -= 1;
+        husk.vx = husk.facing * spec.speed;
+        const nose = tile(husk.x + (husk.facing > 0 ? husk.w + 3 : -3));
+        const ahead = tileAt(world, nose, tile(husk.y + husk.h / 2));
+        if (ahead === Tile.Placed) {
+          husk.charging = 0;
+          husk.cooldown = 120;
+          husk.vx = 0;
+          say(world, "It goes into what was set in its way, and stops.");
+        } else if (isSolid(ahead, solidFor(world, ctx))) {
+          husk.facing = (husk.facing * -1) as 1 | -1;
+        }
+        break;
+      }
+
+      // **The Ziz.** It never comes down — it holds the roof and follows, and
+      // once in a while it stoops. Whether you can reach it is a question about
+      // how far you can throw, and there is exactly one letter about that.
+      case "ziz": {
+        // **It never comes down**, and that is not flavour — it is the gate.
+        // A stoop was tried and thrown away: anything that dives at the Scribe
+        // comes inside the reach of an ordinary mark on the way, which hands
+        // the fight to a Scribe with no Staff and makes the letter a
+        // suggestion. So it holds its height and drops what it is carrying,
+        // and the only question left is how far you can throw.
+        const roof = husk.home.y;
+        husk.vx = Math.sign(toward || 1) * spec.speed;
+        husk.vy = Math.max(-spec.speed, Math.min(spec.speed, (roof - husk.y) * 3));
+        if (husk.cooldown === 0 && spec.throws) {
+          husk.cooldown = spec.throws;
+          world.marks.push({
+            id: `z${world.tick}-${husk.id}`,
+            mine: false,
+            x: husk.x + husk.w / 2 - MARK_SIZE / 2,
+            y: husk.y + husk.h,
+            w: MARK_SIZE,
+            h: MARK_SIZE,
+            vx: 0,
+            vy: 150,
+            life: 200,
+            pierces: false,
+            bite: 1,
+            draws: false,
+            glyph: "ז",
+          });
+          say(world, "It lets something fall.");
+        }
         break;
       }
     }

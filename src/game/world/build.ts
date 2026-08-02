@@ -1,4 +1,5 @@
 import { cardsByHouse, housesBySefirah } from "../../data/dorot";
+import type { SefirahId } from "../../types/letter";
 import type { Verb } from "../abilities";
 import { abilityByLetter } from "../abilities";
 import {
@@ -12,6 +13,10 @@ import {
 import { makeRng, randomInt, shuffle } from "../rng";
 import { chooseTarget, type WordGateTarget } from "../wordGate";
 import {
+  ARENA_A,
+  ARENA_B,
+  ARENA_SEA_A,
+  ARENA_SEA_B,
   CHUNK_H,
   CHUNK_W,
   CHUNKS,
@@ -31,6 +36,7 @@ import {
 import { HUSK_CHARS, HUSKS, kindForRole, LAMPS } from "../combat";
 import { VEIL_COST } from "../encounter";
 import { drawKeli, keliFor, type Keli } from "../items";
+import { guardianOf } from "../guardians";
 import { MARKER_CHARS, Tile, TILE_CHARS, TILE_SIZE } from "./tiles";
 import { doorsOf, planFloor, roomAtPoint, ROOM_H, ROOM_W } from "./rooms";
 import { TREE_PATHS, type TreePath } from "../tree";
@@ -1372,6 +1378,71 @@ export function buildPath(
     laid.length > 0 ? 1 : 0,
     keli,
   );
+}
+
+/**
+ * **A guardian's room.**
+ *
+ * Three rooms rather than one, and the middle one is the fight: a Scribe walks
+ * in, the way shuts behind them, and the way on opens when the shell breaks.
+ * The entrance room exists because `stepRooms` will not seal the room you began
+ * in — correctly, since a door that shuts on the tick you appear is a door you
+ * never saw open — and the third holds the way out.
+ *
+ * Painted through `paintChunks`, which lays an explicit run of screens with no
+ * klipot scattered into it, because a guardian is not scattered. It is placed,
+ * once, in the middle of the middle room.
+ *
+ * The terrain is named rather than drawn from: `ARENA_SEA` for Leviathan, which
+ * cannot be marked in the water and therefore needs water and a bank, and the
+ * plain room for everything else. Behemoth wants a run and walls to turn at,
+ * which a plain room is; the Ziz wants a roof, which every screen in the
+ * library has.
+ */
+export function buildArena(sefirah: SefirahId, seed = 1): World {
+  const guardian = guardianOf(sefirah);
+  const region = regions.find((r) => r.sefirah === sefirah) ?? regionAt(1);
+  const sea = guardian.kind === "livyatan";
+  const laid = sea
+    ? [START_CHUNK, ARENA_A, ARENA_SEA_A, ARENA_SEA_B, ARENA_B, END_CHUNK]
+    : [START_CHUNK, ARENA_A, ARENA_A, ARENA_B, ARENA_B, END_CHUNK];
+
+  const world = paintChunks(laid, seed);
+  world.arena = sefirah;
+  world.regionIndex = region.index;
+  world.sefirah = sefirah;
+
+  const spec = HUSKS[guardian.kind];
+  const middle = world.rooms[1] ?? world.rooms[0];
+  const x = (middle.x + middle.w / 2) * TILE_SIZE;
+  // **Seven tiles above the floor**, for the Ziz, and the number is the fight:
+  // a mark angled up carries about six and a third tiles of height from the
+  // Staff's sixteen extra ticks take it past nine. Anything lower and it is
+  // reachable by a Scribe with no Staff; anything higher and it is reachable by
+  // nobody. Everything else stands on the floor of the room.
+  const y = guardian.kind === "ziz"
+    ? (middle.y + middle.h - 11) * TILE_SIZE
+    : (middle.y + middle.h - 2) * TILE_SIZE - spec.size.h;
+  world.husks = [
+    {
+      id: `guardian-${sefirah}`,
+      kind: guardian.kind,
+      x,
+      y,
+      w: spec.size.w,
+      h: spec.size.h,
+      vx: 0,
+      vy: 0,
+      facing: -1,
+      shells: spec.shells,
+      home: { x, y },
+      cooldown: 0,
+      charging: 0,
+      struck: 0,
+    },
+  ];
+  middle.husks = [world.husks[0].id];
+  return world;
 }
 
 /**
