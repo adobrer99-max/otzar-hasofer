@@ -729,10 +729,25 @@ export const CHUNKS: Chunk[] = [
     "##............##",
   ]),
 
-  /** A face twice as tall as the first, caught and caught again. */
+  /**
+   * A face twice as tall as the first, caught and caught again.
+   *
+   * It tops out at row **two**, and the one row of difference is the whole of
+   * what a floor changed. This wall is crossed by going over it, which means
+   * standing on top of it — and a body is thirty pixels in a twenty-four pixel
+   * tile, so standing on a surface always occupies the two rows above it. Reach
+   * row one and the second of those is off the top of the screen, which is open
+   * sky on the topmost storey of a rung and the *floor of the storey above* on
+   * every other one. Measured: on a two-row rung this screen was a wall with no
+   * way past, and the whole lower storey behind it was unreachable.
+   *
+   * `chunks.test.ts` holds the general form of it — anything solid in row one
+   * must be roofed, so that no screen is ever crossed by a route that only
+   * exists under an open sky.
+   */
   chunk("sheer-face", { requires: ["wall-cling"], demand: 2 }, [
     E,
-    "......###.......",
+    E,
     "......###.......",
     "......###.......",
     "......###.......",

@@ -41,21 +41,32 @@ export const ROW_SCREENS_PER_ROOM = 2;
  * line and keeps the pacing that was measured and fixed. The map deepens as it
  * is climbed, which is the whole of what the shape is meant to say.
  */
+export const FLOOR_ROWS = (regionIndex: number): number =>
+  regionIndex <= 3 ? 1 : regionIndex <= 7 ? 2 : 3;
+
 export function rowsFor(regionIndex: number): number {
-  // **Held at one, deliberately, until the probe can path in two dimensions.**
+  // **Still held at one, and the reason has moved.**
   //
-  // Everything a floor needs is built and tested: the grid, the stairwell
-  // screens, the mirroring that lets the whole authored library be walked
-  // backwards, and the storey-aware way out. Turning the rows on works — the
-  // rungs generate, connect and chain correctly — but the traversal probe is a
-  // heuristic walker, and on a floor it gets caught in pockets that a hand
-  // steps out of without thinking. Two of sixty seeds stall.
+  // It used to be that the traversal probe could not path in two dimensions at
+  // all, and there was no way to tell a floor with a hole in it from a floor
+  // the bot merely failed to cross. That half is done: `route.ts` builds the
+  // graph of the places a body can stand and the leaps and falls between them,
+  // and `route.test.ts` walks it from the start to the way out on **every rung
+  // and every seed with the rows on** — a hundred and twenty of them, all
+  // reachable. Building that graph found a real fault, too, and fixed it: the
+  // `sheer-face` screen is crossed by standing on top of the wall, which needs
+  // the row above the wall *and the one above that*, and on any storey but the
+  // topmost the second of those is the floor of the storey overhead. It was a
+  // wall with no way past, and the whole lower storey behind it was cut off.
   //
-  // That is not a level fault and it is not a reason to ship: the no-soft-lock
-  // guarantee is the one invariant this game does not bend, and a guarantee
-  // that cannot be *checked* is not one. The probe needs a route rather than
-  // better guesses — a distance field over the open space — and that is its
-  // own piece of work rather than something to bolt on at the end of this one.
+  // What is left is the driver. Given the route to steer by, the probe now
+  // crosses a hundred and eighteen of those hundred and twenty, against ninety
+  // with the old rule — and the two it does not cross are execution, not
+  // ground: it reaches ninety-one per cent of Netzach on one seed and falls
+  // back down the stairwell it has just climbed. `FLOOR_ROWS` above is the
+  // shape that ships the day the last two go green, and it is what the route
+  // test already measures against; this returns one until then, because a
+  // guarantee with two known exceptions is not a guarantee.
   void regionIndex;
   return 1;
 }
@@ -91,10 +102,19 @@ export function buildRegion(
   seed: number,
   lightOfTheDay = 1,
   teaching = false,
+  /**
+   * How many rows of rooms to build, overriding `rowsFor`.
+   *
+   * There for `route.test.ts`, and it earns its place: the rows are switched
+   * off in the shipping build and the whole point of the route graph is to
+   * prove that the floors are sound *before* they are switched on. Without a
+   * way to build one there is nothing to prove it against.
+   */
+  rows?: number,
 ): World {
   const region = regionAt(regionIndex);
   const rng = makeRng((seed ^ (regionIndex * 0x9e3779b9)) >>> 0);
-  const { laid, wordGateTarget } = layout(region, rng, teaching);
+  const { laid, wordGateTarget } = layout(region, rng, teaching, rows);
 
   return paint(
     laid,
@@ -107,6 +127,7 @@ export function buildRegion(
     fragmentsBefore(region.index),
     wordGateTarget,
     region.klipot,
+    rows,
     // The taught porch stays empty of husks. Its whole job is to land four
     // coaching lines on flat ground, a step and a gap, and a crawler wandering
     // through the middle of that teaches something else entirely.
@@ -128,6 +149,7 @@ function layout(
   region: ReturnType<typeof regionAt>,
   rng: () => number,
   teaching: boolean,
+  rowsOverride?: number,
 ): { laid: Chunk[]; wordGateTarget: WordGateTarget | undefined } {
   const regionIndex = region.index;
   const held = lettersOnEntering(regionIndex);
@@ -231,7 +253,7 @@ function layout(
   }
   content.push(END_CHUNK);
 
-  const rows = rowsFor(regionIndex);
+  const rows = rowsOverride ?? rowsFor(regionIndex);
   // A room is two screens and a floor is a whole number of rows, so an odd
   // count would leave half a room hanging off the end — a hole in the frame
   // rather than a hole in the level, and worse for it. Flat screens before the
@@ -632,12 +654,13 @@ function paint(
   firstFragmentIndex: number,
   wordGateTarget: WordGateTarget | undefined,
   klipot: Region["klipot"],
+  rowsOverride: number | undefined,
   quiet: number,
 ): World {
   // The screens are dealt into a floor before anything is written. One row is
   // a corridor and is exactly what every rung was before rooms existed, so
   // this changes nothing until a rung asks for a second row.
-  const floor = planFloor(laid, rowsFor(regionIndex));
+  const floor = planFloor(laid, rowsOverride ?? rowsFor(regionIndex));
   const width = floor.cols * ROOM_W;
   const height = floor.rows * ROOM_H;
   const tiles = new Uint8Array(width * height);

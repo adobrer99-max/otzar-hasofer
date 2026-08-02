@@ -35,6 +35,34 @@ const clear = (ch: string) => ch === "." || ch === " ";
  * that violates any of them can never reach a player.
  */
 describe("the chunk library", () => {
+  /**
+   * **No screen may be crossed under an open sky.**
+   *
+   * A body is thirty pixels tall in a twenty-four pixel tile, so standing on a
+   * surface always occupies the two rows above it: to stand on something that
+   * tops out at row one is to have your head in row *minus one*. On the topmost
+   * storey of a rung that row is open sky and the crossing works. On any other
+   * storey it is the floor of the storey above, and the same screen becomes a
+   * wall with no way past — with the whole of the storey behind it cut off.
+   *
+   * Measured, on `sheer-face`: with two rows of rooms it made the lower storey
+   * of a rung unreachable on every seed. The cure was one row of wall, and this
+   * is the general form of it — anything solid in row one must be roofed, so
+   * that nobody is ever invited to climb onto it.
+   */
+  it("never asks a body to stand where the sky would have to hold it", () => {
+    for (const c of ALL) {
+      for (let x = 0; x < CHUNK_W; x += 1) {
+        if (clear(c.rows[1][x])) continue;
+        expect(
+          clear(c.rows[0][x]),
+          `${c.id} column ${x}: stone at row 1 with room to stand on it at row 0, ` +
+            `which only exists on the topmost storey of a floor`,
+        ).toBe(false);
+      }
+    }
+  });
+
   it("holds every chunk to the same dimensions", () => {
     for (const c of ALL) {
       expect(c.rows, `${c.id} row count`).toHaveLength(CHUNK_H);

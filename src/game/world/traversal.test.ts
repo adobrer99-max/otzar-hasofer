@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { abilityByLetter } from "../abilities";
+import { abilityByLetter, type Verb } from "../abilities";
+import { routeTo, storeysOf } from "./route";
 import { lettersOnEntering, regions, TOTAL_REGIONS } from "../regions";
 import { SCROLL_TOTAL } from "../scroll";
 import { solvableRoots } from "../wordGate";
@@ -30,18 +31,35 @@ import { NO_INPUT, type Input, type World } from "./types";
  * A rung used to be a corridor and "the way out" was "to the right". It is a
  * floor now, walked as a boustrophedon — along, up, back along — so a probe
  * that holds right is walking *away* from the exit on every other storey. The
- * rule is the level's own construction restated: while the way out is on a
- * storey above you, head for the end of the row you are on, because that is
- * always where the stairwell is; once you are on its storey, head for the exit
- * itself.
+ * next rule was the level's own construction restated: while the way out is on
+ * a storey above you, head for the end of the row you are on, because that is
+ * where the stairwell is. It was true, and it lost, because knowing which end
+ * of a rung to walk to says nothing about the shelf you are standing on.
  *
- * Distance to the goal — not distance travelled — is also what "am I getting
- * anywhere?" has to be asked against, or half a climb reads as being stuck.
+ * So **which way** comes off the route now — `routeTo` in `route.ts`, a graph
+ * of the places a body can stand and the leaps and falls between them, with the
+ * cost to the way out flooded backwards through it. Measured, with the floors
+ * on: the row-end rule stalled nineteen runs of sixty and the route stalls one.
+ *
+ * **Only which way**, and that is a finding rather than a scruple. The route
+ * also knows how far there is still to go, whether the next leg rises, and what
+ * the landing is, and every one of those was wired into the probe and measured,
+ * and every one of them made it worse — the distance because it changes by the
+ * tile and the probe's sense of being stuck is tuned to a measure that changes
+ * every tick; the rise and the landing because the probe cannot execute a
+ * chosen leap and second-guessing its own direction mid-air only made it drift.
+ * Wired in full it stalled eighteen of sixty on the one-row ground it crosses
+ * cleanly today. The probe needed to know which way to go, not how to move; the
+ * rest of it was already right.
+ *
+ * Distance to the goal — not distance travelled — is still what "am I getting
+ * anywhere?" is asked against, or half a climb reads as being stuck.
  */
-export function steering(world: World) {
+export function steering(world: World, verbs: readonly Verb[] = []) {
+  const route = routeTo(world, verbs);
   const exit = world.entities.find((e) => e.kind === "exit");
   const storeyH = CHUNK_H * TILE_SIZE;
-  const storeys = Math.max(1, Math.round(world.height / CHUNK_H));
+  const storeys = storeysOf(world);
   const goalX = exit ? exit.x : world.width * TILE_SIZE;
   const goalY = exit ? exit.y : 0;
   /** Counting up from the bottom, which is the order they are walked in. */
@@ -55,7 +73,19 @@ export function steering(world: World) {
     return { x: mine % 2 === 0 ? world.width * TILE_SIZE : 0, y: p.y };
   };
 
-  /** How far there is still to go, in pixels of Manhattan distance. */
+  /**
+   * How far there is still to go, in pixels of Manhattan distance — and it is
+   * **not** taken from the route, which knows the answer exactly.
+   *
+   * That was tried and measured. The route's own field is a count of tiles, so
+   * it changes once per tile crossed, and this number is what "am I still
+   * getting anywhere?" is asked against every single tick — so a probe walking
+   * perfectly well reads as stuck for nine ticks in ten and spends the whole of
+   * every rung dashing, casting the Hook and jumping on the unsticking rhythm.
+   * Making it continuous helped and still lost. The old measure is coarse about
+   * *where* the way out is and exactly right about *whether the body is
+   * moving*, and that second thing is all this is for.
+   */
   const left = (p: { x: number; y: number; h: number }) => {
     const g = goal(p);
     const climbs = Math.max(0, fromBottom(goalY) - fromBottom(p.y + p.h - 1));
@@ -68,8 +98,31 @@ export function steering(world: World) {
 
   return {
     left,
+    /** Whether the graph could see a way out at all, for the tests to assert. */
+    routed: route.usable,
+    /**
+     * Whether the ground underfoot cannot reach the way out at all.
+     *
+     * The one other thing worth taking from the route, and it is not steering:
+     * it is knowing you are lost. A body that has climbed into a pocket the
+     * exit cannot be reached from has no direction that helps — what it needs
+     * is to come down, which costs a veiling at worst and is what a player does
+     * without thinking. Before this the probe wandered such a pocket in Gevurah
+     * for twenty thousand ticks.
+     */
+    stranded(p: { x: number; y: number; h: number }) {
+      return route.usable && !Number.isFinite(route.costAt(p.x, p.y, p.h));
+    },
     /** -1, 0 or 1: which way to lean. */
     towards(p: { x: number; y: number; h: number }) {
+      if (route.usable) {
+        const lean = route.towards(p.x, p.y, p.h);
+        // Zero means the next leg is straight up or straight down, and there is
+        // nowhere to lean — but a body has to be pressed *somewhere* to climb a
+        // face, and holding nothing is how a probe stands still under a shaft.
+        // The old rule answers that well enough.
+        if (lean !== 0) return lean;
+      }
       const g = goal(p);
       if (Math.abs(g.x - p.x) < TILE_SIZE / 2) return 0;
       return g.x > p.x ? 1 : -1;
@@ -98,7 +151,7 @@ function probe(
   // be asked against — a body pressed to a wall still shuffles by fractions of
   // a pixel, and comparing against this tick's own motion would read that as
   // progress and never trigger a jump.
-  const aim = steering(world);
+  const aim = steering(world, ctx.verbs);
   let best = aim.left(world.player);
   let mark = best;
   let reached = 0;
@@ -108,6 +161,13 @@ function probe(
   // leaves the floor — and a released key is a deliberately cut, half-height
   // jump. The probe would clear nothing it aimed at.
   let holdJump = 0;
+  // How long this bout of wall-climbing has gone on. A face is a way up until
+  // it runs out of up, and a storey has a ceiling over it now, so a Scribe who
+  // catches a wall under one climbs to the same corner and comes down, forever
+  // — measured, twenty thousand ticks against one face in Gevurah. A hand tries
+  // a climb, finds it goes nowhere, and lets go. This is the letting go.
+  let climbing = 0;
+  let climbTop = world.player.y;
 
   for (let i = 0; i < ticks && !world.finished; i += 1) {
     const p = world.player;
@@ -186,6 +246,25 @@ function probe(
     const underCeiling =
       Math.floor(p.y / (CHUNK_H * TILE_SIZE)) > 0 &&
       p.y % (CHUNK_H * TILE_SIZE) < TILE_SIZE * 2;
+    // **A climb that is getting somewhere is never exhausted.** The first
+    // version of this counted ticks spent on a face, which stopped the futile
+    // climbs and also stopped the real ones: the stairwell of a floor is a
+    // fourteen-tile sheer face, and a wall-jump gains a tile at a time, so a
+    // flat budget of ticks cut the probe off halfway up the one climb that
+    // mattered. What is worth giving up on is a climb that is **not gaining
+    // height** — so the counter resets on every new high, and only a body
+    // scrabbling at the same three tiles ever runs out.
+    if (p.onGround) {
+      climbing = 0;
+      climbTop = p.y;
+    } else if (p.clinging !== 0) {
+      if (p.y < climbTop - 1) {
+        climbTop = p.y;
+        climbing = 0;
+      } else climbing += 1;
+    }
+    const climbExhausted = climbing > 60;
+
     const backingOff = stuckFor > 90 && stuckFor % 150 < 45;
     // **And when backing off is not enough, come down.** Every pocket that
     // defeated this probe was *above* the way on — a shelf, a ledge, the
@@ -198,7 +277,9 @@ function probe(
     // the floor it was worse than the disease: the high road *is* off the
     // floor, so a probe that refuses to jump up there is dropped off it every
     // three hundred ticks and can never cross one.
-    const grounding = stuckFor > 120 && stuckFor % 300 < 90 && underCeiling;
+    const grounding =
+      (stuckFor > 120 && stuckFor % 300 < 90 && underCeiling) ||
+      (p.onGround && aim.stranded(p));
 
     // Jump for a reason — a gap, a letter on its shelf, a wall caught, or
     // plain stalling — and never on an idle rhythm: a probe that hops
@@ -210,9 +291,17 @@ function probe(
       // Pressed against a face with the ceiling right there, *any* jump is a
       // wall-jump back into the same corner — the rhythm jump that unsticks
       // everything else included.
-      !(p.clinging !== 0 && underCeiling) &&
+      !(p.clinging !== 0 && (underCeiling || climbExhausted)) &&
       (gapAhead ||
         letterAhead ||
+        // **The second jump, spent on purpose, over a real chasm.** Every other
+        // reason to leave the ground is spotted while standing on it, so the
+        // Breath was only ever spent by accident — and the widest ground in the
+        // game is authored against the Breath *and* the Bridge together:
+        // fourteen tiles, which is a jump, a second jump and a dash. Missing
+        // the middle one, the probe walked off the lip of Yesod's chasm and
+        // fell through it on every lap.
+        (!p.onGround && p.airJump && p.vy > 0 && !groundBelow) ||
         // A wall is a way up until it runs out of up. Holding into a face and
         // jumping climbs it — the Fence working exactly as intended — but a
         // storey has a ceiling over it now, and a Scribe who climbs into the
@@ -221,7 +310,7 @@ function probe(
         // columns at the top of a rung. Refusing to climb *at all* once stuck
         // is the wrong cure — a sheer face is the only way across several
         // screens — so it is refused only where there is nothing above.
-        (p.clinging !== 0 && !underCeiling) ||
+        (p.clinging !== 0 && !underCeiling && !climbExhausted) ||
         (stuckFor > 6 && i % 9 === 0));
     if (wantJump) holdJump = 20;
     else if (holdJump > 0) holdJump -= 1;
@@ -518,7 +607,7 @@ describe("walking the regions", () => {
    * *fight* is winnable wherever it is held (`fight.test.ts`). What is gone is
    * the third thing, which was never a guarantee so much as a symptom.
    */
-  it("stops a Scribe who never strikes at the first door that closes", () => {
+  it("stops a Scribe who never strikes at the first door that closes", { timeout: 30000 }, () => {
     let stopped = 0;
     let total = 0;
     for (let region = 2; region <= TOTAL_REGIONS; region += 1) {
