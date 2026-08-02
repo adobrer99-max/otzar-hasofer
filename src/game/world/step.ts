@@ -1,7 +1,7 @@
 import type { Grace, Verb } from "../abilities";
 import { setTile, tileAt } from "./build";
 import { CHUNK_H } from "./chunks";
-import { powersFrom } from "../items";
+import { powersFrom, type Effect } from "../items";
 import {
   isClimbable,
   isHazard,
@@ -108,6 +108,14 @@ export interface StepContext {
    * line between an object and a letter. See `items.ts`.
    */
   items?: readonly string[];
+  /**
+   * What the Scribe *is*, from the guardians they have ever broken — the same
+   * `Effect` shape a vessel carries, folded by the same `fold`, and separate
+   * because it is not carried at all: it cannot be dropped, spent or declined.
+   * See `guardians.ts`, where the split is stated — the Seven Encounters
+   * change the world, and these change the Scribe.
+   */
+  boons?: readonly Effect[];
   onFinish?: () => void;
 }
 
@@ -947,7 +955,7 @@ const bodiesTouch = (a: { x: number; y: number; w: number; h: number }, b: typeo
 function throwMark(world: World, input: Input, ctx: StepContext): void {
   const p = world.player;
   if (!input.strike || p.markCooldown > 0 || p.veiled > 0) return;
-  const powers = markPowers(ctx.verbs, ctx.graces, ctx.items);
+  const powers = markPowers(ctx.verbs, ctx.graces, ctx.items, ctx.boons);
   const up = input.up ? -0.62 : input.down ? 0.62 : 0;
   const speed = MARK_SPEED * (powers.speed ?? 1);
   world.marks.push({
@@ -1236,7 +1244,7 @@ function coax(world: World, husk: Husk): void {
 /** A lamp goes, and the Scribe is thrown clear. At zero he goes out. */
 function wound(world: World, ctx: StepContext, away: 1 | -1): void {
   const p = world.player;
-  const hit = takeHit(p.lamps, p.iframes, powersFrom(ctx.items ?? []).iframes);
+  const hit = takeHit(p.lamps, p.iframes, powersFrom(ctx.items ?? [], ctx.boons).iframes);
   if (hit.lamps === p.lamps && !hit.out) return;
   p.lamps = hit.lamps;
   p.iframes = hit.iframes;

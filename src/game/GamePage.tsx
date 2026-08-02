@@ -53,6 +53,7 @@ import {
 } from "./story";
 import { buildArena, buildPath, buildRegion, verbsOf } from "./world/build";
 import { boonsFrom, guardianOf } from "./guardians";
+import { guardiansFreed } from "../storage/ascentRepo";
 import { TreeMap } from "./TreeMap";
 import { afterWalking, TREE_PATHS, type TreePath } from "./tree";
 import { readWarp, warpParams, warpRecord, type WarpOptions } from "./dev/warp";
@@ -127,6 +128,8 @@ export function GamePage() {
   const [walking, setWalking] = useState<TreePath | null>(null);
   /** The Sefirah whose guardian is being faced, while the arena is open. */
   const [facing, setFacing] = useState<SefirahId | null>(null);
+  /** Every Sefirah freed across every climb — what the boons are drawn from. */
+  const [freedEver, setFreedEver] = useState<SefirahId[]>([]);
   const [plate, setPlate] = useState<Plate | null>(null);
   const [hud, setHud] = useState<HudSample>({
     or: 0,
@@ -190,6 +193,10 @@ export function GamePage() {
         setAscent(found ?? null);
         // A climb still in progress must not count itself.
         setSealedBefore(sealedCount(all.filter((a) => a.id !== found?.id)));
+        // **What a Scribe has become**, as against what this climb holds: every
+        // Sefirah they have ever freed, including in climbs long since sealed.
+        // Read once, here, so nothing downstream has to know about storage.
+        setFreedEver(guardiansFreed(all));
         setLoading(false);
       })
       .catch(() => {
@@ -220,6 +227,17 @@ export function GamePage() {
     for (const g of rulesFor(encounter)?.grants ?? []) if (!lent.includes(g)) lent.push(g);
     return lent;
   }, [letters, granted, time.graceOfTheDay, encounter]);
+
+  /**
+   * The boons a Scribe carries into everything, from every guardian they have
+   * ever broken — including the ones broken an hour ago in this same climb,
+   * which is why the mounted list and the current record are folded together
+   * rather than one being trusted.
+   */
+  const boons = useMemo(
+    () => boonsFrom([...new Set([...freedEver, ...(ascent?.guardiansBroken ?? [])])]),
+    [freedEver, ascent?.guardiansBroken],
+  );
 
   const audio = useGameAudio(
     worldRef,
@@ -311,7 +329,11 @@ export function GamePage() {
       // What the vessels come to, applied to the region as it is built: the
       // lamps a Scribe is made of and what a mote is worth are properties of
       // the world rather than of a tick, so this is where they belong.
-      const carried = powersFrom(record.items ?? []);
+      // The boons are read off the record rather than the memo, because this is
+      // the one door a *warped* climb comes through and a warp hands over a
+      // record the page has not seen yet. Across climbs they are folded in by
+      // `boons`, which is what every other build site uses.
+      const carried = powersFrom(record.items ?? [], boonsFrom(record.guardiansBroken ?? []));
       next.player.lamps += carried.lamps;
       next.orPerMote = Math.max(1, Math.round(next.orPerMote * carried.light));
       layEncounter(next, [regionAt(record.regionIndex).sefirah]);
@@ -753,7 +775,7 @@ export function GamePage() {
         rulesFor(encounter)?.klipot ?? 1,
         ascent.items ?? [],
       );
-      const carried = powersFrom(ascent.items ?? []);
+      const carried = powersFrom(ascent.items ?? [], boons);
       next.player.lamps += carried.lamps;
       next.orPerMote = Math.max(1, Math.round(next.orPerMote * carried.light));
       // The path's own two ends, not the rung's capped index — see `layEncounter`.
@@ -788,7 +810,7 @@ export function GamePage() {
     const at = standingAt(ascent);
     if ((ascent.guardiansBroken ?? []).includes(at)) return;
     const room = buildArena(at, ascent.seed);
-    const carried = powersFrom(ascent.items ?? [], boonsFrom(ascent.guardiansBroken ?? []));
+    const carried = powersFrom(ascent.items ?? [], boons);
     room.player.lamps += carried.lamps;
     setGranted([]);
     setWalking(null);
@@ -1050,6 +1072,7 @@ export function GamePage() {
             graces={graces}
             markGlyph={lettersById[ascent.ascendantLetterId ?? "aleph"]?.glyph ?? "א"}
             items={ascent.items ?? []}
+            boons={boons}
             paused={plate !== null}
             onLetter={onLetter}
             onFragment={onFragment}

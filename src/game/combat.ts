@@ -1,5 +1,5 @@
 import type { Grace, Verb } from "./abilities";
-import { powersFrom } from "./items";
+import { powersFrom, type Effect } from "./items";
 
 /**
  * The klipot, and what a scribe does about them.
@@ -583,6 +583,7 @@ export function markPowers(
   verbs: readonly Verb[],
   graces: readonly Grace[],
   items: readonly string[] = [],
+  boons: readonly Effect[] = [],
 ): MarkPowers {
   // The letters are the progression and the vessels are the furnishing, and
   // the line between them is the **verb list** — nothing here may hand out a
@@ -590,7 +591,7 @@ export function markPowers(
   // always on both sides of that one, and four more behaviours join it below.
   // A vessel that only scaled a number could never be a reason to walk one
   // path rather than another, which is the whole of what the Tree is for.
-  const carried = powersFrom(items);
+  const carried = powersFrom(items, boons);
   return {
     pierces: verbs.includes("cut") || carried.pierces,
     burns: verbs.includes("flame"),

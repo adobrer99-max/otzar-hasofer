@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { abilityByLetter, type Grace, type Verb } from "./abilities";
-import { BEASTS, GREAT, HUSKS, isGreat } from "./combat";
+import { BEASTS, GREAT, HUSKS, isGreat, markPowers } from "./combat";
 import { boonsFrom, GUARDIAN_LIST, GUARDIANS, guardianOf } from "./guardians";
 import { powersFrom, type Effect } from "./items";
 import { regions } from "./regions";
@@ -135,6 +135,39 @@ describe("the guardians", () => {
     }
     // Ten guardians, ten distinct things about the mark.
     expect(seen.size).toBe(GUARDIAN_LIST.length);
+  });
+
+  /**
+   * And the boons have to *reach the mark*. They cross four files to get there
+   * — `guardians.ts` to `powersFrom` to `markPowers` to `throwMark` — and a
+   * field dropped anywhere along that road would look exactly like a boon that
+   * was never worth much, which is the failure this whole codebase keeps
+   * catching itself in.
+   */
+  it("puts what a guardian gave into the mark the Scribe throws", () => {
+    const bare = markPowers([], []);
+    /**
+     * **Three of the ten are not about the mark**, and saying so here is more
+     * useful than pretending otherwise: a lamp is what the Scribe is made of,
+     * the grace after a hit is read by `takeHit`, and what a mote is worth is
+     * written into the world when it is built. They fold through the same
+     * `Powers` and are asserted alive by the test above; what they do not do is
+     * arrive in a thrown letter, and a test that demanded they did would be a
+     * test demanding the wrong thing.
+     */
+    const BODILY = new Set(["lamps", "iframes", "light"]);
+    for (const g of GUARDIAN_LIST) {
+      if (Object.keys(g.boon).every((k) => BODILY.has(k))) continue;
+      const after = markPowers([], [], [], [g.boon]);
+      expect(after, `${g.kind}'s boon never reaches the mark`).not.toEqual(bare);
+    }
+    // The three great ones each lend the mark a behaviour, which is the thing
+    // no number can stand in for.
+    expect(markPowers([], [], [], [GUARDIANS.binah.boon]).homing).toBe(true);
+    expect(markPowers([], [], [], [GUARDIANS.chochmah.boon]).splits).toBe(true);
+    expect(markPowers([], [], [], [GUARDIANS.keter.boon]).bounces).toBe(true);
+    // And a Scribe who has broken nothing throws the mark the game shipped.
+    expect(markPowers([], [], [], []).homing).toBe(false);
   });
 
   it("carries only what has been broken", () => {

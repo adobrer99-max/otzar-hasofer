@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { abilityByLetter } from "../abilities";
 import { LAMPS, markBite, markPowers } from "../combat";
 import { KELIM } from "../items";
+import { boonsFrom } from "../guardians";
 import { lettersOnEntering, regions, TOTAL_REGIONS } from "../regions";
 import { buildRegion, rowsFor, tileAt, verbsOf } from "./build";
 import { step, type StepContext } from "./step";
@@ -472,6 +473,52 @@ describe("what a vessel costs a Scribe who fights", () => {
    * like a trade and measuring as a gift. Asserted against the function the
    * fight actually calls.
    */
+  /**
+   * **And what ten broken guardians come to.**
+   *
+   * The other across-runs system, and it has the failure mode every
+   * meta-progression has: earned power that quietly ends the game. Measured
+   * over the same rungs — regions four to eight, five seeds:
+   *
+   * ```
+   * nothing broken   out 6/25   broken 3.44   lamps left 1.68   reached 0.879
+   * seven broken     out 3/25   broken 3.48   lamps left 1.72   reached 0.889
+   * all ten broken   out 1/25   broken 4.36   lamps left 2.00   reached 0.934
+   * ```
+   *
+   * Which is the shape it should have: a Scribe who has broken everything is
+   * plainly stronger and is still losing a lamp a rung and still occasionally
+   * going out. The three great ones carry the whole back half of that curve —
+   * seven boons of a tenth each barely move it, and the three behaviours do.
+   */
+  it("makes a Scribe who has broken every guardian stronger, and not finished", () => {
+    const freed = regions.map((r) => r.sefirah);
+    const withAll: Fight[] = [];
+    for (let region = 4; region <= 8; region += 1) {
+      for (const seed of HAND_SEEDS) {
+        withAll.push(
+          fighter(
+            buildRegion(region, seed),
+            { ...contextFor(region), boons: boonsFrom(freed) },
+            budgetFor(region),
+          ),
+        );
+      }
+    }
+    const bareOut = bare().filter((r) => r.out).length;
+    const boonOut = withAll.filter((r) => r.out).length;
+    expect(boonOut, `${boonOut} out against ${bareOut} bare-handed`).toBeLessThanOrEqual(bareOut);
+    expect(
+      mean(withAll.map((r) => r.broken)),
+      "ten guardians broken and the mark is no better",
+    ).toBeGreaterThan(mean(bare().map((r) => r.broken)));
+    // And it is still a fight: the lamps still go.
+    expect(
+      mean(withAll.map((r) => r.lampsLeft)),
+      "a Scribe with every boon crosses the trough untouched",
+    ).toBeLessThan(LAMPS);
+  }, 300000);
+
   it("declares no change to a mark's bite that the mark never feels", () => {
     for (const keli of KELIM) {
       if (keli.effect.bite === undefined) continue;
