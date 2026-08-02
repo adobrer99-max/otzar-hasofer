@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { abilityByLetter } from "../abilities";
-import { LAMPS } from "../combat";
+import { LAMPS, markBite, markPowers } from "../combat";
+import { KELIM } from "../items";
 import { lettersOnEntering, regions, TOTAL_REGIONS } from "../regions";
 import { buildRegion, rowsFor, tileAt, verbsOf } from "./build";
 import { step, type StepContext } from "./step";
@@ -345,5 +346,130 @@ describe("what the klipot cost a Scribe who fights", () => {
     expect(high, `low ${low.toFixed(1)} husks, high ${high.toFixed(1)}`).toBeGreaterThan(low * 1.5);
     // And the declared curve is what put them there.
     expect(regions[TOTAL_REGIONS - 1].klipot.count).toBeGreaterThan(regions[0].klipot.count);
+  });
+});
+
+/**
+ * **And what a vessel does to the fight.**
+ *
+ * Everything above measures a Scribe carrying nothing, which is the baseline
+ * and has to stay the baseline. This asks the other question, which only became
+ * askable once about a third of the pool started costing something: is a costly
+ * vessel a **trade** or a trap?
+ *
+ * The four behaviours are the ones worth watching, because each is paid for in
+ * a currency the bot can feel — the Crowns and the Pointer buy coverage and
+ * reach with tempo, the Measuring Line buys certainty with speed, the Plumb
+ * Line buys weight with aim.
+ *
+ * Measured over regions four to eight, five seeds — the trough, which is where
+ * a mistake in the fight shows first:
+ *
+ * ```
+ * bare       out 5/25   broken 2.12   reached 0.687
+ * tagin      out 6/25   broken 2.52   reached 0.711
+ * kav        out 4/25   broken 2.36   reached 0.693
+ * mishkolet  out 5/25   broken 2.20   reached 0.690
+ * sargel     out 4/25   broken 2.48   reached 0.717
+ * yad        out 6/25   broken 2.16   reached 0.680
+ * kulmus     out 4/25   broken 2.40   reached 0.691   (a plain gain, the control)
+ * ```
+ *
+ * Read honestly: **the bot cannot use most of what it is holding.** It does not
+ * throw around corners, so a bounce is only the cooldown it cost; it does not
+ * lead a falling mark, so weight is only the miss. What this shows is that the
+ * costs land and are roughly paid for even by a Scribe who plays none of them
+ * on purpose — which is the floor. The ceiling is a person, and no harness
+ * measures that.
+ *
+ * The retune this caught is worth keeping in view: the Crowns first paid for
+ * splitting with `bite: 0.7`, and it did **nothing**. `markBite` rounds and
+ * floors at one shell, so a bite below one is invisible unless something else
+ * has raised it — the vessel measured as a pure gain. The cost moved to the
+ * cooldown, which the game can actually feel.
+ */
+describe("what a vessel costs a Scribe who fights", () => {
+  const HANDS = [[], ["tagin"], ["kav"], ["mishkolet"], ["sargel"], ["yad"], ["kulmus"]];
+  const HAND_SEEDS = [3, 91, 555, 12345, 777];
+
+  /**
+   * Measured once, in a hook, and **with a breath between hands**.
+   *
+   * A hundred and seventy-five probe runs is over a minute of arithmetic, and
+   * a minute of unbroken synchronous work inside a worker starves vitest's own
+   * reporter channel: the run fails with `Timeout calling "onTaskUpdate"` while
+   * every assertion in it passes. Yielding to the macrotask queue between hands
+   * lets the channel drain. The alternative was a smaller sample, which would
+   * have been measuring less to make a harness happy.
+   */
+  let held: { hand: string; runs: Fight[] }[] = [];
+  beforeAll(async () => {
+    for (const items of HANDS) {
+      const rows: Fight[] = [];
+      for (let region = 4; region <= 8; region += 1) {
+        for (const seed of HAND_SEEDS) {
+          const world = buildRegion(region, seed);
+          rows.push(fighter(world, { ...contextFor(region), items }, budgetFor(region)));
+        }
+      }
+      held.push({ hand: items.join(",") || "bare", runs: rows });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+  }, 300000);
+
+  const HANDS_MEASURED = () => held;
+  const bare = () => held[0].runs;
+
+  /** No object in the pool may be a way to lose. */
+  it("never hands a Scribe something that puts them out", () => {
+    for (const { hand, runs } of HANDS_MEASURED()) {
+      const share = runs.filter((r) => r.out).length / runs.length;
+      expect(share, `holding [${hand}] went out ${(share * 100).toFixed(0)}% of the time`).toBeLessThan(
+        0.4,
+      );
+    }
+  });
+
+  /**
+   * And none of them may be a way to *stop*. A vessel that cost so much tempo
+   * that a rung stopped being crossable would be a soft-lock wearing a name,
+   * which is the one thing this game will not have.
+   */
+  it("leaves every rung crossable to a Scribe carrying anything", () => {
+    for (const { hand, runs } of HANDS_MEASURED()) {
+      const reached = mean(runs.map((r) => r.reached));
+      expect(reached, `holding [${hand}] got ${(reached * 100).toFixed(0)}% across`).toBeGreaterThan(0.6);
+    }
+  });
+
+  /**
+   * The trade itself: a costly vessel gives something up, but not the fight.
+   * A tenth of a bare-handed Scribe's shells is the slack — below that the cost
+   * is not a price, it is a punishment for picking the thing up.
+   */
+  it("charges a price without taking the fight away", () => {
+    const floor = mean(bare().map((r) => r.broken)) * 0.9;
+    for (const { hand, runs } of HANDS_MEASURED()) {
+      const broken = mean(runs.map((r) => r.broken));
+      expect(broken, `holding [${hand}] broke ${broken.toFixed(2)}, bare-handed is ${(floor / 0.9).toFixed(2)}`)
+        .toBeGreaterThanOrEqual(floor);
+    }
+  });
+
+  /**
+   * **A cost the reducer rounds away is not a cost.** `markBite` floors at one
+   * shell, so a `bite` below one changes nothing at all unless something else
+   * raised it first — which is exactly how the Crowns spent a retune looking
+   * like a trade and measuring as a gift. Asserted against the function the
+   * fight actually calls.
+   */
+  it("declares no change to a mark's bite that the mark never feels", () => {
+    for (const keli of KELIM) {
+      if (keli.effect.bite === undefined) continue;
+      const alone = markBite(markPowers([], [], [keli.id]));
+      expect(alone, `the ${keli.name} declares bite ${keli.effect.bite} and the mark bites the same`).not.toBe(
+        markBite(markPowers([], [], [])),
+      );
+    }
   });
 });

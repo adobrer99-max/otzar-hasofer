@@ -42,7 +42,7 @@ import { useGameAudio } from "./audio/useGameAudio";
 import { readAscentTime } from "./sacredAscent";
 import { fragmentAt, SCROLL_LETTER, SCROLL_TOTAL, SCROLL_VERSE } from "./scroll";
 import { GOING_OUT, HUSKS, LAMPS } from "./combat";
-import { keliById, powersFrom, synergiesIn } from "./items";
+import { describeEffect, keliById, powersFrom, synergiesIn } from "./items";
 import {
   ABYSS_WORD,
   pleaFor,
@@ -495,19 +495,37 @@ export function GamePage() {
    * the saved run all need no special case for it).
    */
   /**
-   * A vessel lifted off its pedestal. Kept on the ascent exactly as a letter
-   * is, because that is what makes it survive a region change and a reload —
-   * and it needs no other machinery, since everything it does is a number the
-   * step already reads out of the context.
+   * A pedestal reached. Nothing is picked up here — the plate goes up and the
+   * Scribe decides, because a vessel that costs something has to be one that
+   * can be walked past.
    */
   const onVessel = useCallback((keliId: string) => {
     setPlate({ kind: "vessel", keliId });
-    setAscent((prev) =>
-      prev && !(prev.items ?? []).includes(keliId)
-        ? { ...prev, items: [...(prev.items ?? []), keliId], updatedAt: new Date().toISOString() }
-        : prev,
-    );
   }, []);
+
+  /**
+   * A vessel taken. Kept on the ascent exactly as a letter is, because that is
+   * what makes it survive a region change and a reload — and it needs no other
+   * machinery, since everything it does is a number the step already reads out
+   * of the context.
+   *
+   * The entity is marked taken here rather than in the step, which is what
+   * leaves a *declined* vessel standing on its plinth: the pedestal is emptied
+   * by the yes, and by nothing else.
+   */
+  const takeVessel = useCallback(
+    (keliId: string) => {
+      const pedestal = world?.entities.find((e) => e.kind === "vessel" && e.ref === keliId);
+      if (pedestal) pedestal.taken = true;
+      setAscent((prev) =>
+        prev && !(prev.items ?? []).includes(keliId)
+          ? { ...prev, items: [...(prev.items ?? []), keliId], updatedAt: new Date().toISOString() }
+          : prev,
+      );
+      setPlate(null);
+    },
+    [world],
+  );
 
   const onFragment = useCallback((index: number) => {
     setAscent((prev) => {
@@ -797,10 +815,20 @@ export function GamePage() {
     if (!plate) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Enter" && e.key !== "Escape" && e.code !== "Space") return;
+      // A pedestal is the one plate that asks a *question*, so the keyboard
+      // must not answer it. Swallowed here, Enter would have dismissed the
+      // plate — which now means "leave it" — while the Scribe was looking at a
+      // focused "Take it up". Let the buttons have the keys: Enter and Space
+      // press whichever is focused, and Escape is handled below as declining.
+      if (plate.kind === "vessel") {
+        if (e.key !== "Escape") return;
+        e.preventDefault();
+        setPlate(null);
+        return;
+      }
       e.preventDefault();
       if (
         plate.kind === "letter" ||
-        plate.kind === "vessel" ||
         plate.kind === "house" ||
         plate.kind === "fragment" ||
         plate.kind === "scroll-whole" ||
@@ -1047,6 +1075,7 @@ export function GamePage() {
           onBack={backToTree}
           onInscribe={inscribe}
           onAccept={acceptOffer}
+          onTakeVessel={takeVessel}
           onClose={() => setPlate(null)}
         />
       )}
@@ -1448,6 +1477,7 @@ function PlateOverlay({
   onBack,
   onInscribe,
   onAccept,
+  onTakeVessel,
   onClose,
 }: {
   plate: Plate;
@@ -1460,6 +1490,8 @@ function PlateOverlay({
   onBack: () => void;
   onInscribe: (letterIds: [string, string, string]) => void;
   onAccept: (offer: UshpizinOffer) => void;
+  /** A vessel accepted off its pedestal. Declining is `onClose`. */
+  onTakeVessel: (keliId: string) => void;
   onClose: () => void;
 }) {
   // Every plate autofocuses its button so the game can be played without a
@@ -1484,7 +1516,12 @@ function PlateOverlay({
         )}
         {plate.kind === "scroll-whole" && <ScrollWholePlate onClose={onClose} />}
         {plate.kind === "vessel" && ascent && (
-          <VesselPlate keliId={plate.keliId} held={ascent.items ?? []} onClose={onClose} />
+          <VesselPlate
+            keliId={plate.keliId}
+            held={ascent.items ?? []}
+            onTake={onTakeVessel}
+            onClose={onClose}
+          />
         )}
         {plate.kind === "house" && ascent && world && (
           <HousePlate
@@ -1523,34 +1560,56 @@ function PlateOverlay({
  * what it lets you do, and it names any pair it has just completed, because a
  * synergy nobody is told about is a synergy nobody has.
  */
+/**
+ * A vessel offered.
+ *
+ * The synergies are shown for the hand the Scribe *already* holds, which is the
+ * point of showing them at all now that the answer can be no: a vessel that is
+ * ordinary alone and remarkable beside something in the belt should say so
+ * before it is refused. What it does is named from its own numbers rather than
+ * from a line written next to them, so the plate cannot promise what the vessel
+ * stopped doing three retunings ago.
+ */
 function VesselPlate({
   keliId,
   held,
+  onTake,
   onClose,
 }: {
   keliId: string;
   held: readonly string[];
+  onTake: (keliId: string) => void;
   onClose: () => void;
 }) {
   const keli = keliById[keliId];
   if (!keli) return null;
-  const lit = synergiesIn(held).filter((s) => s.keli.id === keliId || s.keli.synergy?.with === keliId);
+  const lit = synergiesIn([...held, keliId]).filter(
+    (s) => s.keli.id === keliId || s.keli.synergy?.with === keliId,
+  );
+  const does = describeEffect(keli.effect);
   return (
     <>
-      <p className={styles.plateKicker}>A vessel is found</p>
+      <p className={styles.plateKicker}>A vessel is offered</p>
       <h2 className={styles.plateTitle}>{keli.name}</h2>
       <p className={`${styles.plateHeb} hebrew`} lang="he">
         {keli.hebrew}
       </p>
       <p className={styles.plateUse}>{keli.found}</p>
+      {does && <p className={styles.vesselDoes}>{does}</p>}
       {lit.map((s) => (
         <p key={s.keli.id} className={styles.offerGrants}>
           {s.line}
         </p>
       ))}
-      <Button variant="primary" onClick={onClose} autoFocus>
-        Take it up
-      </Button>
+      <div className={styles.plateActions}>
+        <Button variant="primary" onClick={() => onTake(keliId)} autoFocus>
+          Take it up
+        </Button>
+        <Button onClick={onClose}>Leave it</Button>
+      </div>
+      <p className={styles.vesselLeft}>
+        Left on its pedestal it stays there, and the map goes on naming it.
+      </p>
     </>
   );
 }

@@ -306,6 +306,29 @@ export const MARK_LIFE = 34;
 export const MARK_COOLDOWN = 15;
 export const MARK_SIZE = 10;
 
+/**
+ * What a vessel can lend a mark, in numbers.
+ *
+ * Two turns rather than unlimited: a mark that bounced forever would clear a
+ * sealed room on its own, and a sealed room is where the fight is. Two is
+ * enough to throw around a corner, which is the idea.
+ */
+export const MARK_TURNS = 2;
+/**
+ * How many ticks a hunting mark may bend for. Jezebel's bends for the first
+ * third of a long flight and is then committed; his lives a third as long, so
+ * the same idea has to be counted rather than read off `life`.
+ */
+export const MARK_HUNT = 10;
+/** How hard a bend pulls. Hers, unchanged — it was measured, and it holds. */
+export const BEND_TOWARD = 200;
+export const BEND_RATE = 0.03;
+/** The weight an arcing mark carries — a fraction of the body's own gravity. */
+export const MARK_FALL = 0.55;
+/** A shard is short and quick, so a split covers ground rather than repeating the throw. */
+export const SHARD_SPEED = 320;
+export const SHARD_LIFE = 16;
+
 /** What the letters do to the mark. The beginning of the synergies. */
 export interface MarkPowers {
   /** Zayin, the Edge: it passes through the first husk and carries on. */
@@ -320,6 +343,14 @@ export interface MarkPowers {
   bite?: number;
   speed?: number;
   cooldown?: number;
+  /** Stone turns it rather than stopping it. */
+  bounces?: boolean;
+  /** It bends after the nearest shell, once, early. */
+  homing?: boolean;
+  /** Breaking a shell throws two shards out of it. */
+  splits?: boolean;
+  /** It has weight, and falls as it flies. */
+  arcs?: boolean;
 }
 
 export function markPowers(
@@ -327,8 +358,12 @@ export function markPowers(
   graces: readonly Grace[],
   items: readonly string[] = [],
 ): MarkPowers {
-  // The letters decide what a mark *is*; the vessels decide how much of it
-  // there is. Which is the whole distinction the two systems are built on.
+  // The letters are the progression and the vessels are the furnishing, and
+  // the line between them is the **verb list** — nothing here may hand out a
+  // thirteenth verb. It is not a line between kind and quantity: `pierces` was
+  // always on both sides of that one, and four more behaviours join it below.
+  // A vessel that only scaled a number could never be a reason to walk one
+  // path rather than another, which is the whole of what the Tree is for.
   const carried = powersFrom(items);
   return {
     pierces: verbs.includes("cut") || carried.pierces,
@@ -338,6 +373,10 @@ export function markPowers(
     bite: carried.bite,
     speed: carried.speed,
     cooldown: carried.cooldown,
+    bounces: carried.bounces,
+    homing: carried.homing,
+    splits: carried.splits,
+    arcs: carried.arcs,
   };
 }
 

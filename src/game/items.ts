@@ -12,6 +12,13 @@
  * handed out a thirteenth verb would be competing with the alphabet, and the
  * alphabet is the game.
  *
+ * That is the hard line, and it is narrower than it first reads. A vessel *may*
+ * change how a mark behaves — bounce it off stone, bend it after a shell, break
+ * it into shards, weigh it down so it falls. Twenty objects that only scale
+ * four numbers are twenty profiles; twenty objects that each carry an idea are
+ * twenty reasons to walk a different path. The rule is about the verb list,
+ * which is the progression, and not about arithmetic.
+ *
  * The effects are **data rather than functions**, which is what lets every
  * pair of them be enumerated and checked. That matters more than it sounds:
  * the whole reason to have more than one object is that they combine, and a
@@ -36,6 +43,14 @@ export interface Effect {
   light?: number;
   /** A mark passes through what it breaks. */
   pierces?: boolean;
+  /** Stone turns a mark rather than stopping it — twice, and then it is spent. */
+  bounces?: boolean;
+  /** A mark bends after the nearest shell, once, early in its flight. */
+  homing?: boolean;
+  /** Breaking a shell throws two shards out of it, which do not break again. */
+  splits?: boolean;
+  /** The mark has weight, and falls as it flies. */
+  arcs?: boolean;
 }
 
 export interface Keli {
@@ -75,6 +90,14 @@ export interface Keli {
  * are gathered by everyone who reaches the crown, so two finished climbs used
  * to differ only in which bargains were struck and what the day lent. Now they
  * differ in what the Scribe is made of.
+ *
+ * **About a third of them cost something**, and each pays in a currency other
+ * than the one it gives: the Crowns break what they land on and no shard weighs
+ * what the letter did; the Measuring Line goes to what it was stretched toward
+ * and takes its time; the Plumb Line falls. That is only possible because a
+ * pedestal can now be walked past — a cost you cannot decline is not a bargain,
+ * and while walking into a vessel took it, every object in here had to be an
+ * improvement, which is another way of saying none of them was a decision.
  */
 export const KELIM: Keli[] = [
   {
@@ -100,8 +123,8 @@ export const KELIM: Keli[] = [
     id: "sargel",
     name: "The Ruler",
     hebrew: "סַרְגֵּל",
-    found: "The scribe's straightedge, for the lines a letter hangs from. What is written along it goes where it was aimed, and goes there quickly.",
-    effect: { speed: 1.35 },
+    found: "The scribe's straightedge, for the lines a letter hangs from. What is written along it goes where it was aimed — and runs to the margin and back, because a ruled line stops nowhere else. Ruling takes longer than writing.",
+    effect: { speed: 1.35, bounces: true, cooldown: 1.2 },
     synergy: {
       with: "deyo",
       effect: { reach: 10 },
@@ -186,20 +209,20 @@ export const KELIM: Keli[] = [
     id: "tagin",
     name: "The Crowns",
     hebrew: "תָּגִין",
-    found: "Three strokes set on the head of a letter, on seven letters and no others. Nobody agrees what they are for. They are not decoration.",
-    effect: { bite: 1.4, cooldown: 1.15 },
+    found: "Three strokes set on the head of a letter, on seven letters and no others. Nobody agrees what they are for. They are not decoration — what they land on comes apart, and the three go on separately. They are drawn after the letter, and a crowned letter is not a quick one.",
+    effect: { splits: true, cooldown: 1.25 },
     synergy: {
       with: "kulmus",
-      effect: { bite: 1.25 },
-      line: "Crowned by a worn reed: the letter lands like something that was meant.",
+      effect: { cooldown: 0.7 },
+      line: "Crowned by a worn reed: a hand that has done this ten thousand times does not slow down to do it again.",
     },
   },
   {
     id: "yad",
     name: "The Pointer",
     hebrew: "יָד",
-    found: "A small silver hand on a shaft, for following the reading without touching the letters. It keeps a distance, which is the point of it.",
-    effect: { reach: 16, bite: 0.9 },
+    found: "A small silver hand on a shaft, for following the reading without touching the letters. It keeps a distance, which is the point of it — and it is held, and set down, and taken up again between one line and the next.",
+    effect: { reach: 20, cooldown: 1.25 },
     synergy: {
       with: "sirtut",
       effect: { reach: 8 },
@@ -236,19 +259,19 @@ export const KELIM: Keli[] = [
     id: "kav",
     name: "The Measuring Line",
     hebrew: "קָו",
-    found: "Stretched over a thing to find out what it is. Line upon line, precept upon precept, here a little and there a little.",
-    effect: { speed: 1.3, reach: 6, bite: 0.85 },
+    found: "Stretched over a thing to find out what it is. Line upon line, precept upon precept, here a little and there a little — it goes to what it was stretched toward, and it takes its time getting there.",
+    effect: { homing: true, speed: 0.8, reach: 6 },
   },
   {
     id: "mishkolet",
     name: "The Plumb Line",
     hebrew: "מִשְׁקֹלֶת",
-    found: "A weight on a cord, and the one tool that cannot be argued with. It does not say what is straight; it says what is not.",
-    effect: { speed: 1.45, cooldown: 1.1 },
+    found: "A weight on a cord, and the one tool that cannot be argued with. It does not say what is straight; it says what is not — and it says it by falling, which is the only thing a weight knows how to do.",
+    effect: { bite: 1.6, arcs: true },
     synergy: {
       with: "kav",
-      effect: { speed: 1.15, cooldown: 0.85 },
-      line: "Line and plumb: measured across and measured down, and thrown without hesitating.",
+      effect: { speed: 1.4, cooldown: 0.85 },
+      line: "Line and plumb: measured across and measured down. Each of them was slow alone, and together they are not.",
     },
   },
   {
@@ -298,6 +321,10 @@ export interface Powers {
   iframes: number;
   light: number;
   pierces: boolean;
+  bounces: boolean;
+  homing: boolean;
+  splits: boolean;
+  arcs: boolean;
 }
 
 const NOTHING: Powers = {
@@ -309,6 +336,10 @@ const NOTHING: Powers = {
   iframes: 1,
   light: 1,
   pierces: false,
+  bounces: false,
+  homing: false,
+  splits: false,
+  arcs: false,
 };
 
 function fold(into: Powers, effect: Effect): Powers {
@@ -323,7 +354,14 @@ function fold(into: Powers, effect: Effect): Powers {
     lamps: into.lamps + (effect.lamps ?? 0),
     iframes: into.iframes * (effect.iframes ?? 1),
     light: into.light * (effect.light ?? 1),
+    // The behaviours are had or not had, so they fold with `or`. A second
+    // vessel that bounces adds nothing, which is correct: the mark already
+    // does the thing.
     pierces: into.pierces || Boolean(effect.pierces),
+    bounces: into.bounces || Boolean(effect.bounces),
+    homing: into.homing || Boolean(effect.homing),
+    splits: into.splits || Boolean(effect.splits),
+    arcs: into.arcs || Boolean(effect.arcs),
   };
 }
 
@@ -345,6 +383,44 @@ export function powersFrom(held: readonly string[]): Powers {
     }
   }
   return powers;
+}
+
+/**
+ * What a vessel does, in a phrase, **derived from its numbers rather than
+ * written beside them**.
+ *
+ * Needed because a vessel can now be declined, and declining is only a decision
+ * if the Scribe knows what they are declining — on the map, before walking the
+ * path, and on the plate, before saying yes. An authored line would drift from
+ * the effect the first time a number was retuned, and a plate that promises a
+ * heavier mark on a vessel that no longer gives one is worse than a plate that
+ * promises nothing.
+ *
+ * Gains first, then costs, so a trade reads as a trade.
+ */
+export function describeEffect(effect: Effect): string {
+  const gains: string[] = [];
+  const costs: string[] = [];
+  /** `good` is the direction that helps, so one table decides both lists. */
+  const say = (had: number | undefined, at: number, good: 1 | -1, up: string, down: string) => {
+    if (had === undefined || had === at) return;
+    (Math.sign(had - at) === good ? gains : costs).push(had > at ? up : down);
+  };
+  say(effect.bite, 1, 1, "strikes harder", "strikes softer");
+  say(effect.reach, 0, 1, "carries further", "carries less far");
+  say(effect.cooldown, 1, -1, "thrown slower", "thrown faster");
+  say(effect.speed, 1, 1, "flies faster", "flies slower");
+  say(effect.iframes, 1, 1, "longer grace after a hit", "shorter grace after a hit");
+  say(effect.light, 1, 1, "light is worth more", "light is worth less");
+  say(effect.lamps, 0, 1, `+${effect.lamps} lamp`, `${effect.lamps} lamp`);
+  if (effect.pierces) gains.push("passes through what it breaks");
+  if (effect.bounces) gains.push("stone turns it");
+  if (effect.homing) gains.push("bends after a shell");
+  if (effect.splits) gains.push("a break throws shards");
+  // Weight is the one behaviour that is a price rather than a gift.
+  if (effect.arcs) costs.push("it falls as it flies");
+  const said = gains.join(" · ");
+  return costs.length === 0 ? said : said ? `${said} — but ${costs.join(", ")}` : costs.join(", ");
 }
 
 /** The synergies alight in a given hand, for the plate to name them. */
@@ -370,11 +446,21 @@ export function synergiesIn(held: readonly string[]): { keli: Keli; line: string
  * with nothing on them. It also means the pool *narrows* as a climb goes on,
  * which is the right shape: the last vessels a Scribe finds are the ones they
  * went out of their way for.
+ *
+ * **The draw indexes the whole pool and then walks forward past what is held**,
+ * rather than indexing a filtered one. The difference is invisible while every
+ * pedestal is taken on sight and fatal the moment one can be left: a filtered
+ * list re-orders itself every time *any* vessel is picked up anywhere, so
+ * declining the Reed on one path and taking the Awl on another would silently
+ * put something else where the Reed was. Walking forward keeps a path's vessel
+ * fixed by the day and the path until that vessel is taken — which is what
+ * makes the map a shopping list rather than a rumour.
  */
 export function drawKeli(rng: () => number, held: readonly string[]): Keli | undefined {
-  const left = KELIM.filter((k) => !held.includes(k.id));
-  if (left.length === 0) return undefined;
-  return left[Math.floor(rng() * left.length) % left.length];
+  if (KELIM.every((k) => held.includes(k.id))) return undefined;
+  let at = Math.floor(rng() * KELIM.length) % KELIM.length;
+  while (held.includes(KELIM[at].id)) at = (at + 1) % KELIM.length;
+  return KELIM[at];
 }
 
 /**

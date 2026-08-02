@@ -12,6 +12,7 @@ import {
   type TreePath,
 } from "./tree";
 import { keliOnPath } from "./world/build";
+import { describeEffect } from "./items";
 import styles from "./GamePage.module.css";
 
 /**
@@ -203,6 +204,7 @@ export function TreeMap({
             const to = otherEnd(path, at);
             const letter = lettersById[path.letter];
             const held = gathered.includes(path.letter);
+            const keli = keliOnPath(path, ascent.seed, ascent.items ?? []);
             return (
               <li key={path.id}>
                 <button type="button" className={styles.wayButton} onClick={() => onWalk(path)}>
@@ -214,10 +216,17 @@ export function TreeMap({
                         on this map that is different tomorrow — and the only
                         reason to walk somewhere for a thing rather than for a
                         letter. Naming it is what turns twenty-two ways out into
-                        a list of places worth going. */}
-                    {keliOnPath(path, ascent.seed, ascent.items ?? []) && (
+                        a list of places worth going.
+
+                        And **what it does**, because a pedestal can be walked
+                        past now: some vessels cost something, so a name alone
+                        would be asking the Scribe to route across the Tree for
+                        a surprise. Derived from the numbers rather than written
+                        beside them — see `describeEffect`. */}
+                    {keli && (
                       <span className={styles.wayKeli}>
-                        ✦ {keliOnPath(path, ascent.seed, ascent.items ?? [])?.name}
+                        ✦ {keli.name}
+                        <span className={styles.wayKeliDoes}>{describeEffect(keli.effect)}</span>
                       </span>
                     )}{" "}
                     {held ? (

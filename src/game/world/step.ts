@@ -11,18 +11,25 @@ import {
   Tile,
   TILE_SIZE,
 } from "./tiles";
-import type { Entity, Husk, Input, Player, World } from "./types";
+import type { Body, Entity, Husk, Input, Mark, Player, World } from "./types";
 import {
+  BEND_RATE,
+  BEND_TOWARD,
   canBeStruck,
   GOING_OUT,
   HUSKS,
+  MARK_HUNT,
   KNOCKBACK_X,
   KNOCKBACK_Y,
   MARK_COOLDOWN,
+  MARK_FALL,
   MARK_SIZE,
   MARK_SPEED,
+  MARK_TURNS,
   markBite,
   markPowers,
+  SHARD_LIFE,
+  SHARD_SPEED,
   takeHit,
 } from "../combat";
 
@@ -740,6 +747,31 @@ function touchEntities(world: World, ctx: StepContext): void {
       continue;
     }
 
+    /**
+     * A pedestal **offers**. Walking into a vessel used to take it, which made
+     * the pool a set of numbers handed out along the way rather than a set of
+     * decisions — and it meant no vessel could ever cost anything, because a
+     * cost you cannot decline is not a bargain, it is a tax.
+     *
+     * Level-triggered the way the Word-Gate's porch is, and for the same
+     * reason: `active` means "standing at it". Declining closes the plate, and
+     * the plate would go straight back up on the next tick if the offer fired
+     * off the touching rather than off the arriving. Stepping away clears it,
+     * so a declined vessel is offered again to a Scribe who comes back — which
+     * is what makes leaving it "not yet" rather than "never".
+     *
+     * `taken` is now set by the page, when the Scribe says yes.
+     */
+    if (e.kind === "vessel") {
+      if (!near) {
+        e.active = false;
+      } else if (!e.active) {
+        e.active = true;
+        if (e.ref) ctx.onVessel?.(e.ref);
+      }
+      continue;
+    }
+
     if (!near) continue;
 
     switch (e.kind) {
@@ -791,10 +823,6 @@ function touchEntities(world: World, ctx: StepContext): void {
           // come back with Peh and they will speak.
           say(world, "The figure inclines their head and says nothing. The Mouth is not yet yours.");
         }
-        break;
-      case "vessel":
-        e.taken = true;
-        if (e.ref) ctx.onVessel?.(e.ref);
         break;
       case "exit":
         if (!world.finished) {
@@ -900,45 +928,140 @@ function throwMark(world: World, input: Input, ctx: StepContext): void {
     pierces: powers.pierces,
     bite: markBite(powers),
     draws: powers.draws,
+    hunts: powers.homing ? MARK_HUNT : 0,
+    turns: powers.bounces ? MARK_TURNS : 0,
+    splits: powers.splits,
+    arcs: powers.arcs,
     glyph: ctx.markGlyph ?? "א",
   });
   p.markCooldown = Math.max(4, Math.round(MARK_COOLDOWN * (powers.cooldown ?? 1)));
 }
 
+/**
+ * One tick of turning toward something, at the rate hers was measured at.
+ *
+ * `toward` is the speed the bend steers *to*, and it is not the same number on
+ * both sides. Hers pulls toward a 200-long velocity, which is what she was
+ * tuned with. His marks fly at more than twice that, so steering them toward
+ * 200 would brake them to a crawl and call it homing — measured, the hunting
+ * mark ended up **further** from its shell than a flat throw, because it lost
+ * the ground it would have covered. His bend therefore steers to whatever
+ * speed the mark already has: it changes the direction and nothing else.
+ */
+function bend(m: Mark, at: Body, toward: number): void {
+  const dx = at.x + at.w / 2 - (m.x + m.w / 2);
+  const dy = at.y + at.h / 2 - (m.y + m.h / 2);
+  const away = Math.hypot(dx, dy) || 1;
+  m.vx += ((dx / away) * toward - m.vx) * BEND_RATE;
+  m.vy += ((dy / away) * toward - m.vy) * BEND_RATE;
+}
+
+/**
+ * The nearest shell a hunting mark could actually break — not the nearest
+ * body. A mark that bent toward a husk standing in unrevealed stone would
+ * spend its whole flight aiming at something it cannot touch.
+ */
+function nearestHusk(world: World, ctx: StepContext, m: Mark): Husk | undefined {
+  let best: Husk | undefined;
+  let bestAt = Infinity;
+  for (const husk of world.husks) {
+    if (husk.broken || submerged(husk)) continue;
+    if (!canBeStruck(hiddenAt(world, husk), ctx.verbs)) continue;
+    const at = Math.hypot(husk.x - m.x, husk.y - m.y);
+    if (at < bestAt) {
+      bestAt = at;
+      best = husk;
+    }
+  }
+  return best;
+}
+
+/** What comes out of a broken shell: two shards, up and away on both sides. */
+function splitOf(m: Mark): Mark[] {
+  return [-1, 1].map((side, i) => ({
+    ...m,
+    id: `${m.id}s${i}`,
+    vx: side * SHARD_SPEED * 0.7,
+    vy: -SHARD_SPEED * 0.7,
+    life: SHARD_LIFE,
+    // A shard is what is left of the mark, not another one of it: it does not
+    // split, it does not hunt, and it does not bounce, or one throw into a
+    // sealed room would clear the room.
+    splits: false,
+    hunts: 0,
+    turns: 0,
+  }));
+}
+
 function stepMarks(world: World, ctx: StepContext): void {
   const p = world.player;
+  // Splitting pushes new marks into the world, and pushing into an array being
+  // iterated is how a shard ends up stepped on the tick it was born and how a
+  // split of a split becomes possible. Buffer, and join at the end.
+  const shards: Mark[] = [];
+  const stone = (x: number, y: number) =>
+    isSolid(tileAt(world, Math.floor(x / TILE_SIZE), Math.floor(y / TILE_SIZE)), {
+      verbs: ctx.verbs,
+      crawling: false,
+      revealed: world.revealed,
+    });
+
   for (const m of world.marks) {
+    // Weight, if it has any. Applied before the move so the fall and the
+    // tile test agree about where the mark is.
+    if (m.arcs) m.vy += GRAVITY * MARK_FALL * DT;
+    const wasX = m.x;
+    const wasY = m.y;
     m.x += m.vx * DT;
     m.y += m.vy * DT;
     m.life -= 1;
 
     // Stone stops a mark. So does the edge of the world.
-    const tx = Math.floor((m.x + m.w / 2) / TILE_SIZE);
-    const ty = Math.floor((m.y + m.h / 2) / TILE_SIZE);
-    if (isSolid(tileAt(world, tx, ty), { verbs: ctx.verbs, crawling: false, revealed: world.revealed })) {
-      m.life = 0;
-      continue;
+    const cx = m.x + m.w / 2;
+    const cy = m.y + m.h / 2;
+    if (stone(cx, cy)) {
+      if (!m.turns) {
+        m.life = 0;
+        continue;
+      }
+      // Which way it hit. Test the two components apart, or a mark that
+      // catches a corner flips both and comes home along its own path.
+      const hitX = stone(cx, wasY + m.h / 2);
+      const hitY = stone(wasX + m.w / 2, cy);
+      if (hitX) m.vx = -m.vx;
+      if (hitY) m.vy = -m.vy;
+      // A corner that is solid only diagonally turns the mark back the way it
+      // came, because there is no face to choose between.
+      if (!hitX && !hitY) {
+        m.vx = -m.vx;
+        m.vy = -m.vy;
+      }
+      m.x = wasX;
+      m.y = wasY;
+      m.turns -= 1;
     }
 
     // Jezebel's marks bend after the Scribe rather than flying flat — she
     // never had to be near anything she did.
-    if (m.seeks && !m.mine) {
-      const dx = p.x + p.w / 2 - (m.x + m.w / 2);
-      const dy = p.y + p.h / 2 - (m.y + m.h / 2);
-      const at = Math.hypot(dx, dy) || 1;
-      // Gently. A mark that turns hard enough never misses, and a projectile
-      // that cannot be dodged is not a fight, it is a tax: measured at a fifth
-      // of that rate it put a third of all runs out. This bends — it does not
-      // follow.
-      // Gently, and only at the start of its flight. A mark that turns hard
-      // enough never misses, and a projectile that cannot be dodged is not a
-      // fight but a tax: hers accounted for more lamps than the other nine
-      // klipot together. It bends once, early, and then it is committed —
-      // which is also what throwing something at somebody is like.
-      if (m.life > 95) {
-        m.vx += ((dx / at) * 200 - m.vx) * 0.03;
-        m.vy += ((dy / at) * 200 - m.vy) * 0.03;
-      }
+    //
+    // Gently, and only at the start of the flight. A mark that turns hard
+    // enough never misses, and a projectile that cannot be dodged is not a
+    // fight but a tax: hers accounted for more lamps than the other nine
+    // klipot together. It bends once, early, and then it is committed —
+    // which is also what throwing something at somebody is like.
+    if (m.seeks && !m.mine && m.life > 95) {
+      bend(m, p, BEND_TOWARD);
+    }
+
+    // The Scribe's side of the same thing, lent by a vessel rather than owned
+    // by a klipah, and aimed at the nearest shell it could actually break. Its
+    // window is a count of its own rather than a threshold on `life`, because
+    // a mark of his lives a third as long as one of hers and would otherwise
+    // never reach the condition at all.
+    if (m.mine && m.hunts) {
+      const husk = nearestHusk(world, ctx, m);
+      if (husk) bend(m, husk, Math.hypot(m.vx, m.vy));
+      m.hunts -= 1;
     }
 
     if (m.mine) {
@@ -946,6 +1069,10 @@ function stepMarks(world: World, ctx: StepContext): void {
         if (husk.broken || submerged(husk) || !bodiesTouch(m, husk)) continue;
         if (!canBeStruck(hiddenAt(world, husk), ctx.verbs)) continue;
         strikeHusk(world, husk, m.bite, m.draws ? -1 : 1, m.x);
+        // What is broken throws two shards out of it, up and away on both
+        // sides — coverage rather than a second throw, which is why they are
+        // short-lived and never split again.
+        if (m.splits) shards.push(...splitOf(m));
         if (!m.pierces) m.life = 0;
         break;
       }
@@ -954,6 +1081,7 @@ function stepMarks(world: World, ctx: StepContext): void {
       wound(world, ctx, m.x < p.x ? 1 : -1);
     }
   }
+  if (shards.length > 0) world.marks.push(...shards);
   world.marks = world.marks.filter((m) => m.life > 0);
 }
 

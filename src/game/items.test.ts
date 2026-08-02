@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { abilities } from "./abilities";
-import { drawKeli, keliById, keliFor, KELIM, powersFrom, synergiesIn } from "./items";
+import { describeEffect, drawKeli, keliById, keliFor, KELIM, powersFrom, synergiesIn } from "./items";
+import { markPowers } from "./combat";
 import { makeRng } from "./rng";
 import { TREE_PATHS } from "./tree";
 import { TOTAL_REGIONS } from "./regions";
 import { buildPath, buildRegion, keliOnPath } from "./world/build";
+import { step, type StepContext } from "./world/step";
+import { TILE_SIZE } from "./world/tiles";
+import { NO_INPUT } from "./world/types";
 
 /**
  * The vessels, and the line they must not cross.
@@ -30,6 +34,12 @@ describe("the vessels", () => {
       "iframes",
       "light",
       "pierces",
+      // The four behaviours. They widen what a vessel may touch and not what it
+      // may *grant*: the assertion below is unchanged, and it is the rule.
+      "bounces",
+      "homing",
+      "splits",
+      "arcs",
     ]);
     const verbs = new Set(abilities.filter((a) => a.kind === "verb").map((a) => a.verb));
     for (const keli of KELIM) {
@@ -204,6 +214,35 @@ describe("the pool a climb draws from", () => {
   }, 60000);
 
   /**
+   * **And it stays there while a hand fills up around it.**
+   *
+   * The draw used to index a list filtered by what was held, so picking
+   * anything up anywhere re-ordered the pool and moved every other path's
+   * vessel. Nobody could see it while walking into a pedestal took what was on
+   * it — the vessel a Scribe never met was free to change. It stops being
+   * invisible the moment one can be left standing: leave the Reed, take the
+   * Awl two paths later, come back, and the Reed is gone and something else is
+   * on its plinth. So the vessel a path holds may only change by being taken.
+   */
+  it("leaves a vessel where it lies while other vessels are picked up", () => {
+    for (const path of TREE_PATHS.slice(0, 10)) {
+      const lying = keliOnPath(path, 7, []);
+      expect(lying, `${path.id} holds nothing at all`).toBeDefined();
+      // Every other vessel taken, one at a time. None of them is this one, so
+      // none of them may move it.
+      for (const other of KELIM.filter((k) => k.id !== lying!.id)) {
+        expect(
+          keliOnPath(path, 7, [other.id])?.id,
+          `taking the ${other.name} moved what lies on ${path.id}`,
+        ).toBe(lying!.id);
+      }
+      // Taken, it is gone and the path holds something else — the one change
+      // that is allowed.
+      expect(keliOnPath(path, 7, [lying!.id])?.id).not.toBe(lying!.id);
+    }
+  });
+
+  /**
    * **The menu and the ground must agree.** `keliOnPath` recreates the draw
    * without building the rung, so the overworld can name what lies on a way out
    * without painting twenty-two worlds — and it is coupled to `buildPath` by
@@ -245,4 +284,203 @@ describe("the pool a climb draws from", () => {
     const shared = byPillar.filter((id) => byOuter.includes(id)).length;
     expect(shared, "the two routes carry the same vessels").toBeLessThan(byPillar.length);
   }, 120000);
+});
+
+/**
+ * **The pedestal offers.**
+ *
+ * Walking into a vessel used to take it, and that one line decided more than it
+ * looked like: nothing in the pool could ever cost anything, because a cost you
+ * cannot decline is not a bargain but a tax, and a Scribe who wanted to stay
+ * light had no way to say so. Now the plate goes up and the answer is theirs.
+ *
+ * Three things have to hold, and each of them is a way the feature quietly
+ * fails: the offer must fire on *arriving* rather than on touching, or a
+ * declined plate reappears on the next tick and there is no way out of the
+ * room; the pedestal must keep what was refused, or "leave it" means "destroy
+ * it"; and coming back must offer it again, or it means "never".
+ *
+ * **And it has to be here rather than in the harness.** `tools/playtest.mjs`
+ * was tried first and cannot do it: its probe steers by the distance field to
+ * the exit, and a pedestal stands in a niche a tile above the floor that a
+ * Scribe climbs into on purpose. Four scripts across three rungs walked
+ * straight past one — twice over the whole width of a region — which is the
+ * design working and the harness being the wrong instrument. What a browser
+ * did verify is the overworld's side of it: the map names each way out's
+ * vessel and what it does, so a pedestal is a decision made before the walk as
+ * well as at the plinth.
+ */
+describe("a vessel offered rather than taken", () => {
+  const ctx: StepContext = { verbs: [], graces: [] };
+
+  /** A rung with a pedestal on it, and the Scribe stood on top of the pedestal. */
+  function atAPedestal() {
+    const world = buildRegion(3, 91);
+    const pedestal = world.entities.find((e) => e.kind === "vessel");
+    expect(pedestal, "region three lays no vessel, so nothing was measured").toBeDefined();
+    const offered: string[] = [];
+    // Nothing else in reach, so only the pedestal can raise anything.
+    world.entities = [pedestal!];
+    world.husks = [];
+    pedestal!.x = world.player.x;
+    pedestal!.y = world.player.y;
+    return { world, pedestal: pedestal!, offered, onVessel: (id: string) => offered.push(id) };
+  }
+
+  it("offers once on arriving, not once a tick", () => {
+    const { world, pedestal, offered, onVessel } = atAPedestal();
+    for (let i = 0; i < 30; i += 1) {
+      step(world, NO_INPUT, { ...ctx, onVessel });
+      pedestal.x = world.player.x;
+      pedestal.y = world.player.y;
+    }
+    expect(offered).toEqual([pedestal.ref]);
+  });
+
+  it("leaves what was refused standing on its plinth", () => {
+    const { world, pedestal, onVessel } = atAPedestal();
+    step(world, NO_INPUT, { ...ctx, onVessel });
+    expect(pedestal.taken, "declining emptied the pedestal").toBeFalsy();
+  });
+
+  it("offers again to a Scribe who walks away and comes back", () => {
+    const { world, pedestal, offered, onVessel } = atAPedestal();
+    step(world, NO_INPUT, { ...ctx, onVessel });
+    // Away — far enough that nothing overlaps — and then back.
+    pedestal.x = world.player.x + TILE_SIZE * 20;
+    step(world, NO_INPUT, { ...ctx, onVessel });
+    pedestal.x = world.player.x;
+    pedestal.y = world.player.y;
+    step(world, NO_INPUT, { ...ctx, onVessel });
+    expect(offered, "leaving a vessel meant never rather than not yet").toHaveLength(2);
+  });
+
+  it("stops offering what has been taken", () => {
+    const { world, pedestal, offered, onVessel } = atAPedestal();
+    step(world, NO_INPUT, { ...ctx, onVessel });
+    // What the page does on a yes.
+    pedestal.taken = true;
+    pedestal.active = false;
+    for (let i = 0; i < 10; i += 1) step(world, NO_INPUT, { ...ctx, onVessel });
+    expect(offered).toHaveLength(1);
+  });
+});
+
+/**
+ * **What a vessel costs.**
+ *
+ * For most of this pool's life every object was an improvement — twenty ways
+ * for a number to get bigger — and the reason was structural rather than
+ * timid: walking into a pedestal took what was on it, so a vessel with a real
+ * downside would have been a tax collected off a Scribe who never agreed to
+ * pay it. Once a pedestal can be walked past, a cost becomes a question, and a
+ * question is the thing an item pool is actually for.
+ *
+ * So: about a quarter of them must give something up, none of them may be all
+ * cost, and — because it is the same idea from the other side — each of the
+ * four behaviours must be carried by something a climb can actually find.
+ *
+ * Measured off the folded numbers rather than a list of ids kept by hand,
+ * which would be a list that goes stale the first time a vessel is retuned.
+ */
+describe("what a vessel costs", () => {
+  /** Which way is up, for everything a vessel can touch. */
+  const BETTER: Record<string, 1 | -1> = {
+    bite: 1,
+    reach: 1,
+    cooldown: -1,
+    speed: 1,
+    lamps: 1,
+    iframes: 1,
+    light: 1,
+  };
+  const NOTHING = powersFrom([]);
+
+  /** What this vessel gives up, and what it gives, held on its own. */
+  function ledger(id: string): { gains: string[]; costs: string[] } {
+    const alone = powersFrom([id]) as unknown as Record<string, number | boolean>;
+    const base = NOTHING as unknown as Record<string, number | boolean>;
+    const gains: string[] = [];
+    const costs: string[] = [];
+    for (const [knob, better] of Object.entries(BETTER)) {
+      const moved = Math.sign((alone[knob] as number) - (base[knob] as number));
+      if (moved === 0) continue;
+      (moved === better ? gains : costs).push(knob);
+    }
+    // A behaviour is a gain wherever it is not a price. Weight is the price.
+    for (const flag of ["pierces", "bounces", "homing", "splits"]) {
+      if (alone[flag]) gains.push(flag);
+    }
+    if (alone.arcs) costs.push("arcs");
+    return { gains, costs };
+  }
+
+  it("makes at least a quarter of the pool give something up", () => {
+    const costly = KELIM.filter((k) => ledger(k.id).costs.length > 0);
+    expect(
+      costly.length,
+      `only ${costly.length} of ${KELIM.length} vessels cost anything — the pool is twenty improvements`,
+    ).toBeGreaterThanOrEqual(Math.ceil(KELIM.length / 4));
+  });
+
+  it("never asks for a price without paying one", () => {
+    for (const keli of KELIM) {
+      const { gains, costs } = ledger(keli.id);
+      if (costs.length === 0) continue;
+      expect(
+        gains,
+        `the ${keli.name} costs ${costs.join(", ")} and gives nothing back`,
+      ).not.toEqual([]);
+    }
+  });
+
+  /**
+   * And a cost has to be paid in a **different currency** from the gift, or it
+   * is not a trade — it is a smaller number in the same column, which a Scribe
+   * cannot reason about and would never decline.
+   */
+  it("charges in a currency other than the one it gives", () => {
+    for (const keli of KELIM) {
+      const { gains, costs } = ledger(keli.id);
+      for (const cost of costs) {
+        expect(gains, `the ${keli.name} pays for ${cost} in ${cost}`).not.toContain(cost);
+      }
+    }
+  });
+
+  /**
+   * The other half of the same change: a behaviour nothing carries is a branch
+   * in `stepMarks` no climb will ever reach, which `marks.test.ts` would go on
+   * passing forever. This is what ties the reducer to the pool.
+   */
+  it("puts every behaviour on something a climb can find", () => {
+    for (const flag of ["bounces", "homing", "splits", "arcs"] as const) {
+      const carriers = KELIM.filter((k) => k.effect[flag] || k.synergy?.effect[flag]);
+      expect(carriers.length, `nothing in the pool ${flag}`).toBeGreaterThan(0);
+      // And a mark thrown by a Scribe holding it actually gets it.
+      expect(markPowers([], [], [carriers[0].id])[flag], `${carriers[0].id} does not reach the mark`).toBe(
+        true,
+      );
+    }
+  });
+
+  /** Nothing is lent to a Scribe carrying nothing — the mark the game had. */
+  it("lends no behaviour to an empty hand", () => {
+    const bare = markPowers([], [], []);
+    expect([bare.bounces, bare.homing, bare.splits, bare.arcs]).toEqual([false, false, false, false]);
+  });
+
+  /**
+   * And what the map and the plate say about a vessel is read off these same
+   * numbers, so it cannot promise what the vessel stopped doing.
+   */
+  it("says what each vessel does, in its own numbers", () => {
+    for (const keli of KELIM) {
+      const said = describeEffect(keli.effect);
+      expect(said.length, `the ${keli.name} describes itself as nothing`).toBeGreaterThan(5);
+      if (ledger(keli.id).costs.length > 0) {
+        expect(said, `the ${keli.name} hides what it costs`).toContain("but");
+      }
+    }
+  });
 });

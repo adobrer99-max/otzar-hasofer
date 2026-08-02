@@ -110,6 +110,18 @@ export interface Mark extends Body {
   draws: boolean;
   /** Whether it bends after the Scribe in flight — Jezebel's, and only hers. */
   seeks?: boolean;
+  /**
+   * Ticks of bending after the nearest shell left — the Scribe's side of
+   * `seeks`, lent by a vessel rather than owned by a klipah. Counted rather
+   * than thresholded on `life`, because his marks are short-lived.
+   */
+  hunts?: number;
+  /** Bounces left off stone. Zero, and stone stops it as it always did. */
+  turns?: number;
+  /** Breaking a shell throws two shards out of it. Shards never carry it. */
+  splits?: boolean;
+  /** It has weight, and falls as it flies. */
+  arcs?: boolean;
   /** The letter written, for the renderer. */
   glyph: string;
 }

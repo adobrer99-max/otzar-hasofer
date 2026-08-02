@@ -556,6 +556,20 @@
   line-height: var(--line-height);
 }
 
+/* What a vessel does, in its own numbers, above the two buttons. */
+.vesselDoes {
+  margin: 0 0 var(--space-3);
+  color: var(--color-copper, var(--accent));
+  font-size: 0.95rem;
+}
+
+/* And the reassurance that "leave it" is not "never" — small, under the pair. */
+.vesselLeft {
+  margin: var(--space-2) 0 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
 .plateDerivation {
   margin: 0 0 var(--space-3);
   color: var(--text-muted);
@@ -1056,4 +1070,12 @@
    is different tomorrow. */
 .wayKeli {
   color: var(--color-copper, var(--accent));
+}
+
+/* What the vessel does, under its name — quieter than the name, because the
+   name is what a Scribe routes toward and this is what they weigh. */
+.wayKeliDoes {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-muted);
 }
