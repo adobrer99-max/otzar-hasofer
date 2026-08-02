@@ -8,6 +8,8 @@ import {
   EDGE_COLUMNS,
   EDGE_FLOOR_ROWS,
   END_CHUNK,
+  BOTH_CLEAR_ROWS,
+  BOTH_FLOOR_ROWS,
   HIGH_CLEAR_ROWS,
   HIGH_FLOOR_ROWS,
   HIGH_VOID_ROWS,
@@ -73,6 +75,21 @@ describe("the chunk library", () => {
       }
       return;
     }
+    if (edge === "both") {
+      // A branch: the upper road and the lower road, side by side, both
+      // walkable at this seam.
+      for (const y of BOTH_CLEAR_ROWS) {
+        for (const x of cols) {
+          expect(clear(c.rows[y][x]), `${c.id} ${side}: needs headroom at (${x},${y})`).toBe(true);
+        }
+      }
+      for (const y of BOTH_FLOOR_ROWS) {
+        for (const x of cols) {
+          expect(c.rows[y][x], `${c.id} ${side}: needs a road at (${x},${y})`).toBe("#");
+        }
+      }
+      return;
+    }
     for (const y of HIGH_CLEAR_ROWS) {
       for (const x of cols) {
         expect(clear(c.rows[y][x]), `${c.id} ${side}: needs headroom at (${x},${y})`).toBe(true);
@@ -120,7 +137,9 @@ describe("the chunk library", () => {
     for (const c of CHUNKS) {
       for (const row of c.rows) {
         for (const ch of row) {
-          const structural = ch === "*" || !MARKER_CHARS.has(ch);
+          // `*` is a mote and `Y` is a fork: both are structural to the screen
+          // itself rather than something the seed places into it.
+          const structural = ch === "*" || ch === "Y" || !MARKER_CHARS.has(ch);
           expect(structural, `${c.id} may not carry the marker "${ch}"`).toBe(true);
         }
       }
@@ -143,6 +162,35 @@ describe("the chunk library", () => {
     const down = CHUNKS.filter((c) => c.entry === "high" && c.exit === "ground" && c.requires.length === 0);
     expect(up.length, "no letterless way up").toBeGreaterThan(0);
     expect(down.length, "no letterless way down").toBeGreaterThan(0);
+  });
+
+  /**
+   * A branch must be able to open, run and close without any letter at all —
+   * otherwise a region could fork and then find nothing to close the fork
+   * with, and the two roads would run off the end of the world.
+   */
+  it("keeps a letterless way to divide the road, to run it, and to rejoin", () => {
+    const free = CHUNKS.filter((c) => c.requires.length === 0);
+    expect(
+      free.filter((c) => c.entry === "ground" && c.exit === "both").length,
+      "no letterless fork",
+    ).toBeGreaterThan(0);
+    expect(
+      free.filter((c) => c.entry === "both" && c.exit === "both").length,
+      "no letterless branch to run",
+    ).toBeGreaterThan(0);
+    expect(
+      free.filter((c) => c.entry === "both" && c.exit === "ground").length,
+      "no letterless merge",
+    ).toBeGreaterThan(0);
+  });
+
+  /** The fork sigil is what Resh returns to, so a fork must carry exactly one. */
+  it("marks the fork on every screen where the road divides", () => {
+    for (const c of CHUNKS.filter((x) => x.entry !== "both" && x.exit === "both")) {
+      const forks = c.rows.join("").split("").filter((ch) => ch === "Y").length;
+      expect(forks, `${c.id} divides the road and does not mark where`).toBe(1);
+    }
   });
 
   it("names only real verbs in `requires`", () => {

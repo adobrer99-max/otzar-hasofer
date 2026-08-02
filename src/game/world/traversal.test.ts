@@ -320,6 +320,40 @@ describe("walking the regions", () => {
     ).toBeGreaterThan(foot);
   });
 
+  /**
+   * Branches, and the letter that exists for them.
+   *
+   * Resh was granted from the very first commit and did nothing whatsoever —
+   * its own plate promised a return that no code performed. It needed
+   * somewhere to return *to*, which is what a fork is.
+   */
+  it("returns a Scribe carrying the Beginning to the fork, and everyone else to the mark", () => {
+    const world = buildRegion(6, 3);
+    const mark = { x: 100, y: 300 };
+    const fork = { x: 900, y: 300 };
+    const withResh: StepContext = { verbs: [], graces: ["return"] };
+    const without: StepContext = { verbs: [], graces: [] };
+
+    for (const [label, ctx, expected] of [
+      ["carrying Resh", withResh, fork],
+      ["without it", without, mark],
+    ] as const) {
+      const w = { ...world, respawn: { ...mark }, fork: { ...fork }, wakeAt: undefined };
+      w.player = { ...world.player, x: 500, y: 5000, veiled: 0 };
+      // Fall out of the world, then run the veiling down.
+      for (let i = 0; i < 80; i += 1) step(w, NO_INPUT, ctx);
+      expect(w.player.x, `${label}`).toBeCloseTo(expected.x, 0);
+    }
+  });
+
+  it("never returns to a fork that is behind the mark", () => {
+    const world = buildRegion(6, 3);
+    const w = { ...world, respawn: { x: 900, y: 300 }, fork: { x: 100, y: 300 }, wakeAt: undefined };
+    w.player = { ...world.player, x: 950, y: 5000, veiled: 0 };
+    for (let i = 0; i < 80; i += 1) step(w, NO_INPUT, { verbs: [], graces: ["return"] });
+    expect(w.player.x).toBeCloseTo(900, 0);
+  });
+
   it("never veils a Scribe who simply stands still on the opening ground", () => {
     for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
       const world = buildRegion(region, 42);

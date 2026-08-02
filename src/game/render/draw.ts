@@ -484,6 +484,24 @@ function drawEntity(ctx: CanvasRenderingContext2D, e: Entity, palette: Palette, 
       }
       break;
     }
+    case "fork": {
+      // Where the road divides — Resh's landmark. A slender Y standing in the
+      // ground, lit once it has been passed, because after that it is
+      // somewhere you can be returned to.
+      const passed = Boolean(e.active);
+      ctx.strokeStyle = passed ? palette.goldBright : alpha(palette.muted, 0.65);
+      ctx.lineWidth = passed ? 1.8 : 1.2;
+      ctx.beginPath();
+      ctx.moveTo(cx, e.y + TILE_SIZE);
+      ctx.lineTo(cx, e.y + 2);
+      ctx.moveTo(cx, e.y + 2);
+      ctx.lineTo(cx - 8, e.y - 10);
+      ctx.moveTo(cx, e.y + 2);
+      ctx.lineTo(cx + 8, e.y - 10);
+      ctx.stroke();
+      glyph(ctx, "ר", cx, e.y - 20, 15, passed ? palette.goldBright : alpha(palette.muted, 0.7));
+      break;
+    }
     case "mark": {
       // The Tav shrine — dark until set, lit gold once it is yours.
       const on = Boolean(e.active);

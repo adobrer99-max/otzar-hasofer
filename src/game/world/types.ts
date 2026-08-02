@@ -17,7 +17,16 @@ export interface Body {
   vy: number;
 }
 
-export type EntityKind = "letter" | "mote" | "mark" | "house" | "exit" | "fragment" | "word-gate";
+export type EntityKind =
+  | "letter"
+  | "mote"
+  | "mark"
+  | "house"
+  | "exit"
+  | "fragment"
+  | "word-gate"
+  /** Where a road divides. Resh returns you here. */
+  | "fork";
 
 export interface Entity {
   id: string;
@@ -70,6 +79,20 @@ export interface World {
   entities: Entity[];
   /** Where the Scribe wakes after a veiling. */
   respawn: Vec;
+  /**
+   * The last fork passed — the head of the road the Scribe is on.
+   *
+   * Resh, the Beginning, is what makes this matter: veiled on a branch, a
+   * Scribe carrying it wakes at the fork rather than back at the mark, which
+   * is to say they are returned to the main climb instead of losing the
+   * ground between. Without Resh the fork is recorded and simply not used.
+   */
+  fork?: Vec;
+  /**
+   * Where this veiling will set the Scribe down, decided the moment they are
+   * veiled — because that is the moment the letters they carry are known.
+   */
+  wakeAt?: Vec;
   /** Tile coordinates the Eye has opened, so a reveal persists. */
   revealed: boolean;
   /** The single stone Bet has set, plus the second the Palm allows. */
@@ -135,10 +158,16 @@ export const NO_INPUT: Input = {
  *
  * `ground` is the floor every region begins and ends on. `high` is a ledge
  * four tiles up with nothing beneath it — which is what gives the Tree height
- * rather than length. A chunk's `exit` must match the next chunk's `entry`,
- * and `build.ts` chains them accordingly.
+ * rather than length. `both` carries the two at once, and is how a region
+ * *branches*: a road divides, runs as two independent roads for a screen or
+ * three, and comes back together. That is the shape of the Tree itself — three
+ * pillars that part and rejoin — and it is what makes Resh worth having, since
+ * the Beginning is what returns you to the fork when a branch defeats you.
+ *
+ * A chunk's `exit` must match the next chunk's `entry`, and `build.ts` chains
+ * them accordingly.
  */
-export type Edge = "ground" | "high";
+export type Edge = "ground" | "high" | "both";
 
 /** A hand-authored screen. See `chunks.ts` for the connection contract. */
 export interface Chunk {

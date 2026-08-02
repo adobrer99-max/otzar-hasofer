@@ -320,9 +320,9 @@ export const abilities: LetterAbility[] = [
     hebrew: "ראש",
     kind: "grace",
     grace: "return",
-    use: "Return at once to where this region began.",
-    derivation: "Resh is the head and the beginning — and the poor one, who is always able to start again.",
-    press: "No key yet — the Beginning is not bound to anything you can press.",
+    use: "Veiled on a branch, you wake at the fork rather than back at your mark.",
+    derivation: "Resh is the head — the head of the road, which is where the two ways parted. And the poor one, who is always able to start again.",
+    press: "No key — the Beginning is simply where you wake.",
   },
 ];
 

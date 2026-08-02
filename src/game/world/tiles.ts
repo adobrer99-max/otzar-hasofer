@@ -62,8 +62,9 @@ export const TILE_CHARS: Record<string, Tile> = {
 /** Markers that become entities at load rather than tiles in the grid. */
 // NB: lowercase `w` is already water and `c` already a low gap — a marker
 // must not collide with a tile character, so the Word-Gate's porch is `?`,
-// which is also what it is: the place a question is asked.
-export const MARKER_CHARS = new Set(["S", "E", "L", "*", "T", "H", "F", "?"]);
+// which is also what it is: the place a question is asked. `Y` is a fork,
+// which is also what it looks like.
+export const MARKER_CHARS = new Set(["S", "E", "L", "*", "T", "H", "F", "?", "Y"]);
 
 /**
  * Whether a tile stops a body, given what the Scribe carries and how they are

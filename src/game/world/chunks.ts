@@ -85,6 +85,16 @@ export const HIGH_VOID_ROWS = [12, 13, 14, 15, 16, 17];
  * price this game charges for anything.
  */
 
+/**
+ * A `both` edge carries the ground lane *and* the high lane at once — it is
+ * how a region branches. Two roads run side by side for a screen or three and
+ * then come back together, which is the shape of the Tree itself: pillars that
+ * part and rejoin. The high road is the harder one and holds more; the ground
+ * road is always plain enough to walk.
+ */
+export const BOTH_CLEAR_ROWS = [...HIGH_CLEAR_ROWS, ...EDGE_CLEAR_ROWS];
+export const BOTH_FLOOR_ROWS = [...HIGH_FLOOR_ROWS, ...EDGE_FLOOR_ROWS];
+
 /** The columns both profiles are measured at. */
 export const EDGE_COLUMNS = [0, 1, CHUNK_W - 2, CHUNK_W - 1];
 
@@ -509,13 +519,25 @@ export const CHUNKS: Chunk[] = [
    * Six tiles of open air used to be enough to call a screen dash-gated, and
    * it was not: the Breath is found in Malchut and carries a body eight tiles,
    * so every "dash" chasm in the game was being cleared by a Scribe who never
-   * pressed the key. A ceiling settles it. There is no room to jump at all,
-   * and a body that walks off the lip falls; the dash is flat — it holds `vy`
-   * at zero for twelve ticks — so it is the one motion that crosses this.
+   * pressed the key. A ceiling settles it — but only a ceiling that reaches
+   * the top of the screen. A slab floating a few tiles up is a *bridge*: the
+   * edge columns must stay clear for chunks to connect, so a Scribe simply
+   * jumped up beside it and walked across the roof. Measured, and it put two
+   * upper-Tree assemblies back within reach of walking alone.
+   *
+   * Nor is a slab that stops at row zero enough: the Fence catches its side,
+   * and a wall-jump carries a body *above* the top of the screen, where there
+   * is no tile to stop it, and it drifts over and comes down the far side.
+   *
+   * So everything above the corridor is stone, full width — except the two
+   * edge columns at rows 12 and 13, which the connection contract requires to
+   * stay clear and which now open into a pocket with solid rock above it.
+   * There is eighteen pixels of headroom in the corridor. A body that walks
+   * off the lip falls; the dash is flat — it holds `vy` at zero for twelve
+   * ticks — and it is the one motion in the game that crosses this.
    */
   chunk("wide-chasm", { requires: ["dash"], demand: 1 }, [
-    E, E, E, E, E, E, E, E, E, E, E,
-    E,
+    F, F, F, F, F, F, F, F, F, F, F, F,
     "..############..",
     "..############..",
     E,
@@ -668,21 +690,27 @@ export const CHUNKS: Chunk[] = [
    * Swim the flooded floor, then climb out of it onto the high road. The two
    * letters do not merely both appear here — neither is any use without the
    * other, because the water has no bank and the vine has no footing.
+   *
+   * The vine is **two tiles wide and rooted in the water**, both deliberately.
+   * Climbing while holding toward the exit drifts a body sideways — that is
+   * what `climbTick` does — so a one-tile vine slid a Scribe off it into the
+   * void, and a vine whose foot was dry meant a slip cost the whole region.
+   * Now a slip costs a swim.
    */
   chunk("flooded-shaft", { requires: ["swim", "climb"], demand: 3, exit: "high" }, [
     E, E, E, E, E, E,
-    "..........v.....",
-    "..........v.....",
-    "..........v.....",
-    "..........v.....",
-    "..........v#####",
-    "..........v#####",
-    "..........v.....",
-    "..........v.....",
-    "..wwwwwwwwv.....",
-    "..wwwwwwwwv.....",
-    "##wwwwwwwww.....",
-    "##wwwwwwwww.....",
+    "..........vv....",
+    "..........vv....",
+    "..........vv....",
+    "..........vv....",
+    "..........vv####",
+    "..........vv####",
+    "..........vv....",
+    "..........vv....",
+    "..wwwwwwwwww....",
+    "..wwwwwwwwww....",
+    "##wwwwwwwwww....",
+    "##wwwwwwwwww....",
   ]),
 
   /**
@@ -858,6 +886,79 @@ export const CHUNKS: Chunk[] = [
     "......v.........",
     "#####...........",
     "#####...........",
+  ]),
+
+  // -------------------------------------------------------------------------
+  // branches — where the road divides, and Resh becomes worth carrying
+  //
+  // A `both` screen carries two independent roads. The high one asks more and
+  // pays more; the low one is always walkable. Take the high road and fail it
+  // and you are veiled — and a Scribe carrying the Beginning wakes at the fork
+  // rather than back at the mark, which is the whole of what Resh does and the
+  // first job it has ever had.
+  // -------------------------------------------------------------------------
+
+  /** The road divides: keep to the floor, or climb to the upper way. */
+  chunk("the-fork", { demand: 3, exit: "both" }, [
+    E, E, E, E, E, E,
+    E,
+    E,
+    "..........*.....",
+    E,
+    "..........######",
+    "..........######",
+    "........==......",
+    E,
+    "....==..........",
+    "..Y.............",
+    F,
+    F,
+  ]),
+
+  /** Two roads across one screen. The upper one is where the light is. */
+  chunk("two-ways", { demand: 3, entry: "both", exit: "both" }, [
+    E, E, E, E, E, E,
+    E,
+    "...*........*...",
+    E,
+    E,
+    "######....######",
+    "######....######",
+    E, E, E, E,
+    "######...#######",
+    "######...#######",
+  ]),
+
+  /** The upper way asks the Hook. The lower way asks nothing at all. */
+  chunk("high-road", { requires: ["grapple"], demand: 3, entry: "both", exit: "both" }, [
+    E, E, E,
+    E,
+    E,
+    ".....A....A.....",
+    E, E, E, E,
+    "##............##",
+    "##............##",
+    E, E, E,
+    "......*.........",
+    F,
+    F,
+  ]),
+
+  /** And back together: the high road comes down, the low road walks on. */
+  chunk("the-merge", { demand: 3, entry: "both", exit: "ground" }, [
+    E, E, E, E, E, E,
+    E,
+    "....*...........",
+    E,
+    E,
+    "######..........",
+    "######..........",
+    E,
+    ".........==.....",
+    E,
+    E,
+    F,
+    F,
   ]),
 
   /**

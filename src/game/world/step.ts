@@ -145,8 +145,13 @@ export function step(world: World, input: Input, ctx: StepContext): void {
   if (p.veiled > 0) {
     p.veiled -= 1;
     if (p.veiled === 0) {
-      p.x = world.respawn.x;
-      p.y = world.respawn.y;
+      // Where this veiling decided to set them down — the mark, or the fork
+      // if they carry the Beginning. Decided at the moment of veiling, since
+      // that is when the letters in hand are known.
+      const wake = world.wakeAt ?? world.respawn;
+      world.wakeAt = undefined;
+      p.x = wake.x;
+      p.y = wake.y;
       p.vx = 0;
       p.vy = 0;
       p.dash = 0;
@@ -176,7 +181,9 @@ export function step(world: World, input: Input, ctx: StepContext): void {
   touchEntities(world, ctx);
 
   // Fallen out of the world entirely.
-  if (p.y > world.height * TILE_SIZE + 96) veil(world, "The dark took the light you carried. You wake at your mark.");
+  if (p.y > world.height * TILE_SIZE + 96) {
+    veil(world, ctx, "The dark took the light you carried.");
+  }
 }
 
 /** Horizontal and vertical movement on land. */
@@ -523,13 +530,13 @@ function groundedNow(world: World, ctx: StepContext, p: Player, dropping: boolea
 function touchTiles(world: World, ctx: StepContext): void {
   const p = world.player;
   if (anyTile(world, p, isHazard)) {
-    veil(world, "The thorn takes hold. You wake at your mark.");
+    veil(world, ctx, "The thorn takes hold.");
     return;
   }
   // Deep water without Mem does not drown the Scribe; it refuses them, and
   // they surface back at the mark having lost only the moment.
   if (p.inWater && !has(ctx, "swim")) {
-    veil(world, "The deep will not carry you yet. You wake at your mark.");
+    veil(world, ctx, "The deep will not carry you yet.");
   }
 }
 
@@ -573,6 +580,15 @@ function touchEntities(world: World, ctx: StepContext): void {
       case "letter":
         e.taken = true;
         if (e.ref) ctx.onLetter?.(e.ref);
+        break;
+      case "fork":
+        // Passing the divide. Recorded whether or not the Scribe carries Resh
+        // — the letter decides what is *done* with it, not whether the world
+        // notices where the road parted.
+        if (!e.active) {
+          e.active = true;
+          world.fork = { x: e.x, y: e.y - 6 };
+        }
         break;
       case "mark":
         if (!e.active) {
@@ -633,12 +649,29 @@ export function openWordGate(world: World, message: string): void {
   say(world, message);
 }
 
-function veil(world: World, message: string): void {
+/**
+ * A veiling, and the one thing Resh does.
+ *
+ * The Beginning — Resh, the head — sets the Scribe down at the last fork they
+ * passed rather than back at their mark, whenever the fork is the further of
+ * the two. Which is to say: fail the upper road of a branch and you are
+ * returned to where it parted from the lower one, with the choice in front of
+ * you again, instead of losing every screen between here and the shrine.
+ *
+ * This is the letter's first job. It was granted from the beginning and did
+ * nothing at all — its own plate promised a return that no code performed —
+ * and it needed something to return *to*, which is what branches are.
+ */
+function veil(world: World, ctx: StepContext, message: string): void {
   if (world.player.veiled > 0) return;
   world.player.veiled = VEIL_TICKS;
   world.veilings += 1;
   world.or = Math.max(0, world.or - 2);
-  say(world, message);
+
+  const fork = world.fork;
+  const returns = grace(ctx, "return") && fork && fork.x > world.respawn.x;
+  world.wakeAt = returns ? { ...fork } : { ...world.respawn };
+  say(world, `${message} You wake at ${returns ? "the fork" : "your mark"}.`);
 }
 
 function say(world: World, text: string): void {

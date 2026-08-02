@@ -104,13 +104,15 @@ function layout(
   // starves, and it never throws.
   const banded = withinBand(passable, region.demand);
 
-  const body = layBody(
-    banded,
-    region.length,
-    rng,
-    region.demand.bias === "hard",
-    gatedQuota(region.length, region.demand),
-  );
+  // The quota is clamped to what the pool can actually supply. Hod holds no
+  // verb that is reached for — the Bridge is *given* there — so demanding that
+  // half its screens ask for one filtered out every ungated screen in the
+  // library, emptied the candidate list, and dropped the region into the
+  // ground-only fallback. Which is why Hod could never branch.
+  const quota = banded.some(asksForALetter)
+    ? gatedQuota(region.length, region.demand)
+    : 0;
+  const body = layBody(banded, region.length, rng, region.demand.bias === "hard", quota);
 
   // The gate's answer is chosen first, from roots the Scribe can already
   // spell with the letters they arrive holding. No target, no gate — which is
@@ -165,6 +167,24 @@ function layout(
 const MIN_POOL = 5;
 /** How many screens a high stretch may run before it must come back down. */
 const MAX_HIGH_RUN = 2;
+/**
+ * How many screens a branch may run before the roads rejoin.
+ *
+ * Longer than a high stretch, because a branch is not a risk the way a high
+ * stretch is — the lower road is always there and always walkable, so a Scribe
+ * who wants nothing to do with the upper one simply keeps walking.
+ */
+const MAX_BRANCH_RUN = 3;
+/**
+ * How often a region that *can* branch actually does.
+ *
+ * Left to uniform sampling a fork is one candidate among twenty and turns up
+ * in about one climb in eight — which is not a feature, it is a rumour. So the
+ * region decides up front whether it divides, and then takes the first fork it
+ * can. Not every region: a Tree where every rung branches is as flat as one
+ * where none does.
+ */
+const BRANCH_CHANCE = 0.55;
 
 /**
  * The two verbs that are *had* rather than *reached for*.
@@ -180,7 +200,32 @@ const MAX_HIGH_RUN = 2;
 const HAD_NOT_REACHED_FOR: readonly Verb[] = ["double-jump", "wall-cling"];
 
 function asksForALetter(c: Chunk): boolean {
+  // A screen with two roads asks for nothing, whatever it declares. `high-road`
+  // needs the Hook to take the *upper* way and is a plain walk along the
+  // lower one — so counting it toward the quota let a region believe it had
+  // asked for a letter when a Scribe could stroll underneath. Measured: it put
+  // two of forty-two upper-Tree assemblies back within reach of walking and
+  // jumping alone.
+  if (c.entry === "both" || c.exit === "both") return false;
   return c.requires.some((v) => !HAD_NOT_REACHED_FOR.includes(v));
+}
+
+/**
+ * A screen that opens or closes a branch.
+ *
+ * These are exempt from the quota. A fork and a merge ask for no letter, so a
+ * region with a tight quota filtered them out and never divided at all — the
+ * mid-Tree was branching in one climb in ten. The cost is that a branching
+ * region may fall one screen short of its quota, which is the right trade: a
+ * branch that cannot open is worth less than a letter asked for once more.
+ */
+function structural(c: Chunk): boolean {
+  const opens = c.entry !== "both" && c.exit === "both";
+  const closes = c.entry === "both" && c.exit !== "both";
+  // Only the two ends. The screens *inside* a branch face the quota like any
+  // other, or a region could spend its whole length on a branch that never
+  // asks for anything.
+  return opens || closes;
 }
 
 /**
@@ -241,9 +286,17 @@ function layBody(
   const ground = pool.filter((c) => c.entry === "ground" && c.exit === "ground");
   if (ground.length === 0) return [];
 
+  // Decided before anything is laid, and only if the pool can actually open a
+  // branch and close it again.
+  const canBranch =
+    pool.some((c) => c.entry === "ground" && c.exit === "both") &&
+    pool.some((c) => c.entry === "both" && c.exit === "ground");
+  let wantsBranch = canBranch && length >= 4 && rng() < BRANCH_CHANCE;
+
   const body: Chunk[] = [];
   let at: Edge = "ground";
   let highRun = 0;
+  let branchRun = 0;
   let previous = "";
   let gated = 0;
 
@@ -254,14 +307,26 @@ function layBody(
       if (c.entry !== at) return false;
       // Come down in time to finish on the floor, and never stay up too long.
       if (c.exit === "high" && (remaining <= 1 || highRun >= MAX_HIGH_RUN)) return false;
+      // The same for a branch: the roads must rejoin before the region ends.
+      if (c.exit === "both" && (remaining <= 1 || branchRun >= MAX_BRANCH_RUN)) return false;
       // Once only just enough screens are left to meet the quota, every one of
       // them has to ask for something.
-      if (owed >= remaining && !asksForALetter(c)) return false;
+      if (owed >= remaining && !asksForALetter(c) && !structural(c)) return false;
       return true;
     });
     // Prefer not to repeat the screen just laid, so a region does not stutter.
     const fresh = candidates.filter((c) => c.id !== previous);
-    const from = fresh.length > 0 ? fresh : candidates;
+    let from = fresh.length > 0 ? fresh : candidates;
+
+    // If this region means to divide, divide at the first screen that can —
+    // leaving room to run the branch and rejoin before the exit.
+    if (wantsBranch && at === "ground" && remaining > 3) {
+      const forks = from.filter((c) => c.exit === "both");
+      if (forks.length > 0) {
+        from = forks;
+        wantsBranch = false;
+      }
+    }
     if (from.length === 0) {
       // Stranded up high with nothing to come down on — abandon the height and
       // finish along the floor rather than build something uncrossable.
@@ -271,6 +336,10 @@ function layBody(
     body.push(pick);
     at = pick.exit;
     highRun = pick.exit === "high" ? highRun + 1 : 0;
+    branchRun = pick.exit === "both" ? branchRun + 1 : 0;
+    // Once the road has divided it must come back together, so nothing may
+    // preempt the merge.
+    if (pick.exit === "both") wantsBranch = false;
     if (asksForALetter(pick)) gated += 1;
     previous = pick.id;
   }
@@ -407,6 +476,10 @@ function paint(
               break;
             case "T":
               entities.push({ id: `e${entityId++}`, kind: "mark", x: px, y: py });
+              break;
+            case "Y":
+              // Where the road divides. Resh returns the Scribe here.
+              entities.push({ id: `e${entityId++}`, kind: "fork", x: px, y: py });
               break;
             case "H":
               if (dorotCardId) entities.push({ id: `e${entityId++}`, kind: "house", x: px, y: py, ref: dorotCardId });
