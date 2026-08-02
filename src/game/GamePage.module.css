@@ -1051,3 +1051,9 @@
 .overworldOwed {
   color: var(--accent);
 }
+
+/* The vessel lying at the far end of a way out — the one thing on the map that
+   is different tomorrow. */
+.wayKeli {
+  color: var(--color-copper, var(--accent));
+}

@@ -706,6 +706,7 @@ export function GamePage() {
         teaching,
         (ascent.pathsWalked ?? []).includes(path.id),
         rulesFor(encounter)?.klipot ?? 1,
+        ascent.items ?? [],
       );
       const carried = powersFrom(ascent.items ?? []);
       next.player.lamps += carried.lamps;

@@ -30,7 +30,7 @@ import {
 } from "./chunks";
 import { HUSK_CHARS, HUSKS, kindForRole, LAMPS } from "../combat";
 import { VEIL_COST } from "../encounter";
-import { keliFor } from "../items";
+import { drawKeli, keliFor, type Keli } from "../items";
 import { MARKER_CHARS, Tile, TILE_CHARS, TILE_SIZE } from "./tiles";
 import { doorsOf, planFloor, roomAtPoint, ROOM_H, ROOM_W } from "./rooms";
 import { TREE_PATHS, type TreePath } from "../tree";
@@ -116,7 +116,10 @@ export function buildRegion(
 ): World {
   const region = regionAt(regionIndex);
   const rng = makeRng((seed ^ (regionIndex * 0x9e3779b9)) >>> 0);
-  const { laid, wordGateTarget } = layout(region, rng, teaching, rows, held);
+  // The old road keeps the old fixture: `buildRegion` has no path to seed a
+  // draw from and no notion of what is carried.
+  const keli = keliFor(region.index);
+  const { laid, wordGateTarget } = layout(region, rng, teaching, rows, held, keli);
 
   return paint(
     laid,
@@ -134,6 +137,7 @@ export function buildRegion(
     // coaching lines on flat ground, a step and a gap, and a klipah wandering
     // through the middle of that teaches something else entirely.
     (laid.length > 0 ? 1 : 0) + (teaching && region.index === 1 ? TEACH_CHUNKS.length : 0),
+    keli,
   );
 }
 
@@ -199,6 +203,8 @@ function layout(
   teaching: boolean,
   rowsOverride: number | undefined,
   held: readonly string[],
+  /** The vessel this rung will hold, if any — see `paint`. */
+  keli?: Keli,
 ): { laid: Chunk[]; wordGateTarget: WordGateTarget | undefined } {
   const regionIndex = region.index;
   const verbs = verbsOf(held);
@@ -273,7 +279,7 @@ function layout(
     ...(region.hasHouse ? [HOUSE_CHUNK] : []),
     // One vessel per rung above the kingdom, on a shelf off the floor. It is
     // the only fixed screen that gives something the alphabet does not.
-    ...(keliFor(region.index) ? [VESSEL_CHUNK] : []),
+    ...(keli ? [VESSEL_CHUNK] : []),
   ];
 
   // Every fixed screen is entered and left on the ground, so they may only be
@@ -743,6 +749,12 @@ function paint(
   klipot: Region["klipot"],
   rowsOverride: number | undefined,
   quiet: number,
+  /**
+   * The vessel this rung's pedestal holds, if it holds one. Passed in rather
+   * than looked up, because on the Tree it is *drawn* — from the day, the path,
+   * and what the Scribe is already carrying — and `paint` has none of those.
+   */
+  keli?: Keli,
 ): World {
   // The screens are dealt into a floor before anything is written. One row is
   // a corridor and is exactly what every rung was before rooms existed, so
@@ -820,7 +832,6 @@ function paint(
               if (dorotCardId) entities.push({ id: `e${entityId++}`, kind: "house", x: px, y: py, ref: dorotCardId });
               break;
             case "K": {
-              const keli = keliFor(regionIndex);
               if (keli) entities.push({ id: `e${entityId++}`, kind: "vessel", x: px, y: py, ref: keli.id });
               break;
             }
@@ -1328,12 +1339,23 @@ export function buildPath(
   spent = false,
   /** The Fifth Encounter's Living Creatures — see `regionOfPath`. */
   klipot = 1,
+  /**
+   * The vessels already carried, so a pedestal never holds one of them. It is
+   * what makes the pool narrow as a climb goes on — the last vessels a Scribe
+   * finds are the ones they went out of their way for.
+   */
+  items: readonly string[] = [],
 ): World {
   const region = regionOfPath(path, held, klipot);
   // Seeded by the path rather than the region, so walking Malchut→Hod is not
   // the same ground as walking Yesod→Hod on the same run.
   const rng = makeRng((seed ^ hashOf(path.id)) >>> 0);
-  const { laid, wordGateTarget } = layout(region, rng, teaching, undefined, held);
+  // **Drawn, not fixed.** The day and the path seed this together, so the
+  // vessel on a given path is the same for everyone until midnight and
+  // different on every path — which makes the map a list of places to go for
+  // things, and is the whole reason the pool exists.
+  const keli = drawKeli(rng, items);
+  const { laid, wordGateTarget } = layout(region, rng, teaching, undefined, held, keli);
 
   return paint(
     laid,
@@ -1348,7 +1370,28 @@ export function buildPath(
     region.klipot,
     undefined,
     laid.length > 0 ? 1 : 0,
+    keli,
   );
+}
+
+/**
+ * The vessel lying on a path today, without building the rung to find out.
+ *
+ * `buildPath` draws it from the path's own generator before it lays a single
+ * screen, so recreating that generator and taking the same first draw gives the
+ * same answer for a fraction of the cost — which is what lets the overworld
+ * name it on every way out of a Sefirah without generating twenty-two worlds to
+ * paint one menu.
+ *
+ * It is coupled to `buildPath` by the order of two lines and nothing else, so
+ * `items.test.ts` holds the two against each other rather than trusting it.
+ */
+export function keliOnPath(
+  path: TreePath,
+  seed: number,
+  items: readonly string[] = [],
+): Keli | undefined {
+  return drawKeli(makeRng((seed ^ hashOf(path.id)) >>> 0), items);
 }
 
 /** The screens a path is laid from, for auditing the chain. */

@@ -11,6 +11,7 @@ import {
   TREE_VIEW,
   type TreePath,
 } from "./tree";
+import { keliOnPath } from "./world/build";
 import styles from "./GamePage.module.css";
 
 /**
@@ -207,6 +208,18 @@ export function TreeMap({
                 <button type="button" className={styles.wayButton} onClick={() => onWalk(path)}>
                   <span className={styles.wayTo}>{regionOf[to].name}</span>
                   <span className={styles.wayPays}>
+                    {/* **What is on the pedestal, before you walk.** The letter
+                        a path pays is fixed by the arrangement; the vessel is
+                        drawn from the day and the path, so it is the one thing
+                        on this map that is different tomorrow — and the only
+                        reason to walk somewhere for a thing rather than for a
+                        letter. Naming it is what turns twenty-two ways out into
+                        a list of places worth going. */}
+                    {keliOnPath(path, ascent.seed, ascent.items ?? []) && (
+                      <span className={styles.wayKeli}>
+                        ✦ {keliOnPath(path, ascent.seed, ascent.items ?? [])?.name}
+                      </span>
+                    )}{" "}
                     {held ? (
                       // Walked before: it pays nothing again, and saying so is
                       // the difference between a shortcut and a wasted climb.
