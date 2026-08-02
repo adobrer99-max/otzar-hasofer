@@ -821,3 +821,229 @@
   font-size: 0.85rem;
   line-height: 1.5;
 }
+
+/* ---- the overworld: the Tree, drawn ------------------------------------- */
+
+.overworld {
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(var(--bg-raised), var(--bg-sunken));
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.overworldInner {
+  padding: var(--space-5) var(--space-4);
+}
+
+.overworldWhere {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+}
+
+.overworldName {
+  color: var(--text);
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
+.overworldHeb {
+  color: var(--accent);
+  font-size: 1.3rem;
+}
+
+/* The diagram itself. Height is capped in `vh` as well as `rem` so that on a
+   short landscape phone the Tree does not push the ways out of it off-screen —
+   the map is no use without the list of doors under it. */
+.treeSvg {
+  display: block;
+  width: 100%;
+  max-width: 28rem;
+  max-height: 58vh;
+  margin: 0 auto var(--space-4);
+  overflow: visible;
+}
+
+.treeLine {
+  stroke: var(--border-hairline);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+/* Every label on the diagram is written over lines that cross behind it, so
+   each carries a halo of the panel's own colour. `paint-order: stroke` draws
+   that halo *under* the glyph rather than through it — without it, a stroke
+   this wide eats the letter it is protecting. */
+.treeGlyph,
+.treeSefirahHeb,
+.treeSefirahName {
+  paint-order: stroke;
+  stroke: var(--bg-raised);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+}
+
+.treeGlyph {
+  fill: var(--text-muted);
+  font-size: 38px;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+/* Shown but not yours: the way is open and this is what it pays. */
+.treeGlyphUnknown {
+  fill: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+/* A path already walked keeps its letter and dims: it is spent, and it is also
+   still there, because crossing back is how the Tree is a map. */
+.treePath_walked .treeLine {
+  stroke: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.treePath_walked .treeGlyph {
+  fill: color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+/* Lit: a way out of where you are standing. */
+.treePath_open .treeLine {
+  stroke: var(--accent-bright, var(--accent));
+  stroke-width: 6;
+}
+
+.treePath_open .treeGlyph {
+  fill: var(--accent-bright, var(--accent));
+}
+
+.treeDisc {
+  fill: var(--bg-sunken);
+  stroke: var(--border-hairline);
+  stroke-width: 3;
+}
+
+.treeSefirahHeb {
+  fill: var(--text-muted);
+  font-size: 28px;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.treeSefirahName {
+  fill: var(--text-muted);
+  font-size: 21px;
+  text-anchor: middle;
+}
+
+.treeNodeLit .treeDisc {
+  fill: color-mix(in srgb, var(--accent) 30%, var(--bg-sunken));
+  stroke: var(--accent);
+}
+
+.treeNodeLit .treeSefirahHeb {
+  fill: var(--accent-bright, var(--accent));
+}
+
+.treeNodeHere .treeDisc {
+  stroke: var(--accent-bright, var(--accent));
+  stroke-width: 6;
+}
+
+.treeNodeHere .treeSefirahName,
+.treeNodeHere .treeSefirahHeb {
+  fill: var(--text);
+}
+
+/* The ways out — the real controls. */
+.ways {
+  list-style: none;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.wayButton {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  background: var(--bg-raised);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wayButton:hover,
+.wayButton:focus-visible {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--bg-raised) 82%, var(--accent));
+}
+
+.wayTo {
+  font-weight: 600;
+}
+
+.wayPays {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.wayGlyph {
+  color: var(--accent);
+  font-size: 1.15rem;
+}
+
+.overworldActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.overworldLight {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.overworldLit {
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+
+.kindleButton,
+.sealButton {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.kindleButton:disabled {
+  border-color: var(--border-hairline);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.sealButton {
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+.overworldTally {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}

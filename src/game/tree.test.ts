@@ -3,7 +3,13 @@ import { abilityByLetter } from "./abilities";
 import { letters } from "../data/letters";
 import { regions } from "./regions";
 import {
+  afterWalking,
   lettersFrom,
+  pointOf,
+  stateOfPath,
+  TREE_LINES,
+  TREE_POINTS,
+  TREE_VIEW,
   letterOfPath,
   nodeOf,
   otherEnd,
@@ -15,6 +21,7 @@ import {
   TREE_PATHS,
 } from "./tree";
 import type { SefirahId } from "../types/letter";
+import type { Standing } from "./tree";
 
 /**
  * The Tree, as a graph — and the one thing about it that is not negotiable.
@@ -187,5 +194,138 @@ describe("what a route gathers", () => {
   it("ignores a path that is not on the Tree", () => {
     expect(lettersFrom(["nowhere-nothing"])).toEqual([]);
     expect([...reachedBy(["nowhere-nothing"])]).toEqual(["malchut"]);
+  });
+});
+
+/**
+ * The diagram, which is the one part of this anybody can check by eye — and
+ * therefore the one part worth pinning down, because an error in it looks like
+ * a drawing mistake rather than a bug and lives forever.
+ */
+describe("the Tree, drawn", () => {
+  it("stands the crown at the top and the kingdom at the foot", () => {
+    expect(TREE_POINTS).toHaveLength(10);
+    expect(pointOf.keter.y).toBe(0);
+    expect(pointOf.malchut.y).toBe(TREE_VIEW.height);
+    // Nothing is drawn outside the frame it declares.
+    for (const p of TREE_POINTS) {
+      expect(p.x, `${p.sefirah} is off the left`).toBeGreaterThanOrEqual(0);
+      expect(p.x, `${p.sefirah} is off the right`).toBeLessThanOrEqual(TREE_VIEW.width);
+      expect(p.y).toBeGreaterThanOrEqual(0);
+      expect(p.y).toBeLessThanOrEqual(TREE_VIEW.height);
+    }
+  });
+
+  /**
+   * Mercy on the left of the page. That is the printed convention and it is not
+   * arbitrary: the diagram is read as a figure facing the reader, so the pillar
+   * on your left is on its right hand, which is the hand of mercy.
+   */
+  it("puts mercy to the left and severity to the right, with the middle between", () => {
+    expect(pointOf.chesed.x).toBeLessThan(pointOf.tiferet.x);
+    expect(pointOf.gevurah.x).toBeGreaterThan(pointOf.tiferet.x);
+    for (const s of ["keter", "tiferet", "yesod", "malchut"] as const) {
+      expect(pointOf[s].x, `${s} has left the middle pillar`).toBe(TREE_VIEW.width / 2);
+    }
+    // The two outer pillars are mirror images across the middle.
+    expect(pointOf.chesed.x + pointOf.gevurah.x).toBe(TREE_VIEW.width);
+  });
+
+  it("draws a line for every path, from end to end", () => {
+    expect(TREE_LINES).toHaveLength(22);
+    for (const line of TREE_LINES) {
+      expect(line.from.sefirah).toBe(line.path.ends[0]);
+      expect(line.to.sefirah).toBe(line.path.ends[1]);
+      // No path is drawn as a dot, which would be a line with nowhere to write
+      // its letter.
+      expect(
+        line.from.x !== line.to.x || line.from.y !== line.to.y,
+        `${line.path.id} is drawn as a point`,
+      ).toBe(true);
+      // The letter is written beside its line, close enough to belong to it.
+      const off = Math.hypot(
+        line.labelX - (line.from.x + line.to.x) / 2,
+        line.labelY - (line.from.y + line.to.y) / 2,
+      );
+      expect(off, `${line.path.id}'s letter has drifted off its line`).toBeCloseTo(0.34, 6);
+    }
+    // **Two paths must never be labelled in the same place.** Netzach–Hod and
+    // Tiferet–Yesod share a midpoint on the printed Tree, so this is a live
+    // assertion rather than a formality — it failed when the letters were
+    // written on the midpoints, which is what anyone would write first.
+    const marks = TREE_LINES.map((l) => `${l.labelX.toFixed(3)},${l.labelY.toFixed(3)}`);
+    expect(new Set(marks).size, "two paths are labelled in the same place").toBe(22);
+  });
+
+  it("knows which paths lead out of where the Scribe stands", () => {
+    const first = pathsFrom("malchut")[0];
+    expect(stateOfPath(first, "malchut", [])).toBe("open");
+    // Somewhere else entirely, and never walked.
+    const far = pathBetween("keter", "chochmah");
+    expect(far).toBeDefined();
+    if (!far) return;
+    expect(stateOfPath(far, "malchut", [])).toBe("far");
+    expect(stateOfPath(far, "malchut", [far.id])).toBe("walked");
+    // **A walked path stays open from either of its ends**, because crossing
+    // back is how the Tree is a map rather than a list. Walked-and-here reads
+    // as open, not as spent.
+    expect(stateOfPath(first, "malchut", [first.id])).toBe("open");
+  });
+});
+
+describe("walking a path", () => {
+  const start = { at: "malchut" as const, pathsWalked: [] as string[] };
+
+  it("sets the Scribe down at the far end and records the way", () => {
+    const path = pathBetween("malchut", "yesod");
+    expect(path).toBeDefined();
+    if (!path) return;
+    const after = afterWalking(start, path);
+    expect(after.at).toBe("yesod");
+    expect(after.pathsWalked).toEqual([path.id]);
+    // And back again, which is what makes this a map.
+    const back = afterWalking(after, path);
+    expect(back.at).toBe("malchut");
+    expect(back.pathsWalked).toEqual([path.id, path.id]);
+    // Walked twice, given once.
+    expect(lettersFrom(back.pathsWalked)).toEqual([path.letter]);
+  });
+
+  it("refuses a path that does not touch where the Scribe stands", () => {
+    const elsewhere = pathBetween("keter", "chochmah");
+    expect(elsewhere).toBeDefined();
+    if (!elsewhere) return;
+    expect(afterWalking(start, elsewhere)).toBe(start);
+  });
+
+  /**
+   * The route is the alphabet. Two Scribes on the same day's Tree who leave the
+   * kingdom by different doors are holding different letters three paths later,
+   * and every rung either of them walks after that is built from what they
+   * hold — which is the whole reason `route.test.ts` had to re-earn the
+   * no-soft-lock guarantee over sampled routes rather than over ten regions.
+   */
+  it("gathers a different alphabet down a different route", () => {
+    const walk = (...ids: string[]) => {
+      let standing: Standing = start;
+      for (const id of ids) {
+        const path = pathById[id];
+        if (path) standing = afterWalking(standing, path);
+      }
+      return lettersFrom(standing.pathsWalked);
+    };
+    // Two ways up to Tiferet: by the middle pillar, or round by Netzach. Note
+    // the ids read lower end first, always — `hod-yesod` is not a path, because
+    // Yesod is the lower of the two and the id says so.
+    const byPillar = walk("malchut-yesod", "yesod-tiferet");
+    const byNetzach = walk("malchut-netzach", "netzach-tiferet");
+    expect(byPillar, "the middle route walked nowhere").toHaveLength(2);
+    expect(byNetzach, "the outer route walked nowhere").toHaveLength(2);
+    expect(byPillar, "both routes gather the same letters in the same order").not.toEqual(
+      byNetzach,
+    );
+    // Two Scribes standing in the same place, holding four letters between them
+    // and not the same two each.
+    expect(new Set([...byPillar, ...byNetzach]).size).toBe(4);
   });
 });

@@ -98,6 +98,28 @@ const SCRIPTS = [
     seconds: 180,
   },
   {
+    name: "path",
+    about: "A path of the Tree walked from the overworld, and the map it returns to.",
+    // **No warp.** The warp reaches a *rung*, and this script exists to prove
+    // the other road works: begin at the threshold, stand on the Tree, choose a
+    // way out of the kingdom, and walk it. That is the entire loop the
+    // overworld added, and it is the one thing no unit test can see end to end
+    // — `afterWalking` is pure and tested, but whether the plate at the far end
+    // actually hands the Scribe back to a map with the far Sefirah under their
+    // feet is a question about wiring.
+    warp: {},
+    enter: async (page) => {
+      await page.getByRole("button", { name: /^Begin/ }).first().click();
+      await page.waitForTimeout(400);
+      // Out by Yesod, which is the path that pays the Breath — so the rung is
+      // built for a Scribe holding nothing, which is the hardest thing the
+      // generator is ever asked for and the right thing to look at first.
+      await page.getByRole("button", { name: /Yesod/ }).first().click();
+    },
+    until: (p) => p.plate === "path-done",
+    seconds: 150,
+  },
+  {
     name: "going-out",
     about: "One lamp, and a Scribe who does not fight back. The kingdom comes up.",
     warp: { rung: 7, letters: "as-of-rung", lamps: 1, seed: 13 },
@@ -300,6 +322,15 @@ async function play(script, browser) {
 
   const query = new URLSearchParams(script.warp).toString();
   await page.goto(`${url}/#/game?${query}`, { waitUntil: "domcontentloaded" });
+
+  // A script may have to *walk in* rather than warp in — the overworld is
+  // reached by beginning a climb and choosing a way, and no query string
+  // expresses that.
+  if (script.enter) {
+    await page.waitForTimeout(600);
+    await script.enter(page);
+    await page.waitForTimeout(600);
+  }
 
   // Wait for the probe to answer, which is also the check that the warp took.
   await page

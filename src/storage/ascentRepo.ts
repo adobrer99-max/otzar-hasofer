@@ -17,8 +17,35 @@ export interface AscentRecord {
   seedLabel: string;
   createdAt: string;
   updatedAt: string;
-  /** 1 = Malchut … 10 = Keter. */
+  /**
+   * 1 = Malchut … 10 = Keter.
+   *
+   * **Kept, and no longer the whole truth.** The climb was a line and this was
+   * the whole of where you were; it is now derived from `at` and held for the
+   * saved-game format, the HUD, and every caller that predates the Tree. A
+   * record written before the overworld existed has no `at` and reads exactly
+   * as it always did.
+   */
   regionIndex: number;
+  /**
+   * Which Sefirah the Scribe is standing on, on the overworld.
+   *
+   * Absent on a record from before the Tree was walkable, and on those the
+   * kingdom is where you are — which is also true, because a linear climb
+   * begins there. Everything that reads a position should go through
+   * `standingAt` rather than reaching for this, so the default lives in one
+   * place.
+   */
+  at?: SefirahId;
+  /**
+   * The paths walked, in the order they were walked — which is the order the
+   * alphabet was gathered in, and therefore the shape of this particular climb.
+   *
+   * A path may appear twice: crossing back is how the Tree is a map rather than
+   * a list, and `lettersFrom` in `game/tree.ts` gives a path's letter once
+   * however often it is walked.
+   */
+  pathsWalked?: string[];
   /** Letter ids found so far, in the order they were taken. */
   lettersHeld: string[];
   /**
@@ -91,6 +118,15 @@ export interface FormedWord {
  */
 export function kindleCost(regionIndex: number): number {
   return 20 + regionIndex * 5;
+}
+
+/**
+ * Where the Scribe is standing. Malchut is where an angel cast down wakes, so
+ * it is the answer for a climb that has not begun and for every record written
+ * before the Tree could be walked.
+ */
+export function standingAt(ascent: Pick<AscentRecord, "at">): SefirahId {
+  return ascent.at ?? "malchut";
 }
 
 export async function saveAscent(record: AscentRecord): Promise<void> {

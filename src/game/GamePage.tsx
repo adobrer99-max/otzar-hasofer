@@ -7,6 +7,7 @@ import { Button, Callout, DecoratedRule, PageHeader } from "../components/ui";
 import {
   currentAscent,
   kindleCost,
+  standingAt,
   listAscents,
   saveAscent,
   type AscentRecord,
@@ -50,7 +51,9 @@ import {
   witnessesOf,
   WITNESSES_POSSIBLE,
 } from "./story";
-import { buildRegion, verbsOf } from "./world/build";
+import { buildPath, buildRegion, verbsOf } from "./world/build";
+import { TreeMap } from "./TreeMap";
+import { afterWalking, TREE_PATHS, type TreePath } from "./tree";
 import { readWarp, warpParams, warpRecord, type WarpOptions } from "./dev/warp";
 import { installProbe, neighbourhood, probeOf } from "./dev/probe";
 import type { World } from "./world/types";
@@ -67,6 +70,18 @@ import styles from "./GamePage.module.css";
  * React tree.
  */
 
+/** A Sefirah's region, by name — the ten are a small table, so a scan is fine. */
+/** Whether every Sefirah has been kindled, which is what seals a climb. */
+function allKindled(ascent: AscentRecord): boolean {
+  return new Set(ascent.sefirotLit ?? []).size >= TOTAL_REGIONS;
+}
+
+function regionOfSefirah(sefirah: SefirahId) {
+  const found = regions.find((r) => r.sefirah === sefirah);
+  if (!found) throw new Error(`No region stands at ${sefirah}`);
+  return found;
+}
+
 type Plate =
   | { kind: "letter"; letterId: string }
   | { kind: "fragment"; index: number; held: number }
@@ -76,6 +91,7 @@ type Plate =
   | { kind: "word-gate" }
   | { kind: "word-result"; verdict: WordGateVerdict }
   | { kind: "region-done" }
+  | { kind: "path-done"; path: TreePath }
   | { kind: "abyss" }
   | { kind: "out" }
   | { kind: "sealed" };
@@ -87,6 +103,18 @@ export function GamePage() {
   const [ascent, setAscent] = useState<AscentRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [world, setWorld] = useState<World | null>(null);
+  /**
+   * The path whose rung is loaded, if the world came from the overworld rather
+   * than from the linear climb.
+   *
+   * Both roads are open on purpose. A record written before the Tree could be
+   * walked has no `at` and no `pathsWalked`, and resuming it must put the
+   * Scribe back on the rung they left, not on a map they have never seen. So
+   * `world` says whether a rung is loaded and this says *which kind* — and
+   * every place that used to ask "what happens when the exit is reached" now
+   * has to answer for both, which is the whole of the wiring below.
+   */
+  const [walking, setWalking] = useState<TreePath | null>(null);
   const [plate, setPlate] = useState<Plate | null>(null);
   const [hud, setHud] = useState<HudSample>({
     or: 0,
@@ -280,12 +308,35 @@ export function GamePage() {
     [time, sealedBefore],
   );
 
+  /**
+   * Begin — and **stop at the map**, rather than dropping straight into a rung.
+   *
+   * The linear climb had nowhere to stop: region one was the only place you
+   * could be, so beginning and entering were the same act. The first thing a
+   * Scribe does on the Tree is choose a way out of the kingdom, and that choice
+   * is the game — so it is the first thing they are shown.
+   */
   const beginAscent = useCallback(() => {
-    beginAt(newRecord());
-  }, [beginAt, newRecord]);
+    const record = newRecord();
+    setGranted([]);
+    persist(record);
+    setWorld(null);
+    setWalking(null);
+    setPlate(null);
+  }, [newRecord, persist]);
 
+  /**
+   * Resume. A record that has ever walked a path belongs to the Tree and comes
+   * back to the map; one written before the overworld existed goes back to the
+   * rung it left, which is where its Scribe actually was.
+   */
   const resumeAscent = useCallback(() => {
-    if (ascent) enterRegion(ascent);
+    if (!ascent) return;
+    if (ascent.at) {
+      setWorld(null);
+      setWalking(null);
+      setPlate(null);
+    } else enterRegion(ascent);
   }, [ascent, enterRegion]);
 
   // --- the dev warp ---------------------------------------------------------
@@ -537,23 +588,114 @@ export function GamePage() {
       const cleared = prev.regionsCleared.includes(prev.regionIndex)
         ? prev.regionsCleared
         : [...prev.regionsCleared, prev.regionIndex];
+      // **A path is finished where it lets you off.** The letter itself is not
+      // granted here: it lies in an alcove on the rung and is picked up by
+      // walking to it, exactly as every letter always has been. Reaching the
+      // exit is what marks the path walked and moves the Scribe — so a rung
+      // abandoned partway pays nothing and changes nothing, which is what a
+      // Scribe cast back to the kingdom should find.
+      const moved = walking
+        ? afterWalking({ at: standingAt(prev), pathsWalked: prev.pathsWalked ?? [] }, walking)
+        : undefined;
       const next: AscentRecord = {
         ...prev,
         regionsCleared: cleared,
         or: prev.or + (world?.or ?? 0),
+        ...(moved
+          ? {
+              at: moved.at,
+              pathsWalked: [...moved.pathsWalked],
+              // Kept in step for the saved-game format, the HUD and every
+              // caller that predates the Tree.
+              regionIndex: regionOfSefirah(moved.at).index,
+              // **Where you arrived, not where you set out from.** On a line
+              // those were the same thing; on the Tree, marking the departure
+              // would leave the ladder on the threshold showing a climb that
+              // never got anywhere.
+              regionsCleared: cleared.includes(regionOfSefirah(moved.at).index)
+                ? cleared
+                : [...cleared, regionOfSefirah(moved.at).index],
+            }
+          : {}),
         updatedAt: new Date().toISOString(),
       };
       void saveAscent(next).catch(() => undefined);
       return next;
     });
     setPlate(
-      ascent?.regionIndex === TOTAL_REGIONS
-        ? { kind: "sealed" }
-        : ascent?.regionIndex === ABYSS_AFTER_REGION
-          ? { kind: "abyss" }
-          : { kind: "region-done" },
+      walking
+        ? { kind: "path-done", path: walking }
+        : ascent?.regionIndex === TOTAL_REGIONS
+          ? { kind: "sealed" }
+          : ascent?.regionIndex === ABYSS_AFTER_REGION
+            ? { kind: "abyss" }
+            : { kind: "region-done" },
     );
-  }, [ascent?.regionIndex, world, vow, audio]);
+  }, [ascent?.regionIndex, world, vow, audio, walking]);
+
+  /**
+   * Step onto a path from the overworld — which is what a rung is now.
+   *
+   * The world is built from **what the Scribe is actually carrying**, not from
+   * an index, which is the whole architectural move of the Tree and the reason
+   * `route.test.ts` had to re-earn the no-soft-lock guarantee over sampled
+   * routes before any of this could be drawn.
+   */
+  const walkPath = useCallback(
+    (path: TreePath) => {
+      if (!ascent) return;
+      const teaching = !allLearned(taughtRef.current);
+      const next = buildPath(
+        path,
+        ascent.seed,
+        ascent.lettersHeld,
+        time.lightOfTheDay,
+        teaching,
+      );
+      if (isIllumined(encounter, regionAt(next.regionIndex).sefirah)) {
+        next.orPerMote = ILLUMINED_MULTIPLIER;
+      }
+      const carried = powersFrom(ascent.items ?? []);
+      next.player.lamps += carried.lamps;
+      next.orPerMote = Math.max(1, Math.round(next.orPerMote * carried.light));
+      setGranted([]);
+      setWalking(path);
+      setWorld(next);
+      setVow(null);
+      setPlate(null);
+    },
+    [ascent, time.lightOfTheDay, encounter],
+  );
+
+  /** Back to the map, from the plate at the end of a path. */
+  const backToTree = useCallback(() => {
+    setWorld(null);
+    setWalking(null);
+    setPlate(null);
+  }, []);
+
+  /**
+   * Kindle where you stand. The same spend the between-rungs plate offered on
+   * the linear climb, moved to the map — because on the Tree "where you stand"
+   * is a place you can come back to, so the choice is no longer once-only and
+   * forced at a doorway.
+   */
+  const kindleHere = useCallback(() => {
+    setAscent((prev) => {
+      if (!prev) return prev;
+      const at = standingAt(prev);
+      const cost = kindleCost(regionOfSefirah(at).index);
+      if (prev.or < cost || (prev.sefirotLit ?? []).includes(at)) return prev;
+      const next: AscentRecord = {
+        ...prev,
+        or: prev.or - cost,
+        sefirotLit: [...new Set([...(prev.sefirotLit ?? []), at])],
+        updatedAt: new Date().toISOString(),
+      };
+      void saveAscent(next).catch(() => undefined);
+      return next;
+    });
+  }, []);
 
   /**
    * Leave the region. `kindle` spends this region's light to light its
@@ -620,11 +762,14 @@ export function GamePage() {
       // just gone out up to the next rung with three fresh ones. Caught by a
       // harness run that went out in Netzach and finished in Tiferet.
       else if (plate.kind === "sealed" || plate.kind === "out") sealAscent();
+      // The end of a path goes back to the map, never on to a next rung — there
+      // is no next rung on the Tree until the Scribe chooses one.
+      else if (plate.kind === "path-done") backToTree();
       else climbOn(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [plate, climbOn, sealAscent]);
+  }, [plate, climbOn, sealAscent, backToTree]);
 
   // Persist letters as they are found, without writing on every frame.
   const lastSaved = useRef("");
@@ -668,7 +813,21 @@ export function GamePage() {
         />
       )}
 
-      {!world && (
+      {/* **The overworld stands where the threshold does, once a climb is
+          underway.** The threshold is for beginning and for looking back at a
+          sealed climb; between rungs the Scribe is not at a threshold at all,
+          they are standing somewhere on the Tree deciding which way to go. */}
+      {!world && ascent && !ascent.sealedAt && (
+        <TreeMap
+          ascent={ascent}
+          at={standingAt(ascent)}
+          onWalk={walkPath}
+          onKindle={kindleHere}
+          onSeal={allKindled(ascent) ? sealAscent : undefined}
+        />
+      )}
+
+      {!world && (!ascent || ascent.sealedAt) && (
         <Threshold
           ascent={ascent}
           time={time}
@@ -684,14 +843,38 @@ export function GamePage() {
       {world && ascent && region && (
         <>
           <div className={styles.hud}>
+            {/* **What the Scribe is crossing, which is a path and not a rung.**
+                The three slots were the rung's number, name and Hebrew, and on
+                the Tree the first of those has stopped meaning anything: a
+                Scribe walking out of the kingdom holding nothing is on ground
+                built at Malchut's own scale, so the HUD read "1 / 10 · Malchut"
+                while they were plainly on their way to Yesod. Walking a path,
+                the slots say how much of the alphabet is in hand, which two
+                places this ground lies between, and the letter it pays. */}
             <div className={styles.hudRegion}>
-              <span className={styles.hudStep}>
-                {ascent.regionIndex} / {TOTAL_REGIONS}
-              </span>
-              <span className={styles.hudName}>{region.name}</span>
-              <span className={`${styles.hudHeb} hebrew`} lang="he">
-                {region.hebrew}
-              </span>
+              {walking ? (
+                <>
+                  <span className={styles.hudStep}>
+                    {ascent.lettersHeld.length} / {TREE_PATHS.length}
+                  </span>
+                  <span className={styles.hudName}>
+                    {regionOfSefirah(walking.ends[0]).name} → {regionOfSefirah(walking.ends[1]).name}
+                  </span>
+                  <span className={`${styles.hudHeb} hebrew`} lang="he">
+                    {lettersById[walking.letter]?.glyph ?? ""}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className={styles.hudStep}>
+                    {ascent.regionIndex} / {TOTAL_REGIONS}
+                  </span>
+                  <span className={styles.hudName}>{region.name}</span>
+                  <span className={`${styles.hudHeb} hebrew`} lang="he">
+                    {region.hebrew}
+                  </span>
+                </>
+              )}
             </div>
             {/* What the Scribe is, beside what he is carrying. */}
             <div className={styles.lamps} aria-label={`${hud.lamps} of ${LAMPS} lamps still lit`}>
@@ -808,6 +991,7 @@ export function GamePage() {
           encounter={encounter}
           onNext={climbOn}
           onSeal={sealAscent}
+          onBack={backToTree}
           onInscribe={inscribe}
           onAccept={acceptOffer}
           onClose={() => setPlate(null)}
@@ -1208,6 +1392,7 @@ function PlateOverlay({
   encounter,
   onNext,
   onSeal,
+  onBack,
   onInscribe,
   onAccept,
   onClose,
@@ -1218,6 +1403,8 @@ function PlateOverlay({
   encounter: ReturnType<typeof encounterFor>;
   onNext: (kindle?: boolean) => void;
   onSeal: () => void;
+  /** Back to the overworld, at the end of a path. */
+  onBack: () => void;
   onInscribe: (letterIds: [string, string, string]) => void;
   onAccept: (offer: UshpizinOffer) => void;
   onClose: () => void;
@@ -1235,6 +1422,9 @@ function PlateOverlay({
   return (
     <div className={styles.plateScrim} role="dialog" aria-modal="true">
       <div className={styles.plate} ref={body}>
+        {plate.kind === "path-done" && ascent && (
+          <PathDonePlate ascent={ascent} path={plate.path} onBack={onBack} />
+        )}
         {plate.kind === "letter" && <LetterPlate letterId={plate.letterId} onClose={onClose} />}
         {plate.kind === "fragment" && (
           <FragmentPlate index={plate.index} held={plate.held} onClose={onClose} />
@@ -1633,6 +1823,53 @@ function HousePlate({
           Walk on
         </Button>
       )}
+    </>
+  );
+}
+
+/**
+ * The end of a path — and it is deliberately not the end of anything else.
+ *
+ * A region-done plate had to carry the whole of what happened between rungs,
+ * because there was nowhere else for it to happen: the next rung, its teaching,
+ * and the one spend light has. On the Tree all of that belongs to the map,
+ * which the Scribe is about to be standing on and can take their time over. So
+ * this says where they came out and gets out of the way.
+ */
+function PathDonePlate({
+  ascent,
+  path,
+  onBack,
+}: {
+  ascent: AscentRecord;
+  path: TreePath;
+  onBack: () => void;
+}) {
+  const arrived = regionOfSefirah(standingAt(ascent));
+  const letter = lettersById[path.letter];
+  const gained = ascent.lettersHeld.includes(path.letter);
+  return (
+    <>
+      <p className={styles.plateKicker}>The path is walked</p>
+      <h2 className={styles.plateTitle}>You come out in {arrived.name}</h2>
+      <p className={`${styles.plateHeb} hebrew`} lang="he">
+        {arrived.hebrew}
+      </p>
+      <p className={styles.plateUse}>{arrived.teaching}</p>
+      <p className={styles.plateDerivation}>
+        {/* A path pays its letter into an alcove on its own ground, so walking
+            one and *taking* what it holds are two different things — and a
+            Scribe who ran for the exit should be told which they did. */}
+        {gained
+          ? `${letter?.transliteration ?? path.letter} is yours.`
+          : `${letter?.transliteration ?? path.letter} lies on this path still — it was not lifted.`}{" "}
+        {ascent.lettersHeld.length} of the twenty-two · {ascent.or} light carried.
+      </p>
+      <div className={styles.plateActions}>
+        <Button variant="primary" onClick={onBack} autoFocus>
+          Stand on the Tree
+        </Button>
+      </div>
     </>
   );
 }

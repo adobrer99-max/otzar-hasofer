@@ -1270,12 +1270,19 @@ export function buildPath(
   seed: number,
   held: readonly string[],
   lightOfTheDay = 1,
+  /**
+   * The taught opening, for a Scribe who has never climbed. `layout` lays it
+   * only on a rung of index one, which on the Tree is any path a Scribe with
+   * no letters can be standing at the foot of — so the lesson still happens
+   * exactly once, on the first path out of the kingdom, whichever one it is.
+   */
+  teaching = false,
 ): World {
   const region = regionOfPath(path, held);
   // Seeded by the path rather than the region, so walking Malchut→Hod is not
   // the same ground as walking Yesod→Hod on the same run.
   const rng = makeRng((seed ^ hashOf(path.id)) >>> 0);
-  const { laid, wordGateTarget } = layout(region, rng, false, undefined, held);
+  const { laid, wordGateTarget } = layout(region, rng, teaching, undefined, held);
 
   return paint(
     laid,
