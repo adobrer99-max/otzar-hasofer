@@ -20,7 +20,7 @@ import type { Grace } from "./abilities";
  * - a **vow** taken now and judged at the region's exit.
  *
  * A declined offer costs nothing. A broken vow costs nothing but the boon —
- * this is still a game where the crown is always reached.
+ * this game charges nothing for refusing a guest.
  */
 
 export type VowKind =

@@ -213,6 +213,11 @@ describe("walking the regions", () => {
     for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
       for (const seed of [3, 91, 555, 12345, 777, 40404]) {
         const world = buildRegion(region, seed);
+        // **The ground, on its own.** The klipot are cleared before the probe
+        // walks, because this is the no-soft-lock guarantee and it is about
+        // terrain: a region must be crossable independently of what happens to
+        // be standing in it, and the probe does not fight.
+        world.husks = [];
         const ctx = contextFor(region);
         const span = world.width * TILE_SIZE;
         const { reached, finished, lettersTaken } = probe(world, ctx, TICK_BUDGET);
@@ -282,6 +287,7 @@ describe("walking the regions", () => {
     for (let region = FIRST_GATED_REGION; region <= TOTAL_REGIONS; region += 1) {
       for (const seed of seeds) {
         const world = buildRegion(region, seed);
+        world.husks = [];
         if (naive(world, contextFor(region), 9000)) {
           crossed.push(`${regions[region - 1].name}/${seed}`);
         }
@@ -305,6 +311,7 @@ describe("walking the regions", () => {
       let ticks = 0;
       for (const seed of [3, 91, 555, 12345]) {
         const world = buildRegion(region, seed);
+        world.husks = [];
         const run = probe(world, contextFor(region), TICK_BUDGET);
         expect(run.finished, `region ${region} seed ${seed} stalled`).toBe(true);
         // Per screen, so a longer region does not read as a harder one.
@@ -352,6 +359,29 @@ describe("walking the regions", () => {
     w.player = { ...world.player, x: 950, y: 5000, veiled: 0 };
     for (let i = 0; i < 80; i += 1) step(w, NO_INPUT, { verbs: [], graces: ["return"] });
     expect(w.player.x).toBeCloseTo(900, 0);
+  });
+
+  /**
+   * And the other half: with the klipot left standing, a Scribe who never
+   * strikes must still get a long way. They are an obstacle, not a wall — if
+   * a region became impassable simply because something stood in it, the
+   * reachability guarantee above would be a technicality.
+   */
+  it("lets a Scribe who never strikes get most of the way regardless", () => {
+    for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
+      for (const seed of [3, 91]) {
+        const world = buildRegion(region, seed);
+        // Lamps enough that going out is not what stops them — this measures
+        // whether the *ground* is still walkable with husks on it.
+        world.player.lamps = 99;
+        const { reached } = probe(world, contextFor(region), TICK_BUDGET);
+        const fraction = reached / (world.width * TILE_SIZE);
+        expect(
+          fraction,
+          `region ${region} seed ${seed}: only ${(fraction * 100).toFixed(0)}% with husks standing`,
+        ).toBeGreaterThan(0.9);
+      }
+    }
   });
 
   it("never veils a Scribe who simply stands still on the opening ground", () => {

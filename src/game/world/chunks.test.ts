@@ -19,6 +19,7 @@ import {
   SHRINE_LOW,
   START_CHUNK,
 } from "./chunks";
+import { HUSK_CHARS } from "../combat";
 import { MARKER_CHARS, TILE_CHARS } from "./tiles";
 import type { Chunk, Edge } from "./types";
 
@@ -47,7 +48,7 @@ describe("the chunk library", () => {
     for (const c of ALL) {
       for (const row of c.rows) {
         for (const ch of row) {
-          const known = ch in TILE_CHARS || MARKER_CHARS.has(ch);
+          const known = ch in TILE_CHARS || MARKER_CHARS.has(ch) || ch in HUSK_CHARS;
           expect(known, `${c.id} uses unknown character "${ch}"`).toBe(true);
         }
       }
@@ -138,7 +139,8 @@ describe("the chunk library", () => {
       for (const row of c.rows) {
         for (const ch of row) {
           // `*` is a mote and `Y` is a fork: both are structural to the screen
-          // itself rather than something the seed places into it.
+          // itself rather than something the seed places into it. The klipot
+          // are not markers at all — they become bodies.
           const structural = ch === "*" || ch === "Y" || !MARKER_CHARS.has(ch);
           expect(structural, `${c.id} may not carry the marker "${ch}"`).toBe(true);
         }
@@ -229,7 +231,12 @@ describe("the chunk library", () => {
       const lane = c.entry === "ground" ? [13, 14, 15] : [7, 8, 9];
       const floor = c.entry === "ground" ? 16 : 10;
       const inLane = lane.some((y) =>
-        c.rows[y].slice(2, CHUNK_W - 2).split("").some((ch) => !clear(ch)),
+        c.rows[y]
+          .slice(2, CHUNK_W - 2)
+          .split("")
+          // A husk standing in the lane is something the screen asks, but it
+          // is not terrain — a screen must obstruct on its own account.
+          .some((ch) => !clear(ch) && !(ch in HUSK_CHARS)),
       );
       const underfoot = c.rows[floor].split("").some((ch) => ch !== "#");
       expect(

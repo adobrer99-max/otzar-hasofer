@@ -3,6 +3,7 @@ import { tileAt } from "../world/build";
 import { Tile, TILE_SIZE } from "../world/tiles";
 import type { Entity, World } from "../world/types";
 import { alpha, type Palette } from "./palette";
+import { HUSKS } from "../combat";
 
 /**
  * The Ascent, drawn.
@@ -71,6 +72,8 @@ export function drawWorld(
     }
   }
 
+  drawHusks(ctx, world, palette);
+  drawMarks(ctx, world, palette);
   for (const entity of world.entities) {
     if (entity.x + TILE_SIZE < camera.x || entity.x > camera.x + spanW) continue;
     drawEntity(ctx, entity, palette, world.tick);
@@ -684,4 +687,80 @@ export function trackCamera(
   const maxY = Math.max(0, world.height * TILE_SIZE - spanH);
   camera.x = Math.max(0, Math.min(maxX, camera.x));
   camera.y = Math.max(0, Math.min(maxY, camera.y));
+}
+
+// ---------------------------------------------------------------------------
+// the klipot
+// ---------------------------------------------------------------------------
+
+/**
+ * A husk is drawn as what it is: a shell with something bright shut inside it.
+ * The light shows through the cracks, and shows through more as the shells come
+ * off — so how close a husk is to breaking is legible without a health bar.
+ */
+function drawHusks(ctx: CanvasRenderingContext2D, world: World, palette: Palette): void {
+  for (const husk of world.husks) {
+    if (husk.broken) continue;
+    const spec = HUSKS[husk.kind];
+    const cx = husk.x + husk.w / 2;
+    const cy = husk.y + husk.h / 2;
+    const opened = 1 - husk.shells / spec.shells;
+
+    // What is trapped inside, brighter as the shell gives way.
+    ctx.fillStyle = alpha(palette.goldBright, 0.18 + opened * 0.4);
+    ctx.beginPath();
+    ctx.arc(cx, cy, husk.w * 0.38, 0, Math.PI * 2);
+    ctx.fill();
+
+    // The shell. White for a moment when struck, so a hit reads.
+    ctx.strokeStyle = husk.struck > 0 ? palette.goldBright : alpha(palette.stoneEdge, 0.95);
+    ctx.fillStyle = alpha(palette.bgDeep, 0.9 - opened * 0.3);
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    if (husk.kind === "drifter") {
+      ctx.arc(cx, cy, husk.w / 2, 0, Math.PI * 2);
+    } else if (husk.kind === "sentinel") {
+      ctx.moveTo(cx, husk.y);
+      ctx.lineTo(husk.x + husk.w, cy);
+      ctx.lineTo(cx, husk.y + husk.h);
+      ctx.lineTo(husk.x, cy);
+      ctx.closePath();
+    } else {
+      const r = 4;
+      ctx.roundRect(husk.x, husk.y, husk.w, husk.h, husk.kind === "spitter" ? [r, r, 0, 0] : r);
+    }
+    ctx.fill();
+    ctx.stroke();
+
+    // A crack for every shell already taken off.
+    ctx.strokeStyle = alpha(palette.goldBright, 0.5 + opened * 0.4);
+    ctx.lineWidth = 1;
+    for (let i = 0; i < spec.shells - husk.shells; i += 1) {
+      const a = (i / spec.shells) * Math.PI * 2 + husk.home.x;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(a) * husk.w * 0.5, cy + Math.sin(a) * husk.h * 0.5);
+      ctx.stroke();
+    }
+  }
+}
+
+/** A mark in flight: the Scribe's letter, or the dark a spitter throws. */
+function drawMarks(ctx: CanvasRenderingContext2D, world: World, palette: Palette): void {
+  for (const m of world.marks) {
+    const cx = m.x + m.w / 2;
+    const cy = m.y + m.h / 2;
+    if (m.mine) {
+      ctx.fillStyle = alpha(palette.goldBright, 0.2);
+      ctx.beginPath();
+      ctx.arc(cx, cy, 9, 0, Math.PI * 2);
+      ctx.fill();
+      glyph(ctx, m.glyph, cx, cy + 5, 15, palette.goldBright);
+    } else {
+      ctx.fillStyle = alpha(palette.stoneEdge, 0.9);
+      ctx.beginPath();
+      ctx.arc(cx, cy, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
 }

@@ -21,7 +21,7 @@ import type { ControlId } from "./controls";
  * there are five lessons here, not twenty-two.
  */
 
-export type LessonKey = "move" | "leap" | "lower" | "act" | "ways";
+export type LessonKey = "move" | "leap" | "lower" | "write" | "act" | "ways";
 
 export interface Lesson {
   key: LessonKey;
@@ -57,6 +57,11 @@ export const LESSONS: Lesson[] = [
     key: "lower",
     text: "{down} takes you down: through a ledge you are standing on, and — once you carry the letters for it — down a vine, into deep water, or folded small into a low passage.",
     retiredBy: ["down"],
+  },
+  {
+    key: "write",
+    text: "{strike} writes. The mark flies the way you are facing — hold {up} or {down} to angle it — and it is what breaks a husk. You are a scribe; this is the only weapon you were ever given.",
+    retiredBy: ["strike"],
   },
   {
     key: "act",

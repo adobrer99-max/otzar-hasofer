@@ -42,6 +42,7 @@ export const PROLOGUE = {
     "You were the scribe of the crown. You wrote what was said and you said nothing, and that was the whole of the office, and it was enough.",
     "You do not remember the fall. You remember the desk, and then the kingdom — the world exactly as it is, at the very bottom of the Tree, with the twenty-two letters gone out of your hands and scattered up the way you came.",
     "No charge was read to you. You are climbing back to ask what it was, and to answer it.",
+    "The way up is not empty. The klipot are on it — husks with light shut inside them, which is where the light on these rungs has always come from. Break them and take back what they were holding. And keep your own lamps burning: when the last goes out, so do you, and the kingdom comes up to meet you exactly as it did the first time.",
   ],
   /** What the Scribe is told to do about it, in one line, on the threshold. */
   charge:
@@ -168,9 +169,8 @@ export interface Plea {
  * is that he is *heard* — which is exactly what each of them got.
  *
  * The Mouth is required, and its absence is the one genuinely hard outcome in
- * a game with no failure state. The climb still completes and the ascent is
- * still sealed; he simply arrives unable to say anything, having spent ten
- * rungs on a case he cannot make. Nothing is lost but the chance, and the
+ * a climb that got all the way. The ascent still seals; he simply arrives
+ * unable to say anything, having spent ten rungs on a case he cannot make. Nothing is lost but the chance, and the
  * scroll is lying in Malchut and Yesod on the next ascent.
  */
 export function pleaFor(opts: { hasMouth: boolean; witnesses: readonly Witness[] }): Plea {

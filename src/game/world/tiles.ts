@@ -67,6 +67,12 @@ export const TILE_CHARS: Record<string, Tile> = {
 export const MARKER_CHARS = new Set(["S", "E", "L", "*", "T", "H", "F", "?", "Y"]);
 
 /**
+ * And the klipot, which are written into a screen the same way. Kept out of
+ * `MARKER_CHARS` because they become bodies rather than entities — see
+ * `HUSK_CHARS` in `combat.ts`, which is the table that names them.
+ */
+
+/**
  * Whether a tile stops a body, given what the Scribe carries and how they are
  * moving. `crawling` and `revealed` are the two states that change the
  * answer, and both come from letters.

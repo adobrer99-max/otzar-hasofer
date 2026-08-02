@@ -73,7 +73,7 @@ export const practiceLinks: SiteLink[] = [
   {
     to: "/game",
     label: "Ma'alot — The Ascent",
-    blurb: "Climb the Tree from Malchut to Keter on the twenty-two letters, each one a power drawn from its own ancient sense. Nothing here can kill you.",
+    blurb: "An angel cast down from the crown, climbing back on the twenty-two letters to ask what he was accused of. Break the husks, gather what was trapped in them, and do not let your light go out.",
   },
   {
     to: "/covenant",

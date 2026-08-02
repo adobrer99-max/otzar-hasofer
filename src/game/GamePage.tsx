@@ -39,6 +39,7 @@ import { openWordGate } from "./world/step";
 import { useGameAudio } from "./audio/useGameAudio";
 import { readAscentTime } from "./sacredAscent";
 import { fragmentAt, SCROLL_LETTER, SCROLL_TOTAL, SCROLL_VERSE } from "./scroll";
+import { GOING_OUT, LAMPS } from "./combat";
 import {
   ABYSS_WORD,
   pleaFor,
@@ -71,6 +72,7 @@ type Plate =
   | { kind: "word-result"; verdict: WordGateVerdict }
   | { kind: "region-done" }
   | { kind: "abyss" }
+  | { kind: "out" }
   | { kind: "sealed" };
 
 const NEW_ID = () =>
@@ -87,6 +89,8 @@ export function GamePage() {
     x: 0,
     onGround: false,
     used: [],
+    lamps: LAMPS,
+    out: false,
   });
   const [showKeys, setShowKeys] = useState(false);
   /** Which lessons this Scribe has already been taught — per Scribe, not per run. */
@@ -183,6 +187,10 @@ export function GamePage() {
    */
   const onSample = useCallback((sample: HudSample) => {
     setHud(sample);
+    // The lamps run out inside the simulation, so the page learns of it here.
+    // Raising the plate also pauses the loop, which is what stops the Scribe
+    // being knocked around a region he is no longer in.
+    if (sample.out) setPlate((prev) => prev ?? { kind: "out" });
     if (sample.used.length === 0) return;
     setTaught((prev) => {
       const next = retire({ learned: prev, lettersHeld: lettersCountRef.current }, sample.used);
@@ -518,7 +526,7 @@ export function GamePage() {
           kicker="The Practice"
           title="Ma'alot — The Ascent of the Tree"
           hebrew="מַעֲלוֹת"
-          lede="You were the scribe of the crown, and you were cast down to the kingdom without being told what for. Climb back on the twenty-two letters — each one a power drawn from its own ancient sense, Vav the hook, Mem the water, Chet the fence — and speak with the figures keeping the Houses on the way, because they were told what you were not. You will need a mouth to plead with, and the Mouth is in pieces. Nothing here can kill you: a fall or a thorn only veils you, and you wake at your mark."
+          lede="You were the scribe of the crown, and you were cast down to the kingdom without being told what for. Climb back on the twenty-two letters — each one a power drawn from its own ancient sense, Vav the hook, Mem the water, Chet the fence — and speak with the figures keeping the Houses on the way, because they were told what you were not. You will need a mouth to plead with, and the Mouth is in pieces. A fall or a thorn only veils you and you wake at your mark — but the klipot, the husks that hold the trapped light, take a lamp, and when the last lamp goes out you go out with it, and the kingdom comes up to meet you again."
         />
       )}
 
@@ -545,6 +553,18 @@ export function GamePage() {
                 {region.hebrew}
               </span>
             </div>
+            {/* What the Scribe is, beside what he is carrying. */}
+            <div className={styles.lamps} aria-label={`${hud.lamps} of ${LAMPS} lamps still lit`}>
+              {Array.from({ length: LAMPS }, (_, i) => (
+                <span
+                  key={i}
+                  aria-hidden="true"
+                  className={i < hud.lamps ? styles.lampLit : styles.lampOut}
+                >
+                  ✧
+                </span>
+              ))}
+            </div>
             <div className={styles.hudOr} title="Light gathered in this region">
               <span aria-hidden="true">✦</span> {hud.or}
             </div>
@@ -555,6 +575,7 @@ export function GamePage() {
             world={world}
             verbs={verbs}
             graces={graces}
+            markGlyph={lettersById[ascent.ascendantLetterId ?? "aleph"]?.glyph ?? "א"}
             paused={plate !== null}
             onLetter={onLetter}
             onFragment={onFragment}
@@ -1034,6 +1055,7 @@ function PlateOverlay({
         )}
         {plate.kind === "region-done" && ascent && <RegionDonePlate ascent={ascent} onNext={onNext} />}
         {plate.kind === "abyss" && <AbyssPlate onNext={onNext} />}
+        {plate.kind === "out" && ascent && <OutPlate ascent={ascent} onSeal={onSeal} />}
         {plate.kind === "sealed" && ascent && (
           <SealedPlate ascent={ascent} encounter={encounter} onSeal={onSeal} />
         )}
@@ -1139,7 +1161,7 @@ function ScrollWholePlate({ onClose }: { onClose: () => void }) {
  * The clue is the puzzle. Everything the Scribe carries is offered as a
  * palette, and nothing is spent by being wrong — a gate may be tried until it
  * yields or until the Scribe walks away bored, which is the only pressure a
- * game with no failure state is allowed to apply.
+ * a bargain declined is allowed to cost.
  */
 function WordGatePlate({
   target,
@@ -1412,6 +1434,36 @@ function RegionDonePlate({
   );
 }
 
+/**
+ * The light goes out, and the run ends the way it began.
+ *
+ * Not a death screen. An angel made of light whose light goes out is cast back
+ * down to the kingdom — which is exactly what happened to him once already,
+ * before the first rung. So the fall is the failure state, and it is also the
+ * premise, and the record keeps every letter he found on the way.
+ */
+function OutPlate({ ascent, onSeal }: { ascent: AscentRecord; onSeal: () => void }) {
+  return (
+    <>
+      <p className={styles.plateKicker}>The lamps are spent</p>
+      <h2 className={styles.plateTitle}>You go out</h2>
+      <p className={`${styles.plateHeb} hebrew`} lang="he">
+        כִּבָּה
+      </p>
+      <p className={styles.plateUse}>{GOING_OUT}</p>
+      <p className={styles.plateDerivation}>
+        It has happened to you once before, and you did not remember that either. What you found is
+        kept — {ascent.lettersHeld.length} of the twenty-two, and{" "}
+        {regionAt(ascent.regionIndex).name} is as far as you came. The kingdom is where you wake,
+        and the way up is where it was.
+      </p>
+      <Button variant="primary" onClick={onSeal} autoFocus>
+        Fall, and begin again
+      </Button>
+    </>
+  );
+}
+
 function AbyssPlate({ onNext }: { onNext: () => void }) {
   return (
     <>
@@ -1505,8 +1557,8 @@ function SealedPlate({
 
       <DecoratedRule />
       {/* What the whole climb was for. The Mouth is required and its absence is
-          the one genuinely hard outcome in a game with no failure state — the
-          ascent still seals, the case simply is not made. */}
+          the one thing a climb that arrived can still get wrong — the ascent
+          seals either way, the case simply is not made. */}
       <p className={styles.plateKicker}>{plea.kicker}</p>
       {plea.lines.map((line) => (
         <p key={line.slice(0, 24)} className={plea.kind === "mute" ? styles.pleaMute : styles.plea}>

@@ -26,6 +26,9 @@ export interface HudSample {
   or: number;
   message?: string;
   veiled: boolean;
+  /** What the Scribe is made of. Zero and the run is over. */
+  lamps: number;
+  out: boolean;
   /** How far along the region the Scribe has come, in pixels. */
   x: number;
   onGround: boolean;
@@ -45,6 +48,11 @@ export interface GameCanvasProps {
   world: World;
   verbs: readonly Verb[];
   graces: readonly Grace[];
+  /**
+   * The letter the Scribe writes with — the month's ascendant one, so the mark
+   * he throws is the mark Sacred Time put in his hand.
+   */
+  markGlyph: string;
   /** Suspends the loop for a plate, a pause, or an end-of-region panel. */
   paused: boolean;
   onLetter: (letterId: string) => void;
@@ -61,6 +69,7 @@ export function GameCanvas({
   world,
   verbs,
   graces,
+  markGlyph,
   paused,
   onLetter,
   onFragment,
@@ -86,6 +95,7 @@ export function GameCanvas({
   ctxRef.current = {
     verbs,
     graces,
+    markGlyph,
     onLetter: (id) => callbacks.current.onLetter(id),
     onFragment: (i) => callbacks.current.onFragment(i),
     onWordGate: () => callbacks.current.onWordGate(),
@@ -204,6 +214,7 @@ export function GameCanvas({
             jumpHeld: held.current.has("jump") || held.current.has("up"),
             act: pressed.current.has("act"),
             dash: pressed.current.has("dash"),
+            strike: pressed.current.has("strike"),
           };
           pressed.current.clear();
           step(world, input, ctxRef.current);
@@ -228,6 +239,8 @@ export function GameCanvas({
           or: world.or,
           message: world.message?.text,
           veiled: world.player.veiled > 0,
+          lamps: world.player.lamps,
+          out: Boolean(world.out),
           x: world.player.x,
           onGround: world.player.onGround,
           used: [...used.current],

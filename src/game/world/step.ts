@@ -9,7 +9,20 @@ import {
   Tile,
   TILE_SIZE,
 } from "./tiles";
-import type { Entity, Input, Player, World } from "./types";
+import type { Entity, Husk, Input, Player, World } from "./types";
+import {
+  canBeStruck,
+  GOING_OUT,
+  HUSKS,
+  KNOCKBACK_X,
+  KNOCKBACK_Y,
+  MARK_COOLDOWN,
+  MARK_SIZE,
+  MARK_SPEED,
+  markBite,
+  markPowers,
+  takeHit,
+} from "../combat";
 
 /**
  * The simulation. One fixed tick, no wall-clock, no DOM — so a run is
@@ -66,6 +79,11 @@ const MESSAGE_TICKS = 200;
 export interface StepContext {
   verbs: readonly Verb[];
   graces: readonly Grace[];
+  /**
+   * The letter the Scribe writes with — the month's ascendant one, so the mark
+   * he throws is the mark Sacred Time put in his hand. Defaults to Aleph.
+   */
+  markGlyph?: string;
   /** Raised when a letter is taken, so the page can show its plate. */
   onLetter?: (letterId: string) => void;
   /** Raised when a fragment of the torn scroll is lifted from its niche. */
@@ -179,6 +197,14 @@ export function step(world: World, input: Input, ctx: StepContext): void {
   moveAndCollide(world, ctx, p, input.down && !p.crouching);
   touchTiles(world, ctx);
   touchEntities(world, ctx);
+
+  // The klipot, and everything in flight. After the body has moved, so a hit
+  // is judged against where the Scribe actually ended up.
+  if (p.iframes > 0) p.iframes -= 1;
+  if (p.markCooldown > 0) p.markCooldown -= 1;
+  throwMark(world, input, ctx);
+  stepMarks(world, ctx);
+  stepHusks(world, ctx);
 
   // Fallen out of the world entirely.
   if (p.y > world.height * TILE_SIZE + 96) {
@@ -676,4 +702,234 @@ function veil(world: World, ctx: StepContext, message: string): void {
 
 function say(world: World, text: string): void {
   world.message = { text, until: world.tick + MESSAGE_TICKS };
+}
+
+// ---------------------------------------------------------------------------
+// the klipot
+// ---------------------------------------------------------------------------
+
+/** Two bodies touching. The `overlaps` above is for entities, which are tiles. */
+const bodiesTouch = (a: { x: number; y: number; w: number; h: number }, b: typeof a) =>
+  a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+
+/**
+ * The Scribe writes, and the letter flies.
+ *
+ * Thrown the way he faces, angled by holding up or down — which is the whole
+ * reason it wanted a key of its own rather than a seventh job on the act key.
+ * What the letters do to it lives in `combat.ts`; this only launches it.
+ */
+function throwMark(world: World, input: Input, ctx: StepContext): void {
+  const p = world.player;
+  if (!input.strike || p.markCooldown > 0 || p.veiled > 0) return;
+  const powers = markPowers(ctx.verbs, ctx.graces);
+  const up = input.up ? -0.62 : input.down ? 0.62 : 0;
+  const speed = MARK_SPEED;
+  world.marks.push({
+    id: `m${world.tick}`,
+    mine: true,
+    x: p.x + p.w / 2 - MARK_SIZE / 2,
+    y: p.y + p.h / 2 - MARK_SIZE / 2,
+    w: MARK_SIZE,
+    h: MARK_SIZE,
+    vx: p.facing * speed * (up === 0 ? 1 : 0.8),
+    vy: up * speed,
+    life: powers.reach,
+    pierces: powers.pierces,
+    bite: markBite(powers),
+    draws: powers.draws,
+    glyph: ctx.markGlyph ?? "א",
+  });
+  p.markCooldown = MARK_COOLDOWN;
+}
+
+function stepMarks(world: World, ctx: StepContext): void {
+  const p = world.player;
+  for (const m of world.marks) {
+    m.x += m.vx * DT;
+    m.y += m.vy * DT;
+    m.life -= 1;
+
+    // Stone stops a mark. So does the edge of the world.
+    const tx = Math.floor((m.x + m.w / 2) / TILE_SIZE);
+    const ty = Math.floor((m.y + m.h / 2) / TILE_SIZE);
+    if (isSolid(tileAt(world, tx, ty), { verbs: ctx.verbs, crawling: false, revealed: world.revealed })) {
+      m.life = 0;
+      continue;
+    }
+
+    if (m.mine) {
+      for (const husk of world.husks) {
+        if (husk.broken || !bodiesTouch(m, husk)) continue;
+        if (!canBeStruck(hiddenAt(world, husk), ctx.verbs)) continue;
+        strikeHusk(world, husk, m.bite, m.draws ? -1 : 1, m.x);
+        if (!m.pierces) m.life = 0;
+        break;
+      }
+    } else if (p.veiled === 0 && bodiesTouch(m, p)) {
+      m.life = 0;
+      wound(world, ctx, m.x < p.x ? 1 : -1);
+    }
+  }
+  world.marks = world.marks.filter((m) => m.life > 0);
+}
+
+/** Whether a husk is standing in stone the Eye has not yet opened. */
+function hiddenAt(world: World, husk: Husk): boolean {
+  if (world.revealed) return false;
+  const tx = Math.floor((husk.x + husk.w / 2) / TILE_SIZE);
+  const ty = Math.floor((husk.y + husk.h / 2) / TILE_SIZE);
+  return tileAt(world, tx, ty) === Tile.Veiled;
+}
+
+function strikeHusk(world: World, husk: Husk, bite: number, push: number, from: number): void {
+  husk.shells -= bite;
+  husk.struck = 8;
+  husk.vx += push * (husk.x < from ? -1 : 1) * 90;
+  if (husk.shells > 0) return;
+
+  // The shell breaks, and what was held in it comes out. This is the whole
+  // idea: the motes the Scribe has always gathered were inside something.
+  husk.broken = true;
+  world.husksBroken += 1;
+  const spec = HUSKS[husk.kind];
+  for (let i = 0; i < spec.light; i += 1) {
+    world.entities.push({
+      id: `e-husk-${world.tick}-${i}`,
+      kind: "mote",
+      x: husk.x + (i - spec.light / 2) * 9,
+      y: husk.y - 4,
+    });
+  }
+  say(world, "The shell breaks, and the light in it is yours.");
+}
+
+/** A lamp goes, and the Scribe is thrown clear. At zero he goes out. */
+function wound(world: World, ctx: StepContext, away: 1 | -1): void {
+  const p = world.player;
+  const hit = takeHit(p.lamps, p.iframes);
+  if (hit.lamps === p.lamps && !hit.out) return;
+  p.lamps = hit.lamps;
+  p.iframes = hit.iframes;
+  p.vx = away * KNOCKBACK_X;
+  p.vy = -KNOCKBACK_Y;
+  p.dash = 0;
+  p.grappleTo = undefined;
+  if (hit.out) {
+    world.out = true;
+    say(world, GOING_OUT);
+    return;
+  }
+  say(world, `A husk takes a lamp. ${p.lamps} left.`);
+  void ctx;
+}
+
+function stepHusks(world: World, ctx: StepContext): void {
+  const p = world.player;
+  for (const husk of world.husks) {
+    if (husk.broken) continue;
+    if (husk.struck > 0) husk.struck -= 1;
+    if (husk.cooldown > 0) husk.cooldown -= 1;
+    const spec = HUSKS[husk.kind];
+    const toward = p.x + p.w / 2 - (husk.x + husk.w / 2);
+    const near = Math.hypot(toward, p.y - husk.y);
+
+    switch (husk.kind) {
+      case "crawler": {
+        // Walks its ledge and turns at the edge, having never looked up.
+        husk.vx = husk.facing * spec.speed;
+        const aheadX = Math.floor((husk.x + (husk.facing > 0 ? husk.w + 2 : -2)) / TILE_SIZE);
+        const footRow = Math.floor((husk.y + husk.h + 2) / TILE_SIZE);
+        const floor = tileAt(world, aheadX, footRow);
+        const wall = tileAt(world, aheadX, Math.floor((husk.y + husk.h / 2) / TILE_SIZE));
+        const solid = { verbs: ctx.verbs, crawling: false, revealed: world.revealed };
+        if ((floor === Tile.Empty && !isLedge(floor)) || isSolid(wall, solid)) {
+          husk.facing = (husk.facing * -1) as 1 | -1;
+        }
+        husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
+        break;
+      }
+      case "drifter": {
+        // The ground means nothing to it: a slow arc about where it began.
+        husk.vy = Math.sin(world.tick / 42 + husk.home.x) * spec.speed;
+        husk.vx = Math.cos(world.tick / 60 + husk.home.x) * spec.speed;
+        break;
+      }
+      case "spitter": {
+        husk.vx = 0;
+        husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
+        husk.facing = (toward > 0 ? 1 : -1) as 1 | -1;
+        if (near < spec.notices && husk.cooldown === 0 && spec.throws) {
+          husk.cooldown = spec.throws;
+          world.marks.push({
+            id: `m${world.tick}-${husk.id}`,
+            mine: false,
+            x: husk.x + husk.w / 2,
+            y: husk.y + husk.h / 3,
+            w: MARK_SIZE,
+            h: MARK_SIZE,
+            vx: husk.facing * 165,
+            vy: -40,
+            life: 150,
+            pierces: false,
+            bite: 1,
+            draws: false,
+            glyph: "·",
+          });
+        }
+        break;
+      }
+      case "sentinel": {
+        // Still, until you are near enough. Then once, hard.
+        husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
+        if (husk.charging > 0) {
+          husk.charging -= 1;
+          husk.vx = husk.facing * spec.speed;
+        } else if (near < spec.notices && husk.cooldown === 0 && spec.throws) {
+          husk.facing = (toward > 0 ? 1 : -1) as 1 | -1;
+          husk.charging = 20;
+          husk.cooldown = spec.throws;
+        } else {
+          husk.vx *= 0.86;
+        }
+        break;
+      }
+    }
+
+    moveHusk(world, ctx, husk);
+
+    if (p.veiled === 0 && !world.out && bodiesTouch(husk, p)) {
+      wound(world, ctx, p.x < husk.x ? -1 : 1);
+    }
+  }
+  world.husks = world.husks.filter((h) => !h.broken);
+}
+
+/** A husk is stopped by stone, and nothing else. */
+function moveHusk(world: World, ctx: StepContext, husk: Husk): void {
+  const solid = (x: number, y: number) => {
+    const x0 = Math.floor(x / TILE_SIZE);
+    const x1 = Math.floor((x + husk.w - 1) / TILE_SIZE);
+    const y0 = Math.floor(y / TILE_SIZE);
+    const y1 = Math.floor((y + husk.h - 1) / TILE_SIZE);
+    for (let ty = y0; ty <= y1; ty += 1) {
+      for (let tx = x0; tx <= x1; tx += 1) {
+        if (isSolid(tileAt(world, tx, ty), { verbs: ctx.verbs, crawling: false, revealed: world.revealed })) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  const nextX = husk.x + husk.vx * DT;
+  if (husk.kind === "drifter" || !solid(nextX, husk.y)) husk.x = nextX;
+  else {
+    husk.vx = 0;
+    husk.facing = (husk.facing * -1) as 1 | -1;
+  }
+
+  const nextY = husk.y + husk.vy * DT;
+  if (husk.kind === "drifter" || !solid(husk.x, nextY)) husk.y = nextY;
+  else husk.vy = 0;
 }

@@ -1,5 +1,6 @@
 import type { SefirahId } from "../../types/letter";
 import type { Verb } from "../abilities";
+import type { HuskKind } from "../combat";
 import type { WordGateTarget } from "../wordGate";
 
 export interface Vec {
@@ -66,6 +67,47 @@ export interface Player extends Body {
   grappleTo?: Vec;
   /** Ticks before the Hook may be cast again, so it chains instead of yo-yos. */
   grappleCooldown: number;
+  /**
+   * What the Scribe is, as opposed to what he carries. `or` is gathered light
+   * and buys the kindling of a Sefirah; these are the lamps he is made of, and
+   * a husk takes one. Conflating the two would charge every mistake twice.
+   */
+  lamps: number;
+  /** Ticks of grace after a hit, in which nothing can touch him. */
+  iframes: number;
+  /** Ticks before another mark may be thrown. */
+  markCooldown: number;
+}
+
+/** A husk of the klipot, standing between the Scribe and the light in it. */
+export interface Husk extends Body {
+  id: string;
+  kind: HuskKind;
+  /** Shells left. At zero it breaks and gives up what it held. */
+  shells: number;
+  facing: 1 | -1;
+  /** Where it began, which is what a rooted husk returns to and guards. */
+  home: Vec;
+  /** Ticks until it may throw or charge again. */
+  cooldown: number;
+  /** Ticks left of a charge, for the ones that commit to one. */
+  charging: number;
+  /** Ticks of white after being struck, so a hit reads. */
+  struck: number;
+  broken?: boolean;
+}
+
+/** A mark in flight — the Scribe's, or the dark a spitter throws. */
+export interface Mark extends Body {
+  id: string;
+  /** Whose it is. The Scribe's breaks husks; a husk's takes a lamp. */
+  mine: boolean;
+  life: number;
+  pierces: boolean;
+  bite: number;
+  draws: boolean;
+  /** The letter written, for the renderer. */
+  glyph: string;
 }
 
 export interface World {
@@ -120,6 +162,16 @@ export interface World {
   orGathered: number;
   veilings: number;
   marksSet: number;
+  /** The klipot standing in this region, and everything in flight. */
+  husks: Husk[];
+  marks: Mark[];
+  /** How many husks have been broken here — for the record, and for doors. */
+  husksBroken: number;
+  /**
+   * Set when the Scribe's light goes out. The run is over; `GamePage` seals it
+   * as a fall rather than a crowning.
+   */
+  out?: boolean;
   /** Ticks elapsed — the simulation's own clock, never wall time. */
   tick: number;
   /** Set when the Scribe reaches the exit. */
@@ -140,6 +192,8 @@ export interface Input {
   jumpHeld: boolean;
   act: boolean;
   dash: boolean;
+  /** Edge-triggered: the mark is thrown once per press. */
+  strike: boolean;
 }
 
 export const NO_INPUT: Input = {
@@ -151,6 +205,7 @@ export const NO_INPUT: Input = {
   jumpHeld: false,
   act: false,
   dash: false,
+  strike: false,
 };
 
 /**

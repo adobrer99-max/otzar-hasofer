@@ -69,7 +69,8 @@ export const HIGH_FLOOR_ROWS = [10, 11];
  * And beneath a high edge, nothing. That absence is the whole point: a high
  * stretch is only high if falling off it costs something. It costs a veiling
  * — time and ground, never a letter and never the run — which is the most a
- * game with no failure state is allowed to charge.
+ * charged for a mistake of the feet. The klipot are what can end a run; the
+ * ground itself only ever costs you the ground.
  */
 export const HIGH_VOID_ROWS = [12, 13, 14, 15, 16, 17];
 
@@ -81,8 +82,8 @@ export const HIGH_VOID_ROWS = [12, 13, 14, 15, 16, 17];
  * Scribe who misses the jump simply walks along the bottom and climbs out the
  * far side. Measured: it defeated every gated screen in the library at once,
  * because the Hook and the Bridge were both optional the moment there was
- * anything to stand on down there. Falling costs a veiling, which is the whole
- * price this game charges for anything.
+ * anything to stand on down there. Falling costs a veiling — time and ground,
+ * never a lamp, which is the one price terrain is allowed to charge.
  */
 
 /**
@@ -315,7 +316,9 @@ export const CHUNKS: Chunk[] = [
   ]),
 
   chunk("pit", { demand: 1 }, [
-    E, E, E, E, E, E, E, E, E, E, E, E, E,
+    E, E, E, E, E, E, E, E, E, E, E,
+    ".......j........",
+    E,
     ".......*........",
     E, E,
     // Three tiles. A Scribe who has not yet found the Breath must be able to
@@ -325,7 +328,8 @@ export const CHUNKS: Chunk[] = [
   ]),
 
   chunk("upper-shelf", { demand: 1 }, [
-    E, E, E, E, E, E, E, E, E, E,
+    E, E, E, E, E, E, E, E, E,
+    ".......k........",
     ".....*..*.......",
     "....========....",
     E, E,
@@ -359,7 +363,7 @@ export const CHUNKS: Chunk[] = [
    */
   chunk("long-pit", { demand: 2 }, [
     E, E, E, E, E, E, E, E, E, E, E, E,
-    E,
+    "............k...",
     ".......*........",
     E,
     "...###..........",
@@ -431,7 +435,8 @@ export const CHUNKS: Chunk[] = [
   // Eight tiles of it. A barrier four tiles high is not a barrier: the Breath
   // is found in Malchut, and a double jump tops six.
   chunk("thorn-hedge", { requires: ["cut"], demand: 1 }, [
-    E, E, E, E, E, E, E, E,
+    E, E, E, E, E, E, E,
+    "...........q....",
     ".......^........",
     ".......^........",
     ".......^........",
@@ -561,7 +566,8 @@ export const CHUNKS: Chunk[] = [
   ]),
 
   chunk("sealed-gate", { requires: ["open"], demand: 1 }, [
-    E, E, E, E, E, E, E, E,
+    E, E, E, E, E, E, E,
+    "...n............",
     ".......DD.......",
     ".......DD.......",
     ".......DD.......",
@@ -822,8 +828,7 @@ export const CHUNKS: Chunk[] = [
   /**
    * A sealed door standing in plain sight, and a low crawl beneath it that
    * answers the same passage for nothing. The Door is the obvious reading and
-   * the wrong one — or the lazy one, which in a game with no failure state is
-   * the same lesson.
+   * the wrong one — or the lazy one, and here they come to the same thing.
    */
   chunk("decoy-door", { requires: ["open"], demand: 2 }, [
     E, E, E, E, E, E, E, E,
@@ -924,7 +929,9 @@ export const CHUNKS: Chunk[] = [
     E,
     "######....######",
     "######....######",
-    E, E, E, E,
+    E, E,
+    ".......j........",
+    "....k...........",
     "######...#######",
     "######...#######",
   ]),

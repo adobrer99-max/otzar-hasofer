@@ -19,7 +19,8 @@ import type { Input } from "./world/types";
  * prints, and the two can never disagree.
  */
 
-export type ControlId = keyof Input & ("left" | "right" | "up" | "down" | "jump" | "act" | "dash");
+export type ControlId = keyof Input &
+  ("left" | "right" | "up" | "down" | "jump" | "act" | "dash" | "strike");
 
 export interface Control {
   id: ControlId;
@@ -100,6 +101,15 @@ export const CONTROLS: Control[] = [
     name: "Cross",
     does: "Nothing yet — until the Bridge is found, this key is silent.",
   },
+  {
+    id: "strike",
+    codes: ["KeyV", "KeyF"],
+    keys: ["V", "F"],
+    pad: "✎",
+    cluster: "do",
+    name: "Write",
+    does: "Throw a mark, the way you are facing. Hold ↑ or ↓ to angle it.",
+  },
 ];
 
 export const controlById: Record<ControlId, Control> = Object.fromEntries(
@@ -115,7 +125,7 @@ export const controlById: Record<ControlId, Control> = Object.fromEntries(
  */
 export const PAD_LAYOUT: { cluster: "move" | "do"; ids: ControlId[] }[] = [
   { cluster: "move", ids: ["left", "up", "down", "right"] },
-  { cluster: "do", ids: ["act", "dash", "jump"] },
+  { cluster: "do", ids: ["strike", "act", "dash", "jump"] },
 ];
 
 /** The binding table the canvas listens with. Derived, never hand-written. */

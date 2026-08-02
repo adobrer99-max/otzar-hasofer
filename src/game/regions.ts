@@ -1,6 +1,7 @@
 import { housesBySefirah } from "../data/dorot";
 import type { SefirahId } from "../types/letter";
 import { abilityByLetter } from "./abilities";
+import type { HuskKind } from "./combat";
 
 /**
  * The ten regions: Malchut at the foot of the Tree, Keter at its crown.
@@ -55,6 +56,15 @@ export interface Region {
      */
     bias?: "hard";
   };
+  /**
+   * The klipot standing at this rung: which shells, and how many.
+   *
+   * A region property rather than a property of the screens that happen to be
+   * laid — authored husks alone made the *upper* Tree emptier than the foot,
+   * because the screens they stood on were demand 1 and the high bands exclude
+   * those. Scattered like the motes are, in `scatterHusks`.
+   */
+  klipot: { kinds: HuskKind[]; count: number };
   /** The three supernals stand above the Abyss and hold no House. */
   hasHouse: boolean;
   /**
@@ -76,6 +86,7 @@ export const regions: Region[] = [
     fragments: 2,
     length: 6,
     demand: { min: 1, max: 2 },
+    klipot: { kinds: ["crawler"], count: 2 },
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -91,6 +102,7 @@ export const regions: Region[] = [
     fragments: 1,
     length: 6,
     demand: { min: 1, max: 2 },
+    klipot: { kinds: ["crawler", "drifter"], count: 3 },
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -105,6 +117,7 @@ export const regions: Region[] = [
     letters: ["gimel", "heh"],
     length: 6,
     demand: { min: 1, max: 3 },
+    klipot: { kinds: ["crawler", "drifter"], count: 4 },
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -119,6 +132,7 @@ export const regions: Region[] = [
     letters: ["kuf", "lamed"],
     length: 6,
     demand: { min: 1, max: 3 },
+    klipot: { kinds: ["crawler", "drifter", "spitter"], count: 5 },
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -133,6 +147,7 @@ export const regions: Region[] = [
     letters: ["vav", "tzadi"],
     length: 7,
     demand: { min: 1, max: 3 },
+    klipot: { kinds: ["crawler", "drifter", "spitter"], count: 6 },
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -147,6 +162,7 @@ export const regions: Region[] = [
     letters: ["zayin", "tet"],
     length: 7,
     demand: { min: 2, max: 3 },
+    klipot: { kinds: ["crawler", "spitter", "sentinel"], count: 6 },
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -161,6 +177,7 @@ export const regions: Region[] = [
     letters: ["mem", "nun"],
     length: 7,
     demand: { min: 2, max: 3 },
+    klipot: { kinds: ["drifter", "spitter", "sentinel"], count: 7 },
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -175,6 +192,7 @@ export const regions: Region[] = [
     letters: ["ayin", "bet", "kaf"],
     length: 8,
     demand: { min: 2, max: 3, bias: "hard" },
+    klipot: { kinds: ["crawler", "drifter", "spitter", "sentinel"], count: 8 },
     hasHouse: false,
     hasShrine: false,
     teaching:
@@ -189,6 +207,7 @@ export const regions: Region[] = [
     letters: ["shin", "dalet"],
     length: 8,
     demand: { min: 2, max: 3, bias: "hard" },
+    klipot: { kinds: ["crawler", "drifter", "spitter", "sentinel"], count: 9 },
     hasHouse: false,
     hasShrine: false,
     teaching:
@@ -203,6 +222,7 @@ export const regions: Region[] = [
     letters: ["yod"],
     length: 9,
     demand: { min: 2, max: 3, bias: "hard" },
+    klipot: { kinds: ["drifter", "spitter", "sentinel"], count: 10 },
     hasHouse: false,
     hasShrine: false,
     teaching:

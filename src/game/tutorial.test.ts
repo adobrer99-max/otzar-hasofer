@@ -45,12 +45,15 @@ describe("the opening lessons", () => {
   it("walks the sequence when several keys arrive together", () => {
     // A Scribe who already knows how to play presses everything at once. That
     // is not a reason to keep coaching them.
-    const learned = retire(nothing, ["left", "jump", "down", "act"]);
-    expect(learned).toEqual(["move", "leap", "lower", "act"]);
+    const learned = retire(nothing, ["left", "jump", "down", "strike", "act"]);
+    expect(learned).toEqual(["move", "leap", "lower", "write", "act"]);
   });
 
   it("retires the wordless last lesson when a letter is found", () => {
-    const learned = retire({ learned: ["move", "leap", "lower", "act"], lettersHeld: 1 }, []);
+    const learned = retire(
+      { learned: ["move", "leap", "lower", "write", "act"], lettersHeld: 1 },
+      [],
+    );
     expect(allLearned(learned)).toBe(true);
   });
 

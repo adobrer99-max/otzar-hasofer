@@ -1,7 +1,7 @@
 import { cardsByHouse, housesBySefirah } from "../../data/dorot";
 import type { Verb } from "../abilities";
 import { abilityByLetter } from "../abilities";
-import { fragmentsBefore, lettersOnEntering, regionAt } from "../regions";
+import { fragmentsBefore, lettersOnEntering, regionAt, type Region } from "../regions";
 import { makeRng, randomInt, shuffle } from "../rng";
 import { chooseTarget, type WordGateTarget } from "../wordGate";
 import {
@@ -18,8 +18,9 @@ import {
   TEACH_CHUNKS,
   WORD_GATE_CHUNK,
 } from "./chunks";
+import { HUSK_CHARS, HUSKS, LAMPS } from "../combat";
 import { MARKER_CHARS, Tile, TILE_CHARS, TILE_SIZE } from "./tiles";
-import type { Chunk, Edge, Entity, Player, World } from "./types";
+import type { Chunk, Edge, Entity, Husk, Player, World } from "./types";
 
 export const PLAYER_W = 16;
 export const PLAYER_H = 30;
@@ -70,6 +71,11 @@ export function buildRegion(
     lightOfTheDay,
     fragmentsBefore(region.index),
     wordGateTarget,
+    region.klipot,
+    // The taught porch stays empty of husks. Its whole job is to land four
+    // coaching lines on flat ground, a step and a gap, and a crawler wandering
+    // through the middle of that teaches something else entirely.
+    (laid.length > 0 ? 1 : 0) + (teaching && region.index === 1 ? TEACH_CHUNKS.length : 0),
   );
 }
 
@@ -418,6 +424,8 @@ function paint(
   lightOfTheDay: number,
   firstFragmentIndex: number,
   wordGateTarget: WordGateTarget | undefined,
+  klipot: Region["klipot"],
+  quiet: number,
 ): World {
   const width = laid.length * CHUNK_W;
   const height = CHUNK_H;
@@ -425,6 +433,7 @@ function paint(
   const entities: Entity[] = [];
 
   let spawn = { x: TILE_SIZE * 2, y: TILE_SIZE * 14 };
+  const husks: Husk[] = [];
   let letterCursor = 0;
   let fragmentCursor = firstFragmentIndex;
   let entityId = 0;
@@ -496,12 +505,38 @@ function paint(
           continue;
         }
 
+        // A husk stands where it is written, on empty ground. The light it
+        // holds is not strewn here — it comes out when the shell breaks.
+        const huskKind = HUSK_CHARS[ch];
+        if (huskKind) {
+          tiles[y * width + worldX] = Tile.Empty;
+          const spec = HUSKS[huskKind];
+          husks.push({
+            id: `h${entityId++}`,
+            kind: huskKind,
+            x: px,
+            y: py + TILE_SIZE - spec.size.h,
+            w: spec.size.w,
+            h: spec.size.h,
+            vx: 0,
+            vy: 0,
+            facing: -1,
+            shells: spec.shells,
+            home: { x: px, y: py },
+            cooldown: 0,
+            charging: 0,
+            struck: 0,
+          });
+          continue;
+        }
+
         tiles[y * width + worldX] = TILE_CHARS[ch] ?? Tile.Empty;
       }
     });
   });
 
   scatterMotes(tiles, width, height, entities, rng, () => `e${entityId++}`, lightOfTheDay);
+  scatterHusks(tiles, width, height, husks, rng, () => `h${entityId++}`, klipot, quiet);
 
   const player: Player = {
     x: spawn.x,
@@ -523,6 +558,9 @@ function paint(
     crouching: false,
     veiled: 0,
     grappleCooldown: 0,
+    lamps: LAMPS,
+    iframes: 0,
+    markCooldown: 0,
   };
 
   return {
@@ -542,6 +580,9 @@ function paint(
     orGathered: 0,
     veilings: 0,
     marksSet: 0,
+    husks,
+    marks: [],
+    husksBroken: 0,
     tick: 0,
     finished: false,
   };
@@ -602,4 +643,88 @@ export function tileAt(world: World, tx: number, ty: number): Tile {
 export function setTile(world: World, tx: number, ty: number, tile: Tile): void {
   if (tx < 0 || ty < 0 || tx >= world.width || ty >= world.height) return;
   world.tiles[ty * world.width + tx] = tile;
+}
+
+/**
+ * Scatters the klipot through a region.
+ *
+ * The same shape as `scatterMotes`, and for the same reason: a region's
+ * density has to be a property of the *rung*, not of which screens the seed
+ * happened to lay. Authored husks alone made the upper Tree emptier than the
+ * foot, because the screens they stood on were demand 1 and the high bands
+ * exclude those — measured at 1.5 husks in Malchut against 0.3 in Chesed.
+ *
+ * Two rules, both about fairness rather than balance:
+ *
+ * - **Nothing in the first screen or the last.** A Scribe walking in should
+ *   not be walking into something, and neither should one walking out.
+ * - **Drifters float; everything else stands.** A crawler needs a ledge under
+ *   it or it spends the region falling.
+ */
+function scatterHusks(
+  tiles: Uint8Array,
+  width: number,
+  height: number,
+  husks: Husk[],
+  rng: () => number,
+  nextId: () => string,
+  klipot: Region["klipot"],
+  quiet: number,
+): void {
+  if (klipot.count <= 0 || klipot.kinds.length === 0) return;
+
+  // Nothing in the opening screens, nothing in the last one.
+  const margin = Math.max(1, quiet) * CHUNK_W + 4;
+  const standing: { x: number; y: number }[] = [];
+  const floating: { x: number; y: number }[] = [];
+  for (let y = 2; y < height - 1; y += 1) {
+    for (let x = margin; x < width - (CHUNK_W + 4); x += 1) {
+      const here = tiles[y * width + x];
+      const above = tiles[(y - 1) * width + x];
+      const below = tiles[(y + 1) * width + x];
+      if (here !== Tile.Empty || above !== Tile.Empty) continue;
+      if (below === Tile.Stone || below === Tile.Ledge) standing.push({ x, y: y - 1 });
+      else if (tiles[(y - 2) * width + x] === Tile.Empty) floating.push({ x, y: y - 1 });
+    }
+  }
+  if (standing.length === 0) return;
+
+  const ground = shuffle(rng, standing);
+  const air = shuffle(rng, floating);
+  const taken = new Set<string>();
+  let g = 0;
+  let a = 0;
+
+  for (let i = 0; i < klipot.count; i += 1) {
+    const kind = klipot.kinds[randomInt(rng, klipot.kinds.length)];
+    const spec = HUSKS[kind];
+    const pool = kind === "drifter" && air.length > 0 ? air : ground;
+    const cursor = pool === air ? a : g;
+    if (cursor >= pool.length) continue;
+    const spot = pool[cursor];
+    if (pool === air) a += 1;
+    else g += 1;
+
+    // No two shells in the same column, or they read as one shape.
+    const key = String(spot.x);
+    if (taken.has(key)) continue;
+    taken.add(key);
+
+    husks.push({
+      id: nextId(),
+      kind,
+      x: spot.x * TILE_SIZE,
+      y: spot.y * TILE_SIZE + TILE_SIZE - spec.size.h,
+      w: spec.size.w,
+      h: spec.size.h,
+      vx: 0,
+      vy: 0,
+      facing: -1,
+      shells: spec.shells,
+      home: { x: spot.x * TILE_SIZE, y: spot.y * TILE_SIZE },
+      cooldown: randomInt(rng, 40),
+      charging: 0,
+      struck: 0,
+    });
+  }
 }

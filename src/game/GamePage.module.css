@@ -218,6 +218,25 @@
   font-size: 0.85rem;
 }
 
+/* ---- the lamps ---------------------------------------------------------- */
+
+/* What the Scribe *is*, beside `.hudOr`, which is what he is carrying. */
+.lamps {
+  display: flex;
+  gap: 0.2rem;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.lampLit {
+  color: var(--accent-bright);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.lampOut {
+  color: var(--border-hairline);
+}
+
 /* ---- the story ---------------------------------------------------------- */
 
 .prologue {
