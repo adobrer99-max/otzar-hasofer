@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { lettersOnEntering, TOTAL_REGIONS } from "../regions";
-import { buildRegion, FLOOR_ROWS, verbsOf } from "./build";
+import { makeRng, randomInt } from "../rng";
+import { lettersFrom, nodeOf, otherEnd, pathsFrom, TREE_PATHS, type TreePath } from "../tree";
+import type { SefirahId } from "../../types/letter";
+import { buildPath, buildRegion, FLOOR_ROWS, verbsOf } from "./build";
 import { routeTo } from "./route";
 import { TILE_SIZE } from "./tiles";
 
@@ -100,4 +103,110 @@ describe("the way out", () => {
     }
     expect(barred, "empty-handed, the upper Tree was crossable everywhere").toBeGreaterThan(0);
   });
+});
+
+/**
+ * **The same guarantee, over the Tree.**
+ *
+ * The one above asks it of a line: region *n*, built for a Scribe holding
+ * `lettersOnEntering(n)`. That was the whole shape of the climb, and it made
+ * the question easy in a way that was hiding things — the letters were a
+ * function of the index, so the generator was only ever asked for terrain
+ * against ten letter sets, always the same ten, always in the same order.
+ *
+ * A path is a rung now. Twenty-two of them, walked in whatever order a Scribe
+ * chooses, and the letters they hold when they step onto one are whatever the
+ * route to it happened to pay. So the guarantee changes shape: not "region *n*
+ * is crossable holding what region *n* gives", but **"every path is crossable
+ * holding whatever the route to it gave"** — and it has to be re-earned, not
+ * inherited.
+ *
+ * It was not met on the first asking: three hundred and twenty-nine of eight
+ * hundred and eighty wanders came out with no way through. Almost all of it was
+ * the instrument (see the head of `route.ts`), and three screens were genuinely
+ * under-declared. `chunks.test.ts` now holds the screens to what they say they
+ * need, which is the local form of this; this is the global one, and it is what
+ * decided that the Tree could be built at all.
+ */
+describe("the way out, on the Tree", () => {
+  /** A seeded stroll: from Malchut, take any path out of wherever you stand. */
+  function wander(seed: number, steps: number) {
+    const rng = makeRng(seed >>> 0);
+    let at: SefirahId = "malchut";
+    const legs: { path: TreePath; held: string[] }[] = [];
+    const walked: string[] = [];
+    for (let i = 0; i < steps; i += 1) {
+      const out = pathsFrom(at);
+      const path = out[randomInt(rng, out.length)];
+      // What the Scribe holds *stepping onto* this path — the letter it pays is
+      // not theirs until they have crossed it.
+      legs.push({ path, held: lettersFrom(walked) });
+      walked.push(path.id);
+      at = otherEnd(path, at);
+    }
+    return legs;
+  }
+
+  it("exists on every path, holding only what the route there paid", () => {
+    const lost: string[] = [];
+    let walked = 0;
+    for (let seed = 1; seed <= 30; seed += 1) {
+      for (const { path, held } of wander(seed * 7919, 22)) {
+        walked += 1;
+        const world = buildPath(path, seed, held);
+        if (!routeTo(world, verbsOf(held)).usable) {
+          lost.push(`${path.id} seed ${seed} holding [${held.join(",") || "nothing"}]`);
+        }
+      }
+    }
+    expect(walked, "the wander walked nowhere").toBeGreaterThan(600);
+    expect(
+      lost.slice(0, 8),
+      `no way across ${lost.length} of ${walked} paths walked`,
+    ).toEqual([]);
+  }, 120000);
+
+  /**
+   * And the first step in particular, which is the one a Scribe takes holding
+   * nothing at all. `tree.test.ts` makes sure that step pays a verb; this makes
+   * sure the ground it crosses can be crossed by someone who has none.
+   */
+  it("carries an empty-handed Scribe out of Malchut, whichever way they turn", () => {
+    for (const path of pathsFrom("malchut")) {
+      for (const seed of SEEDS) {
+        expect(
+          routeTo(buildPath(path, seed, []), []).usable,
+          `${path.id} seed ${seed}, holding nothing`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  /**
+   * The Tree has to *ask* for letters as well as let them through, or the
+   * twenty-two are scenery and the order they are taken in means nothing.
+   *
+   * Note what is built and what is asked, because the obvious version of this
+   * test asserts nothing at all: `buildPath(path, seed, [])` lays ground *for*
+   * an empty-handed Scribe, and the generator only ever lays screens whose
+   * letters are held — so of course they can cross it. Every one of them, every
+   * seed. The ground has to be built for a Scribe who has walked the Tree and
+   * then offered to one who has not.
+   */
+  it("bars the upper paths to a Scribe who has gathered nothing", () => {
+    const everything = TREE_PATHS.map((p) => p.letter);
+    let barred = 0;
+    let asked = 0;
+    for (const path of TREE_PATHS) {
+      // The upper Tree only — the foot is meant to be walkable, and Malchut's
+      // own paths are built to be crossed by a Scribe holding nothing at all.
+      if (nodeOf[path.ends[0]].row < 3) continue;
+      for (const seed of SEEDS.slice(0, 4)) {
+        asked += 1;
+        if (!routeTo(buildPath(path, seed, everything), []).usable) barred += 1;
+      }
+    }
+    expect(asked, "no upper paths were asked about").toBeGreaterThan(20);
+    expect(barred, `the upper Tree was crossable holding nothing on all ${asked}`).toBeGreaterThan(0);
+  }, 60000);
 });

@@ -1,7 +1,14 @@
 import { cardsByHouse, housesBySefirah } from "../../data/dorot";
 import type { Verb } from "../abilities";
 import { abilityByLetter } from "../abilities";
-import { fragmentsBefore, lettersOnEntering, regionAt, type Region } from "../regions";
+import {
+  fragmentsBefore,
+  lettersOnEntering,
+  regionAt,
+  regions,
+  TOTAL_REGIONS,
+  type Region,
+} from "../regions";
 import { makeRng, randomInt, shuffle } from "../rng";
 import { chooseTarget, type WordGateTarget } from "../wordGate";
 import {
@@ -25,6 +32,7 @@ import { HUSK_CHARS, HUSKS, kindForRole, LAMPS } from "../combat";
 import { keliFor } from "../items";
 import { MARKER_CHARS, Tile, TILE_CHARS, TILE_SIZE } from "./tiles";
 import { doorsOf, planFloor, roomAtPoint, ROOM_H, ROOM_W } from "./rooms";
+import { TREE_PATHS, type TreePath } from "../tree";
 import type { Chunk, Edge, Entity, Husk, Player, World } from "./types";
 
 export const PLAYER_W = 16;
@@ -37,15 +45,9 @@ export const ROW_SCREENS_PER_ROOM = 2;
  * How many rows of rooms a rung is built from — **the Tree grows taller.**
  *
  * One row is a corridor, which is what every rung was before rooms existed, so
- * the foot of the Tree is untouched: Malchut goes on teaching in a straight
- * line and keeps the pacing that was measured and fixed. The map deepens as it
- * is climbed, which is the whole of what the shape is meant to say.
- */
-/**
- * **The Tree grows taller.** One row is a corridor, which is what every rung
- * was before rooms existed, so the foot is untouched: Malchut goes on teaching
- * in a straight line and keeps the pacing that was measured and fixed. The map
- * deepens as it is climbed, which is the whole of what the shape says.
+ * the foot is untouched: Malchut goes on teaching in a straight line and keeps
+ * the pacing that was measured and fixed. The map deepens as it is climbed,
+ * which is the whole of what the shape says.
  */
 export function rowsFor(regionIndex: number): number {
   return regionIndex <= 3 ? 1 : regionIndex <= 7 ? 2 : 3;
@@ -99,10 +101,21 @@ export function buildRegion(
    * way to build one there is nothing to prove it against.
    */
   rows?: number,
+  /**
+   * The letters the Scribe actually carries in, rather than the ones a linear
+   * climb would have given them by now.
+   *
+   * The climb was a line, so "what is held here" and "which rung is this" were
+   * the same fact and the generator read the second to get the first. On the
+   * Tree they come apart: the route decides the alphabet, so the alphabet has
+   * to be passed. Defaulted to the linear answer, which is still exactly right
+   * for a linear climb and keeps every existing caller and test honest.
+   */
+  held: readonly string[] = lettersOnEntering(regionIndex),
 ): World {
   const region = regionAt(regionIndex);
   const rng = makeRng((seed ^ (regionIndex * 0x9e3779b9)) >>> 0);
-  const { laid, wordGateTarget } = layout(region, rng, teaching, rows);
+  const { laid, wordGateTarget } = layout(region, rng, teaching, rows, held);
 
   return paint(
     laid,
@@ -124,6 +137,33 @@ export function buildRegion(
 }
 
 /**
+ * Paint an explicit run of screens, for auditing the library itself.
+ *
+ * The companion to `layoutOf`, which exposes the assembly: this exposes the
+ * ground. `chunks.audit.test.ts` uses it to ask what each authored screen
+ * actually *requires*, by building it alone between a start and an end and
+ * seeing whether a body holding a given alphabet can cross it — which is the
+ * only way to find a requirement the author did not write down.
+ */
+export function paintChunks(laid: readonly Chunk[], seed = 1): World {
+  const region = regionAt(1);
+  return paint(
+    laid,
+    1,
+    region.sefirah,
+    [],
+    makeRng(seed >>> 0),
+    false,
+    1,
+    0,
+    undefined,
+    { kinds: [], count: 0 },
+    1,
+    laid.length,
+  );
+}
+
+/**
  * The screens a region is made of, in order — separated from painting them so
  * that the assembly can be inspected directly rather than inferred from tiles.
  * `build.test.ts` reads the chain and the demand curve straight off this.
@@ -135,20 +175,62 @@ export function layoutOf(
   rows?: number,
 ): Chunk[] {
   const region = regionAt(regionIndex);
-  return layout(region, makeRng((seed ^ (regionIndex * 0x9e3779b9)) >>> 0), teaching, rows).laid;
+  return layout(
+    region,
+    makeRng((seed ^ (regionIndex * 0x9e3779b9)) >>> 0),
+    teaching,
+    rows,
+    lettersOnEntering(regionIndex),
+  ).laid;
 }
 
+/**
+ * The letters that move a body rather than open a way: the Breath, the Bridge,
+ * the Fence and the House. Every one of them is a *general* answer to ground —
+ * more air, more reach, a wall to climb, a step to set — as against the Hook or
+ * the Eye, which answer one particular thing.
+ */
+const MOBILITY: readonly Verb[] = ["double-jump", "dash", "wall-cling", "block"];
+
 function layout(
-  region: ReturnType<typeof regionAt>,
+  region: Region,
   rng: () => number,
   teaching: boolean,
-  rowsOverride?: number,
+  rowsOverride: number | undefined,
+  held: readonly string[],
 ): { laid: Chunk[]; wordGateTarget: WordGateTarget | undefined } {
   const regionIndex = region.index;
-  const held = lettersOnEntering(regionIndex);
   const verbs = verbsOf(held);
 
-  const passable = CHUNKS.filter((c) => c.requires.every((v) => verbs.includes(v)));
+  /**
+   * **A body that can only walk and jump gets ground it can walk and jump.**
+   *
+   * Filtering the library by `requires` alone is the obvious rule and it was
+   * enough for as long as the climb was a line: a Scribe never held the Hook
+   * without also holding the Breath, the Bridge and the Fence, because the
+   * letters arrived in one order and terrain that asks for the Hook is only
+   * laid where the Hook has been found.
+   *
+   * The Tree can hand out the Hook first. Measured against a competent body
+   * holding *exactly* what a screen declares and nothing else: `anchor-gap` is
+   * crossed none times in six, and is crossed five or six in six the moment any
+   * one of the Bridge, the Fence or the Breath is added — none of which the
+   * screen has anything to do with. The same for `set-stone`, `vine-ascent`,
+   * `high-span` and the lifted screens. They are not under-declared about the
+   * letter they gate on; they assume a body that can do more than step and
+   * jump, which is an assumption the line made true and the Tree does not.
+   *
+   * So a Scribe carrying no way of moving beyond their own legs walks ground
+   * that asks nothing and stays on the floor — which is exactly what Malchut
+   * is, and is proved crossable empty-handed on every seed by the rung tests.
+   * One mobility letter, any of them, and the whole library opens up.
+   */
+  const mobile = MOBILITY.some((v) => verbs.includes(v));
+  const passable = CHUNKS.filter(
+    (c) =>
+      c.requires.every((v) => verbs.includes(v)) &&
+      (mobile || (c.requires.length === 0 && c.entry === "ground" && c.exit === "ground")),
+  );
   if (passable.length === 0) {
     throw new Error(`Region ${regionIndex} has no passable chunks — the letter order is wrong`);
   }
@@ -170,7 +252,7 @@ function layout(
   // why Malchut and Yesod carry none: with two letters there is nothing to
   // spell. This is the same shape as `requires` on a chunk: the generator is
   // not permitted to express an unsolvable one.
-  const wordGateTarget = chooseTarget(regionIndex, rng);
+  const wordGateTarget = chooseTarget(held, rng);
 
   // The fixed screens are inserted at positions within the body. Their *order*
   // here is their order on the ground, because the chosen slots are sorted
@@ -498,7 +580,18 @@ function layBody(
       if (owed >= remaining && !asksForALetter(c) && !structural(c)) return false;
       return true;
     });
-    // Prefer not to repeat the screen just laid, so a region does not stutter.
+    // **Prefer not to repeat the screen just laid**, so a region does not
+    // stutter — and *only* the screen just laid, which is a finding.
+    //
+    // A path pays exactly one letter, so on the Tree the pool a rung draws from
+    // is routinely three screens rather than a dozen, and a memory one deep
+    // produces `wide-chasm`, something, `wide-chasm`, something, `wide-chasm`.
+    // That looked like the obvious cause of the probe stalling on the Tree, and
+    // a three-deep memory was written and measured: the layouts did vary, the
+    // stall count did not move at all, and it cost a rung of the linear climb
+    // that had been green on every seed. The repetition was real and was not
+    // the problem; what was, was a handful of screens that assume more of a
+    // body than they declare, which is written up on the Tree's own probe test.
     const fresh = candidates.filter((c) => c.id !== previous);
     let from = fresh.length > 0 ? fresh : candidates;
 
@@ -1031,4 +1124,187 @@ function scatterHusks(
       struck: 0,
     });
   }
+}
+
+// ---------------------------------------------------------------------------
+// a path is a rung
+// ---------------------------------------------------------------------------
+
+/**
+ * The ground a path is made of, blended from the two Sefirot it joins.
+ *
+ * Twenty-two paths could have meant twenty-two hand-authored rungs, and it
+ * would have been a year's work for ground that already exists. A path runs
+ * between two Sefirot and it is *of* both of them, so it takes its character
+ * from both: the demand band spans them, the klipot are what haunt either end,
+ * the length is the mean. Nothing new is authored and every rung is still
+ * recognisably somewhere.
+ *
+ * Two rules that are not averages, because averaging them would be wrong:
+ *
+ * - **The band takes the wider span, and the bias from either end.** A path
+ *   touching the crown is a hard path even if its other end is Yesod. Meeting
+ *   in the middle would have made the whole Tree the same difficulty, which is
+ *   the exact failure the demand bands were introduced to fix.
+ * - **The fixed screens come from the lower end.** The shrine, the House and
+ *   the vessel belong to a place rather than to a crossing, and hanging them on
+ *   the upper end would have put a House above the Abyss, where there are none.
+ *
+ * ## And the ground rises no higher than the Scribe
+ *
+ * The third rule is the one the Tree could not have been built without, and it
+ * is not obvious until it is measured.
+ *
+ * On a line, difficulty and letters advanced together and could not come apart:
+ * `lettersOnEntering(n)` *was* how far up you were, so a rung sized for Tiferet
+ * was only ever met by a Scribe holding what Malchut through Hod pay out. The
+ * whole tuning of this game — the bands, the floors, every measured reach in
+ * `chunks.ts` — rests on that coupling.
+ *
+ * Twenty-two paths break it. A Scribe may leave Malchut by the Fence rather
+ * than the Breath, cross to Hod, and stand at the foot of a path into the crown
+ * holding a single letter; and the terrain, asked only where it lies, would hand
+ * them three storeys of Keter. Measured, that is exactly what happened: the
+ * probe stalled on twenty-two of thirty-two paths walked, and all but two of the
+ * stalls were a Scribe with no Breath on ground built for one who has it. The
+ * route graph called every one of them crossable and was right — a way existed.
+ * A body could not walk it.
+ *
+ * So the band and the number of storeys are capped by **what the Scribe is
+ * carrying**, not by where they have wandered. The Tree keeps its shape: the
+ * klipot, the name, the shrine and the letter are all still of the place, and a
+ * Scribe who has gathered the alphabet meets the crown at full height. What
+ * changes is that arriving somewhere early no longer means arriving at ground
+ * built for someone else. **Rushing the crown makes the crown shallow**, which
+ * is the honest consequence and reads, in play, as its own kind of judgement.
+ *
+ * The cap is a count of *verbs matched against the old climb*, not a count of
+ * letters, and the difference is the whole of it. Counting letters was tried
+ * first and it halved the stalls rather than ending them, because three letters
+ * that do not include the Breath is not three letters that do: a Scribe holding
+ * the Fence, the Mark and the Window met two storeys of Netzach with no way to
+ * leave the ground. So the rung a Scribe has earned is **the highest one whose
+ * entry kit they could pass for** — every verb `lettersOnEntering(n)` would have
+ * given them, they have. That is exactly the coupling the line used to provide
+ * for free, restated as a rule instead of an accident of ordering.
+ */
+/** Every letter the Tree carries — the default, so a bare call sizes nothing down. */
+const ALL_LETTERS: readonly string[] = TREE_PATHS.map((p) => p.letter);
+
+export function regionOfPath(path: TreePath, held: readonly string[] = ALL_LETTERS): Region {
+  const [lower, upper] = path.ends.map((s) => regionOfSefirah(s));
+  const kinds = [...new Set([...lower.klipot.kinds, ...upper.klipot.kinds])];
+  const earned = regionAt(earnedRung(held));
+  /** The Scribe has wandered higher up the Tree than their letters have carried them. */
+  const behind = earned.index < upper.index;
+  return {
+    ...lower,
+    // The rung's index is the *upper* end's, because that is what says how far
+    // up the Tree this ground lies — `rowsFor` and the shrine's height both
+    // read it, and a path into the crown should be a crown-sized floor — but
+    // never a taller one than the Scribe has letters to climb.
+    index: Math.min(upper.index, earned.index),
+    name: `${lower.name} → ${upper.name}`,
+    letters: [path.letter],
+    // **The whole band, or none of it.** Capping only the ceiling left the
+    // *bias* untouched, so a Scribe held back to Malchut's ground still got a
+    // layout drawn from the top of Malchut's band on every screen, because one
+    // end of the path happened to be Gevurah. Measured, that was the larger
+    // half of what remained. A Scribe who has run ahead of their letters walks
+    // the ground their letters earned, bias and all; one who is where their
+    // letters put them meets the place as authored.
+    demand: behind
+      ? { ...earned.demand }
+      : {
+          min: Math.min(lower.demand.min, upper.demand.min) as 1 | 2 | 3,
+          max: Math.max(lower.demand.max, upper.demand.max) as 1 | 2 | 3,
+          ...(lower.demand.bias || upper.demand.bias ? { bias: "hard" as const } : {}),
+        },
+    klipot: {
+      kinds,
+      count: Math.round((lower.klipot.count + upper.klipot.count) / 2),
+    },
+    // Capped the same way, and for the same reason: a corridor fourteen screens
+    // long is its own kind of demand. Measured, the last three stalls left after
+    // the band was capped were all one-storey paths of twelve to fourteen
+    // screens walked by a Scribe with three letters — not ground they could not
+    // cross, ground there was too much of.
+    length: Math.min(Math.round((lower.length + upper.length) / 2), earned.length),
+    // The fixed screens stay with the lower end, which is a place rather than a
+    // crossing. Fragments likewise, so the scroll is still strewn low.
+    hasHouse: lower.hasHouse,
+    hasShrine: lower.hasShrine,
+    fragments: lower.fragments,
+  };
+}
+
+/**
+ * The highest rung whose entry kit this Scribe could pass for — every verb it
+ * would have given them, they hold. Malchut asks for nothing, so the answer is
+ * never lower than one.
+ */
+function earnedRung(held: readonly string[]): number {
+  const mine = new Set(verbsOf(held));
+  let earned = 1;
+  for (let n = 1; n <= TOTAL_REGIONS; n += 1) {
+    if (verbsOf(lettersOnEntering(n)).every((v) => mine.has(v))) earned = n;
+  }
+  return earned;
+}
+
+function regionOfSefirah(sefirah: string): Region {
+  const region = regions.find((r) => r.sefirah === sefirah);
+  if (!region) throw new Error(`No region for ${sefirah}`);
+  return region;
+}
+
+/**
+ * Build the rung for walking a path, holding exactly these letters.
+ *
+ * The whole of what makes the Tree a Tree rather than a line: the terrain is
+ * generated from what the Scribe actually carries, not from how far along a
+ * fixed order they have got. `route.test.ts` is what says this is safe.
+ */
+export function buildPath(
+  path: TreePath,
+  seed: number,
+  held: readonly string[],
+  lightOfTheDay = 1,
+): World {
+  const region = regionOfPath(path, held);
+  // Seeded by the path rather than the region, so walking Malchut→Hod is not
+  // the same ground as walking Yesod→Hod on the same run.
+  const rng = makeRng((seed ^ hashOf(path.id)) >>> 0);
+  const { laid, wordGateTarget } = layout(region, rng, false, undefined, held);
+
+  return paint(
+    laid,
+    region.index,
+    region.sefirah,
+    region.letters,
+    rng,
+    region.hasHouse,
+    lightOfTheDay,
+    fragmentsBefore(region.index),
+    wordGateTarget,
+    region.klipot,
+    undefined,
+    laid.length > 0 ? 1 : 0,
+  );
+}
+
+/** The screens a path is laid from, for auditing the chain. */
+export function laidOfPath(path: TreePath, seed: number, held: readonly string[]): Chunk[] {
+  const region = regionOfPath(path, held);
+  return layout(region, makeRng((seed ^ hashOf(path.id)) >>> 0), false, undefined, held).laid;
+}
+
+/** A stable number from a path's id, so a seed and a path together decide the ground. */
+function hashOf(id: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < id.length; i += 1) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
 }

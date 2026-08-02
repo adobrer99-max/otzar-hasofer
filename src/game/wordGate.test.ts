@@ -13,7 +13,7 @@ describe("the Word-Gate's targets", () => {
     const report = Array.from({ length: TOTAL_REGIONS }, (_, i) => {
       const region = i + 1;
       const held = lettersOnEntering(region);
-      return `region ${region}: ${held.length} letters → ${solvableRoots(region).length} roots`;
+      return `region ${region}: ${held.length} letters → ${solvableRoots(lettersOnEntering(region)).length} roots`;
     });
     console.log(report.join("\n"));
     expect(report.length).toBe(TOTAL_REGIONS);
@@ -22,7 +22,7 @@ describe("the Word-Gate's targets", () => {
   it("only ever names a root the Scribe already holds every letter of", () => {
     for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
       const held = new Set(lettersOnEntering(region));
-      for (const entry of solvableRoots(region)) {
+      for (const entry of solvableRoots(lettersOnEntering(region))) {
         for (const letter of entry.letters) {
           expect(held.has(letter), `region ${region}: ${entry.transliteration} needs ${letter}`).toBe(true);
         }
@@ -32,7 +32,7 @@ describe("the Word-Gate's targets", () => {
 
   it("never names a proper noun, and never a root with a repeated radical", () => {
     for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
-      for (const entry of solvableRoots(region)) {
+      for (const entry of solvableRoots(lettersOnEntering(region))) {
         expect(entry.kind).toBe("root");
         const [a, b, c] = entry.letters;
         expect(a === b || b === c || a === c).toBe(false);
@@ -42,7 +42,7 @@ describe("the Word-Gate's targets", () => {
 
   it("gives every target a short, non-empty clue", () => {
     for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
-      for (const entry of solvableRoots(region).slice(0, 40)) {
+      for (const entry of solvableRoots(lettersOnEntering(region)).slice(0, 40)) {
         const target = toTarget(entry);
         expect(target.clue.length).toBeGreaterThan(2);
         expect(target.clue.length).toBeLessThanOrEqual(64);
@@ -53,8 +53,8 @@ describe("the Word-Gate's targets", () => {
 
   it("picks deterministically from a seed", () => {
     for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
-      const a = chooseTarget(region, makeRng(4242));
-      const b = chooseTarget(region, makeRng(4242));
+      const a = chooseTarget(lettersOnEntering(region), makeRng(4242));
+      const b = chooseTarget(lettersOnEntering(region), makeRng(4242));
       expect(a?.letterIds).toEqual(b?.letterIds);
     }
   });
@@ -86,7 +86,7 @@ describe("trimming a lexicon gloss into a clue", () => {
 
   it("leaves no clue in the whole lexicon ending mid-word", () => {
     for (let region = 3; region <= TOTAL_REGIONS; region += 1) {
-      for (const entry of solvableRoots(region)) {
+      for (const entry of solvableRoots(lettersOnEntering(region))) {
         const clue = clueFrom(entry.gloss);
         const rest = entry.gloss.slice(clue.length);
         // Either the clue consumed the gloss, or it stopped at a boundary.
@@ -100,7 +100,7 @@ describe("trimming a lexicon gloss into a clue", () => {
 
 describe("judging an inscription", () => {
   it("knows the root it asked for", () => {
-    const target = toTarget(solvableRoots(4)[0]);
+    const target = toTarget(solvableRoots(lettersOnEntering(4))[0]);
     const verdict = judge(target.letterIds, target);
     expect(verdict.kind).toBe("target");
     expect(opens(verdict)).toBe(true);
@@ -108,7 +108,7 @@ describe("judging an inscription", () => {
   });
 
   it("still opens for a different real word, for less light", () => {
-    const pool = solvableRoots(6);
+    const pool = solvableRoots(lettersOnEntering(6));
     const target = toTarget(pool[0]);
     const other = pool.find((e) => e.letters.join("-") !== target.letterIds.join("-"));
     expect(other).toBeDefined();
@@ -120,7 +120,7 @@ describe("judging an inscription", () => {
   });
 
   it("costs nothing when the root is hidden", () => {
-    const target = toTarget(solvableRoots(4)[0]);
+    const target = toTarget(solvableRoots(lettersOnEntering(4))[0]);
     // A triple chosen to be nobody's root.
     const verdict = judge(["tzadi", "tzadi", "tzadi"], target);
     expect(opens(verdict)).toBe(false);

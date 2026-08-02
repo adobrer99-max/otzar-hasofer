@@ -20,6 +20,8 @@ import {
   START_CHUNK,
 } from "./chunks";
 import { HUSK_CHARS } from "../combat";
+import { paintChunks } from "./build";
+import { routeTo } from "./route";
 import { MARKER_CHARS, TILE_CHARS } from "./tiles";
 import type { Chunk, Edge } from "./types";
 
@@ -294,5 +296,60 @@ describe("the chunk library", () => {
         `nothing in the library is demand ${demand}`,
       ).toBeGreaterThanOrEqual(4);
     }
+  });
+
+  /**
+   * **Every screen is crossable holding exactly what it declares — no more.**
+   *
+   * For as long as the climb was a line this could not be asked, because it was
+   * never true and never needed to be. `lettersOnEntering` made the letters a
+   * function of how far up the Tree you were, so a screen laid in Gevurah was
+   * met by a Scribe holding everything Malchut through Hod pays out, and a
+   * screen that quietly leaned on a letter it had not declared was indented
+   * from a hundred directions and load-bearing from none.
+   *
+   * The Tree ends that. Twenty-two paths taken in any order hand the generator
+   * letter sets the linear climb never produced — the Bridge without the
+   * Breath, the Eye before the Fence — and it lays screens by what they say
+   * they need. A screen that needs more than it says is then a soft lock, which
+   * is the one bug this game has decided it will not ship.
+   *
+   * Asked of every screen the library can lay, in the chain it belongs to, over
+   * four seeds. It found fourteen when it was first run, and three of those were
+   * real: `wide-chasm`, `sealed-deep` and `stone-chain` all wanted the Breath
+   * and none of them said so. **The other eleven were this test's own
+   * instrument** — a route graph that could not swim, could not cast the Hook,
+   * could not set a stone with Bet, and did not think a Scribe could stand on
+   * stone the Eye had revealed. That is written up at the head of `route.ts`,
+   * and it is the reason this assertion is worth its runtime: a screen and the
+   * thing that measures it can be wrong in the same direction for years.
+   */
+  it("is crossable holding exactly what each screen declares", () => {
+    const up = chunksById["rise-to-high"];
+    const down = chunksById["fall-to-ground"];
+    expect(up, "the library lost its way up").toBeDefined();
+    expect(down, "the library lost its way down").toBeDefined();
+
+    const wanting: string[] = [];
+    for (const chunk of CHUNKS) {
+      // A screen is only ever laid between a start and an end, and one that
+      // begins or ends on the high road needs the lift that gets it there. The
+      // branching `both` screens are laid in pairs and are covered by the pair.
+      const chain =
+        chunk.entry === "ground" && chunk.exit === "ground" ? [START_CHUNK, chunk, END_CHUNK]
+        : chunk.entry === "high" && chunk.exit === "high" ? [START_CHUNK, up, chunk, down, END_CHUNK]
+        : chunk.entry === "ground" && chunk.exit === "high" ? [START_CHUNK, chunk, down, END_CHUNK]
+        : chunk.entry === "high" && chunk.exit === "ground" ? [START_CHUNK, up, chunk, END_CHUNK]
+        : undefined;
+      if (!chain) continue;
+      const crossable = [1, 2, 3, 4].some(
+        (seed) => routeTo(paintChunks(chain, seed), chunk.requires).usable,
+      );
+      if (!crossable) wanting.push(`${chunk.id} declares [${chunk.requires.join(", ") || "-"}]`);
+    }
+    expect(
+      wanting,
+      `screens that need more than they declare, which is a soft lock on the Tree:\n  ${wanting.join("\n  ")}`,
+    ).toEqual([]);
   });
 });

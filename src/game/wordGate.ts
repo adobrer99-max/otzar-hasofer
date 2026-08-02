@@ -1,7 +1,6 @@
 import { shorashimByKey, type ShoreshEntry } from "../data/shorashim.generated";
 import { spellWord } from "../data/hebrewText";
 import { resolveShoresh } from "../herald/shoresh/resolveShoresh";
-import { lettersOnEntering } from "./regions";
 import { randomInt } from "./rng";
 
 /**
@@ -92,12 +91,20 @@ function isUsable(entry: ShoreshEntry, held: ReadonlySet<string>): boolean {
 }
 
 /**
- * Every root a Scribe entering this region could actually spell. Deterministic
- * and pure — the caller picks from it with the run's seeded generator, never
- * `Math.random`, so a gate is the same gate on every replay of a seed.
+ * Every root a Scribe could actually spell with the letters in hand.
+ * Deterministic and pure — the caller picks from it with the run's seeded
+ * generator, never `Math.random`, so a gate is the same gate on every replay
+ * of a seed.
+ *
+ * **Takes the letters, not a region index.** It used to derive them from the
+ * index, which was true only while the climb was a line: the Tree is walked in
+ * whatever order the route takes now, so what a Scribe can spell is a fact
+ * about them rather than about where they are. `lettersOnEntering` is still
+ * exactly the right argument for a linear climb, and the callers that have one
+ * pass it.
  */
-export function solvableRoots(regionIndex: number): ShoreshEntry[] {
-  const held = new Set(lettersOnEntering(regionIndex));
+export function solvableRoots(letterIds: readonly string[]): ShoreshEntry[] {
+  const held = new Set(letterIds);
   if (held.size < 3) return [];
   const found: ShoreshEntry[] = [];
   // Walk only the triples the Scribe can spell rather than the whole 3,889 —
@@ -130,12 +137,15 @@ export function toTarget(entry: ShoreshEntry): WordGateTarget {
 }
 
 /**
- * Picks the root a gate in this region will name. `undefined` when the Scribe
- * could not yet spell anything — which is why the earliest regions carry no
- * gates rather than carrying impossible ones.
+ * Picks the root a gate here will name. `undefined` when the Scribe could not
+ * yet spell anything — which is why the earliest ground carries no gates
+ * rather than carrying impossible ones.
  */
-export function chooseTarget(regionIndex: number, rng: () => number): WordGateTarget | undefined {
-  const pool = solvableRoots(regionIndex);
+export function chooseTarget(
+  letterIds: readonly string[],
+  rng: () => number,
+): WordGateTarget | undefined {
+  const pool = solvableRoots(letterIds);
   if (pool.length === 0) return undefined;
   return toTarget(pool[randomInt(rng, pool.length)]);
 }
