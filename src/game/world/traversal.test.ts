@@ -85,6 +85,7 @@ function probe(
   world: World,
   ctx: StepContext,
   ticks: number,
+  opts?: { pacifist?: boolean },
 ): { reached: number; finished: boolean; lettersTaken: string[]; ticks: number; veilings: number } {
   const lettersTaken: string[] = [];
   const watching: StepContext = {
@@ -163,6 +164,16 @@ function probe(
         const ahead = (e.x - (p.x + p.w / 2)) * towards;
         return ahead > -TILE_SIZE && ahead < TILE_SIZE * 2.5;
       });
+
+    // The nearest klipah ahead and roughly level — what a mark thrown flat
+    // will actually meet.
+    let nearestHusk: number | undefined;
+    for (const husk of world.husks) {
+      const dx = (husk.x - p.x) * (towards || 1);
+      if (dx < -TILE_SIZE || dx > TILE_SIZE * 9) continue;
+      if (Math.abs(husk.y - p.y) > TILE_SIZE * 2) continue;
+      if (nearestHusk === undefined || dx < nearestHusk) nearestHusk = dx;
+    }
 
     // Optional pockets — a Word-Gate's porch above all — are places a body
     // holding right can climb into and then press against a sealed wall
@@ -261,6 +272,11 @@ function probe(
       // real gap. Dashing on every descent flings the probe past the very
       // alcoves it just jumped for.
       dash: (!p.onGround && p.vy > 40 && !groundBelow) || (stuckFor > 14 && i % 21 === 0),
+      // **The competent Scribe writes.** A room closes behind you while there
+      // is something standing in it, so breaking husks is no longer optional
+      // colour on the way past — it is part of crossing a rung, and a probe
+      // that never struck would now be stopped by the first sealed door.
+      strike: !opts?.pacifist && nearestHusk !== undefined && p.markCooldown === 0,
     };
 
     step(world, input, watching);
@@ -485,25 +501,38 @@ describe("walking the regions", () => {
   });
 
   /**
-   * And the other half: with the klipot left standing, a Scribe who never
-   * strikes must still get a long way. They are an obstacle, not a wall — if
-   * a region became impassable simply because something stood in it, the
-   * reachability guarantee above would be a technicality.
+   * **The klipot are no longer optional, and this is where that is asserted.**
+   *
+   * This test used to say the opposite: with the klipot left standing, a
+   * Scribe who never strikes had to get most of the way regardless, because a
+   * region that became impassable simply because something stood in it would
+   * have made the reachability guarantee a technicality.
+   *
+   * Rooms overturn it deliberately. A room closes behind you while something
+   * in it is still holding light, so walking past a fight is exactly what is
+   * no longer possible — which was the measured problem: half the husks went
+   * unbroken and a driver that ignored every one still finished the climb.
+   *
+   * The guarantee has not been given up, it has moved: the *terrain* is still
+   * crossable by a Scribe holding only what the rung gives (above), and the
+   * *fight* is winnable wherever it is held (`fight.test.ts`). What is gone is
+   * the third thing, which was never a guarantee so much as a symptom.
    */
-  it("lets a Scribe who never strikes get most of the way regardless", () => {
-    for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
+  it("stops a Scribe who never strikes at the first door that closes", () => {
+    let stopped = 0;
+    let total = 0;
+    for (let region = 2; region <= TOTAL_REGIONS; region += 1) {
       for (const seed of [3, 91]) {
         const world = buildRegion(region, seed);
-        // Lamps enough that going out is not what stops them — this measures
-        // whether the *ground* is still walkable with husks on it.
-        world.player.lamps = 99;
-        const { reached: fraction } = probe(world, contextFor(region), TICK_BUDGET);
-        expect(
-          fraction,
-          `region ${region} seed ${seed}: only ${(fraction * 100).toFixed(0)}% with husks standing`,
-        ).toBeGreaterThan(0.9);
+        total += 1;
+        const { finished } = probe(world, contextFor(region), TICK_BUDGET, { pacifist: true });
+        if (!finished) stopped += 1;
       }
     }
+    // Not every rung on every seed — a room only closes when something that
+    // stands on its floor is still in it, and plenty of ground has none. What
+    // matters is that walking past the fight has stopped being free.
+    expect(stopped, `not one of ${total} runs was held by a sealed room`).toBeGreaterThan(0);
   });
 
   it("never veils a Scribe who simply stands still on the opening ground", () => {

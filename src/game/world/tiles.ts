@@ -36,6 +36,13 @@ export const Tile = {
   Placed: 11,
   /** A Word-Gate's barrier. Solid until the right root is inscribed. */
   WordGate: 12,
+  /**
+   * A door that has closed behind you. Written into a room's openings while
+   * the klipot standing in it are unbroken, and rubbed out again when they
+   * break — see `stepRooms` in `step.ts`. Solid, and the only tile in the
+   * game that appears and disappears on its own.
+   */
+  Seal: 13,
 } as const;
 
 export type Tile = (typeof Tile)[keyof typeof Tile];
@@ -92,6 +99,7 @@ export function isSolid(
     case Tile.Veiled:
       return opts.revealed;
     case Tile.Door:
+    case Tile.Seal:
     case Tile.WordGate:
       // Both stay solid until the world replaces them — a door when Dalet
       // opens it, a Word-Gate when the root is spelled.

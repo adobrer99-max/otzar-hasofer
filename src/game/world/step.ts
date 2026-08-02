@@ -198,6 +198,7 @@ export function step(world: World, input: Input, ctx: StepContext): void {
   moveAndCollide(world, ctx, p, input.down && !p.crouching);
   touchTiles(world, ctx);
   touchEntities(world, ctx);
+  stepRooms(world);
 
   // The klipot, and everything in flight. After the body has moved, so a hit
   // is judged against where the Scribe actually ended up.
@@ -572,6 +573,103 @@ function storeyOf(y: number): number {
   return Math.floor(y / (CHUNK_H * TILE_SIZE));
 }
 
+// ---------------------------------------------------------------------------
+// the rooms
+// ---------------------------------------------------------------------------
+
+/**
+ * A room closes behind you while there is something standing in it.
+ *
+ * This is the one lever the tuning pass wanted and could not pull. Measured
+ * before rooms existed: **the klipot are optional.** About half of them go
+ * unbroken, and a driver that ignores every one still finishes the climb — so
+ * the fight was something happening beside the game rather than in it. Sealing
+ * makes the room the unit of the fight, and it does so without touching a
+ * single number in `combat.ts`.
+ *
+ * Three rules keep it from ever becoming a lock, and they are the whole reason
+ * this is safe to do:
+ *
+ * 1. **The seal is only ever on while you are inside.** Leaving lifts it, so
+ *    it can never shut a Scribe *out* of anywhere.
+ * 2. **A veiling lifts it too** — you wake at your mark, and the room is open
+ *    again behind you. A fight you cannot win costs ground, never the run.
+ * 3. **The way in and the way out never seal**, so a rung can always be
+ *    entered and always be left.
+ */
+function stepRooms(world: World): void {
+  if (world.rooms.length === 0) return;
+  const p = world.player;
+  const cx = (p.x + p.w / 2) / TILE_SIZE;
+  const cy = (p.y + p.h / 2) / TILE_SIZE;
+
+  const now = world.rooms.findIndex(
+    (r) => cx >= r.x && cx < r.x + r.w && cy >= r.y && cy < r.y + r.h,
+  );
+  if (now === -1) return;
+
+  if (now !== world.roomIndex) {
+    unseal(world, world.rooms[world.roomIndex]);
+    world.roomIndex = now;
+  }
+
+  const room = world.rooms[now];
+  // **A door is held by what stands in the way of it, and nothing else.**
+  //
+  // A klipah on the room's own floor is always in the path of a mark thrown
+  // flat, so a door it holds is clearable by construction. One that drifts, or
+  // spits from a shelf, may be somewhere a flat mark never reaches — so those
+  // are in the room and are simply not what the door is waiting on. A door
+  // held shut by something unreachable is the one thing sealing must never be,
+  // and requiring *every* husk to be a standing one made the seal so rare it
+  // barely fired: five runs in eighteen were held, and the klipot went on
+  // being optional.
+  const holding = world.husks.filter(
+    (h) => room.husks.includes(h.id) && !h.broken && (h.kind === "crawler" || h.kind === "sentinel"),
+  );
+  const standing = holding.length > 0;
+
+  if (!standing) {
+    if (!room.cleared) {
+      room.cleared = true;
+      if (unseal(world, room)) say(world, "The room is quiet. The way opens.");
+    }
+    return;
+  }
+
+  // Not in the kingdom. Malchut is where the walk, the leap and the mark are
+  // taught, and a room that closes on a Scribe who has not yet been told which
+  // key writes is a locked door with the lesson on the other side of it.
+  if (world.regionIndex <= 1) return;
+  if (room.cleared || room.entrance || room.kind === "exit" || room.kind === "vessel") return;
+  if (seal(world, room)) say(world, "The way closes. Something here is still holding light.");
+}
+
+function seal(world: World, room: World["rooms"][number]): boolean {
+  let closed = false;
+  for (const door of room.doors) {
+    for (const tile of door.tiles) {
+      if (tileAt(world, tile.x, tile.y) !== Tile.Empty) continue;
+      setTile(world, tile.x, tile.y, Tile.Seal);
+      closed = true;
+    }
+  }
+  return closed;
+}
+
+function unseal(world: World, room: World["rooms"][number] | undefined): boolean {
+  if (!room) return false;
+  let opened = false;
+  for (const door of room.doors) {
+    for (const tile of door.tiles) {
+      if (tileAt(world, tile.x, tile.y) !== Tile.Seal) continue;
+      setTile(world, tile.x, tile.y, Tile.Empty);
+      opened = true;
+    }
+  }
+  return opened;
+}
+
 function touchEntities(world: World, ctx: StepContext): void {
   const p = world.player;
   const pull = ctx.graces.includes("draw-motes") ? TILE_SIZE * 3 : 0;
@@ -715,6 +813,11 @@ function veil(world: World, ctx: StepContext, message: string): void {
   world.player.veiled = VEIL_TICKS;
   world.veilings += 1;
   world.or = Math.max(0, world.or - 2);
+
+  // A veiling always opens the room. You wake at the mark, which is elsewhere,
+  // and a room that stayed shut behind you would be a door nobody could ever
+  // open again — the one way a sealed fight could become a lock.
+  unseal(world, world.rooms[world.roomIndex]);
 
   const fork = world.fork;
   const returns = grace(ctx, "return") && fork && fork.x > world.respawn.x;

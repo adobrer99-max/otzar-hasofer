@@ -185,9 +185,36 @@ function drawTile(
     case Tile.WordGate:
       drawWordGate(ctx, x, y, palette, world.tick);
       break;
+    case Tile.Seal:
+      drawSeal(ctx, x, y, palette, world.tick);
+      break;
     default:
       break;
   }
+}
+
+/**
+ * A door that closed behind you. Drawn as light drawn across the opening
+ * rather than as stone: it is not masonry, it is the room holding its breath,
+ * and it has to read as something that will lift rather than something that
+ * was always there.
+ */
+function drawSeal(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  palette: Palette,
+  tick: number,
+): void {
+  const breathe = 0.55 + Math.sin(tick / 22) * 0.12;
+  ctx.fillStyle = alpha(palette.gold, breathe * (palette.light ? 0.22 : 0.16));
+  ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+  ctx.strokeStyle = alpha(palette.gold, breathe);
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x + 2, y + TILE_SIZE / 2);
+  ctx.lineTo(x + TILE_SIZE - 2, y + TILE_SIZE / 2);
+  ctx.stroke();
 }
 
 function drawStone(
