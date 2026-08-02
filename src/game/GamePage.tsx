@@ -39,6 +39,14 @@ import { openWordGate } from "./world/step";
 import { useGameAudio } from "./audio/useGameAudio";
 import { readAscentTime } from "./sacredAscent";
 import { fragmentAt, SCROLL_LETTER, SCROLL_TOTAL, SCROLL_VERSE } from "./scroll";
+import {
+  ABYSS_WORD,
+  pleaFor,
+  PROLOGUE,
+  TESTIMONY,
+  witnessesOf,
+  WITNESSES_POSSIBLE,
+} from "./story";
 import { buildRegion, verbsOf } from "./world/build";
 import type { World } from "./world/types";
 import styles from "./GamePage.module.css";
@@ -510,7 +518,7 @@ export function GamePage() {
           kicker="The Practice"
           title="Ma'alot — The Ascent of the Tree"
           hebrew="מַעֲלוֹת"
-          lede="Climb from Malchut to Keter on the twenty-two letters. Each letter you find is a power drawn from its own ancient sense — Vav the hook, Mem the water, Chet the fence — and the way up opens as the alphabet does. Nothing here can kill you: a fall or a thorn only veils you, and you wake at your mark."
+          lede="You were the scribe of the crown, and you were cast down to the kingdom without being told what for. Climb back on the twenty-two letters — each one a power drawn from its own ancient sense, Vav the hook, Mem the water, Chet the fence — and speak with the figures keeping the Houses on the way, because they were told what you were not. You will need a mouth to plead with, and the Mouth is in pieces. Nothing here can kill you: a fall or a thorn only veils you, and you wake at your mark."
         />
       )}
 
@@ -682,6 +690,18 @@ function Threshold({
             </span>
           </p>
         )}
+
+        {/* Why any of this is being climbed. Open by default for a Scribe who
+            has never begun, and foldable for everyone who has. */}
+        <details className={styles.prologue} open={!ascent}>
+          <summary className={styles.prologueSummary}>{PROLOGUE.kicker}</summary>
+          {PROLOGUE.lines.map((line) => (
+            <p key={line.slice(0, 24)} className={styles.prologueLine}>
+              {line}
+            </p>
+          ))}
+          <p className={styles.prologueCharge}>{PROLOGUE.charge}</p>
+        </details>
 
         <p className={styles.seedLine}>
           Today is <strong>{time.seedLabel}</strong>. The Tree is seeded by the Hebrew date, so every
@@ -1282,6 +1302,10 @@ function HousePlate({
   const card = dorotCardsById[cardId];
   const house = card ? dorotHousesById[card.houseId] : undefined;
   const offer = offerFor(sefirah);
+  // The piece of the charge this rung holds. Keyed by Sefirah rather than by
+  // figure, because either House may stand here and both of them did the same
+  // thing at this rung — see `story.ts`.
+  const testimony = TESTIMONY[sefirah];
   if (!card) return null;
   return (
     <>
@@ -1297,6 +1321,15 @@ function HousePlate({
         <p className={styles.plateSource}>
           <Link to={`/guide/dorot/${house.id}`}>Read the House of {house.figure} →</Link>
         </p>
+      )}
+
+      {testimony && (
+        <div className={styles.testimony}>
+          <DecoratedRule />
+          <p className={styles.plateKicker}>What you are accused of</p>
+          <p className={styles.charge}>&ldquo;{testimony.charge}&rdquo;</p>
+          <p className={styles.offerSaying}>&ldquo;{testimony.answer}&rdquo;</p>
+        </div>
       )}
 
       {offer && (
@@ -1395,6 +1428,7 @@ function AbyssPlate({ onNext }: { onNext: () => void }) {
         Beyond it there are no more Houses. Binah, Chochmah and Keter are crossed on the letters
         alone.
       </p>
+      <p className={styles.plateQuestion}>{ABYSS_WORD}</p>
       <Button variant="primary" onClick={onNext} autoFocus>
         Cross
       </Button>
@@ -1413,6 +1447,10 @@ function SealedPlate({
 }) {
   const found = ascent.lettersHeld.length;
   const all = found === 22;
+  // The case, from the Houses spoken with on the way up. `housesMet` has
+  // always been recorded and until now was only ever counted.
+  const witnesses = witnessesOf(ascent.housesMet);
+  const plea = pleaFor({ hasMouth: ascent.lettersHeld.includes(SCROLL_LETTER), witnesses });
   return (
     <>
       <p className={styles.plateKicker}>Keter</p>
@@ -1465,9 +1503,20 @@ function SealedPlate({
         </>
       )}
 
+      <DecoratedRule />
+      {/* What the whole climb was for. The Mouth is required and its absence is
+          the one genuinely hard outcome in a game with no failure state — the
+          ascent still seals, the case simply is not made. */}
+      <p className={styles.plateKicker}>{plea.kicker}</p>
+      {plea.lines.map((line) => (
+        <p key={line.slice(0, 24)} className={plea.kind === "mute" ? styles.pleaMute : styles.plea}>
+          {line}
+        </p>
+      ))}
+
       <p className={styles.plateDerivation}>
-        {ascent.or} light carried · {ascent.housesMet.length} of the Houses met · seeded by{" "}
-        {ascent.seedLabel}.
+        {ascent.or} light carried · {witnesses.length} of {WITNESSES_POSSIBLE} Houses stood for you
+        · seeded by {ascent.seedLabel}.
       </p>
       <Button variant="primary" onClick={onSeal} autoFocus>
         Seal the ascent
