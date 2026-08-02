@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  BEASTS,
   canBeStruck,
   HUSK_CHARS,
+  isBeast,
   HUSKS,
   kindForRole,
   IFRAME_TICKS,
@@ -20,9 +22,14 @@ import { regions } from "./regions";
  * be reasoned about without running a game.
  */
 describe("the klipot", () => {
-  it("names ten shells, each with something in it and something inside that", () => {
+  it("names every shell, each with something in it and something inside that", () => {
     const kinds = Object.keys(HUSKS) as HuskKind[];
-    expect(kinds).toHaveLength(10);
+    // Ten klipot and seven creatures. Counted apart rather than together,
+    // because they are two claims: the ten are human failures Tanach names,
+    // and the seven are not failures at all — see `BEASTS`.
+    expect(kinds.filter((k) => !isBeast(k))).toHaveLength(10);
+    expect(BEASTS).toHaveLength(7);
+    expect(kinds).toHaveLength(17);
     for (const kind of kinds) {
       const spec = HUSKS[kind];
       expect(spec.kind, `${kind} is filed under the wrong name`).toBe(kind);

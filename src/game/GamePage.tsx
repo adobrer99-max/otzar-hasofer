@@ -41,7 +41,7 @@ import { openWordGate } from "./world/step";
 import { useGameAudio } from "./audio/useGameAudio";
 import { readAscentTime } from "./sacredAscent";
 import { fragmentAt, SCROLL_LETTER, SCROLL_TOTAL, SCROLL_VERSE } from "./scroll";
-import { GOING_OUT, HUSKS, LAMPS } from "./combat";
+import { GOING_OUT, HUSKS, isBeast, LAMPS } from "./combat";
 import { describeEffect, keliById, powersFrom, synergiesIn } from "./items";
 import {
   ABYSS_WORD,
@@ -1451,7 +1451,14 @@ function Keys({ held, regionIndex }: { held: readonly string[]; regionIndex: num
             </span>
             <div>
               <p className={styles.keyName}>
-                {husk.name} <span className={styles.keyKind}>{husk.shells} shells</span>
+                {husk.name}{" "}
+                <span className={styles.keyKind}>
+                  {/* Which tier it belongs to, because the two are not the same
+                      claim: the klipot are human failures Tanach names, and a
+                      creature is not doing anything wrong by existing. Saying
+                      so is the difference between a bestiary and a list. */}
+                  {isBeast(husk.kind) ? "creature" : "klipah"} · {husk.shells} shells
+                </span>
               </p>
               <p className={styles.keyUse}>{husk.is}</p>
               <p className={styles.keySource}>{husk.source}</p>

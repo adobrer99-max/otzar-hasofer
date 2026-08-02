@@ -32,6 +32,20 @@ import { powersFrom } from "./items";
  * behaviour **is** the reading, and if you can tell which one it is by how it
  * comes at you, the writing has done its work.
  *
+ * ## And why some of them are not people
+ *
+ * The ten are all human failures, which is right for the foot of the Tree and
+ * wrong for the top of it: a Scribe climbing past the Abyss is not still being
+ * asked about sibling rivalry. Above them stands a second tier — the
+ * **creatures**, which Tanach names as freely as it names the people and which
+ * are not failures at all. A tannin is not doing anything wrong by being a
+ * tannin. They are simply what is there, older than the argument, and they do
+ * not care who you are.
+ *
+ * Read the two tiers against each other and the difference is the point: a
+ * klipah is a shell around a failure and can be talked about; a creature is a
+ * shell around the world's own strength and can only be met.
+ *
  * ## Roles
  *
  * The chunk library is authored once and drawn on by every rung, so a screen
@@ -54,7 +68,35 @@ export type HuskKind =
   | "izevel"
   | "delilah"
   | "atalya"
-  | "nachash";
+  | "nachash"
+  // The creatures. Not failures — the world's own strength, and older than
+  // anybody who could be blamed for anything.
+  | "tannin"
+  | "reem"
+  | "saraf"
+  | "rahav"
+  | "og"
+  | "nefilim"
+  | "arbeh";
+
+/**
+ * The seven creatures, as against the ten klipot.
+ *
+ * Kept as a list rather than a flag on the spec so that "is this a beast?" has
+ * exactly one answer and the bestiary plate can be split in two without
+ * anything having to agree with anything else about it.
+ */
+export const BEASTS: readonly HuskKind[] = [
+  "tannin",
+  "reem",
+  "saraf",
+  "rahav",
+  "og",
+  "nefilim",
+  "arbeh",
+];
+
+export const isBeast = (kind: HuskKind): boolean => BEASTS.includes(kind);
 
 /**
  * What a screen can ask for, as against what a rung supplies.
@@ -252,6 +294,118 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     light: 5,
     size: { w: 20, h: 20 },
     notices: Infinity,
+    flies: true,
+  },
+
+  // -------------------------------------------------------------------------
+  // the creatures
+  // -------------------------------------------------------------------------
+
+  tannin: {
+    kind: "tannin",
+    name: "The Tannin",
+    hebrew: "תַּנִּין",
+    source: "Bereshit 1:21 — וַיִּבְרָא אֱלֹהִים אֶת־הַתַּנִּינִם הַגְּדֹלִים",
+    is: "It stays in the water, where nothing can touch it, and comes out of it at you.",
+    reading: "The great sea-creatures are the first thing the account of creation bothers to say was made — and they were made, which is the whole of what they are.",
+    role: "floater",
+    shells: 3,
+    speed: 88,
+    light: 4,
+    size: { w: 20, h: 20 },
+    notices: 220,
+  },
+  reem: {
+    kind: "reem",
+    name: "The Re'em",
+    hebrew: "רְאֵם",
+    source: "Bamidbar 23:22 — כְּתוֹעֲפֹת רְאֵם לוֹ, the horns of the wild ox",
+    is: "It runs one line and will not turn. Stand aside and it goes into the wall.",
+    reading: "Not malice. It has never once been asked to reconsider, and it would not know how.",
+    role: "charger",
+    shells: 3,
+    speed: 196,
+    light: 5,
+    size: { w: 24, h: 20 },
+    notices: 280,
+  },
+  saraf: {
+    kind: "saraf",
+    name: "The Saraf",
+    hebrew: "שָׂרָף",
+    source: "Bamidbar 21:6 — הַנְּחָשִׁים הַשְּׂרָפִים, the burning serpents",
+    is: "The ground it has crossed goes on burning after it.",
+    reading: "The bite is not what kills. What kills is the ground you have to go back over.",
+    role: "pacer",
+    shells: 2,
+    speed: 76,
+    light: 3,
+    size: { w: 18, h: 16 },
+    notices: 240,
+    throws: 22,
+  },
+  rahav: {
+    kind: "rahav",
+    name: "Rahav",
+    hebrew: "רַהַב",
+    source: "Yeshayahu 51:9 — הֲלוֹא אַתְּ־הִיא הַמַּחְצֶבֶת רַהַב",
+    is: "Every shell you take off it makes it bigger and faster.",
+    reading: "Pride does not diminish when it is opposed. It is the one thing that grows on being struck.",
+    role: "charger",
+    shells: 4,
+    speed: 62,
+    light: 5,
+    size: { w: 18, h: 20 },
+    notices: 300,
+  },
+  og: {
+    kind: "og",
+    name: "Og of Bashan",
+    hebrew: "עוֹג",
+    source: "Devarim 3:11 — his bedstead of iron, nine cubits its length",
+    is: "Slow, and enormous, and its step brings the ceiling down where you stand.",
+    reading: "The last of the giants, and what is dangerous about him is not that he is quick.",
+    role: "pacer",
+    shells: 5,
+    speed: 34,
+    light: 6,
+    size: { w: 26, h: 28 },
+    notices: Infinity,
+    // **Measured.** At 140 with a reach of eighteen tiles he was a barrage
+    // rather than a giant: Chochmah stands nine bodies, several of them his,
+    // and the ceiling came down somewhere every two seconds. Five runs in ten
+    // went out there against two before he arrived. He is slow — the sentence
+    // is that you cannot outrun what he brings down, not that he does it
+    // constantly from across the room.
+    throws: 260,
+  },
+  nefilim: {
+    kind: "nefilim",
+    name: "The Nefilim",
+    hebrew: "נְפִילִים",
+    source: "Bereshit 6:4 — הַנְּפִלִים הָיוּ בָאָרֶץ, and the name means they fell",
+    is: "It hangs where it is and does nothing until you are underneath it.",
+    reading: "They are named for the one thing they did. Everything else about them is waiting.",
+    role: "floater",
+    shells: 2,
+    speed: 0,
+    light: 4,
+    size: { w: 20, h: 22 },
+    notices: 150,
+  },
+  arbeh: {
+    kind: "arbeh",
+    name: "The Arbeh",
+    hebrew: "אַרְבֶּה",
+    source: "Shemot 10:14 — before them there were no such locusts, neither after them",
+    is: "One of them is nothing. There are never one of them.",
+    reading: "The eighth plague is the only one that is a number rather than a thing.",
+    role: "floater",
+    shells: 1,
+    speed: 68,
+    light: 2,
+    size: { w: 12, h: 12 },
+    notices: 320,
     flies: true,
   },
 };

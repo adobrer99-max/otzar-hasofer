@@ -1361,6 +1361,163 @@ function stepHusks(world: World, ctx: StepContext): void {
         husk.facing = (husk.vx > 0 ? 1 : -1) as 1 | -1;
         break;
       }
+
+      // ---------------------------------------------------------------------
+      // the creatures
+      // ---------------------------------------------------------------------
+
+      // **The Tannin.** The great sea-creatures, and the first made thing the
+      // account of creation bothers to name. It holds the water, where
+      // `submerged` already forbids a mark from touching it, and comes out at
+      // whatever is standing on the bank — so the fight is about catching it
+      // in the air, which is the only place it can be written on.
+      case "tannin": {
+        const wet = isWater(tileAt(world, tile(husk.x + husk.w / 2), tile(husk.y + husk.h / 2)));
+        if (wet) {
+          // Under, it swims to the Scribe's column and gathers.
+          husk.vx = Math.sign(toward) * spec.speed * 0.5;
+          husk.vy = -spec.speed * 0.35;
+          if (near < spec.notices && Math.abs(toward) < TILE_SIZE * 3 && husk.cooldown === 0) {
+            husk.cooldown = 90;
+            husk.charging = 28;
+            husk.vy = -430;
+          }
+        } else if (husk.charging > 0) {
+          // Out. It goes where it was aimed and gravity does the rest.
+          husk.charging -= 1;
+          husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
+        } else {
+          // Landed, or laid on a rung with no water in it at all. It walks
+          // like anything else rather than lying where it fell — a creature
+          // that is inert wherever it was not authored to be is scenery.
+          pace(world, ctx, husk, spec.speed * 0.5);
+        }
+        break;
+      }
+
+      // **The Re'em.** כְּתוֹעֲפֹת רְאֵם לוֹ — the horns of the wild ox. It picks
+      // a line and runs it, and it has never once been asked to reconsider, so
+      // **stone takes a shell off it**: step out of the way and it does the
+      // work. The one klipah in the game a Scribe can break without writing.
+      case "reem": {
+        husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
+        if (husk.charging > 0) {
+          husk.charging -= 1;
+          husk.vx = husk.facing * spec.speed;
+          const nose = tile(husk.x + (husk.facing > 0 ? husk.w + 3 : -3));
+          if (isSolid(tileAt(world, nose, tile(husk.y + husk.h / 2)), solidFor(world, ctx))) {
+            husk.charging = 0;
+            husk.cooldown = 70;
+            husk.vx = 0;
+            strikeHusk(world, husk, 1, -husk.facing, husk.x);
+            say(world, "It goes into the wall rather than turn.");
+          }
+        } else if (near < spec.notices && husk.cooldown === 0) {
+          husk.facing = (toward > 0 ? 1 : -1) as 1 | -1;
+          husk.charging = 150;
+        } else {
+          husk.vx *= 0.86;
+        }
+        break;
+      }
+
+      // **The Saraf.** הַנְּחָשִׁים הַשְּׂרָפִים. The bite is not what kills; what
+      // kills is the ground you have to go back over. What it leaves behind is
+      // a mark of its own — the world already carries those, moves them,
+      // expires them and collides them with the Scribe, so a burning floor
+      // needed no new machinery at all, only something that does not fly away.
+      case "saraf": {
+        pace(world, ctx, husk, spec.speed);
+        if (husk.cooldown === 0 && spec.throws) {
+          husk.cooldown = spec.throws;
+          world.marks.push({
+            id: `f${world.tick}-${husk.id}`,
+            mine: false,
+            x: husk.x + husk.w / 2 - MARK_SIZE / 2,
+            y: husk.y + husk.h - MARK_SIZE,
+            w: MARK_SIZE,
+            h: MARK_SIZE,
+            vx: 0,
+            vy: 0,
+            life: 150,
+            pierces: false,
+            bite: 1,
+            draws: false,
+            glyph: "שׂ",
+          });
+        }
+        break;
+      }
+
+      // **Rahav.** הֲלוֹא אַתְּ־הִיא הַמַּחְצֶבֶת רַהַב. Pride does not diminish when
+      // it is opposed: every shell taken off it makes it larger and quicker,
+      // so the last one is a different creature from the first.
+      case "rahav": {
+        const swollen = 1 + (spec.shells - husk.shells) * 0.28;
+        husk.w = spec.size.w * swollen;
+        husk.h = spec.size.h * swollen;
+        husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
+        if (near < spec.notices) {
+          husk.facing = (toward > 0 ? 1 : -1) as 1 | -1;
+          husk.vx = husk.facing * spec.speed * swollen;
+        } else pace(world, ctx, husk, spec.speed * 0.5);
+        break;
+      }
+
+      // **Og.** The last of the giants, whose bedstead was nine cubits of iron.
+      // What is dangerous about him is not that he is quick — it is that the
+      // ceiling comes down where you are standing rather than where he is.
+      case "og": {
+        pace(world, ctx, husk, spec.speed);
+        if (husk.cooldown === 0 && spec.throws && near < TILE_SIZE * 10) {
+          husk.cooldown = spec.throws;
+          world.marks.push({
+            id: `o${world.tick}-${husk.id}`,
+            mine: false,
+            x: p.x + p.w / 2 - MARK_SIZE / 2,
+            y: Math.max(0, p.y - TILE_SIZE * 7),
+            w: MARK_SIZE,
+            h: MARK_SIZE,
+            vx: 0,
+            vy: 210,
+            life: 120,
+            pierces: false,
+            bite: 1,
+            draws: false,
+            glyph: "׃",
+          });
+          say(world, "The step shakes something loose above you.");
+        }
+        break;
+      }
+
+      // **The Nefilim.** They are named for the one thing they did, and
+      // everything else about them is waiting. It hangs, weightless, until the
+      // Scribe is underneath it — and then it is not weightless.
+      case "nefilim": {
+        const under = Math.abs(toward) < husk.w && p.y > husk.y;
+        if (husk.charging > 0 || under) {
+          if (husk.charging === 0) husk.charging = 1;
+          husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
+          husk.vx = 0;
+        } else {
+          husk.vx = 0;
+          husk.vy = 0;
+        }
+        break;
+      }
+
+      // **The Arbeh.** The eighth plague is the only one that is a number
+      // rather than a thing. One of them is nothing; they are never one. It
+      // drifts at the Scribe on a phase of its own, so a cloud of them arrives
+      // spread out instead of stacked in a single body.
+      case "arbeh": {
+        const away = Math.hypot(toward, p.y - husk.y) || 1;
+        const swing = Math.sin((world.tick + husk.home.x) / 14) * 0.55;
+        husk.vx = (toward / away) * spec.speed;
+        husk.vy = ((p.y - husk.y) / away) * spec.speed + swing * spec.speed;
+        break;
+      }
     }
 
     moveHusk(world, ctx, husk);
@@ -1374,6 +1531,16 @@ function stepHusks(world: World, ctx: StepContext): void {
   }
   world.husks = world.husks.filter((h) => !h.broken);
 }
+
+/** Pixels to the tile they fall in. Written out often enough to want a name. */
+const tile = (px: number) => Math.floor(px / TILE_SIZE);
+
+/** The stone test as a klipah sees it — never crawling, and the Eye is the Scribe's. */
+const solidFor = (world: World, ctx: StepContext) => ({
+  verbs: ctx.verbs,
+  crawling: false,
+  revealed: world.revealed,
+});
 
 /**
  * Walking a ledge and turning at its edge — the oldest of the behaviours, and

@@ -77,6 +77,16 @@ export interface Region {
    * Chochmah's shadow before it is anything else; it goes on standing at the
    * crown because that is where it was always going to be waiting.
    *
+   * **And from Netzach up, the creatures**, on the same principle. The Re'em,
+   * which will not turn, stands at Netzach, which is endurance. The Saraf's
+   * bite is not what kills — the ground you have to go back over is — so it is
+   * Tiferet's, which is truth. The Arbeh is the one plague that is a number
+   * rather than a thing, and Gevurah is judgment falling. The Tannin is the sea
+   * and Chesed is water. Rahav is the sea's *pride*, cut down, and Binah is
+   * where a thing is understood rather than admired. Og is the last of the
+   * giants and Chochmah is the oldest ground there is. And the Nefilim are
+   * named for a fall from the highest place, which is Keter.
+   *
    * The other constraint is mechanical and is not negotiable: **no rung may be
    * all pacers and chargers**, because those are the roles a door waits on, and
    * a rung whose every klipah holds a door seals every room in it. Measured, on
@@ -165,7 +175,7 @@ export const regions: Region[] = [
     letters: ["kuf", "lamed"],
     length: 6,
     demand: { min: 1, max: 3 },
-    klipot: { kinds: ["brothers", "esav", "delilah"], count: 5 },
+    klipot: { kinds: ["brothers", "esav", "delilah", "reem"], count: 5 },
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -180,7 +190,7 @@ export const regions: Region[] = [
     letters: ["vav", "tzadi"],
     length: 7,
     demand: { min: 1, max: 3 },
-    klipot: { kinds: ["cain", "amalek", "izevel"], count: 6 },
+    klipot: { kinds: ["cain", "amalek", "izevel", "saraf"], count: 6 },
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -195,7 +205,7 @@ export const regions: Region[] = [
     letters: ["zayin", "tet"],
     length: 7,
     demand: { min: 2, max: 3 },
-    klipot: { kinds: ["cain", "amalek", "korach"], count: 6 },
+    klipot: { kinds: ["cain", "amalek", "korach", "arbeh"], count: 6 },
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -210,7 +220,7 @@ export const regions: Region[] = [
     letters: ["mem", "nun"],
     length: 7,
     demand: { min: 2, max: 3 },
-    klipot: { kinds: ["esav", "korach", "izevel"], count: 7 },
+    klipot: { kinds: ["esav", "korach", "izevel", "tannin"], count: 7 },
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -225,7 +235,7 @@ export const regions: Region[] = [
     letters: ["ayin", "bet", "kaf"],
     length: 8,
     demand: { min: 2, max: 3, bias: "hard" },
-    klipot: { kinds: ["korach", "izevel", "atalya"], count: 6 },
+    klipot: { kinds: ["korach", "izevel", "atalya", "rahav"], count: 6 },
     hasHouse: false,
     hasShrine: false,
     teaching:
@@ -240,7 +250,7 @@ export const regions: Region[] = [
     letters: ["shin", "dalet"],
     length: 8,
     demand: { min: 2, max: 3, bias: "hard" },
-    klipot: { kinds: ["atalya", "izevel", "nachash"], count: 9 },
+    klipot: { kinds: ["atalya", "izevel", "nachash", "og"], count: 9 },
     hasHouse: false,
     hasShrine: false,
     teaching:
@@ -255,7 +265,7 @@ export const regions: Region[] = [
     letters: ["yod"],
     length: 9,
     demand: { min: 2, max: 3, bias: "hard" },
-    klipot: { kinds: ["calf", "atalya", "nachash", "delilah"], count: 10 },
+    klipot: { kinds: ["calf", "atalya", "nachash", "delilah", "nefilim"], count: 10 },
     hasHouse: false,
     hasShrine: false,
     teaching:
