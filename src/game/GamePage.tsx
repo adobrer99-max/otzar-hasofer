@@ -312,6 +312,13 @@ export function GamePage() {
 
   const warpTo = useCallback(
     (options: WarpOptions) => {
+      // The guard is inside the callback, not around it. A hook cannot be
+      // called conditionally, so a `useCallback` whose body merely *mentions*
+      // the warp keeps the whole module alive in a production bundle — which
+      // is exactly what the `dist/` grep caught the moment the probe was
+      // added. An early return on a constant `false` makes the rest
+      // unreachable, and unreachable code is what tree-shaking removes.
+      if (!import.meta.env.DEV) return;
       const written = warpParams(options);
       warped.current = written;
       setParams(written, { replace: true });
@@ -352,9 +359,10 @@ export function GamePage() {
   plateRef.current = plate;
   useEffect(() => {
     if (!import.meta.env.DEV) return;
+    // Same shape of guard, same reason — see `warpTo`.
     return installProbe({
-      read: () => probeOf(worldRef.current, ascentRef.current, plateRef.current?.kind),
-      look: (radius) => neighbourhood(worldRef.current, radius),
+      read: () => (import.meta.env.DEV ? probeOf(worldRef.current, ascentRef.current, plateRef.current?.kind) : null),
+      look: (radius) => (import.meta.env.DEV ? neighbourhood(worldRef.current, radius) : []),
     });
   }, []);
 
