@@ -127,9 +127,27 @@ if (has("list")) {
   process.exit(0);
 }
 
-const scripts = wanted.length
-  ? SCRIPTS.filter((s) => wanted.includes(s.name))
-  : SCRIPTS;
+/**
+ * `--warp=seed=8,lamps=1` and `--seconds=240` — the two things worth changing
+ * without editing the file. A script is a starting point, not a fixture: a
+ * region that went badly on one seed is worth seeing on another, and a run
+ * that ran out of clock is worth more clock.
+ */
+const overrides = Object.fromEntries(
+  (flag("warp", "") ? flag("warp", "").split(",") : []).map((pair) => {
+    const [key, value] = pair.split("=");
+    return [key, value];
+  }),
+);
+const seconds = flag("seconds", undefined);
+
+const scripts = (wanted.length ? SCRIPTS.filter((s) => wanted.includes(s.name)) : SCRIPTS).map(
+  (s) => ({
+    ...s,
+    warp: { ...s.warp, ...overrides },
+    seconds: seconds ? Number(seconds) : s.seconds,
+  }),
+);
 if (!scripts.length) {
   console.error(`No such script. Try --list.`);
   process.exit(1);
@@ -233,6 +251,7 @@ function decide(p, look, memory, opts) {
 
   const husk = p.husks.nearest;
   const reckless = opts?.reckless;
+  memory.actFor -= 1;
 
   return {
     // Held.
@@ -250,7 +269,13 @@ function decide(p, look, memory, opts) {
     // "A stone stands where you set it" / "The stone is taken back". And once
     // the Hook has caught, pressing again just re-hangs him — that run ended
     // dangling from an anchor with the clock run out.
-    act: !p.grappled && (barrierAhead || (!p.onGround && !groundBelow)),
+    // ...and never twice in quick succession. Over a chasm with rings above
+    // it there is no ground below by definition, so an uncooled act casts the
+    // Hook, gets thrown, falls, and casts again — a pendulum that never lands.
+    // One Keter run spent a hundred and forty seconds oscillating between two
+    // anchors at 53% across, which `step.ts` had warned in a comment was
+    // exactly what happens.
+    act: memory.actFor <= 0 && !p.grappled && (barrierAhead || (!p.onGround && !groundBelow)),
     dash: !reckless && !p.onGround && !groundBelow && memory.tick % 3 === 0,
     strike: opts?.strike !== false && husk !== undefined && husk < 220 && memory.tick % 5 === 0,
   };
@@ -299,7 +324,7 @@ async function play(script, browser) {
     for (const name of HELD_KEYS) await press(name, false);
   };
 
-  const memory = { mark: 0, stuckFor: 0, jumpFor: 0, leaveGate: 0, tick: 0 };
+  const memory = { mark: 0, stuckFor: 0, jumpFor: 0, leaveGate: 0, actFor: 0, tick: 0 };
   const report = {
     script: script.name,
     about: script.about,
@@ -388,6 +413,7 @@ async function play(script, browser) {
     const input = decide(p, look, memory, script.driver);
     for (const name of HELD_KEYS) await press(name, Boolean(input[name]));
     for (const name of TAP_KEYS) if (input[name]) await page.keyboard.press(KEYS[name]);
+    if (input.act) memory.actFor = 25;
 
     // Not before the world has drawn once, or the sheet opens on a black cell.
     if (p.tick > 20 && Date.now() - lastShot > shotEvery) {
