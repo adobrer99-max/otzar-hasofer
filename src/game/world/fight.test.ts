@@ -107,7 +107,7 @@ function fighter(world: World, ctx: StepContext, ticks: number): Fight {
     // The nearest husk ahead and within a mark's reach — with its height, so
     // the throw can be angled. Holding up or down tilts a mark by 0.62, which
     // is what `throwMark` does with it, and a probe that only ever throws flat
-    // simply cannot answer a drifter: two of the runs that went out had broken
+    // simply cannot answer what floats: two of the runs that went out had broken
     // *nothing*, because everything that killed them was above the line.
     let nearest: number | undefined;
     let nearestDy = 0;
@@ -125,7 +125,7 @@ function fighter(world: World, ctx: StepContext, ticks: number): Fight {
     const aimDown = nearest !== undefined && nearestDy > TILE_SIZE * 0.75;
 
     // Give ground, then stand and write. The retreat has a floor as well as a
-    // ceiling: a crawler that keeps walking into you re-triggers the retreat
+    // ceiling: a klipah that keeps walking into you re-triggers the retreat
     // every tick, and a probe that only ever retreats backs down the whole
     // region without throwing a single mark. Twelve ticks of giving ground,
     // then at least twelve of standing — which is when the marks go out.

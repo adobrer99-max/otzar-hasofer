@@ -3,6 +3,7 @@ import {
   canBeStruck,
   HUSK_CHARS,
   HUSKS,
+  kindForRole,
   IFRAME_TICKS,
   LAMPS,
   markBite,
@@ -19,15 +20,86 @@ import { regions } from "./regions";
  * be reasoned about without running a game.
  */
 describe("the klipot", () => {
-  it("names four shells, each with something in it", () => {
+  it("names ten shells, each with something in it and something inside that", () => {
     const kinds = Object.keys(HUSKS) as HuskKind[];
-    expect(kinds).toHaveLength(4);
+    expect(kinds).toHaveLength(10);
     for (const kind of kinds) {
       const spec = HUSKS[kind];
       expect(spec.kind, `${kind} is filed under the wrong name`).toBe(kind);
       expect(spec.shells, `${kind} breaks to nothing`).toBeGreaterThan(0);
       expect(spec.light, `${kind} holds no light`).toBeGreaterThan(0);
       expect(spec.hebrew, `${kind} has no name`).toBeTruthy();
+      // A klipah is a husk *around* something. The claim that each of these is
+      // drawn from somewhere has to be checkable, or the bestiary is just
+      // monsters with Hebrew on them.
+      expect(spec.name.length, `${kind} has no name to write`).toBeGreaterThan(2);
+      expect(spec.source, `${kind} cites nothing`).toMatch(/\d/);
+      expect(spec.is.length, `${kind} does not say what it does`).toBeGreaterThan(30);
+      expect(spec.reading.length, `${kind} does not say what it means`).toBeGreaterThan(40);
+    }
+  });
+
+  /**
+   * The behaviour **is** the reading, so a klipah whose one line could be
+   * swapped with another's has not earned its name. Enumerated rather than
+   * asserted by eye.
+   */
+  it("gives each of them a different way of coming at you", () => {
+    const kinds = Object.keys(HUSKS) as HuskKind[];
+    const shapes = kinds.map((k) => {
+      const s = HUSKS[k];
+      return [s.role, s.speed, s.notices, s.throws ?? 0, s.flies ?? false, s.takes ?? "lamp"].join("/");
+    });
+    expect(new Set(shapes).size, `two klipot move identically: ${shapes.join(", ")}`).toBe(
+      kinds.length,
+    );
+    expect(new Set(kinds.map((k) => HUSKS[k].hebrew)).size).toBe(kinds.length);
+  });
+
+  /**
+   * The roles are what the chunk library authors, and the rung supplies the
+   * klipah — so every role a screen can write must be answerable somewhere,
+   * and a rung must never be made *entirely* of the roles a door waits on. A
+   * rung whose every klipah holds a door seals every room in it: measured, on
+   * a Yesod of Cain and the Brothers alone, not one run of ten got out.
+   */
+  it("keeps every authored role answerable, and no rung all door-holders", () => {
+    const roles = new Set(Object.values(HUSK_CHARS));
+    for (const role of roles) {
+      expect(
+        Object.values(HUSKS).some((s) => s.role === role),
+        `no klipah anywhere fills the "${role}" a screen can write`,
+      ).toBe(true);
+    }
+    for (const region of regions) {
+      const holds = region.klipot.kinds.filter(
+        (k) => HUSKS[k].role === "charger" || (HUSKS[k].role === "pacer" && Number.isFinite(HUSKS[k].notices)),
+      );
+      expect(
+        holds.length,
+        `${region.name} is nothing but klipot that hold a door shut`,
+      ).toBeLessThan(region.klipot.kinds.length);
+    }
+  });
+
+  it("fills a spot from the rung's own pool, and never from outside it", () => {
+    for (const region of regions) {
+      for (const role of Object.values(HUSK_CHARS)) {
+        for (let pick = 0; pick < 4; pick += 1) {
+          const kind = kindForRole(region.klipot.kinds, role, pick);
+          expect(kind, `${region.name} answers nothing for a ${role}`).toBeDefined();
+          expect(
+            region.klipot.kinds,
+            `${region.name} stood a ${kind} that does not belong to it`,
+          ).toContain(kind);
+        }
+      }
+      // And where the rung *does* hold the role, it is the one that answers.
+      for (const role of Object.values(HUSK_CHARS)) {
+        const fitting = region.klipot.kinds.filter((k) => HUSKS[k].role === role);
+        if (fitting.length === 0) continue;
+        expect(fitting).toContain(kindForRole(region.klipot.kinds, role, 0));
+      }
     }
   });
 
@@ -39,7 +111,7 @@ describe("the klipot", () => {
     expect([...light].sort((a, b) => a - b)).toEqual(light);
   });
 
-  it("writes each husk with a character no tile already uses", () => {
+  it("writes each role with a character no tile already uses", () => {
     for (const ch of Object.keys(HUSK_CHARS)) {
       expect(ch in TILE_CHARS, `"${ch}" is already a tile`).toBe(false);
     }

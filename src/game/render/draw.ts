@@ -826,6 +826,9 @@ function dimBeyondTheRoom(
 function drawHusks(ctx: CanvasRenderingContext2D, world: World, palette: Palette): void {
   for (const husk of world.husks) {
     if (husk.broken) continue;
+    // Korach inside the ground is not drawn at all. It is not hidden by a
+    // trick of the light — it is not there yet.
+    if (husk.kind === "korach" && husk.charging === 0) continue;
     const spec = HUSKS[husk.kind];
     const cx = husk.x + husk.w / 2;
     const cy = husk.y + husk.h / 2;
@@ -841,10 +844,16 @@ function drawHusks(ctx: CanvasRenderingContext2D, world: World, palette: Palette
     ctx.strokeStyle = husk.struck > 0 ? palette.goldBright : alpha(palette.stoneEdge, 0.95);
     ctx.fillStyle = alpha(palette.bgDeep, 0.9 - opened * 0.3);
     ctx.lineWidth = 1.6;
+    // The shape says the role, not the name: round for the ones the ground
+    // means nothing to, a standing diamond for the ones that commit to a
+    // charge, a shouldered slab for the rooted throwers, a plain shell for the
+    // pacers. Ten names on four silhouettes, so a screen stays readable at a
+    // glance and the name is what the plate is for.
     ctx.beginPath();
-    if (husk.kind === "drifter") {
+    const role = spec.role;
+    if (role === "floater") {
       ctx.arc(cx, cy, husk.w / 2, 0, Math.PI * 2);
-    } else if (husk.kind === "sentinel") {
+    } else if (role === "charger") {
       ctx.moveTo(cx, husk.y);
       ctx.lineTo(husk.x + husk.w, cy);
       ctx.lineTo(cx, husk.y + husk.h);
@@ -852,7 +861,7 @@ function drawHusks(ctx: CanvasRenderingContext2D, world: World, palette: Palette
       ctx.closePath();
     } else {
       const r = 4;
-      ctx.roundRect(husk.x, husk.y, husk.w, husk.h, husk.kind === "spitter" ? [r, r, 0, 0] : r);
+      ctx.roundRect(husk.x, husk.y, husk.w, husk.h, role === "thrower" ? [r, r, 0, 0] : r);
     }
     ctx.fill();
     ctx.stroke();
@@ -870,7 +879,7 @@ function drawHusks(ctx: CanvasRenderingContext2D, world: World, palette: Palette
   }
 }
 
-/** A mark in flight: the Scribe's letter, or the dark a spitter throws. */
+/** A mark in flight: the Scribe's letter, or the dark Jezebel sent. */
 function drawMarks(ctx: CanvasRenderingContext2D, world: World, palette: Palette): void {
   for (const m of world.marks) {
     const cx = m.x + m.w / 2;

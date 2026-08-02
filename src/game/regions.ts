@@ -63,6 +63,33 @@ export interface Region {
    * laid — authored husks alone made the *upper* Tree emptier than the foot,
    * because the screens they stood on were demand 1 and the high bands exclude
    * those. Scattered like the motes are, in `scatterHusks`.
+   *
+   * Each rung brings a new klipah and keeps two of the last, so the bestiary is
+   * learned the way the letters are — and the pairing is not arbitrary. Delilah
+   * stands at Yesod, which is the covenant and is Samson's undoing. The Calf is
+   * false splendour, so it is Hod's; the Brothers withheld the acknowledgment
+   * Hod is named for. Esau, who could not endure, is Netzach's. Amalek, who
+   * will not be met face to face, is Tiferet's, which is Jacob and is truth.
+   * Korach is Gevurah's, where the earth's judgment opens. Jezebel is the exact
+   * inversion of what a queen's table is for, which is Chesed. Athaliah
+   * destroyed her own seed, and Binah is the supernal mother. And the Serpent
+   * — עָרוּם, subtler than any beast of the field, which is the same word — is
+   * Chochmah's shadow before it is anything else; it goes on standing at the
+   * crown because that is where it was always going to be waiting.
+   *
+   * The other constraint is mechanical and is not negotiable: **no rung may be
+   * all pacers and chargers**, because those are the roles a door waits on, and
+   * a rung whose every klipah holds a door seals every room in it. Measured, on
+   * a Yesod of Cain and the Brothers alone: not one run of ten reached the way
+   * out.
+   *
+   * The counts climb, with one dip, and the dip is measured rather than
+   * decorative: **Binah stands six where Chesed stands seven**, because the
+   * three that meet there — the earth opening, what Jezebel sent, and Athaliah
+   * putting the light out before you reach it — cost more between them than any
+   * other rung's three. At seven it put half of every ten runs out. What a rung
+   * costs is the count and the company together, and only one of those is a
+   * number you can read off the page.
    */
   klipot: { kinds: HuskKind[]; count: number };
   /** The three supernals stand above the Abyss and hold no House. */
@@ -86,7 +113,7 @@ export const regions: Region[] = [
     fragments: 1,
     length: 6,
     demand: { min: 1, max: 2 },
-    klipot: { kinds: ["crawler"], count: 2 },
+    klipot: { kinds: ["cain"], count: 2 },
     hasHouse: true,
     // The one rung with no shrine, for two reasons that agree. Tav is *found*
     // here, so a shrine laid before its alcove is furniture — and now that the
@@ -108,7 +135,7 @@ export const regions: Region[] = [
     fragments: 2,
     length: 6,
     demand: { min: 1, max: 2 },
-    klipot: { kinds: ["crawler", "drifter"], count: 3 },
+    klipot: { kinds: ["cain", "delilah"], count: 3 },
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -123,7 +150,7 @@ export const regions: Region[] = [
     letters: ["gimel", "heh"],
     length: 6,
     demand: { min: 1, max: 3 },
-    klipot: { kinds: ["crawler", "drifter"], count: 4 },
+    klipot: { kinds: ["cain", "brothers", "calf"], count: 4 },
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -138,7 +165,7 @@ export const regions: Region[] = [
     letters: ["kuf", "lamed"],
     length: 6,
     demand: { min: 1, max: 3 },
-    klipot: { kinds: ["crawler", "drifter", "spitter"], count: 5 },
+    klipot: { kinds: ["brothers", "esav", "delilah"], count: 5 },
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -153,7 +180,7 @@ export const regions: Region[] = [
     letters: ["vav", "tzadi"],
     length: 7,
     demand: { min: 1, max: 3 },
-    klipot: { kinds: ["crawler", "drifter", "spitter"], count: 6 },
+    klipot: { kinds: ["cain", "amalek", "izevel"], count: 6 },
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -168,7 +195,7 @@ export const regions: Region[] = [
     letters: ["zayin", "tet"],
     length: 7,
     demand: { min: 2, max: 3 },
-    klipot: { kinds: ["crawler", "spitter", "sentinel"], count: 6 },
+    klipot: { kinds: ["cain", "amalek", "korach"], count: 6 },
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -183,7 +210,7 @@ export const regions: Region[] = [
     letters: ["mem", "nun"],
     length: 7,
     demand: { min: 2, max: 3 },
-    klipot: { kinds: ["drifter", "spitter", "sentinel"], count: 7 },
+    klipot: { kinds: ["esav", "korach", "izevel"], count: 7 },
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -198,7 +225,7 @@ export const regions: Region[] = [
     letters: ["ayin", "bet", "kaf"],
     length: 8,
     demand: { min: 2, max: 3, bias: "hard" },
-    klipot: { kinds: ["crawler", "drifter", "spitter", "sentinel"], count: 8 },
+    klipot: { kinds: ["korach", "izevel", "atalya"], count: 6 },
     hasHouse: false,
     hasShrine: false,
     teaching:
@@ -213,7 +240,7 @@ export const regions: Region[] = [
     letters: ["shin", "dalet"],
     length: 8,
     demand: { min: 2, max: 3, bias: "hard" },
-    klipot: { kinds: ["crawler", "drifter", "spitter", "sentinel"], count: 9 },
+    klipot: { kinds: ["atalya", "izevel", "nachash"], count: 9 },
     hasHouse: false,
     hasShrine: false,
     teaching:
@@ -228,7 +255,7 @@ export const regions: Region[] = [
     letters: ["yod"],
     length: 9,
     demand: { min: 2, max: 3, bias: "hard" },
-    klipot: { kinds: ["drifter", "spitter", "sentinel"], count: 10 },
+    klipot: { kinds: ["calf", "atalya", "nachash", "delilah"], count: 10 },
     hasHouse: false,
     hasShrine: false,
     teaching:

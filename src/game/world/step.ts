@@ -634,7 +634,17 @@ function stepRooms(world: World): void {
   // barely fired: five runs in eighteen were held, and the klipot went on
   // being optional.
   const holding = world.husks.filter(
-    (h) => room.husks.includes(h.id) && !h.broken && (h.kind === "crawler" || h.kind === "sentinel"),
+    (h) =>
+      room.husks.includes(h.id) &&
+      !h.broken &&
+      // A door waits only on a klipah that will actually **come to you**: the
+      // ones that commit to a charge, and the ones on foot that notice you at
+      // all. Cain paces its ledge and has never looked up, and Athaliah is off
+      // chasing the loose light — a door held shut by one of those is a door
+      // held shut by something that may be on the far side of the room and is
+      // not coming, which is the one thing sealing must never be.
+      (HUSKS[h.kind].role === "charger" ||
+        (HUSKS[h.kind].role === "pacer" && Number.isFinite(HUSKS[h.kind].notices))),
   );
   const standing = holding.length > 0;
 
@@ -896,9 +906,30 @@ function stepMarks(world: World, ctx: StepContext): void {
       continue;
     }
 
+    // Jezebel's marks bend after the Scribe rather than flying flat — she
+    // never had to be near anything she did.
+    if (m.seeks && !m.mine) {
+      const dx = p.x + p.w / 2 - (m.x + m.w / 2);
+      const dy = p.y + p.h / 2 - (m.y + m.h / 2);
+      const at = Math.hypot(dx, dy) || 1;
+      // Gently. A mark that turns hard enough never misses, and a projectile
+      // that cannot be dodged is not a fight, it is a tax: measured at a fifth
+      // of that rate it put a third of all runs out. This bends — it does not
+      // follow.
+      // Gently, and only at the start of its flight. A mark that turns hard
+      // enough never misses, and a projectile that cannot be dodged is not a
+      // fight but a tax: hers accounted for more lamps than the other nine
+      // klipot together. It bends once, early, and then it is committed —
+      // which is also what throwing something at somebody is like.
+      if (m.life > 95) {
+        m.vx += ((dx / at) * 200 - m.vx) * 0.03;
+        m.vy += ((dy / at) * 200 - m.vy) * 0.03;
+      }
+    }
+
     if (m.mine) {
       for (const husk of world.husks) {
-        if (husk.broken || !bodiesTouch(m, husk)) continue;
+        if (husk.broken || submerged(husk) || !bodiesTouch(m, husk)) continue;
         if (!canBeStruck(hiddenAt(world, husk), ctx.verbs)) continue;
         strikeHusk(world, husk, m.bite, m.draws ? -1 : 1, m.x);
         if (!m.pierces) m.life = 0;
@@ -939,7 +970,30 @@ function strikeHusk(world: World, husk: Husk, bite: number, push: number, from: 
       y: husk.y - 4,
     });
   }
-  say(world, "The shell breaks, and the light in it is yours.");
+  // Named, because the naming is the point: a klipah is a husk *around*
+  // something, and the something has a name in the sources.
+  say(world, `${spec.name} breaks, and the light in it is yours.`);
+}
+
+/** Whether a klipah is inside the ground, where nothing reaches it. */
+function submerged(husk: Husk): boolean {
+  return husk.kind === "korach" && husk.charging === 0;
+}
+
+/**
+ * Delilah's contact, which is not a wound.
+ *
+ * It costs no lamp — so the i-frames never fire and it can keep taking — and
+ * what it takes is `or`, the light gathered on this rung. That is deliberately
+ * the one thing the rest of the fight is forbidden to touch: `takeHit` charges
+ * lamps precisely so that a mistake never costs progress twice. Here the
+ * inversion is the character. It is not a hit. It is a leak.
+ */
+function coax(world: World, husk: Husk): void {
+  if (husk.cooldown > 0 || world.or <= 0) return;
+  husk.cooldown = 26;
+  world.or = Math.max(0, world.or - 1);
+  say(world, "It takes a little, and asks again tomorrow.");
 }
 
 /** A lamp goes, and the Scribe is thrown clear. At zero he goes out. */
@@ -973,27 +1027,119 @@ function stepHusks(world: World, ctx: StepContext): void {
     const near = Math.hypot(toward, p.y - husk.y);
 
     switch (husk.kind) {
-      case "crawler": {
-        // Walks its ledge and turns at the edge, having never looked up.
-        husk.vx = husk.facing * spec.speed;
-        const aheadX = Math.floor((husk.x + (husk.facing > 0 ? husk.w + 2 : -2)) / TILE_SIZE);
-        const footRow = Math.floor((husk.y + husk.h + 2) / TILE_SIZE);
-        const floor = tileAt(world, aheadX, footRow);
-        const wall = tileAt(world, aheadX, Math.floor((husk.y + husk.h / 2) / TILE_SIZE));
-        const solid = { verbs: ctx.verbs, crawling: false, revealed: world.revealed };
-        if ((floor === Tile.Empty && !isLedge(floor)) || isSolid(wall, solid)) {
-          husk.facing = (husk.facing * -1) as 1 | -1;
+      // **Cain.** נָע וָנָד — back and forth over the same earth, forever, and
+      // it has never once looked up.
+      case "cain": {
+        pace(world, ctx, husk, spec.speed);
+        break;
+      }
+
+      // **The Brothers.** Not one of them would have done it alone, and that
+      // is the mechanic entire: it hangs back while it is on its own, and every
+      // other brother still standing in the rung makes it faster and braver.
+      // Break them one at a time and the rest lose their nerve as you go.
+      case "brothers": {
+        const others = world.husks.filter((h) => h.kind === "brothers" && !h.broken).length - 1;
+        const nerve = Math.min(1 + others * 0.4, 2.2);
+        // **They do not follow you out of the field.** Joseph came to them; they
+        // did not go looking. And measured, a klipah that chases forever is
+        // worse than useless as well as untrue: it is slower than a Scribe at a
+        // run, so it trails behind him for the length of a rung, never gets in
+        // front to be written at, and simply gnaws. Yesod broke thirteen per
+        // cent of its shells. They hold their ground and close on what comes
+        // to it.
+        const strayed = Math.abs(husk.x - husk.home.x) > TILE_SIZE * 6;
+        if (others > 0 && near < spec.notices && !strayed) {
+          husk.facing = (toward > 0 ? 1 : -1) as 1 | -1;
+          husk.vx = husk.facing * spec.speed * nerve;
+          husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
+        } else if (strayed) {
+          husk.facing = (husk.home.x > husk.x ? 1 : -1) as 1 | -1;
+          husk.vx = husk.facing * spec.speed;
+          husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
+        } else {
+          pace(world, ctx, husk, spec.speed * 0.7);
         }
+        break;
+      }
+
+      // **The Calf.** It does nothing at all — it is only beautiful — until you
+      // strike it, and a room that has closed behind you is a room you have to
+      // strike it in. Then it never stops.
+      case "calf": {
         husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
+        if (husk.shells < spec.shells) {
+          if (husk.charging === 0) husk.facing = (toward > 0 ? 1 : -1) as 1 | -1;
+          husk.charging = 30;
+          husk.vx = husk.facing * spec.speed;
+        } else husk.vx = 0;
         break;
       }
-      case "drifter": {
-        // The ground means nothing to it: a slow arc about where it began.
-        husk.vy = Math.sin(world.tick / 42 + husk.home.x) * spec.speed;
-        husk.vx = Math.cos(world.tick / 60 + husk.home.x) * spec.speed;
+
+      // **Esau.** A man of the field: he runs you down over open ground and
+      // gives up the moment you are above him, having sold the higher thing
+      // for the one in front of him and never learned to look up since.
+      case "esav": {
+        husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
+        const above = husk.y - (p.y + p.h);
+        const far = Math.abs(husk.x - husk.home.x) > TILE_SIZE * 9;
+        if (near < spec.notices && above < TILE_SIZE * 2 && !far) {
+          husk.facing = (toward > 0 ? 1 : -1) as 1 | -1;
+          husk.vx = husk.facing * spec.speed;
+        } else {
+          husk.vx *= 0.9;
+          pace(world, ctx, husk, spec.speed * 0.3, true);
+        }
         break;
       }
-      case "spitter": {
+
+      // **Amalek.** אֲשֶׁר קָרְךָ בַּדֶּרֶךְ — he met you on the way and cut off
+      // those behind you. It comes at your back and stands like stone while you
+      // are looking at it, so the answer is simply to face it: the one klipah
+      // in the game that a turn of the head disarms, which is the whole of what
+      // "remember what Amalek did" means.
+      case "amalek": {
+        husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
+        const watched = (toward > 0 ? -1 : 1) === p.facing;
+        const strayed = Math.abs(husk.x - husk.home.x) > TILE_SIZE * 9;
+        if (!watched && near < spec.notices && !strayed) {
+          husk.facing = (toward > 0 ? 1 : -1) as 1 | -1;
+          husk.vx = husk.facing * spec.speed;
+        } else husk.vx = 0;
+        break;
+      }
+
+      // **Korach.** The earth opened her mouth. It travels inside the ground,
+      // where nothing can touch it, tracking the column you are standing in —
+      // and then it comes up under you. `charging` counts the moment it is
+      // above ground; `cooldown` the long submersion before the next one.
+      case "korach": {
+        if (husk.charging > 0) {
+          husk.charging -= 1;
+          husk.vx = 0;
+          husk.vy = -95;
+          break;
+        }
+        // Under. It slides toward the Scribe's column and rises when it is
+        // beneath him, or when it has waited long enough to be worth surfacing.
+        husk.vy = 90;
+        husk.vx = Math.sign(toward) * spec.speed;
+        if (Math.abs(toward) < TILE_SIZE && husk.cooldown === 0 && spec.throws) {
+          husk.charging = 42;
+          husk.cooldown = spec.throws;
+          // **Under the feet, not in them.** Surfacing at the Scribe's own
+          // height put the two bodies in the same place on the same tick, so
+          // the earth opening cost a lamp with nothing to react to — measured,
+          // Gevurah put eight runs in ten out. It comes up from below, and the
+          // moment of rising is the moment to be somewhere else.
+          husk.y = p.y + p.h + TILE_SIZE * 2.5;
+        }
+        break;
+      }
+
+      // **Jezebel.** She never went anywhere: everything she did she did at a
+      // distance and by other hands. What she throws bends after you.
+      case "izevel": {
         husk.vx = 0;
         husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
         husk.facing = (toward > 0 ? 1 : -1) as 1 | -1;
@@ -1006,41 +1152,102 @@ function stepHusks(world: World, ctx: StepContext): void {
             y: husk.y + husk.h / 3,
             w: MARK_SIZE,
             h: MARK_SIZE,
-            vx: husk.facing * 165,
-            vy: -40,
-            life: 150,
+            vx: husk.facing * 122,
+            vy: -70,
+            life: 155,
             pierces: false,
             bite: 1,
             draws: false,
+            seeks: true,
             glyph: "·",
           });
         }
         break;
       }
-      case "sentinel": {
-        // Still, until you are near enough. Then once, hard.
+
+      // **Delilah.** וַתְּאַלְצֵהוּ — she pressed him daily with her words.
+      // It drifts to you and takes no lamp at all; what it takes is the light
+      // you had gathered, which you do not feel going until you count it.
+      case "delilah": {
+        const away = Math.hypot(toward, p.y - husk.y) || 1;
+        husk.vx = (toward / away) * spec.speed;
+        husk.vy = ((p.y - husk.y) / away) * spec.speed;
+        break;
+      }
+
+      // **Athaliah.** She destroyed all the seed royal — she did not want the
+      // throne so much as she wanted nobody else to have it. It goes for the
+      // loose light before you can and puts it out.
+      case "atalya": {
         husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
-        if (husk.charging > 0) {
-          husk.charging -= 1;
+        const seed = nearestMote(world, husk);
+        if (seed) {
+          husk.facing = (seed.x > husk.x ? 1 : -1) as 1 | -1;
           husk.vx = husk.facing * spec.speed;
-        } else if (near < spec.notices && husk.cooldown === 0 && spec.throws) {
-          husk.facing = (toward > 0 ? 1 : -1) as 1 | -1;
-          husk.charging = 20;
-          husk.cooldown = spec.throws;
-        } else {
-          husk.vx *= 0.86;
-        }
+          if (Math.abs(seed.x - husk.x) < TILE_SIZE && Math.abs(seed.y - husk.y) < TILE_SIZE * 2) {
+            seed.taken = true;
+            say(world, "It puts the light out before you reach it.");
+          }
+        } else pace(world, ctx, husk, spec.speed * 0.6);
+        break;
+      }
+
+      // **The Serpent.** Slow, and it does not stop, and stone is nothing to
+      // it. The first of them and the shape of all the rest: it never hurries,
+      // because it has never needed to.
+      case "nachash": {
+        const off = Math.hypot(toward, p.y - husk.y) || 1;
+        husk.vx = (toward / off) * spec.speed;
+        husk.vy = ((p.y - husk.y) / off) * spec.speed;
+        husk.facing = (toward > 0 ? 1 : -1) as 1 | -1;
         break;
       }
     }
 
     moveHusk(world, ctx, husk);
 
-    if (p.veiled === 0 && !world.out && bodiesTouch(husk, p)) {
-      wound(world, ctx, p.x < husk.x ? -1 : 1);
+    if (p.veiled === 0 && !world.out && !submerged(husk) && bodiesTouch(husk, p)) {
+      // Almost all of them take a lamp, because that is what a husk is.
+      // Delilah takes what you gathered instead — nothing you feel at the time.
+      if (spec.takes === "light") coax(world, husk);
+      else wound(world, ctx, p.x < husk.x ? -1 : 1);
     }
   }
   world.husks = world.husks.filter((h) => !h.broken);
+}
+
+/**
+ * Walking a ledge and turning at its edge — the oldest of the behaviours, and
+ * now shared, because four of the ten do it when they are doing nothing else.
+ */
+function pace(world: World, ctx: StepContext, husk: Husk, speed: number, gentle = false): void {
+  const spec = HUSKS[husk.kind];
+  if (!gentle) husk.vx = husk.facing * speed;
+  const aheadX = Math.floor((husk.x + (husk.facing > 0 ? husk.w + 2 : -2)) / TILE_SIZE);
+  const footRow = Math.floor((husk.y + husk.h + 2) / TILE_SIZE);
+  const floor = tileAt(world, aheadX, footRow);
+  const wall = tileAt(world, aheadX, Math.floor((husk.y + husk.h / 2) / TILE_SIZE));
+  const solid = { verbs: ctx.verbs, crawling: false, revealed: world.revealed };
+  if ((floor === Tile.Empty && !isLedge(floor)) || isSolid(wall, solid)) {
+    husk.facing = (husk.facing * -1) as 1 | -1;
+  }
+  husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
+  void spec;
+}
+
+/** The nearest loose mote, for the klipah that hunts them. */
+function nearestMote(world: World, husk: Husk): Entity | undefined {
+  let best: Entity | undefined;
+  let bestAt = Infinity;
+  for (const e of world.entities) {
+    if (e.kind !== "mote" || e.taken) continue;
+    const at = Math.hypot(e.x - husk.x, e.y - husk.y);
+    if (at < bestAt) {
+      bestAt = at;
+      best = e;
+    }
+  }
+  return bestAt < TILE_SIZE * 14 ? best : undefined;
 }
 
 /** A husk is stopped by stone, and nothing else. */
@@ -1060,14 +1267,18 @@ function moveHusk(world: World, ctx: StepContext, husk: Husk): void {
     return false;
   };
 
+  // Korach is inside the ground while it is under, which is the whole point of
+  // it, so stone stops it only on the way up.
+  const through = HUSKS[husk.kind].flies;
+
   const nextX = husk.x + husk.vx * DT;
-  if (husk.kind === "drifter" || !solid(nextX, husk.y)) husk.x = nextX;
+  if (through || !solid(nextX, husk.y)) husk.x = nextX;
   else {
     husk.vx = 0;
     husk.facing = (husk.facing * -1) as 1 | -1;
   }
 
   const nextY = husk.y + husk.vy * DT;
-  if (husk.kind === "drifter" || !solid(husk.x, nextY)) husk.y = nextY;
+  if (through || !solid(husk.x, nextY)) husk.y = nextY;
   else husk.vy = 0;
 }

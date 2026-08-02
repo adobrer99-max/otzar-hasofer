@@ -21,7 +21,7 @@ import {
   VESSEL_CHUNK,
   WORD_GATE_CHUNK,
 } from "./chunks";
-import { HUSK_CHARS, HUSKS, LAMPS } from "../combat";
+import { HUSK_CHARS, HUSKS, kindForRole, LAMPS } from "../combat";
 import { keliFor } from "../items";
 import { MARKER_CHARS, Tile, TILE_CHARS, TILE_SIZE } from "./tiles";
 import { doorsOf, planFloor, roomAtPoint, ROOM_H, ROOM_W } from "./rooms";
@@ -129,7 +129,7 @@ export function buildRegion(
     region.klipot,
     rows,
     // The taught porch stays empty of husks. Its whole job is to land four
-    // coaching lines on flat ground, a step and a gap, and a crawler wandering
+    // coaching lines on flat ground, a step and a gap, and a klipah wandering
     // through the middle of that teaches something else entirely.
     (laid.length > 0 ? 1 : 0) + (teaching && region.index === 1 ? TEACH_CHUNKS.length : 0),
   );
@@ -669,6 +669,7 @@ function paint(
   let spawn = { x: TILE_SIZE * 2, y: TILE_SIZE * 14 };
   const husks: Husk[] = [];
   let letterCursor = 0;
+  let authored = 0;
   let fragmentCursor = firstFragmentIndex;
   let entityId = 0;
 
@@ -750,7 +751,14 @@ function paint(
 
         // A husk stands where it is written, on empty ground. The light it
         // holds is not strewn here — it comes out when the shell breaks.
-        const huskKind = HUSK_CHARS[ch];
+        //
+        // What the screen names is a **role**, not a klipah: the library is
+        // authored once and drawn on by every rung, so a screen that named
+        // Athaliah would stand her in Malchut. The rung's own pool answers, and
+        // `authored` walks it so a screen with three alcoves does not fill all
+        // three with the same shell.
+        const huskRole = HUSK_CHARS[ch];
+        const huskKind = huskRole ? kindForRole(klipot.kinds, huskRole, authored++) : undefined;
         if (huskKind) {
           tiles[worldY * width + worldX] = Tile.Empty;
           const spec = HUSKS[huskKind];
@@ -923,8 +931,8 @@ export function setTile(world: World, tx: number, ty: number, tile: Tile): void 
  *
  * - **Nothing in the first screen or the last.** A Scribe walking in should
  *   not be walking into something, and neither should one walking out.
- * - **Drifters float; everything else stands.** A crawler needs a ledge under
- *   it or it spends the region falling.
+ * - **What flies goes in the air; everything else needs a floor.** A klipah
+ *   that walks and is set down over nothing spends the region falling.
  */
 function scatterHusks(
   tiles: Uint8Array,
@@ -963,7 +971,7 @@ function scatterHusks(
   for (let i = 0; i < klipot.count; i += 1) {
     const kind = klipot.kinds[randomInt(rng, klipot.kinds.length)];
     const spec = HUSKS[kind];
-    const pool = kind === "drifter" && air.length > 0 ? air : ground;
+    const pool = spec.flies && air.length > 0 ? air : ground;
     const cursor = pool === air ? a : g;
     if (cursor >= pool.length) continue;
     const spot = pool[cursor];

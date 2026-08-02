@@ -488,6 +488,16 @@
   line-height: 1.5;
 }
 
+/* Where a klipah is from — quieter than what it does, and checkable. */
+.keySource {
+  margin: var(--space-1) 0 0;
+  color: var(--text-muted);
+  opacity: 0.8;
+  font-size: 0.8rem;
+  font-style: italic;
+  line-height: 1.4;
+}
+
 /* ---- plates ------------------------------------------------------------- */
 
 .plateScrim {

@@ -40,7 +40,7 @@ import { openWordGate } from "./world/step";
 import { useGameAudio } from "./audio/useGameAudio";
 import { readAscentTime } from "./sacredAscent";
 import { fragmentAt, SCROLL_LETTER, SCROLL_TOTAL, SCROLL_VERSE } from "./scroll";
-import { GOING_OUT, LAMPS } from "./combat";
+import { GOING_OUT, HUSKS, LAMPS } from "./combat";
 import { keliById, powersFrom, synergiesIn } from "./items";
 import {
   ABYSS_WORD,
@@ -796,7 +796,7 @@ export function GamePage() {
             </p>
           )}
 
-          {showKeys && <Keys held={ascent.lettersHeld} />}
+          {showKeys && <Keys held={ascent.lettersHeld} regionIndex={ascent.regionIndex} />}
         </>
       )}
 
@@ -1129,8 +1129,9 @@ function Serves({ ability }: { ability: LetterAbility }) {
   );
 }
 
-/** Every key, then what each letter in hand does with it. */
-function Keys({ held }: { held: readonly string[] }) {
+/** Every key, then what each letter in hand does with it — and what stands in the way. */
+function Keys({ held, regionIndex }: { held: readonly string[]; regionIndex: number }) {
+  const standing = regionAt(regionIndex).klipot.kinds.map((k) => HUSKS[k]);
   return (
     <div className={styles.keysPanel}>
       <h3 className={styles.keysHeading}>The ways of the body</h3>
@@ -1167,6 +1168,31 @@ function Keys({ held }: { held: readonly string[] }) {
           })}
         </ul>
       )}
+
+      {/*
+        The bestiary, and only this rung's — a klipah is met before it is read
+        about, and a full list on the first screen would give away nine rungs of
+        the climb. Each says where it is from, because the whole claim of this
+        game is that almost none of it is invented, and a claim you cannot check
+        is decoration.
+      */}
+      <h3 className={styles.keysHeading}>What stands in the way</h3>
+      <ul className={styles.keys}>
+        {standing.map((husk) => (
+          <li key={husk.kind} className={styles.key}>
+            <span className={`${styles.keyGlyph} hebrew`} lang="he">
+              {husk.hebrew}
+            </span>
+            <div>
+              <p className={styles.keyName}>
+                {husk.name} <span className={styles.keyKind}>{husk.shells} shells</span>
+              </p>
+              <p className={styles.keyUse}>{husk.is}</p>
+              <p className={styles.keySource}>{husk.source}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

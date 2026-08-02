@@ -99,7 +99,7 @@ export interface Husk extends Body {
   broken?: boolean;
 }
 
-/** A mark in flight — the Scribe's, or the dark a spitter throws. */
+/** A mark in flight — the Scribe's, or the dark a klipah throws. */
 export interface Mark extends Body {
   id: string;
   /** Whose it is. The Scribe's breaks husks; a husk's takes a lamp. */
@@ -108,6 +108,8 @@ export interface Mark extends Body {
   pierces: boolean;
   bite: number;
   draws: boolean;
+  /** Whether it bends after the Scribe in flight — Jezebel's, and only hers. */
+  seeks?: boolean;
   /** The letter written, for the renderer. */
   glyph: string;
 }
