@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { dorotCardsById, dorotHousesById } from "../data/dorot";
 import { lettersById } from "../data/letters";
 import type { SefirahId } from "../types/letter";
@@ -23,6 +23,7 @@ import {
 } from "./controls";
 import {
   allLearned,
+  ALL_LESSON_KEYS,
   forgetTaught,
   nextLesson,
   readTaught,
@@ -49,6 +50,7 @@ import {
   WITNESSES_POSSIBLE,
 } from "./story";
 import { buildRegion, verbsOf } from "./world/build";
+import { readWarp, warpParams, warpRecord, type WarpOptions } from "./dev/warp";
 import type { World } from "./world/types";
 import styles from "./GamePage.module.css";
 
@@ -211,19 +213,20 @@ export function GamePage() {
   }, [letters.length]);
 
   const enterRegion = useCallback(
-    (record: AscentRecord) => {
+    (record: AscentRecord, over?: { porch?: boolean; lamps?: number }) => {
       // The porch is laid only for a Scribe who has not finished the teaching,
       // and `buildRegion` itself limits it to Malchut.
       const next = buildRegion(
         record.regionIndex,
         record.seed,
         time.lightOfTheDay,
-        !allLearned(taughtRef.current),
+        over?.porch ?? !allLearned(taughtRef.current),
       );
       // The Encounter lights one rung brighter than the rest.
       if (isIllumined(encounter, regionAt(record.regionIndex).sefirah)) {
         next.orPerMote = ILLUMINED_MULTIPLIER;
       }
+      if (over?.lamps !== undefined) next.player.lamps = over.lamps;
       setWorld(next);
       setVow(null);
       setPlate(null);
@@ -231,31 +234,114 @@ export function GamePage() {
     [time.lightOfTheDay, encounter],
   );
 
+  /**
+   * The one door into a climb. Both the threshold and the dev warp come
+   * through here, so a warped run cannot exercise an entry path a player never
+   * takes — which was the whole point of building the warp rather than a
+   * separate harness mode.
+   */
+  const beginAt = useCallback(
+    (record: AscentRecord, over?: { porch?: boolean; lamps?: number }) => {
+      setGranted([]);
+      persist(record);
+      enterRegion(record, over);
+    },
+    [persist, enterRegion],
+  );
+
+  const newRecord = useCallback(
+    (): AscentRecord => {
+      const now = new Date().toISOString();
+      return {
+        id: NEW_ID(),
+        seed: time.seed,
+        seedLabel: time.seedLabel,
+        createdAt: now,
+        updatedAt: now,
+        regionIndex: 1,
+        lettersHeld: [],
+        or: 0,
+        regionsCleared: [],
+        housesMet: [],
+        sacredNotes: time.notes,
+        ascendantLetterId: time.ascendantLetterId,
+        encounterNumber: encounterFor(sealedBefore)?.number,
+      };
+    },
+    [time, sealedBefore],
+  );
+
   const beginAscent = useCallback(() => {
-    const now = new Date().toISOString();
-    const record: AscentRecord = {
-      id: NEW_ID(),
-      seed: time.seed,
-      seedLabel: time.seedLabel,
-      createdAt: now,
-      updatedAt: now,
-      regionIndex: 1,
-      lettersHeld: [],
-      or: 0,
-      regionsCleared: [],
-      housesMet: [],
-      sacredNotes: time.notes,
-      ascendantLetterId: time.ascendantLetterId,
-      encounterNumber: encounterFor(sealedBefore)?.number,
-    };
-    setGranted([]);
-    persist(record);
-    enterRegion(record);
-  }, [time, persist, enterRegion, sealedBefore]);
+    beginAt(newRecord());
+  }, [beginAt, newRecord]);
 
   const resumeAscent = useCallback(() => {
     if (ascent) enterRegion(ascent);
   }, [ascent, enterRegion]);
+
+  // --- the dev warp ---------------------------------------------------------
+  //
+  // Everything below is dead code in a production build: each branch is
+  // guarded by `import.meta.env.DEV`, which the build replaces with `false`,
+  // so the panel's chunk is never emitted and `warp.ts` shakes out. A test
+  // greps `dist/` for the marker to keep that true.
+  //
+  // The panel is a *dynamic* import for exactly that reason — a static one
+  // would drag its stylesheet into the bundle whether or not it renders.
+
+  const [params, setParams] = useSearchParams();
+  const [DevPanel, setDevPanel] = useState<ComponentType<{
+    onWarp: (options: WarpOptions) => void;
+  }> | null>(null);
+  /**
+   * The last warp actually taken, as its query string.
+   *
+   * Not a boolean. Changing only the hash does not reload the page, so
+   * `goto("#/game?rung=2")` after `goto("#/game?rung=6")` is a route change
+   * and nothing more — a one-shot flag would leave a harness quietly looking
+   * at the previous rung while believing it had moved. Measured, not reasoned:
+   * the second warp of a session did exactly that.
+   */
+  const warped = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    void import("./dev/DevPanel").then((m) => setDevPanel(() => m.DevPanel)).catch(() => undefined);
+  }, []);
+
+  const warpTo = useCallback(
+    (options: WarpOptions) => {
+      const written = warpParams(options);
+      warped.current = written;
+      setParams(written, { replace: true });
+      // A Scribe warped to Gevurah holding twenty-two letters does not need to
+      // be told which key walks. State only — never `writeTaught`, so using
+      // the warp cannot quietly retire a real Scribe's teaching.
+      if (!options.porch) setTaught(ALL_LESSON_KEYS);
+      beginAt(
+        warpRecord(options, {
+          id: NEW_ID(),
+          seed: time.seed,
+          seedLabel: time.seedLabel,
+          notes: time.notes,
+          ascendantLetterId: time.ascendantLetterId,
+          encounterNumber: encounterFor(sealedBefore)?.number,
+        }),
+        { porch: options.porch, lamps: options.lamps },
+      );
+    },
+    [beginAt, setParams, time, sealedBefore],
+  );
+
+  // `#/game?rung=10&letters=all-but-peh&lamps=1` — what the harness drives,
+  // because a harness cannot click. Waits for the load so the record it writes
+  // is not immediately overwritten by the saved one.
+  useEffect(() => {
+    if (!import.meta.env.DEV || loading) return;
+    const options = readWarp(params);
+    if (!options || warpParams(options) === warped.current) return;
+    warpTo(options);
+  }, [loading, params, warpTo]);
 
   // --- the four events the world raises ------------------------------------
 
@@ -540,6 +626,8 @@ export function GamePage() {
           onResume={resumeAscent}
         />
       )}
+
+      {import.meta.env.DEV && !world && DevPanel && <DevPanel onWarp={warpTo} />}
 
       {world && ascent && region && (
         <>

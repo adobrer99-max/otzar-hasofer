@@ -51,4 +51,33 @@ mandala in its **neutral master** state (no live date/festival highlight, which
 is a screen-only affordance). Default output: `mizbeach-folio-print.svg` at the
 repo root (git-ignored).
 
+### Reaching a rung in Ma'alot
+
+A full climb of the Tree is fifty-two thousand pixels — around twenty minutes
+with the fighting and the plates — so anything above the fourth rung is
+impractical to reach by playing when you only want to look at it. In **dev only**
+the game takes a warp:
+
+```
+#/game?rung=10&letters=all-but-peh&lamps=1&witnesses=7&porch=1&seed=42
+```
+
+| param | meaning |
+|---|---|
+| `rung` | 1 (Malchut) … 10 (Keter) |
+| `letters` | `as-of-rung` · `none` · `all` · `all-but-peh` |
+| `lamps` | how many are still lit, 1…3 |
+| `witnesses` | Houses already spoken with, 0…7 — what the plea is heard in |
+| `porch` | `1` lays the taught opening |
+| `seed` | fixed seed, for a repeatable region |
+
+`letters=all-but-peh` is the only way to reach the mute plea, since the Mouth is
+required to speak at the crown. The same options are on a small **Warp** panel
+under the threshold, which writes that URL for you.
+
+The warp goes through the same `beginAt` the threshold does, so it cannot
+exercise a path a player never takes. It is gated on `import.meta.env.DEV` and a
+test asserts none of it reaches `dist/`. **Note that `import.meta.env.DEV` is
+false under `vite preview`** — the panel is invisible there; use `npm run dev`.
+
 Built with Vite, React, and TypeScript. Installable as an offline-capable PWA.
