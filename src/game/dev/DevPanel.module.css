@@ -1,0 +1,81 @@
+/* Dev-only. Loaded by a dynamic import that a production build never reaches,
+   so none of this ships. Deliberately plain: a tool, not a page. */
+
+.panel {
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3);
+  border: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
+  max-width: var(--measure);
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-latin);
+  font-size: var(--font-size-lg);
+  color: var(--text);
+}
+
+.note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: var(--line-height);
+}
+
+.rows {
+  display: grid;
+  grid-template-columns: minmax(6rem, max-content) 1fr;
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
+  margin: var(--space-3) 0;
+}
+
+.rows label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.rows select,
+.rows input[type="number"],
+.rows input[type="text"] {
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.link {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  word-break: break-all;
+}

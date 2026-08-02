@@ -34,6 +34,15 @@ export const Tile = {
   LowGap: 10,
   /** A stone the Scribe set with Bet. Solid, and retrievable. */
   Placed: 11,
+  /** A Word-Gate's barrier. Solid until the right root is inscribed. */
+  WordGate: 12,
+  /**
+   * A door that has closed behind you. Written into a room's openings while
+   * the klipot standing in it are unbroken, and rubbed out again when they
+   * break — see `stepRooms` in `step.ts`. Solid, and the only tile in the
+   * game that appears and disappears on its own.
+   */
+  Seal: 13,
 } as const;
 
 export type Tile = (typeof Tile)[keyof typeof Tile];
@@ -54,10 +63,21 @@ export const TILE_CHARS: Record<string, Tile> = {
   D: Tile.Door,
   A: Tile.Anchor,
   c: Tile.LowGap,
+  W: Tile.WordGate,
 };
 
 /** Markers that become entities at load rather than tiles in the grid. */
-export const MARKER_CHARS = new Set(["S", "E", "L", "*", "T", "H", "F"]);
+// NB: lowercase `w` is already water and `c` already a low gap — a marker
+// must not collide with a tile character, so the Word-Gate's porch is `?`,
+// which is also what it is: the place a question is asked. `Y` is a fork,
+// which is also what it looks like.
+export const MARKER_CHARS = new Set(["S", "E", "L", "*", "T", "H", "F", "?", "Y", "K"]);
+
+/**
+ * And the klipot, which are written into a screen the same way. Kept out of
+ * `MARKER_CHARS` because they become bodies rather than entities — see
+ * `HUSK_CHARS` in `combat.ts`, which is the table that names them.
+ */
 
 /**
  * Whether a tile stops a body, given what the Scribe carries and how they are
@@ -79,6 +99,10 @@ export function isSolid(
     case Tile.Veiled:
       return opts.revealed;
     case Tile.Door:
+    case Tile.Seal:
+    case Tile.WordGate:
+      // Both stay solid until the world replaces them — a door when Dalet
+      // opens it, a Word-Gate when the root is spelled.
       return true;
     case Tile.LowGap:
       return !opts.crawling;

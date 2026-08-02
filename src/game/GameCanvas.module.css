@@ -1,7 +1,12 @@
+/* 16:9 because **a room is 16:9**. Two screens across and one tall is 32×18
+   tiles, and the camera frames a whole room now rather than trailing the body
+   along a corridor. At 20:9 the same room fitted by its height and left forty
+   tiles of width on screen, which made the Scribe a speck in a diagram. The
+   frame follows the content rather than the content being cropped to fit. */
 .stage {
   position: relative;
   width: 100%;
-  aspect-ratio: 20 / 9;
+  aspect-ratio: 16 / 9;
   min-height: 260px;
   max-height: 62vh;
   border: 1px solid var(--border-hairline);
@@ -51,8 +56,38 @@
 
 .padCluster {
   display: flex;
+  align-items: flex-end;
   gap: var(--space-2);
   pointer-events: auto;
+}
+
+/* A proper four-way cross. Up and Down used to be missing from the pad
+   entirely, which meant Kuf could not climb a vine and Tet could not crawl on
+   any device without a keyboard. */
+.move {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  grid-template-rows: repeat(2, auto);
+}
+
+.pad_up {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.pad_left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.pad_down {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.pad_right {
+  grid-column: 3;
+  grid-row: 2;
 }
 
 .padKey {
@@ -85,7 +120,28 @@
 
 @media (max-width: 40rem) {
   .stage {
+    /* A little taller than a room on a phone, so the room still fits by its
+       width and there is somewhere for the fingers to be. */
     aspect-ratio: 16 / 10;
     max-height: 56vh;
+  }
+}
+
+/* Seven buttons is three more than there were. On a narrow phone they shrink
+   rather than crowd each other off the edge. */
+@media (max-width: 26rem) {
+  .pad {
+    padding: var(--space-2);
+    gap: var(--space-2);
+  }
+
+  .padKey {
+    width: 2.75rem;
+    height: 2.75rem;
+    font-size: 1.15rem;
+  }
+
+  .padCluster {
+    gap: 0.25rem;
   }
 }

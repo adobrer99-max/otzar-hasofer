@@ -4,6 +4,7 @@ import { mazalotByMonth } from "../data/mazalot";
 import { computeSacredTime } from "../data/sacredTime";
 import type { GeographyMode } from "../types/herald";
 import type { SacredTimeSnapshot } from "../types/sacredTime";
+import type { Grace } from "./abilities";
 import { hashSeed } from "./rng";
 
 /**
@@ -29,8 +30,49 @@ export interface AscentTime {
    * ground is the same ground either way — only what is lying on it changes.
    */
   lightOfTheDay: number;
+  /**
+   * The grace the day's own gesture lends, for this day only. See
+   * `GESTURE_GRACES` — it is read off the festival's authored `gesture`, so
+   * the calendar decides it rather than this file.
+   */
+  graceOfTheDay?: Grace;
   notes: string[];
 }
+
+/**
+ * The day's gesture, as something the body can do.
+ *
+ * `festivals.ts` already names a gesture for every festival — Rest, Depart,
+ * Dwell, Gather, seventeen of them — authored long before there was a game to
+ * read them, and until now nothing in the Treasury did. Each maps to a grace
+ * the Scribe holds for that day and no other, so a festival is not merely
+ * announced in a caption: it is in the hands.
+ *
+ * **Graces only, never verbs.** A verb lent for a day would open chunks the
+ * builder laid on the assumption they were shut — the whole no-soft-lock
+ * guarantee rests on `lettersOnEntering` being the complete truth about what
+ * verbs a region can demand. A grace changes how the world meets you and
+ * unlocks nothing, so it is safe to give and safe to take away at midnight.
+ */
+const GESTURE_GRACES: Record<string, Grace> = {
+  Rest: "slow-fall", // upheld, as on Shabbat
+  Depart: "high-jump", // rising out of the narrow place
+  Dwell: "second-stone", // a booth is built and stood in
+  "Listen/Reflect": "farsight", // the window cut in the wall
+  "Return/Repent": "return", // teshuvah — back to the beginning
+  "Reveal/Unmask": "light", // the hidden face, lit
+  Receive: "speech", // on the day the letters were given, the Houses answer
+  Remember: "light", // a lamp kept burning
+  Plant: "second-stone", // something set down that stands
+  Connect: "swift-water", // the flow between
+  Illuminate: "light",
+  Rejoice: "high-jump", // the dancing
+  Hone: "crawl", // a fast day: made small
+  "Bear Witness": "farsight",
+  Honour: "light",
+  Build: "second-stone",
+  Gather: "draw-motes", // what is scattered comes in
+};
 
 /**
  * Days that reach onto the board. The rest of the calendar is still shown —
@@ -84,14 +126,28 @@ export function readAscentTime(
     );
   }
 
+  // The most specific active festival lends its gesture — `activeFestivalIds`
+  // is documented as most-specific-first, so the first one that names a
+  // gesture wins, and an ordinary day lends nothing.
+  let graceOfTheDay: Grace | undefined;
+
   for (const id of snapshot.activeFestivalIds) {
+    const festival = festivalsById[id];
+    const gesture = festival?.gesture;
+    if (!graceOfTheDay && gesture) {
+      const grace = GESTURE_GRACES[gesture];
+      if (grace) {
+        graceOfTheDay = grace;
+        notes.push(`The day's gesture is ${gesture} — and it is lent to your hands until nightfall.`);
+      }
+    }
+
     const effect = DAY_EFFECTS[id];
     if (effect) {
       lightOfTheDay *= effect.light;
       notes.push(effect.note);
-    } else {
-      const festival = festivalsById[id];
-      if (festival) notes.push(`${festival.name} — the day is named, though the board is unchanged.`);
+    } else if (festival && !gesture) {
+      notes.push(`${festival.name} — the day is named, though the board is unchanged.`);
     }
   }
 
@@ -99,5 +155,5 @@ export function readAscentTime(
     notes.push(`Day ${snapshot.omer.day} of the Omer — the count itself is an ascent.`);
   }
 
-  return { snapshot, seed, seedLabel, ascendantLetterId, lightOfTheDay, notes };
+  return { snapshot, seed, seedLabel, ascendantLetterId, lightOfTheDay, graceOfTheDay, notes };
 }

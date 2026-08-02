@@ -210,8 +210,237 @@
 }
 
 .controlsHint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
   color: var(--text-muted);
   font-size: 0.85rem;
+}
+
+/* ---- the lamps ---------------------------------------------------------- */
+
+/* What the Scribe *is*, beside `.hudOr`, which is what he is carrying. */
+.lamps {
+  display: flex;
+  gap: 0.2rem;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.lampLit {
+  color: var(--accent-bright);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.lampOut {
+  color: var(--border-hairline);
+}
+
+/* ---- the story ---------------------------------------------------------- */
+
+.prologue {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--border-hairline);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
+  text-align: left;
+}
+
+.prologueSummary {
+  cursor: pointer;
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.prologueLine {
+  margin: var(--space-3) 0 0;
+  color: var(--text);
+  line-height: var(--line-height);
+}
+
+.prologueCharge {
+  margin: var(--space-3) 0 0;
+  color: var(--accent-bright);
+  line-height: var(--line-height);
+  font-style: italic;
+}
+
+/* What a figure of the Houses says the Scribe is accused of. */
+.testimony {
+  margin-top: var(--space-3);
+}
+
+.charge {
+  margin: var(--space-2) 0;
+  color: var(--text);
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height);
+}
+
+.plea {
+  margin: 0 0 var(--space-3);
+  color: var(--text);
+  line-height: var(--line-height);
+}
+
+/* Arriving at the crown unable to say anything. Not a failure — the ascent
+   still seals — so it is dimmed rather than alarmed. */
+.pleaMute {
+  margin: 0 0 var(--space-3);
+  color: var(--text-muted);
+  line-height: var(--line-height);
+}
+
+/* ---- the teaching ------------------------------------------------------- */
+
+/* A coaching line is not the region's own voice, so it does not wear it. */
+.captionLesson {
+  color: var(--accent-bright);
+}
+
+.keysPanel {
+  margin-top: var(--space-3);
+}
+
+.keysHeading {
+  margin: var(--space-4) 0 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.keysHeading:first-child {
+  margin-top: 0;
+}
+
+.waysDetails {
+  margin-top: var(--space-3);
+  text-align: left;
+}
+
+.waysSummary {
+  cursor: pointer;
+  color: var(--accent-bright);
+  font-size: 0.9rem;
+}
+
+.ways {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+}
+
+.way {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  background: var(--bg-raised);
+}
+
+.wayKeys {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 7.5rem;
+  max-width: 7.5rem;
+}
+
+.kbd {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  font-family: var(--font-latin);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--accent-bright);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-hairline);
+  border-bottom-width: 2px;
+  border-radius: var(--radius);
+  white-space: nowrap;
+}
+
+.wayPad {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* A key named inside a sentence: the keyboard's and the pad's, together, so
+   one instruction serves both hands. */
+.token {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  white-space: nowrap;
+}
+
+.tokenPad {
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+.wayName {
+  margin: 0;
+  color: var(--text);
+}
+
+.wayDoes {
+  margin: var(--space-1) 0 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.serves {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.serve {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.serveUnknown {
+  opacity: 0.55;
+  font-style: italic;
+}
+
+.keyPress {
+  margin: var(--space-1) 0 0;
+  color: var(--accent-bright);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.platePress {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-hairline);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  color: var(--accent-bright);
+  font-size: 0.92rem;
+  line-height: var(--line-height);
 }
 
 .keys {
@@ -257,6 +486,16 @@
   color: var(--text-muted);
   font-size: 0.9rem;
   line-height: 1.5;
+}
+
+/* Where a klipah is from — quieter than what it does, and checkable. */
+.keySource {
+  margin: var(--space-1) 0 0;
+  color: var(--text-muted);
+  opacity: 0.8;
+  font-size: 0.8rem;
+  font-style: italic;
+  line-height: 1.4;
 }
 
 /* ---- plates ------------------------------------------------------------- */
@@ -401,4 +640,184 @@
   .plateScrim {
     backdrop-filter: none;
   }
+}
+
+/* ---- the Encounter ------------------------------------------------------ */
+
+.encounterLine {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.encounterThemes {
+  color: var(--text-muted);
+  line-height: var(--line-height);
+}
+
+/* A rung whose Sefirah the Scribe spent light to kindle. */
+.rungLit {
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-raised));
+}
+
+.rungLit .rungMiddah {
+  color: var(--accent-bright);
+}
+
+/* The rung this climb's Encounter illuminates — light there counts double. */
+.rungIllumined .rungHeb {
+  color: var(--accent-bright);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+/* ---- the Word-Gate ------------------------------------------------------ */
+
+.sockets {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+
+.socket {
+  width: 3.4rem;
+  height: 3.4rem;
+  display: grid;
+  place-items: center;
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--accent-bright);
+  background: var(--bg-sunken);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.socket:empty {
+  border-style: dashed;
+  border-color: var(--border-hairline);
+}
+
+.palette {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+}
+
+.paletteLetter {
+  width: 2.1rem;
+  height: 2.1rem;
+  display: grid;
+  place-items: center;
+  font-size: 1.25rem;
+  color: var(--accent);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.paletteLetter:hover {
+  border-color: var(--accent);
+  color: var(--accent-bright);
+}
+
+.plateActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.wordList {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  text-align: left;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.wordList li {
+  padding: var(--space-1) var(--space-2);
+  border-left: 2px solid var(--accent);
+  font-size: 1.15rem;
+  color: var(--accent-bright);
+}
+
+.wordGloss {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* ---- an Ushpizin guest's offer ------------------------------------------ */
+
+.offer {
+  margin-top: var(--space-2);
+}
+
+.offerGuest {
+  margin: var(--space-2) 0 var(--space-1);
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.offerSaying {
+  margin: 0 0 var(--space-3);
+  color: var(--text);
+  font-style: italic;
+  line-height: var(--line-height);
+}
+
+.offerGrants {
+  margin: 0 0 var(--space-3);
+  color: var(--accent-bright);
+  font-size: 0.92rem;
+}
+
+.offerShort {
+  margin: 0 0 var(--space-3);
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+/* ---- what is sounding --------------------------------------------------- */
+
+.nigunLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  background: var(--bg-raised);
+}
+
+.nigunMode {
+  color: var(--accent);
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+
+.nigunHeb {
+  margin-left: var(--space-2);
+  color: var(--accent-bright);
+}
+
+.nigunNote {
+  flex: 1 1 20rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
 }

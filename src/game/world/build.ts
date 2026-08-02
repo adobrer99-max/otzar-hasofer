@@ -1,8 +1,9 @@
 import { cardsByHouse, housesBySefirah } from "../../data/dorot";
 import type { Verb } from "../abilities";
 import { abilityByLetter } from "../abilities";
-import { fragmentsBefore, lettersOnEntering, regionAt } from "../regions";
+import { fragmentsBefore, lettersOnEntering, regionAt, type Region } from "../regions";
 import { makeRng, randomInt, shuffle } from "../rng";
+import { chooseTarget, type WordGateTarget } from "../wordGate";
 import {
   CHUNK_H,
   CHUNK_W,
@@ -10,15 +11,53 @@ import {
   END_CHUNK,
   FRAGMENT_CHUNK,
   HOUSE_CHUNK,
+  LANDING_CHUNK,
   LETTER_CHUNK,
-  SHRINE_CHUNK,
+  RISE_CHUNK,
+  SHRINE_HIGH,
+  SHRINE_LOW,
   START_CHUNK,
+  TEACH_CHUNKS,
+  VESSEL_CHUNK,
+  WORD_GATE_CHUNK,
 } from "./chunks";
+import { HUSK_CHARS, HUSKS, kindForRole, LAMPS } from "../combat";
+import { keliFor } from "../items";
 import { MARKER_CHARS, Tile, TILE_CHARS, TILE_SIZE } from "./tiles";
-import type { Chunk, Entity, Player, World } from "./types";
+import { doorsOf, planFloor, roomAtPoint, ROOM_H, ROOM_W } from "./rooms";
+import type { Chunk, Edge, Entity, Husk, Player, World } from "./types";
 
 export const PLAYER_W = 16;
 export const PLAYER_H = 30;
+
+/** Screens to a room. Two, because one is portrait and cannot be framed. */
+export const ROW_SCREENS_PER_ROOM = 2;
+
+/**
+ * How many rows of rooms a rung is built from — **the Tree grows taller.**
+ *
+ * One row is a corridor, which is what every rung was before rooms existed, so
+ * the foot of the Tree is untouched: Malchut goes on teaching in a straight
+ * line and keeps the pacing that was measured and fixed. The map deepens as it
+ * is climbed, which is the whole of what the shape is meant to say.
+ */
+/**
+ * **The Tree grows taller.** One row is a corridor, which is what every rung
+ * was before rooms existed, so the foot is untouched: Malchut goes on teaching
+ * in a straight line and keeps the pacing that was measured and fixed. The map
+ * deepens as it is climbed, which is the whole of what the shape says.
+ */
+export function rowsFor(regionIndex: number): number {
+  return regionIndex <= 3 ? 1 : regionIndex <= 7 ? 2 : 3;
+}
+
+/**
+ * The same function under the name the tests reach for. `route.test.ts` builds
+ * rungs at an explicit shape — flat, and as they ship — and naming the shape at
+ * those call sites keeps the test agreeing with what it means rather than with
+ * whatever the generator happens to say.
+ */
+export const FLOOR_ROWS = rowsFor;
 
 /** The verbs a set of held letters amounts to. */
 export function verbsOf(letterIds: readonly string[]): Verb[] {
@@ -39,10 +78,73 @@ export function verbsOf(letterIds: readonly string[]): Verb[] {
  * those whose `requires` the Scribe already satisfies **on entering**. A
  * letter found partway through a region is never assumed by that region's own
  * terrain, so there is no order of play that can strand anyone.
+ *
+ * `teaching` prepends the fixed porch (`TEACH_CHUNKS`) to Malchut, so a Scribe
+ * on their first climb meets flat ground, a step and a gap in that order and
+ * the coaching lines have somewhere to land. It changes nothing else: the
+ * seeded body, the letters, the shrine and the exit are exactly what they
+ * would otherwise be.
  */
-export function buildRegion(regionIndex: number, seed: number, lightOfTheDay = 1): World {
+export function buildRegion(
+  regionIndex: number,
+  seed: number,
+  lightOfTheDay = 1,
+  teaching = false,
+  /**
+   * How many rows of rooms to build, overriding `rowsFor`.
+   *
+   * There for `route.test.ts`, and it earns its place: the rows are switched
+   * off in the shipping build and the whole point of the route graph is to
+   * prove that the floors are sound *before* they are switched on. Without a
+   * way to build one there is nothing to prove it against.
+   */
+  rows?: number,
+): World {
   const region = regionAt(regionIndex);
   const rng = makeRng((seed ^ (regionIndex * 0x9e3779b9)) >>> 0);
+  const { laid, wordGateTarget } = layout(region, rng, teaching, rows);
+
+  return paint(
+    laid,
+    region.index,
+    region.sefirah,
+    region.letters,
+    rng,
+    region.hasHouse,
+    lightOfTheDay,
+    fragmentsBefore(region.index),
+    wordGateTarget,
+    region.klipot,
+    rows,
+    // The taught porch stays empty of husks. Its whole job is to land four
+    // coaching lines on flat ground, a step and a gap, and a klipah wandering
+    // through the middle of that teaches something else entirely.
+    (laid.length > 0 ? 1 : 0) + (teaching && region.index === 1 ? TEACH_CHUNKS.length : 0),
+  );
+}
+
+/**
+ * The screens a region is made of, in order — separated from painting them so
+ * that the assembly can be inspected directly rather than inferred from tiles.
+ * `build.test.ts` reads the chain and the demand curve straight off this.
+ */
+export function layoutOf(
+  regionIndex: number,
+  seed: number,
+  teaching = false,
+  rows?: number,
+): Chunk[] {
+  const region = regionAt(regionIndex);
+  return layout(region, makeRng((seed ^ (regionIndex * 0x9e3779b9)) >>> 0), teaching, rows).laid;
+}
+
+function layout(
+  region: ReturnType<typeof regionAt>,
+  rng: () => number,
+  teaching: boolean,
+  rowsOverride?: number,
+): { laid: Chunk[]; wordGateTarget: WordGateTarget | undefined } {
+  const regionIndex = region.index;
   const held = lettersOnEntering(regionIndex);
   const verbs = verbsOf(held);
 
@@ -51,16 +153,24 @@ export function buildRegion(regionIndex: number, seed: number, lightOfTheDay = 1
     throw new Error(`Region ${regionIndex} has no passable chunks — the letter order is wrong`);
   }
 
-  // The body: `length` screens drawn from what the Scribe can cross, biased
-  // away from repeating the one just laid so a region does not stutter.
-  const body: Chunk[] = [];
-  let previous = "";
-  for (let i = 0; i < region.length; i += 1) {
-    const pool = passable.filter((c) => c.id !== previous);
-    const pick = (pool.length > 0 ? pool : passable)[randomInt(rng, pool.length > 0 ? pool.length : passable.length)];
-    body.push(pick);
-    previous = pick.id;
-  }
+  // Then the band. A region draws only from screens that ask what it is meant
+  // to ask — and the *floor* is the part that matters, because it is what
+  // keeps a flat walk out of the crown. If the band leaves too little to
+  // choose from the region widens it rather than repeating itself; it never
+  // starves, and it never throws.
+  const banded = withinBand(passable, region.demand);
+
+  // The quota is clamped to what the pool can actually supply. Hod holds no
+  // verb that is reached for — the Bridge is *given* there — so demanding that
+  // half its screens ask for one filtered out every ungated screen in the
+  // library, emptied the candidate list, and dropped the region into the
+  // ground-only fallback. Which is why Hod could never branch.
+  // The gate's answer is chosen first, from roots the Scribe can already
+  // spell with the letters they arrive holding. No target, no gate — which is
+  // why Malchut and Yesod carry none: with two letters there is nothing to
+  // spell. This is the same shape as `requires` on a chunk: the generator is
+  // not permitted to express an unsolvable one.
+  const wordGateTarget = chooseTarget(regionIndex, rng);
 
   // The fixed screens are inserted at positions within the body. Their *order*
   // here is their order on the ground, because the chosen slots are sorted
@@ -72,30 +182,457 @@ export function buildRegion(regionIndex: number, seed: number, lightOfTheDay = 1
   const fixed: Chunk[] = [
     ...Array.from({ length: region.fragments ?? 0 }, () => FRAGMENT_CHUNK),
     ...region.letters.map(() => LETTER_CHUNK),
-    SHRINE_CHUNK,
+    ...(wordGateTarget ? [WORD_GATE_CHUNK] : []),
+    // One mark per region below the Abyss, and none above it. Low at the foot
+    // of the Tree where it is walked into, on a shelf higher up where taking
+    // it is a choice.
+    ...(region.hasShrine ? [region.index <= 3 ? SHRINE_LOW : SHRINE_HIGH] : []),
     ...(region.hasHouse ? [HOUSE_CHUNK] : []),
+    // One vessel per rung above the kingdom, on a shelf off the floor. It is
+    // the only fixed screen that gives something the alphabet does not.
+    ...(keliFor(region.index) ? [VESSEL_CHUNK] : []),
   ];
-  // Distinct slots when there is room; otherwise several fixed screens share a
-  // position and simply follow one another, which the painter below handles.
-  const positions = Array.from({ length: body.length + 1 }, (_, i) => i);
-  const slots =
-    fixed.length <= positions.length
-      ? shuffle(rng, positions).slice(0, fixed.length)
-      : Array.from({ length: fixed.length }, (_, i) => positions[randomInt(rng, positions.length)] ?? i);
-  slots.sort((a, b) => a - b);
 
-  const laid: Chunk[] = [START_CHUNK];
+  // Every fixed screen is entered and left on the ground, so they may only be
+  // slotted where the body is *already* on the ground.
+  //
+  // **A rung must be long enough to carry what it holds.** `region.length` was
+  // authored as a length and read as one, and the fixed screens were then
+  // pushed into whatever gaps happened to exist — so Malchut, six body screens
+  // carrying six plates, was half plates, and Hod and Netzach had *fewer*
+  // ground boundaries than fixed screens because their bodies climb, which
+  // dropped them into a fallback that repeats a slot and stacked three plates
+  // in a row in half of all climbs. Measured over forty seeds, both.
+  //
+  // So the body grows until there is room for a screen of actual game between
+  // them. `length` becomes the floor rather than the whole story, and a rung
+  // is exactly as long as its own content asks — Keter, carrying two plates,
+  // does not grow at all.
+  const room = fixed.length + 2;
+  const quota = banded.some(asksForALetter)
+    ? gatedQuota(Math.max(region.length, room), region.demand)
+    : 0;
+  const body = layBody(
+    banded,
+    Math.max(region.length, room),
+    rng,
+    region.demand.bias === "hard",
+    quota,
+  );
+  // A body that climbs offers fewer boundaries than it has screens, so the
+  // count is checked after the fact and topped up with plain ground. `layBody`
+  // always ends on the floor, so appending ground screens is always valid.
+  const flat = banded.filter((c) => c.entry === "ground" && c.exit === "ground");
+  // Padding is still the region's terrain, not a corridor. Drawn from the
+  // gentlest thing to hand it would be free ground, and it was: one seed of
+  // Tiferet became crossable by a Scribe who only walks and jumps, which the
+  // suite watches for precisely because that used to be the whole game.
+  const demanding = flat.filter((c) => asksForALetter(c) || c.demand > 1);
+  const padding = demanding.length > 0 ? demanding : flat;
+  while (groundSlots(body).length < room && padding.length > 0 && body.length < room * 3) {
+    body.push(draw(padding, rng, region.demand.bias === "hard"));
+  }
+  const positions = groundSlots(body);
+  const slots = spaceOut(fixed.length, positions, rng);
+
+  const content: Chunk[] = [START_CHUNK, ...(teaching && regionIndex === 1 ? TEACH_CHUNKS : [])];
   let nextFixed = 0;
   for (let i = 0; i <= body.length; i += 1) {
     while (nextFixed < slots.length && slots[nextFixed] === i) {
-      laid.push(fixed[nextFixed]);
+      content.push(fixed[nextFixed]);
       nextFixed += 1;
     }
-    if (i < body.length) laid.push(body[i]);
+    if (i < body.length) content.push(body[i]);
   }
-  laid.push(END_CHUNK);
+  content.push(END_CHUNK);
 
-  return paint(laid, region.index, region.sefirah, region.letters, rng, region.hasHouse, lightOfTheDay, fragmentsBefore(region.index));
+  const rows = rowsOverride ?? rowsFor(regionIndex);
+  // A room is two screens and a floor is a whole number of rows, so an odd
+  // count would leave half a room hanging off the end — a hole in the frame
+  // rather than a hole in the level, and worse for it. Flat screens before the
+  // exit square it up, drawn from the same pool as the rest, so they are the
+  // region's own ground. The stairwell screens are counted here rather than
+  // stamped over the content afterwards: substituting them clobbered whatever
+  // they landed on, and what they landed on was sometimes a letter.
+  const flatEnough = banded.filter((c) => c.entry === "ground" && c.exit === "ground");
+  const filler = flatEnough.length > 0 ? flatEnough : banded;
+  const hard = region.demand.bias === "hard";
+  return { laid: withStairs(content, rows, filler, rng, hard), wordGateTarget };
+}
+
+/**
+ * Fold a rung's screens into storeys, with a stairwell at each boundary.
+ *
+ * The way up is always at the end of the row you are walking, which falls
+ * straight out of the serpentine — so the last screen of a storey is the
+ * `RISE` and the first screen of the one above it is the `LANDING`. They are
+ * structural, like the start and the end: the seed decides everything between
+ * them and nothing about where they are.
+ */
+function withStairs(
+  content: readonly Chunk[],
+  rows: number,
+  filler: readonly Chunk[],
+  rng: () => number,
+  hard: boolean,
+): Chunk[] {
+  // Note that a one-storey rung comes through here too, and must: it has no
+  // stairwell but it still has to be squared up to whole rooms, and returning
+  // early left the lower Tree half a room wide.
+  //
+  // **A storey may only be cut where the ground is continuous.** The stairwell
+  // screens are entered and left on the floor, so cutting the chain at an
+  // arbitrary index put a `RISE` that enters on the ground after a screen that
+  // exits up on the high road — a seam with the floor on one side and nothing
+  // on the other. So the cut is nudged to the nearest join that is ground to
+  // ground, exactly the rule `groundSlots` keeps for the fixed screens.
+  const ideal = Math.ceil(content.length / rows);
+  const cuts: number[] = [];
+  for (let storey = 1; storey < rows; storey += 1) {
+    const want = Math.min(content.length - 1, Math.max(1, ideal * storey));
+    let at = want;
+    for (let step = 0; step <= ideal; step += 1) {
+      const candidates = [want - step, want + step];
+      const found = candidates.find(
+        (i) =>
+          i > (cuts[cuts.length - 1] ?? 0) &&
+          i < content.length &&
+          content[i - 1].exit === "ground" &&
+          content[i].entry === "ground",
+      );
+      if (found !== undefined) {
+        at = found;
+        break;
+      }
+    }
+    cuts.push(at);
+  }
+
+  const storeys: Chunk[][] = [];
+  let from = 0;
+  for (const cut of [...cuts, content.length]) {
+    storeys.push(content.slice(from, cut));
+    from = cut;
+  }
+
+  // Every storey is the same width, or the grid is not a grid. Short ones are
+  // padded with the region's own flat ground, which is also what squares a
+  // rung up to whole rooms.
+  const stairsIn = (storey: number) =>
+    (storey > 0 ? 1 : 0) + (storey < rows - 1 ? 1 : 0);
+  // Rounded up to whole rooms here rather than afterwards. Squaring the rung
+  // up *after* the storeys were assembled meant splicing screens into a laid
+  // sequence and pushing the stairwell out of place — a `RISE` in the middle
+  // of a row, with the way up nowhere near the end of it.
+  const widest = Math.max(...storeys.map((s, i) => s.length + stairsIn(i)));
+  const perRow = Math.ceil(widest / ROW_SCREENS_PER_ROOM) * ROW_SCREENS_PER_ROOM;
+  const laid: Chunk[] = [];
+  storeys.forEach((screens, storey) => {
+    const padded = [...screens];
+    while (padded.length + stairsIn(storey) < perRow) {
+      // As late in the storey as the chain allows, and never after the last
+      // screen, so the exit stays the exit. "As the chain allows" is the whole
+      // point: a flat screen dropped between two that hand each other on at
+      // the high road breaks the floor at both seams.
+      let at = padded.length - 1;
+      while (at > 0 && !(padded[at - 1].exit === "ground" && padded[at].entry === "ground")) {
+        at -= 1;
+      }
+      padded.splice(Math.max(1, at), 0, draw(filler, rng, hard));
+    }
+    if (storey > 0) laid.push(LANDING_CHUNK);
+    laid.push(...padded);
+    if (storey < rows - 1) laid.push(RISE_CHUNK);
+  });
+  return laid;
+}
+
+/** The fewest distinct screens a region may draw on before it starts to stutter. */
+const MIN_POOL = 5;
+/** How many screens a high stretch may run before it must come back down. */
+const MAX_HIGH_RUN = 2;
+/**
+ * How many screens a branch may run before the roads rejoin.
+ *
+ * Longer than a high stretch, because a branch is not a risk the way a high
+ * stretch is — the lower road is always there and always walkable, so a Scribe
+ * who wants nothing to do with the upper one simply keeps walking.
+ */
+const MAX_BRANCH_RUN = 3;
+/**
+ * How often a region that *can* branch actually does.
+ *
+ * Left to uniform sampling a fork is one candidate among twenty and turns up
+ * in about one climb in eight — which is not a feature, it is a rumour. So the
+ * region decides up front whether it divides, and then takes the first fork it
+ * can. Not every region: a Tree where every rung branches is as flat as one
+ * where none does.
+ */
+const BRANCH_CHANCE = 0.55;
+
+/**
+ * The two verbs that are *had* rather than *reached for*.
+ *
+ * The Breath and the Fence live on the leap key, so a Scribe carrying them
+ * uses them without ever deciding to — hold toward a wall and jump, and you
+ * have climbed it. Every other verb needs a key pressed on purpose. That
+ * distinction is what `asksForALetter` is about, and it is the difference
+ * between a region that uses the alphabet and one that merely stands next to
+ * it: a body screen gated only on the Breath asks nothing a plain jump does
+ * not already ask.
+ */
+const HAD_NOT_REACHED_FOR: readonly Verb[] = ["double-jump", "wall-cling"];
+
+function asksForALetter(c: Chunk): boolean {
+  // A screen with two roads asks for nothing, whatever it declares. `high-road`
+  // needs the Hook to take the *upper* way and is a plain walk along the
+  // lower one — so counting it toward the quota let a region believe it had
+  // asked for a letter when a Scribe could stroll underneath. Measured: it put
+  // two of forty-two upper-Tree assemblies back within reach of walking and
+  // jumping alone.
+  if (c.entry === "both" || c.exit === "both") return false;
+  return c.requires.some((v) => !HAD_NOT_REACHED_FOR.includes(v));
+}
+
+/**
+ * A screen that opens or closes a branch.
+ *
+ * These are exempt from the quota. A fork and a merge ask for no letter, so a
+ * region with a tight quota filtered them out and never divided at all — the
+ * mid-Tree was branching in one climb in ten. The cost is that a branching
+ * region may fall one screen short of its quota, which is the right trade: a
+ * branch that cannot open is worth less than a letter asked for once more.
+ */
+function structural(c: Chunk): boolean {
+  const opens = c.entry !== "both" && c.exit === "both";
+  const closes = c.entry === "both" && c.exit !== "both";
+  // Only the two ends. The screens *inside* a branch face the quota like any
+  // other, or a region could spend its whole length on a branch that never
+  // asks for anything.
+  return opens || closes;
+}
+
+/**
+ * How many screens in a region must actually ask for a letter.
+ *
+ * Without this the seed is free to fill a region entirely with screens that
+ * ask nothing but walking and jumping — and it did: measured across the upper
+ * Tree, better than half of all assemblies could be crossed holding only the
+ * two movement keys, because the nine letterless screens in the library were
+ * enough to build a whole region out of. A region that gives you twelve verbs
+ * and then never asks for one is the flat feeling this whole change is about.
+ */
+function gatedQuota(length: number, band: { min: number }): number {
+  return Math.ceil(length * (band.min >= 2 ? 0.6 : 0.5));
+}
+
+/**
+ * The screens inside a region's demand band — widening the band rather than
+ * starving if there are too few.
+ *
+ * The floor is dropped before the ceiling is raised, because the ceiling is
+ * what the band is *for*: a region is allowed to end up gentler than intended,
+ * and never harder.
+ */
+function withinBand(pool: readonly Chunk[], band: { min: number; max: number }): Chunk[] {
+  for (let min = band.min; min >= 1; min -= 1) {
+    const found = pool.filter((c) => c.demand >= min && c.demand <= band.max);
+    if (found.length >= MIN_POOL || min === 1) return found.length > 0 ? found : [...pool];
+  }
+  return [...pool];
+}
+
+/**
+ * The body of a region, as a walk on the edge profiles.
+ *
+ * Every chunk is entered where the last one was left, so a screen can hand the
+ * Scribe on four tiles above the floor instead of resetting them to it — which
+ * is the whole reason the Tree stopped being a corridor. Two rules keep it
+ * honest:
+ *
+ * - It **begins and ends on the ground**, so `START_CHUNK` and `END_CHUNK`
+ *   always connect and every excursion comes home.
+ * - A high stretch runs at most `MAX_HIGH_RUN` screens. There is nothing
+ *   beneath a high edge, so falling costs a veiling; a long stretch of that
+ *   would be a punishment rather than a demand.
+ *
+ * If the pool cannot honour those — no way up, or no way down — the body is
+ * simply laid on the ground, which is what the game did before there were
+ * profiles at all. That fallback is why this can never fail to terminate.
+ */
+function layBody(
+  pool: readonly Chunk[],
+  length: number,
+  rng: () => number,
+  hard: boolean,
+  quota: number,
+): Chunk[] {
+  const ground = pool.filter((c) => c.entry === "ground" && c.exit === "ground");
+  if (ground.length === 0) return [];
+
+  // Decided before anything is laid, and only if the pool can actually open a
+  // branch and close it again.
+  const canBranch =
+    pool.some((c) => c.entry === "ground" && c.exit === "both") &&
+    pool.some((c) => c.entry === "both" && c.exit === "ground");
+  let wantsBranch = canBranch && length >= 4 && rng() < BRANCH_CHANCE;
+
+  const body: Chunk[] = [];
+  let at: Edge = "ground";
+  let highRun = 0;
+  let branchRun = 0;
+  let previous = "";
+  let gated = 0;
+
+  for (let i = 0; i < length; i += 1) {
+    const remaining = length - i;
+    const owed = quota - gated;
+    const candidates = pool.filter((c) => {
+      if (c.entry !== at) return false;
+      // Come down in time to finish on the floor, and never stay up too long.
+      if (c.exit === "high" && (remaining <= 1 || highRun >= MAX_HIGH_RUN)) return false;
+      // The same for a branch: the roads must rejoin before the region ends.
+      if (c.exit === "both" && (remaining <= 1 || branchRun >= MAX_BRANCH_RUN)) return false;
+      // Once only just enough screens are left to meet the quota, every one of
+      // them has to ask for something.
+      if (owed >= remaining && !asksForALetter(c) && !structural(c)) return false;
+      return true;
+    });
+    // Prefer not to repeat the screen just laid, so a region does not stutter.
+    const fresh = candidates.filter((c) => c.id !== previous);
+    let from = fresh.length > 0 ? fresh : candidates;
+
+    // If this region means to divide, divide at the first screen that can —
+    // leaving room to run the branch and rejoin before the exit.
+    if (wantsBranch && at === "ground" && remaining > 3) {
+      const forks = from.filter((c) => c.exit === "both");
+      if (forks.length > 0) {
+        from = forks;
+        wantsBranch = false;
+      }
+    }
+    if (from.length === 0) {
+      // Stranded up high with nothing to come down on — abandon the height and
+      // finish along the floor rather than build something uncrossable.
+      return layGround(ground, length, rng, hard, quota - gated);
+    }
+    const pick = draw(from, rng, hard);
+    body.push(pick);
+    at = pick.exit;
+    highRun = pick.exit === "high" ? highRun + 1 : 0;
+    branchRun = pick.exit === "both" ? branchRun + 1 : 0;
+    // Once the road has divided it must come back together, so nothing may
+    // preempt the merge.
+    if (pick.exit === "both") wantsBranch = false;
+    if (asksForALetter(pick)) gated += 1;
+    previous = pick.id;
+  }
+
+  return at === "ground" ? body : layGround(ground, length, rng, hard, quota);
+}
+
+/**
+ * The body laid flat, when the profiles cannot be honoured.
+ *
+ * It keeps the quota, which the first version of it did not — and that was
+ * quietly the reason Tiferet asked for a letter less often than Netzach, one
+ * region below it: any assembly that fell back to this path lost its gating
+ * entirely, and the fallback fires more often than you would guess.
+ */
+function layGround(
+  ground: readonly Chunk[],
+  length: number,
+  rng: () => number,
+  hard: boolean,
+  quota: number,
+): Chunk[] {
+  const body: Chunk[] = [];
+  let previous = "";
+  let gated = 0;
+  for (let i = 0; i < length; i += 1) {
+    const owed = quota - gated;
+    const remaining = length - i;
+    const eligible = ground.filter((c) => !(owed >= remaining && !asksForALetter(c)));
+    const pool = eligible.length > 0 ? eligible : ground;
+    const fresh = pool.filter((c) => c.id !== previous);
+    const pick = draw(fresh.length > 0 ? fresh : pool, rng, hard);
+    body.push(pick);
+    if (asksForALetter(pick)) gated += 1;
+    previous = pick.id;
+  }
+  return body;
+}
+
+/**
+ * One screen from the pool — and above the Abyss, the harder of two.
+ *
+ * Drawing twice and keeping the harder is how the supernals end up genuinely
+ * asking more than Gevurah without narrowing what they can draw on: every
+ * screen in the band is still reachable, the distribution simply leans.
+ */
+function draw(pool: readonly Chunk[], rng: () => number, hard: boolean): Chunk {
+  const first = pool[randomInt(rng, pool.length)];
+  if (!hard) return first;
+  const second = pool[randomInt(rng, pool.length)];
+  return second.demand > first.demand ? second : first;
+}
+
+/**
+ * Where the fixed screens go — spread across the rung rather than sprinkled.
+ *
+ * A fixed screen is a screen you *stop* on: a letter in its alcove, a genizah
+ * niche, a Word-Gate, the shrine, the House. Chosen by shuffling the ground
+ * slots and taking the first N, they clump — measured over forty seeds, Hod
+ * and Netzach laid three of them in a row in about half of all climbs, which
+ * is three plates and no game in between. And the foot of the Tree feels
+ * crowded for the same reason from the other direction: Malchut carries six
+ * fixed screens and Keter two, so the rung that also has the teaching porch on
+ * it is the one with the least room to breathe.
+ *
+ * This does not change how many there are. It divides the rung into as many
+ * bands as there are screens to place and takes one slot from each, so a plate
+ * is always followed by ground before the next one — the pacing is the same
+ * shape whether a rung carries two or six.
+ *
+ * The jitter inside each band is what keeps the layout from reading as a
+ * metronome; the fallback, for a rung with fewer ground slots than screens,
+ * is the old behaviour, because a repeated slot is better than dropping a
+ * letter on the floor.
+ */
+function spaceOut(count: number, positions: readonly number[], rng: () => number): number[] {
+  if (count === 0) return [];
+  if (count > positions.length) {
+    return Array.from({ length: count }, (_, i) => positions[randomInt(rng, positions.length)] ?? i).sort(
+      (a, b) => a - b,
+    );
+  }
+  // Greedy, and greedy in that order for a reason: an evenly-banded version of
+  // this was tried first and made the clumping *worse*, because a rung with
+  // six screens and seven boundaries has bands one boundary wide and every
+  // band-edge pick lands next to its neighbour. Taking the roomiest gap each
+  // time can only do better than shuffling, whatever the ratio.
+  const shuffled = shuffle(rng, [...positions]);
+  const chosen: number[] = [];
+  for (let i = 0; i < count; i += 1) {
+    const free = shuffled.filter((p) => !chosen.includes(p));
+    const roomy = free.filter((p) => chosen.every((c) => Math.abs(c - p) > 1));
+    chosen.push((roomy.length > 0 ? roomy : free)[0]);
+  }
+  return chosen.sort((a, b) => a - b);
+}
+
+/**
+ * The boundaries a fixed screen may be slotted into — those where the Scribe
+ * is on the ground, since every fixed screen is entered and left there.
+ * Position `i` means "before body screen `i`", so 0 and `body.length` are the
+ * mouth and the tail of the body, both of which are always ground.
+ */
+function groundSlots(body: readonly Chunk[]): number[] {
+  const slots = [0];
+  for (let i = 0; i < body.length; i += 1) {
+    if (body[i].exit === "ground") slots.push(i + 1);
+  }
+  return slots;
 }
 
 /** Writes the laid chunks into a tile grid and lifts the markers into entities. */
@@ -108,14 +645,24 @@ function paint(
   hasHouse: boolean,
   lightOfTheDay: number,
   firstFragmentIndex: number,
+  wordGateTarget: WordGateTarget | undefined,
+  klipot: Region["klipot"],
+  rowsOverride: number | undefined,
+  quiet: number,
 ): World {
-  const width = laid.length * CHUNK_W;
-  const height = CHUNK_H;
+  // The screens are dealt into a floor before anything is written. One row is
+  // a corridor and is exactly what every rung was before rooms existed, so
+  // this changes nothing until a rung asks for a second row.
+  const floor = planFloor(laid, rowsOverride ?? rowsFor(regionIndex));
+  const width = floor.cols * ROOM_W;
+  const height = floor.rows * ROOM_H;
   const tiles = new Uint8Array(width * height);
   const entities: Entity[] = [];
 
   let spawn = { x: TILE_SIZE * 2, y: TILE_SIZE * 14 };
+  const husks: Husk[] = [];
   let letterCursor = 0;
+  let authored = 0;
   let fragmentCursor = firstFragmentIndex;
   let entityId = 0;
 
@@ -127,17 +674,21 @@ function paint(
     if (pool.length > 0) dorotCardId = pool[randomInt(rng, pool.length)].id;
   }
 
-  laid.forEach((chunk, chunkIndex) => {
-    const originX = chunkIndex * CHUNK_W;
+  floor.placements.forEach(({ chunk, x: chunkX, y: chunkY, mirrored }) => {
+    const originX = chunkX * CHUNK_W;
+    const originY = chunkY * CHUNK_H;
     chunk.rows.forEach((row, y) => {
       for (let x = 0; x < CHUNK_W; x += 1) {
-        const ch = row[x];
+        // A screen laid back to front is read back to front. Everything on it
+        // moves with it — tiles, markers, motes and the klipot alike.
+        const ch = mirrored ? row[CHUNK_W - 1 - x] : row[x];
         const worldX = originX + x;
+        const worldY = originY + y;
         const px = worldX * TILE_SIZE;
-        const py = y * TILE_SIZE;
+        const py = worldY * TILE_SIZE;
 
         if (MARKER_CHARS.has(ch)) {
-          tiles[y * width + worldX] = Tile.Empty;
+          tiles[worldY * width + worldX] = Tile.Empty;
           switch (ch) {
             case "S":
               spawn = { x: px, y: py };
@@ -159,12 +710,26 @@ function paint(
                 ref: String(fragmentCursor++),
               });
               break;
+            case "?":
+              if (wordGateTarget) {
+                entities.push({ id: `e${entityId++}`, kind: "word-gate", x: px, y: py });
+              }
+              break;
             case "T":
               entities.push({ id: `e${entityId++}`, kind: "mark", x: px, y: py });
+              break;
+            case "Y":
+              // Where the road divides. Resh returns the Scribe here.
+              entities.push({ id: `e${entityId++}`, kind: "fork", x: px, y: py });
               break;
             case "H":
               if (dorotCardId) entities.push({ id: `e${entityId++}`, kind: "house", x: px, y: py, ref: dorotCardId });
               break;
+            case "K": {
+              const keli = keliFor(regionIndex);
+              if (keli) entities.push({ id: `e${entityId++}`, kind: "vessel", x: px, y: py, ref: keli.id });
+              break;
+            }
             default:
               break;
           }
@@ -172,17 +737,50 @@ function paint(
         }
 
         if (ch === "*") {
-          tiles[y * width + worldX] = Tile.Empty;
+          tiles[worldY * width + worldX] = Tile.Empty;
           entities.push({ id: `e${entityId++}`, kind: "mote", x: px, y: py });
           continue;
         }
 
-        tiles[y * width + worldX] = TILE_CHARS[ch] ?? Tile.Empty;
+        // A husk stands where it is written, on empty ground. The light it
+        // holds is not strewn here — it comes out when the shell breaks.
+        //
+        // What the screen names is a **role**, not a klipah: the library is
+        // authored once and drawn on by every rung, so a screen that named
+        // Athaliah would stand her in Malchut. The rung's own pool answers, and
+        // `authored` walks it so a screen with three alcoves does not fill all
+        // three with the same shell.
+        const huskRole = HUSK_CHARS[ch];
+        const huskKind = huskRole ? kindForRole(klipot.kinds, huskRole, authored++) : undefined;
+        if (huskKind) {
+          tiles[worldY * width + worldX] = Tile.Empty;
+          const spec = HUSKS[huskKind];
+          husks.push({
+            id: `h${entityId++}`,
+            kind: huskKind,
+            x: px,
+            y: py + TILE_SIZE - spec.size.h,
+            w: spec.size.w,
+            h: spec.size.h,
+            vx: 0,
+            vy: 0,
+            facing: -1,
+            shells: spec.shells,
+            home: { x: px, y: py },
+            cooldown: 0,
+            charging: 0,
+            struck: 0,
+          });
+          continue;
+        }
+
+        tiles[worldY * width + worldX] = TILE_CHARS[ch] ?? Tile.Empty;
       }
     });
   });
 
   scatterMotes(tiles, width, height, entities, rng, () => `e${entityId++}`, lightOfTheDay);
+  scatterHusks(tiles, width, height, husks, rng, () => `h${entityId++}`, klipot, quiet);
 
   const player: Player = {
     x: spawn.x,
@@ -204,7 +802,26 @@ function paint(
     crouching: false,
     veiled: 0,
     grappleCooldown: 0,
+    lamps: LAMPS,
+    iframes: 0,
+    markCooldown: 0,
   };
+
+  // The doors are read off the finished grid, not derived — whatever is empty
+  // along a boundary is a way through, whether it is on the ground, up on the
+  // high road, or a hole in a floor.
+  for (const room of floor.rooms) {
+    room.doors = doorsOf(room, tiles, width, height);
+    room.husks = husks
+      .filter(
+        (h) =>
+          h.x >= room.x * TILE_SIZE &&
+          h.x < (room.x + room.w) * TILE_SIZE &&
+          h.y >= room.y * TILE_SIZE &&
+          h.y < (room.y + room.h) * TILE_SIZE,
+      )
+      .map((h) => h.id);
+  }
 
   return {
     regionIndex,
@@ -214,10 +831,20 @@ function paint(
     height,
     player,
     entities,
+    rooms: floor.rooms,
+    roomIndex: Math.max(0, roomAtPoint(floor.rooms, spawn.x / TILE_SIZE, spawn.y / TILE_SIZE)),
     respawn: { ...spawn },
     revealed: false,
     placed: [],
+    wordGate: wordGateTarget,
     or: 0,
+    orPerMote: 1,
+    orGathered: 0,
+    veilings: 0,
+    marksSet: 0,
+    husks,
+    marks: [],
+    husksBroken: 0,
     tick: 0,
     finished: false,
   };
@@ -256,7 +883,11 @@ function scatterMotes(
   }
 
   const taken = new Set(entities.map((e) => `${Math.floor(e.x / TILE_SIZE)},${Math.floor(e.y / TILE_SIZE)}`));
-  const wanted = Math.max(1, Math.round((width / 9) * lightOfTheDay));
+  // By area, not by width. A rung is several storeys tall now, so counting the
+  // light by how *wide* it is left the supernals — the tallest rungs, and the
+  // ones whose Sefirah costs most to kindle — with a third of the light they
+  // need, and made kindling unaffordable exactly where it matters most.
+  const wanted = Math.max(1, Math.round(((width * height) / CHUNK_H / 9) * lightOfTheDay));
   for (const spot of shuffle(rng, standable)) {
     if (entities.filter((e) => e.kind === "mote").length >= wanted) break;
     const key = `${spot.x},${spot.y}`;
@@ -278,4 +909,126 @@ export function tileAt(world: World, tx: number, ty: number): Tile {
 export function setTile(world: World, tx: number, ty: number, tile: Tile): void {
   if (tx < 0 || ty < 0 || tx >= world.width || ty >= world.height) return;
   world.tiles[ty * world.width + tx] = tile;
+}
+
+/**
+ * Scatters the klipot through a region.
+ *
+ * The same shape as `scatterMotes`, and for the same reason: a region's
+ * density has to be a property of the *rung*, not of which screens the seed
+ * happened to lay. Authored husks alone made the upper Tree emptier than the
+ * foot, because the screens they stood on were demand 1 and the high bands
+ * exclude those — measured at 1.5 husks in Malchut against 0.3 in Chesed.
+ *
+ * Two rules, both about fairness rather than balance:
+ *
+ * - **Nothing in the first screen or the last.** A Scribe walking in should
+ *   not be walking into something, and neither should one walking out.
+ * - **What flies goes in the air; everything else needs a floor.** A klipah
+ *   that walks and is set down over nothing spends the region falling.
+ */
+function scatterHusks(
+  tiles: Uint8Array,
+  width: number,
+  height: number,
+  husks: Husk[],
+  rng: () => number,
+  nextId: () => string,
+  klipot: Region["klipot"],
+  quiet: number,
+): void {
+  if (klipot.count <= 0 || klipot.kinds.length === 0) return;
+
+  // Nothing in the opening screens, nothing in the last one.
+  const margin = Math.max(1, quiet) * CHUNK_W + 4;
+  const standing: { x: number; y: number }[] = [];
+  const floating: { x: number; y: number }[] = [];
+  for (let y = 2; y < height - 1; y += 1) {
+    for (let x = margin; x < width - (CHUNK_W + 4); x += 1) {
+      const here = tiles[y * width + x];
+      const above = tiles[(y - 1) * width + x];
+      const below = tiles[(y + 1) * width + x];
+      if (here !== Tile.Empty || above !== Tile.Empty) continue;
+      if (below === Tile.Stone || below === Tile.Ledge) standing.push({ x, y: y - 1 });
+      else if (tiles[(y - 2) * width + x] === Tile.Empty) floating.push({ x, y: y - 1 });
+    }
+  }
+  if (standing.length === 0) return;
+
+  /**
+   * **Dealt across the rooms, not sprinkled over the grid.**
+   *
+   * A corridor is one room deep, so scattering into random standing places put
+   * a klipah more or less on the way through whatever happened. A floor is a
+   * room grid, and the Scribe walks one route across it — so the same scatter
+   * left half of them in corners of rooms nobody has any reason to enter.
+   * Measured, the moment the rows came on: the share of shells a Scribe who
+   * fights actually breaks fell from about three quarters on the corridors to
+   * one fifth on the floors, and the rest were content nobody would ever see.
+   * The way through passes every room, so one to a room, in order, and the
+   * remainder round again.
+   */
+  const byRoom = new Map<number, { x: number; y: number }[]>();
+  const roomOf = (spot: { x: number; y: number }) =>
+    Math.floor(spot.y / ROOM_H) * 1000 + Math.floor(spot.x / ROOM_W);
+  const deal = (spots: { x: number; y: number }[]) => {
+    byRoom.clear();
+    for (const spot of spots) {
+      const key = roomOf(spot);
+      const list = byRoom.get(key);
+      if (list) list.push(spot);
+      else byRoom.set(key, [spot]);
+    }
+    const rooms = [...byRoom.keys()].sort((l, r) => l - r).map((k) => byRoom.get(k) ?? []);
+    const out: { x: number; y: number }[] = [];
+    for (let round = 0; out.length < spots.length; round += 1) {
+      let laid = false;
+      for (const room of rooms) {
+        if (round >= room.length) continue;
+        out.push(room[round]);
+        laid = true;
+      }
+      if (!laid) break;
+    }
+    return out;
+  };
+
+  const ground = deal(shuffle(rng, standing));
+  const air = deal(shuffle(rng, floating));
+  const taken = new Set<string>();
+  let g = 0;
+  let a = 0;
+
+  for (let i = 0; i < klipot.count; i += 1) {
+    const kind = klipot.kinds[randomInt(rng, klipot.kinds.length)];
+    const spec = HUSKS[kind];
+    const pool = spec.flies && air.length > 0 ? air : ground;
+    const cursor = pool === air ? a : g;
+    if (cursor >= pool.length) continue;
+    const spot = pool[cursor];
+    if (pool === air) a += 1;
+    else g += 1;
+
+    // No two shells in the same column, or they read as one shape.
+    const key = String(spot.x);
+    if (taken.has(key)) continue;
+    taken.add(key);
+
+    husks.push({
+      id: nextId(),
+      kind,
+      x: spot.x * TILE_SIZE,
+      y: spot.y * TILE_SIZE + TILE_SIZE - spec.size.h,
+      w: spec.size.w,
+      h: spec.size.h,
+      vx: 0,
+      vy: 0,
+      facing: -1,
+      shells: spec.shells,
+      home: { x: spot.x * TILE_SIZE, y: spot.y * TILE_SIZE },
+      cooldown: randomInt(rng, 40),
+      charging: 0,
+      struck: 0,
+    });
+  }
 }

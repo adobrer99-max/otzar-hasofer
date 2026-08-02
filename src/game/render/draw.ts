@@ -3,6 +3,8 @@ import { tileAt } from "../world/build";
 import { Tile, TILE_SIZE } from "../world/tiles";
 import type { Entity, World } from "../world/types";
 import { alpha, type Palette } from "./palette";
+import { ROOM_H, ROOM_W } from "../world/rooms";
+import { HUSKS } from "../combat";
 
 /**
  * The Ascent, drawn.
@@ -19,6 +21,8 @@ import { alpha, type Palette } from "./palette";
 export interface Camera {
   x: number;
   y: number;
+  /** The room last framed, so a change of room can cut rather than sweep. */
+  room?: number;
 }
 
 const HATCH_SPACING = 6;
@@ -34,8 +38,25 @@ const HATCH_SPACING = 6;
  */
 const TILES_ACROSS = 26;
 
-export function zoomFor(viewW: number): number {
-  return Math.max(1, Math.min(2.6, viewW / (TILES_ACROSS * TILE_SIZE)));
+/**
+ * The zoom that frames a **room**.
+ *
+ * A room is two screens across and one tall — 32×18 tiles, 768×432 px — and the
+ * frame has to hold all of it, so the zoom is whichever axis is tighter. On a
+ * 20:9 canvas that is the height, and the width then shows about forty tiles:
+ * the room, with four tiles of its neighbours at each side. That overhang is
+ * not slack, it is the whole reason the camera snaps at all — a door you can
+ * see closing is worth more than a door you walk into.
+ *
+ * The old rule scaled to a fixed twenty-six tiles across and let the vertical
+ * follow the body, which is right for a corridor and cannot frame a room.
+ */
+export function zoomFor(viewW: number, viewH?: number): number {
+  if (viewH === undefined) return Math.max(1, Math.min(2.6, viewW / (TILES_ACROSS * TILE_SIZE)));
+  return Math.max(
+    0.6,
+    Math.min(viewW / (ROOM_W * TILE_SIZE), viewH / (ROOM_H * TILE_SIZE)),
+  );
 }
 
 export function drawWorld(
@@ -47,7 +68,7 @@ export function drawWorld(
   viewH: number,
   verbs: readonly string[],
 ): void {
-  const zoom = zoomFor(viewW);
+  const zoom = zoomFor(viewW, viewH);
   // The camera lives in world units, so the visible span shrinks as we zoom.
   const spanW = viewW / zoom;
   const spanH = viewH / zoom;
@@ -71,6 +92,8 @@ export function drawWorld(
     }
   }
 
+  drawHusks(ctx, world, palette);
+  drawMarks(ctx, world, palette);
   for (const entity of world.entities) {
     if (entity.x + TILE_SIZE < camera.x || entity.x > camera.x + spanW) continue;
     drawEntity(ctx, entity, palette, world.tick);
@@ -79,6 +102,9 @@ export function drawWorld(
   drawGrapple(ctx, world, palette);
   drawScribe(ctx, world, palette);
   ctx.restore();
+
+  // Last, and in screen space: the room is the lit panel.
+  dimBeyondTheRoom(ctx, world, camera, palette, viewW, viewH, zoom);
 }
 
 // ---------------------------------------------------------------------------
@@ -179,9 +205,39 @@ function drawTile(
     case Tile.LowGap:
       drawLowGap(ctx, x, y, palette);
       break;
+    case Tile.WordGate:
+      drawWordGate(ctx, x, y, palette, world.tick);
+      break;
+    case Tile.Seal:
+      drawSeal(ctx, x, y, palette, world.tick);
+      break;
     default:
       break;
   }
+}
+
+/**
+ * A door that closed behind you. Drawn as light drawn across the opening
+ * rather than as stone: it is not masonry, it is the room holding its breath,
+ * and it has to read as something that will lift rather than something that
+ * was always there.
+ */
+function drawSeal(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  palette: Palette,
+  tick: number,
+): void {
+  const breathe = 0.55 + Math.sin(tick / 22) * 0.12;
+  ctx.fillStyle = alpha(palette.gold, breathe * (palette.light ? 0.22 : 0.16));
+  ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+  ctx.strokeStyle = alpha(palette.gold, breathe);
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x + 2, y + TILE_SIZE / 2);
+  ctx.lineTo(x + TILE_SIZE - 2, y + TILE_SIZE / 2);
+  ctx.stroke();
 }
 
 function drawStone(
@@ -385,12 +441,34 @@ function drawLowGap(ctx: CanvasRenderingContext2D, x: number, y: number, palette
   }
 }
 
+/** The barrier of a Word-Gate: three empty sockets, waiting to be inscribed. */
+function drawWordGate(ctx: CanvasRenderingContext2D, x: number, y: number, palette: Palette, tick: number): void {
+  ctx.fillStyle = alpha(palette.blue, palette.light ? 0.4 : 0.62);
+  ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+  ctx.strokeStyle = palette.gold;
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(x + 1.5, y + 1.5, TILE_SIZE - 3, TILE_SIZE - 3);
+
+  // Three sockets, breathing — the shape of the question the gate asks.
+  const pulse = 0.5 + Math.sin(tick / 30 + y / 40) * 0.22;
+  ctx.strokeStyle = alpha(palette.goldBright, pulse);
+  ctx.lineWidth = 1.2;
+  for (let i = 0; i < 3; i += 1) {
+    ctx.beginPath();
+    ctx.arc(x + TILE_SIZE / 2, y + 6 + i * 6, 2.1, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
 // ---------------------------------------------------------------------------
 // entities
 // ---------------------------------------------------------------------------
 
 function drawEntity(ctx: CanvasRenderingContext2D, e: Entity, palette: Palette, tick: number): void {
   if (e.taken && (e.kind === "mote" || e.kind === "letter" || e.kind === "fragment")) return;
+  // The gate's porch is a place, not a thing — nothing is drawn for it; the
+  // barrier tiles beside it already say what it is.
+  if (e.kind === "word-gate") return;
   const cx = e.x + TILE_SIZE / 2;
   const cy = e.y + TILE_SIZE / 2;
 
@@ -459,6 +537,24 @@ function drawEntity(ctx: CanvasRenderingContext2D, e: Entity, palette: Palette, 
       }
       break;
     }
+    case "fork": {
+      // Where the road divides — Resh's landmark. A slender Y standing in the
+      // ground, lit once it has been passed, because after that it is
+      // somewhere you can be returned to.
+      const passed = Boolean(e.active);
+      ctx.strokeStyle = passed ? palette.goldBright : alpha(palette.muted, 0.65);
+      ctx.lineWidth = passed ? 1.8 : 1.2;
+      ctx.beginPath();
+      ctx.moveTo(cx, e.y + TILE_SIZE);
+      ctx.lineTo(cx, e.y + 2);
+      ctx.moveTo(cx, e.y + 2);
+      ctx.lineTo(cx - 8, e.y - 10);
+      ctx.moveTo(cx, e.y + 2);
+      ctx.lineTo(cx + 8, e.y - 10);
+      ctx.stroke();
+      glyph(ctx, "ר", cx, e.y - 20, 15, passed ? palette.goldBright : alpha(palette.muted, 0.7));
+      break;
+    }
     case "mark": {
       // The Tav shrine — dark until set, lit gold once it is yours.
       const on = Boolean(e.active);
@@ -475,6 +571,29 @@ function drawEntity(ctx: CanvasRenderingContext2D, e: Entity, palette: Palette, 
         ctx.arc(cx, e.y - 18, 20, 0, Math.PI * 2);
         ctx.fill();
       }
+      break;
+    }
+    case "vessel": {
+      // An object on a pedestal, lit from beneath — the shape says "taken up"
+      // rather than "walked into", which is the difference between a vessel
+      // and everything else lying about a rung.
+      if (e.taken) break;
+      const lift = Math.sin(tick / 26) * 2;
+      ctx.fillStyle = alpha(palette.goldBright, 0.16);
+      ctx.beginPath();
+      ctx.ellipse(cx, e.y + TILE_SIZE, 13, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = palette.goldBright;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(cx - 6, e.y + 12 + lift);
+      ctx.lineTo(cx + 6, e.y + 12 + lift);
+      ctx.lineTo(cx + 3, e.y + 2 + lift);
+      ctx.lineTo(cx - 3, e.y + 2 + lift);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.fillStyle = alpha(palette.goldBright, 0.3);
+      ctx.fill();
       break;
     }
     case "house": {
@@ -627,18 +746,155 @@ export function trackCamera(
   viewH: number,
   farsight: boolean,
 ): void {
-  const zoom = zoomFor(viewW);
+  const zoom = zoomFor(viewW, viewH);
   const spanW = viewW / zoom;
   const spanH = viewH / zoom;
+  const room = world.rooms[world.roomIndex];
   const p = world.player;
-  const targetX = p.x + p.w / 2 - spanW * (farsight ? 0.42 : 0.46) + (farsight ? p.facing * 40 : 0);
-  const targetY = p.y + p.h / 2 - spanH * 0.55;
 
-  camera.x += (targetX - camera.x) * 0.11;
-  camera.y += (targetY - camera.y) * 0.07;
+  // **The room is the frame, not the body.** The camera settles on the room
+  // the Scribe is standing in and cuts when they cross into the next one, so
+  // each screen arrives as a composed thing rather than sliding past. Farsight
+  // still leans it a little the way he is facing — the one grace that changes
+  // what can be seen should still change what is seen.
+  const lean = farsight ? p.facing * TILE_SIZE * 2 : 0;
+  const targetX = room
+    ? (room.x + room.w / 2) * TILE_SIZE - spanW / 2 + lean
+    : p.x + p.w / 2 - spanW * 0.46;
+  const targetY = room
+    ? (room.y + room.h / 2) * TILE_SIZE - spanH / 2
+    : p.y + p.h / 2 - spanH * 0.55;
+
+  if (camera.room !== world.roomIndex) {
+    // A cut, not a sweep. Easing between rooms reads as the map sliding under
+    // a fixed eye, which is the corridor feeling this is meant to replace.
+    camera.room = world.roomIndex;
+    camera.x = targetX;
+    camera.y = targetY;
+  } else {
+    camera.x += (targetX - camera.x) * 0.18;
+    camera.y += (targetY - camera.y) * 0.18;
+  }
 
   const maxX = Math.max(0, world.width * TILE_SIZE - spanW);
   const maxY = Math.max(0, world.height * TILE_SIZE - spanH);
   camera.x = Math.max(0, Math.min(maxX, camera.x));
   camera.y = Math.max(0, Math.min(maxY, camera.y));
+}
+
+/**
+ * Everything outside the room is turned down.
+ *
+ * Drawn in screen space over the finished world, as four rectangles around the
+ * room's own box — which is both the cheapest way to do it and, in this game's
+ * idiom, the right image: the room you are standing in is the illuminated
+ * panel and the rest of the leaf is ground.
+ */
+function dimBeyondTheRoom(
+  ctx: CanvasRenderingContext2D,
+  world: World,
+  camera: Camera,
+  palette: Palette,
+  viewW: number,
+  viewH: number,
+  zoom: number,
+): void {
+  const room = world.rooms[world.roomIndex];
+  if (!room) return;
+  const x = (room.x * TILE_SIZE - camera.x) * zoom;
+  const y = (room.y * TILE_SIZE - camera.y) * zoom;
+  const w = room.w * TILE_SIZE * zoom;
+  const h = room.h * TILE_SIZE * zoom;
+  ctx.save();
+  ctx.fillStyle = alpha(palette.light ? palette.bg : palette.bgDeep, 0.72);
+  ctx.fillRect(0, 0, viewW, Math.max(0, y));
+  ctx.fillRect(0, y + h, viewW, Math.max(0, viewH - (y + h)));
+  ctx.fillRect(0, y, Math.max(0, x), h);
+  ctx.fillRect(x + w, y, Math.max(0, viewW - (x + w)), h);
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------------------
+// the klipot
+// ---------------------------------------------------------------------------
+
+/**
+ * A husk is drawn as what it is: a shell with something bright shut inside it.
+ * The light shows through the cracks, and shows through more as the shells come
+ * off — so how close a husk is to breaking is legible without a health bar.
+ */
+function drawHusks(ctx: CanvasRenderingContext2D, world: World, palette: Palette): void {
+  for (const husk of world.husks) {
+    if (husk.broken) continue;
+    // Korach inside the ground is not drawn at all. It is not hidden by a
+    // trick of the light — it is not there yet.
+    if (husk.kind === "korach" && husk.charging === 0) continue;
+    const spec = HUSKS[husk.kind];
+    const cx = husk.x + husk.w / 2;
+    const cy = husk.y + husk.h / 2;
+    const opened = 1 - husk.shells / spec.shells;
+
+    // What is trapped inside, brighter as the shell gives way.
+    ctx.fillStyle = alpha(palette.goldBright, 0.18 + opened * 0.4);
+    ctx.beginPath();
+    ctx.arc(cx, cy, husk.w * 0.38, 0, Math.PI * 2);
+    ctx.fill();
+
+    // The shell. White for a moment when struck, so a hit reads.
+    ctx.strokeStyle = husk.struck > 0 ? palette.goldBright : alpha(palette.stoneEdge, 0.95);
+    ctx.fillStyle = alpha(palette.bgDeep, 0.9 - opened * 0.3);
+    ctx.lineWidth = 1.6;
+    // The shape says the role, not the name: round for the ones the ground
+    // means nothing to, a standing diamond for the ones that commit to a
+    // charge, a shouldered slab for the rooted throwers, a plain shell for the
+    // pacers. Ten names on four silhouettes, so a screen stays readable at a
+    // glance and the name is what the plate is for.
+    ctx.beginPath();
+    const role = spec.role;
+    if (role === "floater") {
+      ctx.arc(cx, cy, husk.w / 2, 0, Math.PI * 2);
+    } else if (role === "charger") {
+      ctx.moveTo(cx, husk.y);
+      ctx.lineTo(husk.x + husk.w, cy);
+      ctx.lineTo(cx, husk.y + husk.h);
+      ctx.lineTo(husk.x, cy);
+      ctx.closePath();
+    } else {
+      const r = 4;
+      ctx.roundRect(husk.x, husk.y, husk.w, husk.h, role === "thrower" ? [r, r, 0, 0] : r);
+    }
+    ctx.fill();
+    ctx.stroke();
+
+    // A crack for every shell already taken off.
+    ctx.strokeStyle = alpha(palette.goldBright, 0.5 + opened * 0.4);
+    ctx.lineWidth = 1;
+    for (let i = 0; i < spec.shells - husk.shells; i += 1) {
+      const a = (i / spec.shells) * Math.PI * 2 + husk.home.x;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(a) * husk.w * 0.5, cy + Math.sin(a) * husk.h * 0.5);
+      ctx.stroke();
+    }
+  }
+}
+
+/** A mark in flight: the Scribe's letter, or the dark Jezebel sent. */
+function drawMarks(ctx: CanvasRenderingContext2D, world: World, palette: Palette): void {
+  for (const m of world.marks) {
+    const cx = m.x + m.w / 2;
+    const cy = m.y + m.h / 2;
+    if (m.mine) {
+      ctx.fillStyle = alpha(palette.goldBright, 0.2);
+      ctx.beginPath();
+      ctx.arc(cx, cy, 9, 0, Math.PI * 2);
+      ctx.fill();
+      glyph(ctx, m.glyph, cx, cy + 5, 15, palette.goldBright);
+    } else {
+      ctx.fillStyle = alpha(palette.stoneEdge, 0.9);
+      ctx.beginPath();
+      ctx.arc(cx, cy, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
 }
