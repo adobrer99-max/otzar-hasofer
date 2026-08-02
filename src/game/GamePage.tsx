@@ -51,7 +51,8 @@ import {
   witnessesOf,
   WITNESSES_POSSIBLE,
 } from "./story";
-import { buildPath, buildRegion, verbsOf } from "./world/build";
+import { buildArena, buildPath, buildRegion, verbsOf } from "./world/build";
+import { boonsFrom, guardianOf } from "./guardians";
 import { TreeMap } from "./TreeMap";
 import { afterWalking, TREE_PATHS, type TreePath } from "./tree";
 import { readWarp, warpParams, warpRecord, type WarpOptions } from "./dev/warp";
@@ -100,6 +101,7 @@ type Plate =
   | { kind: "word-result"; verdict: WordGateVerdict }
   | { kind: "region-done" }
   | { kind: "path-done"; path: TreePath }
+  | { kind: "guardian-done"; sefirah: SefirahId }
   | { kind: "abyss" }
   | { kind: "out" }
   | { kind: "sealed" };
@@ -123,6 +125,8 @@ export function GamePage() {
    * has to answer for both, which is the whole of the wiring below.
    */
   const [walking, setWalking] = useState<TreePath | null>(null);
+  /** The Sefirah whose guardian is being faced, while the arena is open. */
+  const [facing, setFacing] = useState<SefirahId | null>(null);
   const [plate, setPlate] = useState<Plate | null>(null);
   const [hud, setHud] = useState<HudSample>({
     or: 0,
@@ -640,6 +644,29 @@ export function GamePage() {
 
   const onFinish = useCallback(() => {
     audio.onArrival();
+
+    /**
+     * **A guardian's room ends differently.** The way out is shut until the
+     * shell breaks, so reaching it *is* the break — nothing else has to be
+     * checked, and checking it twice is how the two would drift. The Sefirah
+     * stands freed, in this climb and in every one after it.
+     */
+    if (facing) {
+      const freed = facing;
+      setAscent((prev) => {
+        if (!prev) return prev;
+        const next: AscentRecord = {
+          ...prev,
+          or: prev.or + (world?.or ?? 0),
+          guardiansBroken: [...new Set([...(prev.guardiansBroken ?? []), freed])],
+          updatedAt: new Date().toISOString(),
+        };
+        void saveAscent(next).catch(() => undefined);
+        return next;
+      });
+      setPlate({ kind: "guardian-done", sefirah: freed });
+      return;
+    }
     // A vow taken at a House is judged here, on the way out, against how the
     // rest of the region was actually crossed.
     if (vow && world) {
@@ -702,7 +729,7 @@ export function GamePage() {
             ? { kind: "abyss" }
             : { kind: "region-done" },
     );
-  }, [ascent?.regionIndex, world, vow, audio, walking]);
+  }, [ascent?.regionIndex, world, vow, audio, walking, facing]);
 
   /**
    * Step onto a path from the overworld — which is what a rung is now.
@@ -744,8 +771,32 @@ export function GamePage() {
   const backToTree = useCallback(() => {
     setWorld(null);
     setWalking(null);
+    setFacing(null);
     setPlate(null);
   }, []);
+
+  /**
+   * Go and face what is holding the Sefirah you are standing on.
+   *
+   * A room rather than a rung: one way in, one creature, one way out that is
+   * shut until the shell breaks. Nothing is gathered in there and nothing is
+   * found — the light a guardian holds comes out of the shell like any other,
+   * and the light is not what it was for.
+   */
+  const faceGuardian = useCallback(() => {
+    if (!ascent) return;
+    const at = standingAt(ascent);
+    if ((ascent.guardiansBroken ?? []).includes(at)) return;
+    const room = buildArena(at, ascent.seed);
+    const carried = powersFrom(ascent.items ?? [], boonsFrom(ascent.guardiansBroken ?? []));
+    room.player.lamps += carried.lamps;
+    setGranted([]);
+    setWalking(null);
+    setFacing(at);
+    setWorld(room);
+    setVow(null);
+    setPlate(null);
+  }, [ascent]);
 
   /**
    * Kindle where you stand. The same spend the between-rungs plate offered on
@@ -758,6 +809,10 @@ export function GamePage() {
       if (!prev) return prev;
       const at = standingAt(prev);
       const cost = kindleCost(regionOfSefirah(at).index);
+      // **Light is the second gate, not the first.** A Sefirah still held is
+      // not for sale, and the map says what holds it rather than greying a
+      // button out with no reason on it.
+      if (!(prev.guardiansBroken ?? []).includes(at)) return prev;
       if (prev.or < cost || (prev.sefirotLit ?? []).includes(at)) return prev;
       const next: AscentRecord = {
         ...prev,
@@ -845,7 +900,7 @@ export function GamePage() {
       else if (plate.kind === "sealed" || plate.kind === "out") sealAscent();
       // The end of a path goes back to the map, never on to a next rung — there
       // is no next rung on the Tree until the Scribe chooses one.
-      else if (plate.kind === "path-done") backToTree();
+      else if (plate.kind === "path-done" || plate.kind === "guardian-done") backToTree();
       else climbOn(false);
     };
     window.addEventListener("keydown", onKey);
@@ -904,6 +959,7 @@ export function GamePage() {
           at={standingAt(ascent)}
           onWalk={walkPath}
           onKindle={kindleHere}
+          onFace={faceGuardian}
           onSeal={allKindled(ascent) ? () => setPlate({ kind: "sealed" }) : undefined}
         />
       )}
@@ -933,7 +989,19 @@ export function GamePage() {
                 the slots say how much of the alphabet is in hand, which two
                 places this ground lies between, and the letter it pays. */}
             <div className={styles.hudRegion}>
-              {walking ? (
+              {facing ? (
+                // A guardian's room is neither a rung nor a path. What matters
+                // in it is which creature is standing there and how much of it
+                // is left, and the shells are on the thing itself — so the HUD
+                // says where you are and what holds it, and nothing else.
+                <>
+                  <span className={styles.hudStep}>held by</span>
+                  <span className={styles.hudName}>{HUSKS[guardianOf(facing).kind].name}</span>
+                  <span className={`${styles.hudHeb} hebrew`} lang="he">
+                    {HUSKS[guardianOf(facing).kind].hebrew}
+                  </span>
+                </>
+              ) : walking ? (
                 <>
                   <span className={styles.hudStep}>
                     {ascent.lettersHeld.length} / {TREE_PATHS.length}
@@ -993,13 +1061,21 @@ export function GamePage() {
           />
 
           {/* A real event always beats coaching, and the region's own teaching
-              is what is left when there is nothing to say. */}
+              is what is left when there is nothing to say — except in a
+              guardian's room, where there is no coaching and no teaching, only
+              the thing standing in front of you. The lessons are about which
+              key walks; a Scribe who has come here already knows. */}
           <p
-            className={`${styles.caption} ${hud.message === undefined && lesson ? styles.captionLesson : ""}`}
+            className={`${styles.caption} ${hud.message === undefined && !facing && lesson ? styles.captionLesson : ""}`}
             role="status"
             aria-live="polite"
           >
-            <Press text={hud.message ?? lesson?.text ?? region.teaching} />
+            <Press
+              text={
+                hud.message ??
+                (facing ? HUSKS[guardianOf(facing).kind].is : (lesson?.text ?? region.teaching))
+              }
+            />
           </p>
 
           <div className={styles.controls}>
@@ -1517,6 +1593,9 @@ function PlateOverlay({
         {plate.kind === "path-done" && ascent && (
           <PathDonePlate ascent={ascent} path={plate.path} onBack={onBack} />
         )}
+        {plate.kind === "guardian-done" && (
+          <GuardianDonePlate sefirah={plate.sefirah} onBack={onBack} />
+        )}
         {plate.kind === "letter" && <LetterPlate letterId={plate.letterId} onClose={onClose} />}
         {plate.kind === "fragment" && (
           <FragmentPlate index={plate.index} held={plate.held} onClose={onClose} />
@@ -1983,6 +2062,46 @@ function PathDonePlate({
           ? `${letter?.transliteration ?? path.letter} is yours.`
           : `${letter?.transliteration ?? path.letter} lies on this path still — it was not lifted.`}{" "}
         {ascent.lettersHeld.length} of the twenty-two · {ascent.or} light carried.
+      </p>
+      <div className={styles.plateActions}>
+        <Button variant="primary" onClick={onBack} autoFocus>
+          Stand on the Tree
+        </Button>
+      </div>
+    </>
+  );
+}
+
+/**
+ * A Sefirah freed.
+ *
+ * The boon is named here and nowhere else, because this is the only moment it
+ * means anything: it is not a thing the Scribe chose or bought, it is what is
+ * left over from having done something once, and it will be true in every
+ * climb after this one whether or not they ever read this plate again.
+ */
+function GuardianDonePlate({
+  sefirah,
+  onBack,
+}: {
+  sefirah: SefirahId;
+  onBack: () => void;
+}) {
+  const guardian = guardianOf(sefirah);
+  const spec = HUSKS[guardian.kind];
+  const place = regionOfSefirah(sefirah);
+  return (
+    <>
+      <p className={styles.plateKicker}>The Sefirah is freed</p>
+      <h2 className={styles.plateTitle}>{spec.name} is broken</h2>
+      <p className={`${styles.plateHeb} hebrew`} lang="he">
+        {spec.hebrew}
+      </p>
+      <p className={styles.plateUse}>{spec.reading}</p>
+      <p className={styles.plateDerivation}>{spec.source}</p>
+      <p className={styles.offerGrants}>{guardian.boonLine}</p>
+      <p className={styles.plateDerivation}>
+        {place.name} can be kindled now, and this holds in every climb after this one.
       </p>
       <div className={styles.plateActions}>
         <Button variant="primary" onClick={onBack} autoFocus>

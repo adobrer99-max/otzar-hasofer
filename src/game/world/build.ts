@@ -1411,6 +1411,12 @@ export function buildArena(sefirah: SefirahId, seed = 1): World {
   world.arena = sefirah;
   world.regionIndex = region.index;
   world.sefirah = sefirah;
+  // **Nothing in here but the way out and the thing in the way.** `paint`
+  // strews light the way it does on a rung, and a floor of motes in a boss
+  // room is a floor of motes: it turns the fight into a shopping trip and it
+  // says, wrongly, that there is something here to look for. What light there
+  // is comes out of the shell.
+  world.entities = world.entities.filter((e) => e.kind === "exit");
 
   const spec = HUSKS[guardian.kind];
   const middle = world.rooms[1] ?? world.rooms[0];

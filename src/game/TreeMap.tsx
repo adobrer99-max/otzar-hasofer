@@ -13,6 +13,8 @@ import {
 } from "./tree";
 import { keliOnPath } from "./world/build";
 import { describeEffect } from "./items";
+import { guardianOf } from "./guardians";
+import { HUSKS } from "./combat";
 import styles from "./GamePage.module.css";
 
 /**
@@ -65,12 +67,15 @@ export function TreeMap({
   at,
   onWalk,
   onKindle,
+  onFace,
   onSeal,
 }: {
   ascent: AscentRecord;
   at: SefirahId;
   onWalk: (path: TreePath) => void;
   onKindle: () => void;
+  /** Go into the room where what holds this Sefirah is standing. */
+  onFace: () => void;
   /** Offered only once every Sefirah is kindled — see `GamePage`. */
   onSeal?: () => void;
 }) {
@@ -79,7 +84,16 @@ export function TreeMap({
   const here = regionOf[at];
   const cost = kindleCost(here.index);
   const alreadyLit = lit.includes(at);
-  const canKindle = !alreadyLit && ascent.or >= cost;
+  /**
+   * **A Sefirah is held before it is bought.** Light is the second gate; the
+   * first is whatever is standing on it, and until that is broken the button
+   * offers the fight rather than the price. Saying which creature it is, and
+   * which letter answers it, is the difference between a locked door and a
+   * door with a keyhole.
+   */
+  const guardian = guardianOf(at);
+  const freed = (ascent.guardiansBroken ?? []).includes(at);
+  const canKindle = freed && !alreadyLit && ascent.or >= cost;
   const out = pathsFrom(at);
   /**
    * **What is in hand, not what was walked over.**
@@ -255,7 +269,7 @@ export function TreeMap({
           </span>
           {alreadyLit ? (
             <span className={styles.overworldLit}>{here.name} is kindled.</span>
-          ) : (
+          ) : freed ? (
             <button
               type="button"
               className={styles.kindleButton}
@@ -264,6 +278,10 @@ export function TreeMap({
             >
               Kindle {here.name} — {cost} light
             </button>
+          ) : (
+            <button type="button" className={styles.kindleButton} onClick={onFace}>
+              Face {HUSKS[guardian.kind].name}
+            </button>
           )}
           {onSeal && (
             <button type="button" className={styles.sealButton} onClick={onSeal}>
@@ -271,6 +289,21 @@ export function TreeMap({
             </button>
           )}
         </div>
+
+        {!freed && (
+          <p className={styles.overworldHeld}>
+            {here.name} is held by {HUSKS[guardian.kind].name} — {guardian.because}
+            {guardian.opens && (
+              <>
+                {" "}
+                <span className={styles.overworldKey}>
+                  {lettersById[guardian.opens.letter]?.name ?? guardian.opens.letter} answers it:{" "}
+                  {guardian.opens.how}
+                </span>
+              </>
+            )}
+          </p>
+        )}
 
         <p className={styles.overworldTally}>
           {lit.length} of ten kindled · {gathered.length} of twenty-two letters ·{" "}

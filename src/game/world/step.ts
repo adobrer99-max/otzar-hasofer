@@ -694,10 +694,37 @@ function stepRooms(world: World): void {
 }
 
 function seal(world: World, room: World["rooms"][number]): boolean {
+  const p = world.player;
+  /**
+   * **Never on top of the Scribe.**
+   *
+   * A door closes on the tick the room decides it should, and the tick a room
+   * decides is the tick the Scribe crossed into it — so the tile the door is
+   * written on is very often the tile the Scribe is still standing in. Turned
+   * solid underneath him, `moveAndCollide` ejects him the way he came, the room
+   * he has just left is no longer the room he is in, and the whole thing starts
+   * again: a Scribe pinned on the threshold of a room he can see into.
+   *
+   * It went unnoticed for as long as a sealing room was a room with klipot
+   * scattered somewhere in it, because a door held by something across the room
+   * is a door that shuts a moment later, with the Scribe well clear. A
+   * guardian's room shuts on whatever is in it and shuts *at once*, and it made
+   * the arena unenterable — which is the ordinary way a latent bug is found:
+   * something new asks the old code the same question harder.
+   *
+   * Skipped rather than forced, so the door closes on the next tick instead.
+   */
+  const standingIn = (tx: number, ty: number) =>
+    p.x < (tx + 1) * TILE_SIZE &&
+    p.x + p.w > tx * TILE_SIZE &&
+    p.y < (ty + 1) * TILE_SIZE &&
+    p.y + p.h > ty * TILE_SIZE;
+
   let closed = false;
   for (const door of room.doors) {
     for (const tile of door.tiles) {
       if (tileAt(world, tile.x, tile.y) !== Tile.Empty) continue;
+      if (standingIn(tile.x, tile.y)) continue;
       setTile(world, tile.x, tile.y, Tile.Seal);
       closed = true;
     }

@@ -1068,6 +1068,18 @@
 
 /* The vessel lying at the far end of a way out — the one thing on the map that
    is different tomorrow. */
+/* What holds the Sefirah you are standing on, and which letter answers it. */
+.overworldHeld {
+  margin: var(--space-2) 0 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: var(--line-height);
+}
+
+.overworldKey {
+  color: var(--color-copper, var(--accent));
+}
+
 .wayKeli {
   color: var(--color-copper, var(--accent));
 }
