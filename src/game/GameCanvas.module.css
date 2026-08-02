@@ -1,7 +1,12 @@
+/* 16:9 because **a room is 16:9**. Two screens across and one tall is 32×18
+   tiles, and the camera frames a whole room now rather than trailing the body
+   along a corridor. At 20:9 the same room fitted by its height and left forty
+   tiles of width on screen, which made the Scribe a speck in a diagram. The
+   frame follows the content rather than the content being cropped to fit. */
 .stage {
   position: relative;
   width: 100%;
-  aspect-ratio: 20 / 9;
+  aspect-ratio: 16 / 9;
   min-height: 260px;
   max-height: 62vh;
   border: 1px solid var(--border-hairline);
@@ -115,6 +120,8 @@
 
 @media (max-width: 40rem) {
   .stage {
+    /* A little taller than a room on a phone, so the room still fits by its
+       width and there is somewhere for the fingers to be. */
     aspect-ratio: 16 / 10;
     max-height: 56vh;
   }

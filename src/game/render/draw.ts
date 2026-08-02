@@ -3,6 +3,7 @@ import { tileAt } from "../world/build";
 import { Tile, TILE_SIZE } from "../world/tiles";
 import type { Entity, World } from "../world/types";
 import { alpha, type Palette } from "./palette";
+import { ROOM_H, ROOM_W } from "../world/rooms";
 import { HUSKS } from "../combat";
 
 /**
@@ -20,6 +21,8 @@ import { HUSKS } from "../combat";
 export interface Camera {
   x: number;
   y: number;
+  /** The room last framed, so a change of room can cut rather than sweep. */
+  room?: number;
 }
 
 const HATCH_SPACING = 6;
@@ -35,8 +38,25 @@ const HATCH_SPACING = 6;
  */
 const TILES_ACROSS = 26;
 
-export function zoomFor(viewW: number): number {
-  return Math.max(1, Math.min(2.6, viewW / (TILES_ACROSS * TILE_SIZE)));
+/**
+ * The zoom that frames a **room**.
+ *
+ * A room is two screens across and one tall — 32×18 tiles, 768×432 px — and the
+ * frame has to hold all of it, so the zoom is whichever axis is tighter. On a
+ * 20:9 canvas that is the height, and the width then shows about forty tiles:
+ * the room, with four tiles of its neighbours at each side. That overhang is
+ * not slack, it is the whole reason the camera snaps at all — a door you can
+ * see closing is worth more than a door you walk into.
+ *
+ * The old rule scaled to a fixed twenty-six tiles across and let the vertical
+ * follow the body, which is right for a corridor and cannot frame a room.
+ */
+export function zoomFor(viewW: number, viewH?: number): number {
+  if (viewH === undefined) return Math.max(1, Math.min(2.6, viewW / (TILES_ACROSS * TILE_SIZE)));
+  return Math.max(
+    0.6,
+    Math.min(viewW / (ROOM_W * TILE_SIZE), viewH / (ROOM_H * TILE_SIZE)),
+  );
 }
 
 export function drawWorld(
@@ -48,7 +68,7 @@ export function drawWorld(
   viewH: number,
   verbs: readonly string[],
 ): void {
-  const zoom = zoomFor(viewW);
+  const zoom = zoomFor(viewW, viewH);
   // The camera lives in world units, so the visible span shrinks as we zoom.
   const spanW = viewW / zoom;
   const spanH = viewH / zoom;
@@ -82,6 +102,9 @@ export function drawWorld(
   drawGrapple(ctx, world, palette);
   drawScribe(ctx, world, palette);
   ctx.restore();
+
+  // Last, and in screen space: the room is the lit panel.
+  dimBeyondTheRoom(ctx, world, camera, palette, viewW, viewH, zoom);
 }
 
 // ---------------------------------------------------------------------------
@@ -700,20 +723,72 @@ export function trackCamera(
   viewH: number,
   farsight: boolean,
 ): void {
-  const zoom = zoomFor(viewW);
+  const zoom = zoomFor(viewW, viewH);
   const spanW = viewW / zoom;
   const spanH = viewH / zoom;
+  const room = world.rooms[world.roomIndex];
   const p = world.player;
-  const targetX = p.x + p.w / 2 - spanW * (farsight ? 0.42 : 0.46) + (farsight ? p.facing * 40 : 0);
-  const targetY = p.y + p.h / 2 - spanH * 0.55;
 
-  camera.x += (targetX - camera.x) * 0.11;
-  camera.y += (targetY - camera.y) * 0.07;
+  // **The room is the frame, not the body.** The camera settles on the room
+  // the Scribe is standing in and cuts when they cross into the next one, so
+  // each screen arrives as a composed thing rather than sliding past. Farsight
+  // still leans it a little the way he is facing — the one grace that changes
+  // what can be seen should still change what is seen.
+  const lean = farsight ? p.facing * TILE_SIZE * 2 : 0;
+  const targetX = room
+    ? (room.x + room.w / 2) * TILE_SIZE - spanW / 2 + lean
+    : p.x + p.w / 2 - spanW * 0.46;
+  const targetY = room
+    ? (room.y + room.h / 2) * TILE_SIZE - spanH / 2
+    : p.y + p.h / 2 - spanH * 0.55;
+
+  if (camera.room !== world.roomIndex) {
+    // A cut, not a sweep. Easing between rooms reads as the map sliding under
+    // a fixed eye, which is the corridor feeling this is meant to replace.
+    camera.room = world.roomIndex;
+    camera.x = targetX;
+    camera.y = targetY;
+  } else {
+    camera.x += (targetX - camera.x) * 0.18;
+    camera.y += (targetY - camera.y) * 0.18;
+  }
 
   const maxX = Math.max(0, world.width * TILE_SIZE - spanW);
   const maxY = Math.max(0, world.height * TILE_SIZE - spanH);
   camera.x = Math.max(0, Math.min(maxX, camera.x));
   camera.y = Math.max(0, Math.min(maxY, camera.y));
+}
+
+/**
+ * Everything outside the room is turned down.
+ *
+ * Drawn in screen space over the finished world, as four rectangles around the
+ * room's own box — which is both the cheapest way to do it and, in this game's
+ * idiom, the right image: the room you are standing in is the illuminated
+ * panel and the rest of the leaf is ground.
+ */
+function dimBeyondTheRoom(
+  ctx: CanvasRenderingContext2D,
+  world: World,
+  camera: Camera,
+  palette: Palette,
+  viewW: number,
+  viewH: number,
+  zoom: number,
+): void {
+  const room = world.rooms[world.roomIndex];
+  if (!room) return;
+  const x = (room.x * TILE_SIZE - camera.x) * zoom;
+  const y = (room.y * TILE_SIZE - camera.y) * zoom;
+  const w = room.w * TILE_SIZE * zoom;
+  const h = room.h * TILE_SIZE * zoom;
+  ctx.save();
+  ctx.fillStyle = alpha(palette.light ? palette.bg : palette.bgDeep, 0.72);
+  ctx.fillRect(0, 0, viewW, Math.max(0, y));
+  ctx.fillRect(0, y + h, viewW, Math.max(0, viewH - (y + h)));
+  ctx.fillRect(0, y, Math.max(0, x), h);
+  ctx.fillRect(x + w, y, Math.max(0, viewW - (x + w)), h);
+  ctx.restore();
 }
 
 // ---------------------------------------------------------------------------

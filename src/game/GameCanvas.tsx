@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { Grace, Verb } from "./abilities";
 import { controlById, KEY_MAP, PAD_LAYOUT, type ControlId } from "./controls";
-import { drawWorld, trackCamera, zoomFor, type Camera } from "./render/draw";
+import { drawWorld, trackCamera, type Camera } from "./render/draw";
 import { readPalette, type Palette } from "./render/palette";
 import { DT, step, type StepContext } from "./world/step";
 import { NO_INPUT, type Input, type World } from "./world/types";
@@ -261,11 +261,10 @@ export function GameCanvas({
   // Snap the camera onto the Scribe whenever a new region is entered, so it
   // does not sweep across the whole map on the first frame.
   useEffect(() => {
-    const zoom = zoomFor(view.current.w);
-    camera.current = {
-      x: Math.max(0, world.player.x - (view.current.w / zoom) * 0.46),
-      y: Math.max(0, world.player.y - (view.current.h / zoom) * 0.55),
-    };
+    // A new rung arrives already framed on the room the Scribe stands in —
+    // `trackCamera` cuts on the first tick because the remembered room is
+    // undefined, so there is nothing to sweep from.
+    camera.current = { x: 0, y: 0, room: undefined };
   }, [world]);
 
   const pad = (id: ControlId) => {
