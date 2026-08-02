@@ -108,16 +108,43 @@ export interface FormedWord {
 }
 
 /**
- * What it costs to kindle a Sefirah.
+ * What it costs to kindle a Sefirah — twelve at the kingdom, forty-eight at the
+ * crown, **three hundred for all ten**, which is the price of a whole climb.
  *
- * Pitched deliberately close to what a whole region yields — roughly a mote
- * every nine tiles, plus whatever the Word-Gate paid — so that kindling one
- * rung costs most of what was gathered to reach it. A cheaper price is not a
- * choice at all: the first tuning made it about a fifth of a region's light,
- * and there was never a reason to say no.
+ * The first pitch was `20 + 5i`, four hundred and seventy-five for the tour,
+ * and it was set against what a single region yields on a line — where ten
+ * rungs paid for ten kindlings and the only question was whether to spend.
+ *
+ * The Tree makes it a real question and the answer had to be measured.
+ * `economy.test.ts` walks climbs with the fighting probe and records what a
+ * Scribe actually leaves each path carrying, which is roughly a third of what
+ * the rung was built holding — motes are only light once someone has walked
+ * over them, a klipah's light only once its shell is broken, and every veiling
+ * takes two back. Six climbs at each length:
+ *
+ * ```
+ *    9 walks: worst  95   median 154   best 167
+ *   15 walks: worst 223   median 258   best 316
+ *   22 walks: worst 358   median 434   best 509
+ * ```
+ *
+ * Nine walks is the fewest that can stand on all ten Sefirot. Twenty-two is
+ * every path on the Tree. Four hundred and seventy-five sat above all but the
+ * luckiest full tour, which is a game that mostly cannot be finished; and it
+ * would have shipped, because nothing had ever asked.
+ *
+ * Three hundred puts the price where it does the work it was for: the dash
+ * cannot buy it — nine walks pays at best a little over half — and a climb that
+ * has been most places clears it with room even on a poor seed. The gap between
+ * the two is the whole of what the map is for.
+ *
+ * The steeper slope (four a rung rather than five, on a lower base) is
+ * deliberate: the crown costs four times the kingdom rather than under three,
+ * because the paths into it are the ones a Scribe has to earn the letters to
+ * walk at all.
  */
 export function kindleCost(regionIndex: number): number {
-  return 20 + regionIndex * 5;
+  return 8 + regionIndex * 4;
 }
 
 /**

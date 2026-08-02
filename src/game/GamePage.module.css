@@ -1047,3 +1047,7 @@
   color: var(--text-muted);
   font-size: 0.85rem;
 }
+
+.overworldOwed {
+  color: var(--accent);
+}

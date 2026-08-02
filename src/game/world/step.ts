@@ -648,6 +648,24 @@ function stepRooms(world: World): void {
   );
   const standing = holding.length > 0;
 
+  // **Whether this room has closed behind the Scribe**, worked out once and
+  // used twice: to write the seal, and — by `strikeHusk`, which asks the world
+  // rather than re-deriving it — to know whether a shell is breaking inside
+  // one. The Second Encounter pays double for exactly that, and the two
+  // conditions drifting apart would make it pay double somewhere else.
+  //
+  // Not in the kingdom. Malchut is where the walk, the leap and the mark are
+  // taught, and a room that closes on a Scribe who has not yet been told which
+  // key writes is a locked door with the lesson on the other side of it.
+  const closes =
+    standing &&
+    world.regionIndex > 1 &&
+    !room.cleared &&
+    !room.entrance &&
+    room.kind !== "exit" &&
+    room.kind !== "vessel";
+  world.inSealedRoom = closes;
+
   if (!standing) {
     if (!room.cleared) {
       room.cleared = true;
@@ -656,11 +674,7 @@ function stepRooms(world: World): void {
     return;
   }
 
-  // Not in the kingdom. Malchut is where the walk, the leap and the mark are
-  // taught, and a room that closes on a Scribe who has not yet been told which
-  // key writes is a locked door with the lesson on the other side of it.
-  if (world.regionIndex <= 1) return;
-  if (room.cleared || room.entrance || room.kind === "exit" || room.kind === "vessel") return;
+  if (!closes) return;
   if (seal(world, room)) say(world, "The way closes. Something here is still holding light.");
 }
 
@@ -835,7 +849,7 @@ function veil(world: World, ctx: StepContext, message: string): void {
   if (world.player.veiled > 0) return;
   world.player.veiled = VEIL_TICKS;
   world.veilings += 1;
-  world.or = Math.max(0, world.or - 2);
+  world.or = Math.max(0, world.or - world.veilCost);
 
   // A veiling always opens the room. You wake at the mark, which is elsewhere,
   // and a room that stayed shut behind you would be a door nobody could ever
@@ -962,7 +976,12 @@ function strikeHusk(world: World, husk: Husk, bite: number, push: number, from: 
   husk.broken = true;
   world.husksBroken += 1;
   const spec = HUSKS[husk.kind];
-  for (let i = 0; i < spec.light; i += 1) {
+  // What was held in the shell — more of it on a Day whose creatures hold more,
+  // and more again if the room had closed behind the Scribe when it broke.
+  const held = Math.round(
+    spec.light * world.huskLight * (world.inSealedRoom ? world.sealedLight : 1),
+  );
+  for (let i = 0; i < held; i += 1) {
     world.entities.push({
       id: `e-husk-${world.tick}-${i}`,
       kind: "mote",

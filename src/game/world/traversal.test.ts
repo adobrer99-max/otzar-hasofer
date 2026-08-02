@@ -557,8 +557,19 @@ function contextFor(regionIndex: number): StepContext {
  */
 const budgetFor = (regionIndex: number) => 12000 * (rowsFor(regionIndex) + 1);
 
+/**
+ * **The probe tests carry their own budgets.**
+ *
+ * Everything below that drives the probe runs tens of thousands of ticks a
+ * seed, and a few of them sat just under vitest's five-second default — which
+ * is not a considered budget for them, it is the absence of one. They passed
+ * for as long as nothing else was competing for the machine, and started
+ * failing intermittently the day `economy.test.ts` arrived and put a minute of
+ * probe runs alongside them. A timing flake in a deterministic test is the
+ * worst kind of noise: the thing it appears to be reporting is a level.
+ */
 describe("walking the regions", () => {
-  it("carries a competent Scribe to the exit of every region, on many seeds", () => {
+  it("carries a competent Scribe to the exit of every region, on many seeds", { timeout: 60000 }, () => {
     const report: string[] = [];
     for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
       let gathered = 0;
@@ -637,7 +648,7 @@ describe("walking the regions", () => {
    * and jumping is not enough. If this test starts passing, the levels have
    * gone soft.
    */
-  it("stops a Scribe who has learned nothing, past the on-ramp", () => {
+  it("stops a Scribe who has learned nothing, past the on-ramp", { timeout: 60000 }, () => {
     // From Netzach up. Not arbitrary: a Scribe *entering* Malchut, Yesod or
     // Hod holds no verb that is reached for — Aleph and Chet both live on the
     // leap key — so those three regions have nothing to gate terrain on and
@@ -669,7 +680,7 @@ describe("walking the regions", () => {
    * was a solved one-press problem, so the crown used to cost a competent
    * Scribe *less* than the foot of the Tree.
    */
-  it("costs more the higher the Tree is climbed", () => {
+  it("costs more the higher the Tree is climbed", { timeout: 60000 }, () => {
     const cost = (region: number) => {
       let ticks = 0;
       for (const seed of [3, 91, 555, 12345]) {

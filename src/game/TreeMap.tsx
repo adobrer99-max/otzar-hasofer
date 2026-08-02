@@ -93,6 +93,8 @@ export function TreeMap({
    * letter they did not have.
    */
   const gathered = ascent.lettersHeld;
+  const left = regions.filter((r) => !lit.includes(r.sefirah));
+  const owed = left.reduce((sum, r) => sum + kindleCost(r.index), 0);
 
   return (
     <section className={styles.overworld}>
@@ -251,6 +253,18 @@ export function TreeMap({
         <p className={styles.overworldTally}>
           {lit.length} of ten kindled · {gathered.length} of twenty-two letters ·{" "}
           {walked.length} {walked.length === 1 ? "path" : "paths"} walked
+          {/* **What is still owed, as a number.** The climb ends when all ten
+              burn, and without this the last third of it is a Scribe kindling
+              things and hoping. Three hundred is the whole tour; what matters
+              standing here is the rest of it. */}
+          {left.length > 0 && (
+            <>
+              {" · "}
+              <span className={styles.overworldOwed}>
+                {owed} light more for the {left.length === 1 ? "last" : `remaining ${left.length}`}
+              </span>
+            </>
+          )}
         </p>
       </div>
     </section>

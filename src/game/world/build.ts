@@ -29,6 +29,7 @@ import {
   WORD_GATE_CHUNK,
 } from "./chunks";
 import { HUSK_CHARS, HUSKS, kindForRole, LAMPS } from "../combat";
+import { VEIL_COST } from "../encounter";
 import { keliFor } from "../items";
 import { MARKER_CHARS, Tile, TILE_CHARS, TILE_SIZE } from "./tiles";
 import { doorsOf, planFloor, roomAtPoint, ROOM_H, ROOM_W } from "./rooms";
@@ -932,6 +933,14 @@ function paint(
     wordGate: wordGateTarget,
     or: 0,
     orPerMote: 1,
+    // The Encounters' own numbers, applied by `GamePage` as the world is
+    // entered — the same place `powersFrom(items)` is folded in. Defaults are
+    // the game played under no rule at all, which is every climb past the
+    // seventh.
+    huskLight: 1,
+    sealedLight: 1,
+    veilCost: VEIL_COST,
+    inSealedRoom: false,
     orGathered: 0,
     veilings: 0,
     marksSet: 0,
@@ -1188,10 +1197,44 @@ function scatterHusks(
  * given them, they have. That is exactly the coupling the line used to provide
  * for free, restated as a rule instead of an accident of ordering.
  */
+/**
+ * What is left lying on a path already walked.
+ *
+ * A rung is rebuilt from its seed every time it is entered, which is what makes
+ * a saved game a few dozen bytes — and on a line it never mattered, because a
+ * rung was walked once and left behind. The Tree can be walked back over, and
+ * `buildPath` is deterministic, so without this a Scribe short of light simply
+ * walks the cheapest path again, and again, and kindling all ten stops being a
+ * route and becomes a farm. The map would decide nothing.
+ *
+ * So the **strewn** light is taken once. `scatterMotes` already scales what it
+ * lays by `lightOfTheDay` — Sacred Time reaching the floor, a festival strewing
+ * more and a fast strewing less — and a path already walked is simply a dim day
+ * on that one rung. No new mechanism, and the one that is reused is the one
+ * that already means "how much light is lying about here".
+ *
+ * Three things deliberately survive a re-walk:
+ *
+ * - **The klipot**, because they are rebuilt with the rung. Crossing back still
+ *   pays, and the fight is the reason to — which is the right shape, since a
+ *   Scribe who wants light out of ground they have already taken should have to
+ *   earn it against something.
+ * - **The motes authored into the chunks themselves** (`*` in `chunks.ts`),
+ *   which are placed at the top of a climb or behind a crawl and are the small
+ *   reward for the small risk rather than the strewn income.
+ * - **The Word-Gate**, which pays for an answer and not for a walk.
+ */
+export const SPENT_LIGHT = 0.15;
+
 /** Every letter the Tree carries — the default, so a bare call sizes nothing down. */
 const ALL_LETTERS: readonly string[] = TREE_PATHS.map((p) => p.letter);
 
-export function regionOfPath(path: TreePath, held: readonly string[] = ALL_LETTERS): Region {
+export function regionOfPath(
+  path: TreePath,
+  held: readonly string[] = ALL_LETTERS,
+  /** The Fifth Encounter's Living Creatures — more of them stand on a rung. */
+  klipot = 1,
+): Region {
   const [lower, upper] = path.ends.map((s) => regionOfSefirah(s));
   const kinds = [...new Set([...lower.klipot.kinds, ...upper.klipot.kinds])];
   const earned = regionAt(earnedRung(held));
@@ -1222,7 +1265,9 @@ export function regionOfPath(path: TreePath, held: readonly string[] = ALL_LETTE
         },
     klipot: {
       kinds,
-      count: Math.round((lower.klipot.count + upper.klipot.count) / 2),
+      // Rounded up, so a Day that says "the klipot are many" never rounds its
+      // own rule away on a rung that happened to hold an odd number.
+      count: Math.ceil(((lower.klipot.count + upper.klipot.count) / 2) * klipot),
     },
     // Capped the same way, and for the same reason: a corridor fourteen screens
     // long is its own kind of demand. Measured, the last three stalls left after
@@ -1277,8 +1322,14 @@ export function buildPath(
    * exactly once, on the first path out of the kingdom, whichever one it is.
    */
   teaching = false,
+  /**
+   * Whether this path has been walked before — see `SPENT_LIGHT`.
+   */
+  spent = false,
+  /** The Fifth Encounter's Living Creatures — see `regionOfPath`. */
+  klipot = 1,
 ): World {
-  const region = regionOfPath(path, held);
+  const region = regionOfPath(path, held, klipot);
   // Seeded by the path rather than the region, so walking Malchut→Hod is not
   // the same ground as walking Yesod→Hod on the same run.
   const rng = makeRng((seed ^ hashOf(path.id)) >>> 0);
@@ -1291,7 +1342,7 @@ export function buildPath(
     region.letters,
     rng,
     region.hasHouse,
-    lightOfTheDay,
+    lightOfTheDay * (spent ? SPENT_LIGHT : 1),
     fragmentsBefore(region.index),
     wordGateTarget,
     region.klipot,

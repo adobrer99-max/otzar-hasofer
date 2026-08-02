@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { abilityByLetter } from "../abilities";
 import { LAMPS } from "../combat";
 import { lettersOnEntering, regions, TOTAL_REGIONS } from "../regions";
@@ -53,6 +53,12 @@ export interface Fight {
   standing: number;
   veilings: number;
   ticks: number;
+  /**
+   * Light actually carried out — motes lifted plus what broke out of the
+   * klipot, less the two a veiling costs. Recorded for `economy.test.ts`,
+   * which needs to know not what a rung *holds* but what a Scribe leaves with.
+   */
+  or: number;
 }
 
 /**
@@ -80,7 +86,7 @@ export interface Fight {
  * the rows came on: eight runs in ten went out in Gevurah, none of it about the
  * fight.
  */
-function fighter(world: World, ctx: StepContext, ticks: number): Fight {
+export function fighter(world: World, ctx: StepContext, ticks: number): Fight {
   const aim = steering(world, ctx.verbs);
   let best = aim.left(world.player);
   let mark = best;
@@ -187,6 +193,7 @@ function fighter(world: World, ctx: StepContext, ticks: number): Fight {
     standing: world.husks.length,
     veilings: world.veilings,
     ticks: i,
+    or: world.or,
   };
 }
 
@@ -195,8 +202,14 @@ function fighter(world: World, ctx: StepContext, ticks: number): Fight {
 // being read as balance.
 const SEEDS = [3, 91, 555, 12345, 777, 40404, 8, 1234, 60606, 31337];
 
-/** Every region, every seed, with a Scribe who fights. Measured once, reused. */
-const RUNS = (() => {
+/**
+ * Every region, every seed, with a Scribe who fights. Measured once, reused —
+ * and **lazily**, because `economy.test.ts` imports `fighter` from this file
+ * and a hundred probe runs at module scope is eighteen seconds it does not
+ * need. Nothing here is wanted until an assertion asks for it.
+ */
+let measured: { region: number; seed: number; fight: Fight }[] | undefined;
+const RUNS = () => (measured ??= (() => {
   const rows: { region: number; seed: number; fight: Fight }[] = [];
   for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
     for (const seed of SEEDS) {
@@ -205,9 +218,15 @@ const RUNS = (() => {
     }
   }
   return rows;
-})();
+})());
 
-const forRegion = (region: number) => RUNS.filter((r) => r.region === region);
+// Measured once, before anything asserts, so the cost lands in a hook with a
+// budget rather than inside whichever test happened to ask first.
+beforeAll(() => {
+  RUNS();
+}, 300000);
+
+const forRegion = (region: number) => RUNS().filter((r) => r.region === region);
 const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / (xs.length || 1);
 
 describe("what the klipot cost a Scribe who fights", () => {
@@ -227,12 +246,12 @@ describe("what the klipot cost a Scribe who fights", () => {
    * klipot nobody notices.
    */
   it("makes going out the exception rather than the rule", () => {
-    const went = RUNS.filter((r) => r.fight.out);
-    const share = went.length / RUNS.length;
+    const went = RUNS().filter((r) => r.fight.out);
+    const share = went.length / RUNS().length;
     const where = went
       .map((r) => `region ${r.region} seed ${r.seed} at ${(r.fight.reached * 100).toFixed(0)}%`)
       .join("; ");
-    expect(share, `${went.length} of ${RUNS.length} went out — ${where}`).toBeLessThan(0.2);
+    expect(share, `${went.length} of ${RUNS().length} went out — ${where}`).toBeLessThan(0.2);
   });
 
   /** And no single rung may be the one that ends most climbs. */
@@ -293,7 +312,7 @@ describe("what the klipot cost a Scribe who fights", () => {
    * one rung, because a single region can legitimately be walked clean.
    */
   it("costs the upper Tree at least one lamp", () => {
-    const upper = RUNS.filter((r) => r.region >= 6);
+    const upper = RUNS().filter((r) => r.region >= 6);
     const lost = mean(upper.map((r) => LAMPS - r.fight.lampsLeft));
     expect(lost, `mean lamps lost above Tiferet: ${lost.toFixed(2)}`).toBeGreaterThan(0.3);
   });
@@ -321,8 +340,8 @@ describe("what the klipot cost a Scribe who fights", () => {
    * other half of the difficulty.
    */
   it("gets heavier the higher the Tree is climbed", () => {
-    const low = mean(RUNS.filter((r) => r.region <= 3).map((r) => r.fight.broken + r.fight.standing));
-    const high = mean(RUNS.filter((r) => r.region >= 8).map((r) => r.fight.broken + r.fight.standing));
+    const low = mean(RUNS().filter((r) => r.region <= 3).map((r) => r.fight.broken + r.fight.standing));
+    const high = mean(RUNS().filter((r) => r.region >= 8).map((r) => r.fight.broken + r.fight.standing));
     expect(high, `low ${low.toFixed(1)} husks, high ${high.toFixed(1)}`).toBeGreaterThan(low * 1.5);
     // And the declared curve is what put them there.
     expect(regions[TOTAL_REGIONS - 1].klipot.count).toBeGreaterThan(regions[0].klipot.count);

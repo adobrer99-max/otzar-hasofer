@@ -34,7 +34,7 @@ import {
 } from "./tutorial";
 import { GameCanvas, type HudSample } from "./GameCanvas";
 import { ABYSS_AFTER_REGION, regionAt, regions, TOTAL_REGIONS } from "./regions";
-import { encounterFor, encounterTitle, ILLUMINED_MULTIPLIER, isIllumined, sealedCount } from "./encounter";
+import { encounterFor, encounterTitle, isIllumined, rulesFor, sealedCount } from "./encounter";
 import { judge, lightFor, opens, type WordGateTarget, type WordGateVerdict } from "./wordGate";
 import { offerFor, vowKept, type UshpizinOffer } from "./ushpizinOffers";
 import { openWordGate } from "./world/step";
@@ -71,7 +71,15 @@ import styles from "./GamePage.module.css";
  */
 
 /** A Sefirah's region, by name — the ten are a small table, so a scan is fine. */
-/** Whether every Sefirah has been kindled, which is what seals a climb. */
+/**
+ * Whether every Sefirah has been kindled, which is what seals a climb.
+ *
+ * The linear climb ended by arriving: reach Keter and the crowning plate comes
+ * up. On the Tree arriving is nothing — the crown is one step from Chochmah and
+ * a Scribe can be standing on it inside four paths. So the ending is the
+ * *spending*: three hundred light laid down across the ten, which is a climb
+ * that has been almost everywhere. Both roads reach the same plate.
+ */
 function allKindled(ascent: AscentRecord): boolean {
   return new Set(ascent.sefirotLit ?? []).size >= TOTAL_REGIONS;
 }
@@ -141,6 +149,13 @@ export function GamePage() {
   // the callback depend on it and re-create on every render.
   const lightRef = useRef(1);
   const encounterRef = useRef<ReturnType<typeof encounterFor>>(undefined);
+  /**
+   * `climbOn` is created once and reads its world through refs, so the
+   * Encounter's rules have to reach it the same way — a captured `layEncounter`
+   * would be the one from the first render, and the rules would be whatever
+   * they were before the record loaded.
+   */
+  const layEncounterRef = useRef<(world: World, here: readonly SefirahId[]) => void>(() => {});
   // The audio watches the world on its own frame loop — the HUD sample is far
   // too slow for a footfall — so it needs the world by reference.
   const worldRef = useRef<World | null>(null);
@@ -195,8 +210,12 @@ export function GamePage() {
     const held = letters.map((id) => abilityByLetter[id]?.grace).filter((g): g is Grace => Boolean(g));
     const lent = [...held, ...granted];
     if (time.graceOfTheDay && !lent.includes(time.graceOfTheDay)) lent.push(time.graceOfTheDay);
+    // And whatever the Encounter this climb belongs to holds open for the whole
+    // of it — the Third's second stone is a grace like any other, so it arrives
+    // by the same door rather than through a special case.
+    for (const g of rulesFor(encounter)?.grants ?? []) if (!lent.includes(g)) lent.push(g);
     return lent;
-  }, [letters, granted, time.graceOfTheDay]);
+  }, [letters, granted, time.graceOfTheDay, encounter]);
 
   const audio = useGameAudio(
     worldRef,
@@ -243,6 +262,38 @@ export function GamePage() {
     });
   }, [letters.length]);
 
+  /**
+   * **The Encounter's numbers, laid on a world as it is entered.**
+   *
+   * One function rather than two because there are two roads into a rung — the
+   * Tree's paths and the linear climb behind it — and a rule that fired on one
+   * of them would be a rule that half the game does not have. `powersFrom` for
+   * the vessels is applied at the same moment for the same reason.
+   *
+   * `here` is the Sefirot this ground actually lies between, which on the Tree
+   * is a path's two ends rather than the rung's index. That distinction is not
+   * pedantry: `regionOfPath` caps a rung's index by what the Scribe carries, so
+   * a path into Chesed walked by a two-letter Scribe is built as a Malchut-sized
+   * rung and reads as Malchut — and the First Encounter, whose whole rule is
+   * "light counts double in Chesed", silently did nothing on exactly the paths
+   * it was for.
+   */
+  const layEncounter = useCallback(
+    (world: World, here: readonly SefirahId[]) => {
+      const rule = rulesFor(encounter);
+      if (!rule) return;
+      if (rule.motes && here.some((s) => isIllumined(encounter, s))) {
+        world.orPerMote = Math.max(1, Math.round(world.orPerMote * rule.motes));
+      }
+      if (rule.husks) world.huskLight = rule.husks;
+      if (rule.sealed) world.sealedLight = rule.sealed;
+      if (rule.veilCost !== undefined) world.veilCost = rule.veilCost;
+      if (rule.lamps) world.player.lamps += rule.lamps;
+    },
+    [encounter],
+  );
+  layEncounterRef.current = layEncounter;
+
   const enterRegion = useCallback(
     (record: AscentRecord, over?: { porch?: boolean; lamps?: number }) => {
       // The porch is laid only for a Scribe who has not finished the teaching,
@@ -253,22 +304,19 @@ export function GamePage() {
         time.lightOfTheDay,
         over?.porch ?? !allLearned(taughtRef.current),
       );
-      // The Encounter lights one rung brighter than the rest.
-      if (isIllumined(encounter, regionAt(record.regionIndex).sefirah)) {
-        next.orPerMote = ILLUMINED_MULTIPLIER;
-      }
       // What the vessels come to, applied to the region as it is built: the
       // lamps a Scribe is made of and what a mote is worth are properties of
       // the world rather than of a tick, so this is where they belong.
       const carried = powersFrom(record.items ?? []);
       next.player.lamps += carried.lamps;
       next.orPerMote = Math.max(1, Math.round(next.orPerMote * carried.light));
+      layEncounter(next, [regionAt(record.regionIndex).sefirah]);
       if (over?.lamps !== undefined) next.player.lamps = over.lamps;
       setWorld(next);
       setVow(null);
       setPlate(null);
     },
-    [time.lightOfTheDay, encounter],
+    [time.lightOfTheDay, layEncounter],
   );
 
   /**
@@ -541,7 +589,12 @@ export function GamePage() {
   const acceptOffer = useCallback(
     (offer: UshpizinOffer) => {
       if (!world) return;
-      if (offer.price > 0) {
+      // The Sixth Encounter's Humanity: every guest asks no price, and what
+      // they offer is given. Checked here rather than by rewriting the offer,
+      // so the plate still says what the bargain *would* be — a gift you can
+      // see the price of is a different thing from a free sample.
+      const free = Boolean(rulesFor(encounter)?.guestsFree);
+      if (offer.price > 0 && !free) {
         if (world.or < offer.price) return;
         world.or -= offer.price;
       }
@@ -555,7 +608,7 @@ export function GamePage() {
       }
       setPlate(null);
     },
-    [world],
+    [world, encounter],
   );
 
   const onHouse = useCallback((cardId: string) => {
@@ -651,20 +704,21 @@ export function GamePage() {
         ascent.lettersHeld,
         time.lightOfTheDay,
         teaching,
+        (ascent.pathsWalked ?? []).includes(path.id),
+        rulesFor(encounter)?.klipot ?? 1,
       );
-      if (isIllumined(encounter, regionAt(next.regionIndex).sefirah)) {
-        next.orPerMote = ILLUMINED_MULTIPLIER;
-      }
       const carried = powersFrom(ascent.items ?? []);
       next.player.lamps += carried.lamps;
       next.orPerMote = Math.max(1, Math.round(next.orPerMote * carried.light));
+      // The path's own two ends, not the rung's capped index — see `layEncounter`.
+      layEncounter(next, path.ends);
       setGranted([]);
       setWalking(path);
       setWorld(next);
       setVow(null);
       setPlate(null);
     },
-    [ascent, time.lightOfTheDay, encounter],
+    [ascent, time.lightOfTheDay, layEncounter, encounter],
   );
 
   /** Back to the map, from the plate at the end of a path. */
@@ -718,9 +772,7 @@ export function GamePage() {
       };
       void saveAscent(next).catch(() => undefined);
       const world = buildRegion(next.regionIndex, next.seed, lightRef.current);
-      if (isIllumined(encounterRef.current, regionAt(next.regionIndex).sefirah)) {
-        world.orPerMote = ILLUMINED_MULTIPLIER;
-      }
+      layEncounterRef.current(world, [regionAt(next.regionIndex).sefirah]);
       setWorld(world);
       setVow(null);
       return next;
@@ -823,7 +875,7 @@ export function GamePage() {
           at={standingAt(ascent)}
           onWalk={walkPath}
           onKindle={kindleHere}
-          onSeal={allKindled(ascent) ? sealAscent : undefined}
+          onSeal={allKindled(ascent) ? () => setPlate({ kind: "sealed" }) : undefined}
         />
       )}
 
@@ -1988,17 +2040,35 @@ function SealedPlate({
   // always been recorded and until now was only ever counted.
   const witnesses = witnessesOf(ascent.housesMet);
   const plea = pleaFor({ hasMouth: ascent.lettersHeld.includes(SCROLL_LETTER), witnesses });
+  /**
+   * Two roads to the same plate, and they end for different reasons.
+   *
+   * The line ended by **arriving**: ten rungs in order, and Keter at the top of
+   * them. The Tree ends by **spending** — the crown is one step from Chochmah
+   * and a Scribe can be standing on it inside four paths, so arriving there
+   * proves nothing. What proves something is three hundred light laid down
+   * across all ten Sefirot, which is a climb that has been almost everywhere.
+   */
+  const byKindling = new Set(ascent.sefirotLit ?? []).size >= TOTAL_REGIONS;
   return (
     <>
-      <p className={styles.plateKicker}>Keter</p>
-      <h2 className={styles.plateTitle}>The crown is reached</h2>
+      <p className={styles.plateKicker}>{byKindling ? "The Tree stands lit" : "Keter"}</p>
+      <h2 className={styles.plateTitle}>
+        {byKindling ? "All ten are kindled" : "The crown is reached"}
+      </h2>
       <p className={`${styles.plateHeb} hebrew`} lang="he">
-        כתר
+        {byKindling ? "עֵץ הַחַיִּים" : "כתר"}
       </p>
       <p className={styles.plateUse}>
-        {all
-          ? "All twenty-two letters are in your hand. The alphabet is complete, and the Tree was climbed on nothing else."
-          : `You arrive carrying ${found} of the twenty-two letters. The crown is reached either way — that was never in question — but the letters left in the regions below are still there.`}
+        {byKindling
+          ? `Every Sefirah on the Tree is burning, and you paid for all of it out of what you gathered walking ${(ascent.pathsWalked ?? []).length} paths. ${
+              all
+                ? "All twenty-two letters are in your hand as well."
+                : `You did it carrying ${found} of the twenty-two letters — the rest are still lying on the paths you did not take.`
+            }`
+          : all
+            ? "All twenty-two letters are in your hand. The alphabet is complete, and the Tree was climbed on nothing else."
+            : `You arrive carrying ${found} of the twenty-two letters. The crown is reached either way — that was never in question — but the letters left in the regions below are still there.`}
       </p>
       <ul className={styles.sealedLetters}>
         {ascent.lettersHeld.map((id) => (

@@ -120,6 +120,57 @@ const SCRIPTS = [
     seconds: 150,
   },
   {
+    name: "kindled",
+    about: "A climb standing on the Tree with light in hand: kindle, and read the map back.",
+    warp: {},
+    // Seeded rather than played, because reaching this state honestly is three
+    // hundred light and about twenty rungs. The record is the whole of a climb
+    // — where you stand, what you walked, what you hold — so writing one and
+    // reloading puts the map in a state a real climb would take an hour to
+    // reach, and reads back exactly what a player would see there.
+    enter: async (page) => {
+      await page.evaluate(async () => {
+        const req = indexedDB.open("otzar-hasofer");
+        const db = await new Promise((res, rej) => {
+          req.onsuccess = () => res(req.result);
+          req.onerror = () => rej(req.error);
+        });
+        const now = new Date().toISOString();
+        const tx = db.transaction("ascents", "readwrite");
+        tx.objectStore("ascents").put({
+          id: "playtest-kindled",
+          seed: 7,
+          seedLabel: "playtest",
+          createdAt: now,
+          updatedAt: now,
+          regionIndex: 5,
+          at: "tiferet",
+          pathsWalked: [
+            "malchut-yesod", "yesod-hod", "gevurah-hod", "gevurah-tiferet",
+            "netzach-tiferet", "malchut-netzach", "yesod-tiferet",
+          ],
+          lettersHeld: ["aleph", "bet", "gimel", "dalet", "heh", "vav", "zayin"],
+          or: 220,
+          regionsCleared: [1, 2, 3, 4, 5],
+          housesMet: [],
+          sacredNotes: [],
+          sefirotLit: ["malchut", "yesod", "hod", "netzach"],
+        });
+        await new Promise((res) => { tx.oncomplete = res; });
+      });
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(900);
+      // Kindle where the Scribe stands, then walk a path so the harness has a
+      // world to photograph — the map itself is not a canvas.
+      const kindle = page.getByRole("button", { name: /^Kindle/ });
+      if (await kindle.count()) await kindle.first().click();
+      await page.waitForTimeout(300);
+      await page.getByRole("button", { name: /Keter/ }).first().click();
+    },
+    until: (p) => p.plate === "path-done",
+    seconds: 150,
+  },
+  {
     name: "going-out",
     about: "One lamp, and a Scribe who does not fight back. The kingdom comes up.",
     warp: { rung: 7, letters: "as-of-rung", lamps: 1, seed: 13 },

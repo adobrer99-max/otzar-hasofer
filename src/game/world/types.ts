@@ -210,6 +210,29 @@ export interface World {
    */
   orPerMote: number;
   /**
+   * What a shell gives up when it breaks, multiplied — the Fifth Encounter's
+   * Living Creatures hold more than the ordinary klipah.
+   */
+  huskLight: number;
+  /**
+   * And again, when the break happens in a room that has closed behind the
+   * Scribe: the Second Encounter's Separation. One unless a rule says else, so
+   * a sealed break is worth `huskLight * sealedLight` shells' worth of light.
+   */
+  sealedLight: number;
+  /**
+   * What a veiling takes off the light gathered. Two, unless the Seventh's
+   * Shabbat says nothing is lost.
+   */
+  veilCost: number;
+  /**
+   * Whether the room the Scribe is standing in has closed behind them.
+   * Recorded by `stepRooms`, which is where the decision is actually made —
+   * re-deriving it where a shell breaks would be the same condition written
+   * twice and free to drift.
+   */
+  inSealedRoom: boolean;
+  /**
    * Running counts a vow is judged against at the exit (see
    * `ushpizinOffers.ts`). Cumulative for the region; the page snapshots them
    * when a vow is taken and compares at the way out.
