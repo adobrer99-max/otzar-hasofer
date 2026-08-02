@@ -617,11 +617,19 @@ function touchEntities(world: World, ctx: StepContext): void {
         }
         break;
       case "mark":
-        if (!e.active) {
+        // **The Mark is asked for.** Tav grants the `mark` verb and for the
+        // whole life of this file nothing ever checked it — the shrine set a
+        // respawn for anybody who walked into it, which made Tav the one
+        // letter in the alphabet that did nothing at all. It is asked for
+        // here, and the shrines start at Yesod so that every one of them is
+        // met by a Scribe who already found Tav in the kingdom below.
+        if (!e.active && has(ctx, "mark")) {
           e.active = true;
           world.marksSet += 1;
           world.respawn = { x: e.x, y: e.y - 6 };
           say(world, "Your mark is set here.");
+        } else if (!e.active) {
+          say(world, "A shrine, and nothing to set on it. The Mark is not yet yours.");
         }
         break;
       case "fragment":

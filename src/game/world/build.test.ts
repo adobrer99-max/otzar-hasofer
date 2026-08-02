@@ -140,6 +140,64 @@ describe("assembling a region", () => {
     }
   });
 
+  /**
+   * **Pacing.** A fixed screen is one you *stop* on — an alcove, a niche, a
+   * gate, the shrine, the House — and the question this asks is how much game
+   * there is between two of them.
+   *
+   * Both answers used to be bad, and in opposite directions. `region.length`
+   * was authored as a length and read as one, so the fixed screens were pushed
+   * into whatever boundaries happened to exist: Malchut carried six of them in
+   * fourteen screens while Keter carried two in thirteen, and Hod and Netzach
+   * had *fewer* ground boundaries than fixed screens, which dropped them into
+   * a fallback that repeats a slot — three plates in a row, in half of all
+   * climbs, measured over forty seeds.
+   *
+   * The body now grows to fit what the rung holds, so this is a property of
+   * every rung rather than a hope about the ones that happened to be long.
+   */
+  it("never lays two screens you stop on back to back", () => {
+    const FIXED = new Set([
+      "letter-alcove",
+      "genizah-niche",
+      "word-gate",
+      "shrine-low",
+      "shrine-high",
+      "house",
+    ]);
+    for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
+      for (const seed of [...SEEDS, 40404, 8, 1234, 60606, 31337]) {
+        const laid = layoutOf(region, seed);
+        for (let i = 1; i < laid.length; i += 1) {
+          expect(
+            FIXED.has(laid[i].id) && FIXED.has(laid[i - 1].id),
+            `region ${region} seed ${seed}: ${laid[i - 1].id} then ${laid[i].id}`,
+          ).toBe(false);
+        }
+      }
+    }
+  });
+
+  /**
+   * And the first rung in particular, because it is the one that also carries
+   * the teaching. Four screens to stop on in Malchut — two letters, a genizah
+   * niche and the House — against six before, when it also kept a shrine it
+   * could not use and a second fragment.
+   */
+  it("keeps the kingdom the least crowded rung below the Abyss", () => {
+    const stops = (region: number) =>
+      layoutOf(region, 555).filter((c) =>
+        ["letter-alcove", "genizah-niche", "word-gate", "shrine-low", "shrine-high", "house"].includes(
+          c.id,
+        ),
+      ).length;
+    for (let region = 2; region <= 7; region += 1) {
+      expect(stops(1), `Malchut ${stops(1)} vs region ${region} ${stops(region)}`).toBeLessThanOrEqual(
+        stops(region),
+      );
+    }
+  });
+
   it("still lays the taught porch in Malchut and nowhere else", () => {
     for (const seed of SEEDS) {
       expect(buildRegion(1, seed, 1, true).width).toBe(buildRegion(1, seed).width + 3 * CHUNK_W);

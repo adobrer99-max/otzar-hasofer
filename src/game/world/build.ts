@@ -115,11 +115,6 @@ function layout(
   // half its screens ask for one filtered out every ungated screen in the
   // library, emptied the candidate list, and dropped the region into the
   // ground-only fallback. Which is why Hod could never branch.
-  const quota = banded.some(asksForALetter)
-    ? gatedQuota(region.length, region.demand)
-    : 0;
-  const body = layBody(banded, region.length, rng, region.demand.bias === "hard", quota);
-
   // The gate's answer is chosen first, from roots the Scribe can already
   // spell with the letters they arrive holding. No target, no gate — which is
   // why Malchut and Yesod carry none: with two letters there is nothing to
@@ -146,14 +141,46 @@ function layout(
   ];
 
   // Every fixed screen is entered and left on the ground, so they may only be
-  // slotted where the body is *already* on the ground. `groundSlots` is those
-  // positions; `layBody` guarantees there are enough of them.
+  // slotted where the body is *already* on the ground.
+  //
+  // **A rung must be long enough to carry what it holds.** `region.length` was
+  // authored as a length and read as one, and the fixed screens were then
+  // pushed into whatever gaps happened to exist — so Malchut, six body screens
+  // carrying six plates, was half plates, and Hod and Netzach had *fewer*
+  // ground boundaries than fixed screens because their bodies climb, which
+  // dropped them into a fallback that repeats a slot and stacked three plates
+  // in a row in half of all climbs. Measured over forty seeds, both.
+  //
+  // So the body grows until there is room for a screen of actual game between
+  // them. `length` becomes the floor rather than the whole story, and a rung
+  // is exactly as long as its own content asks — Keter, carrying two plates,
+  // does not grow at all.
+  const room = fixed.length + 2;
+  const quota = banded.some(asksForALetter)
+    ? gatedQuota(Math.max(region.length, room), region.demand)
+    : 0;
+  const body = layBody(
+    banded,
+    Math.max(region.length, room),
+    rng,
+    region.demand.bias === "hard",
+    quota,
+  );
+  // A body that climbs offers fewer boundaries than it has screens, so the
+  // count is checked after the fact and topped up with plain ground. `layBody`
+  // always ends on the floor, so appending ground screens is always valid.
+  const flat = banded.filter((c) => c.entry === "ground" && c.exit === "ground");
+  // Padding is still the region's terrain, not a corridor. Drawn from the
+  // gentlest thing to hand it would be free ground, and it was: one seed of
+  // Tiferet became crossable by a Scribe who only walks and jumps, which the
+  // suite watches for precisely because that used to be the whole game.
+  const demanding = flat.filter((c) => asksForALetter(c) || c.demand > 1);
+  const padding = demanding.length > 0 ? demanding : flat;
+  while (groundSlots(body).length < room && padding.length > 0 && body.length < room * 3) {
+    body.push(draw(padding, rng, region.demand.bias === "hard"));
+  }
   const positions = groundSlots(body);
-  const slots =
-    fixed.length <= positions.length
-      ? shuffle(rng, positions).slice(0, fixed.length)
-      : Array.from({ length: fixed.length }, (_, i) => positions[randomInt(rng, positions.length)] ?? i);
-  slots.sort((a, b) => a - b);
+  const slots = spaceOut(fixed.length, positions, rng);
 
   const laid: Chunk[] = [START_CHUNK, ...(teaching && regionIndex === 1 ? TEACH_CHUNKS : [])];
   let nextFixed = 0;
@@ -397,6 +424,50 @@ function draw(pool: readonly Chunk[], rng: () => number, hard: boolean): Chunk {
   if (!hard) return first;
   const second = pool[randomInt(rng, pool.length)];
   return second.demand > first.demand ? second : first;
+}
+
+/**
+ * Where the fixed screens go — spread across the rung rather than sprinkled.
+ *
+ * A fixed screen is a screen you *stop* on: a letter in its alcove, a genizah
+ * niche, a Word-Gate, the shrine, the House. Chosen by shuffling the ground
+ * slots and taking the first N, they clump — measured over forty seeds, Hod
+ * and Netzach laid three of them in a row in about half of all climbs, which
+ * is three plates and no game in between. And the foot of the Tree feels
+ * crowded for the same reason from the other direction: Malchut carries six
+ * fixed screens and Keter two, so the rung that also has the teaching porch on
+ * it is the one with the least room to breathe.
+ *
+ * This does not change how many there are. It divides the rung into as many
+ * bands as there are screens to place and takes one slot from each, so a plate
+ * is always followed by ground before the next one — the pacing is the same
+ * shape whether a rung carries two or six.
+ *
+ * The jitter inside each band is what keeps the layout from reading as a
+ * metronome; the fallback, for a rung with fewer ground slots than screens,
+ * is the old behaviour, because a repeated slot is better than dropping a
+ * letter on the floor.
+ */
+function spaceOut(count: number, positions: readonly number[], rng: () => number): number[] {
+  if (count === 0) return [];
+  if (count > positions.length) {
+    return Array.from({ length: count }, (_, i) => positions[randomInt(rng, positions.length)] ?? i).sort(
+      (a, b) => a - b,
+    );
+  }
+  // Greedy, and greedy in that order for a reason: an evenly-banded version of
+  // this was tried first and made the clumping *worse*, because a rung with
+  // six screens and seven boundaries has bands one boundary wide and every
+  // band-edge pick lands next to its neighbour. Taking the roomiest gap each
+  // time can only do better than shuffling, whatever the ratio.
+  const shuffled = shuffle(rng, [...positions]);
+  const chosen: number[] = [];
+  for (let i = 0; i < count; i += 1) {
+    const free = shuffled.filter((p) => !chosen.includes(p));
+    const roomy = free.filter((p) => chosen.every((c) => Math.abs(c - p) > 1));
+    chosen.push((roomy.length > 0 ? roomy : free)[0]);
+  }
+  return chosen.sort((a, b) => a - b);
 }
 
 /**

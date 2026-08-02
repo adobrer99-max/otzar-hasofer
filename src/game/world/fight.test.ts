@@ -175,7 +175,10 @@ function fighter(world: World, ctx: StepContext, ticks: number): Fight {
   };
 }
 
-const SEEDS = [3, 91, 555, 12345, 777, 40404];
+// Ten rather than six. The per-rung rate is a share of these, and at six seeds
+// a single unlucky layout moves a rung by seventeen points — which is noise
+// being read as balance.
+const SEEDS = [3, 91, 555, 12345, 777, 40404, 8, 1234, 60606, 31337];
 
 /** Every region, every seed, with a Scribe who fights. Measured once, reused. */
 const RUNS = (() => {

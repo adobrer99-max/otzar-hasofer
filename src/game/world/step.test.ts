@@ -221,9 +221,11 @@ describe("the simulation", () => {
     expect(found).toEqual([drop.ref]);
   });
 
-  it("moves the mark when a shrine is touched", () => {
-    const world = buildRegion(1, 5);
-    const ctx = contextFor(1);
+  it("moves the mark when a shrine is touched, for a Scribe carrying Tav", () => {
+    // Yesod rather than Malchut: the kingdom keeps no shrine now, because Tav
+    // is *found* there and a shrine laid before its own alcove is furniture.
+    const world = buildRegion(2, 5);
+    const ctx = contextFor(2);
     const shrine = world.entities.find((e) => e.kind === "mark");
     expect(shrine).toBeDefined();
     if (!shrine) return;
@@ -231,6 +233,25 @@ describe("the simulation", () => {
     world.player.y = shrine.y;
     step(world, NO_INPUT, ctx);
     expect(world.respawn.x).toBe(shrine.x);
+  });
+
+  /**
+   * And the other half, which had never been true: **the Mark is asked for.**
+   * Nothing checked Tav's verb, so a shrine set a respawn for anyone who
+   * touched it and Tav was the one letter in the alphabet that did nothing.
+   */
+  it("leaves the shrine cold for a Scribe who does not carry the Mark", () => {
+    const world = buildRegion(2, 5);
+    const shrine = world.entities.find((e) => e.kind === "mark");
+    expect(shrine).toBeDefined();
+    if (!shrine) return;
+    const before = { ...world.respawn };
+    world.player.x = shrine.x;
+    world.player.y = shrine.y;
+    // Everything Yesod gives except the Mark.
+    step(world, NO_INPUT, { verbs: verbsOf(["chet", "samech", "resh"]), graces: [] });
+    expect(world.respawn).toEqual(before);
+    expect(shrine.active).toBeFalsy();
   });
 
   it("finishes the region at the exit", () => {

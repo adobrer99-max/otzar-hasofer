@@ -83,12 +83,18 @@ export const regions: Region[] = [
     hebrew: "מלכות",
     middah: "Sovereignty / Receiving",
     letters: ["aleph", "tav"],
-    fragments: 2,
+    fragments: 1,
     length: 6,
     demand: { min: 1, max: 2 },
     klipot: { kinds: ["crawler"], count: 2 },
     hasHouse: true,
-    hasShrine: true,
+    // The one rung with no shrine, for two reasons that agree. Tav is *found*
+    // here, so a shrine laid before its alcove is furniture — and now that the
+    // shrine asks for the Mark, furniture that says so. And a veiling at the
+    // foot of the Tree costs almost nothing: the ground is gentle and short,
+    // and you wake where you came in. A mark is worth setting where ground is
+    // expensive, which begins one rung up.
+    hasShrine: false,
     teaching:
       "The kingdom — the world exactly as it is. Nothing is climbed that was not first stood upon. The breath is given here, at the bottom, because nothing rises without it.",
   },
@@ -99,7 +105,7 @@ export const regions: Region[] = [
     hebrew: "יסוד",
     middah: "Foundation / Connection",
     letters: ["chet", "samech", "resh"],
-    fragments: 1,
+    fragments: 2,
     length: 6,
     demand: { min: 1, max: 2 },
     klipot: { kinds: ["crawler", "drifter"], count: 3 },

@@ -1,6 +1,6 @@
 import { ushpizinBySefirah } from "../data/ushpizin";
 import type { SefirahId } from "../types/letter";
-import type { Grace } from "./abilities";
+import type { Grace, Verb } from "./abilities";
 
 /**
  * The seven guests, and what each will do for you.
@@ -57,8 +57,8 @@ const OFFERS: Record<string, Omit<UshpizinOffer, "figure" | "middah">> = {
       "The tent is open on all four sides, and you were not asked to knock. Take this, and do not thank me — a gift that must be repaid was a sale.",
     terms: "Accept, freely",
     price: 0,
-    grants: "light",
-    grantsLabel: "The Spark — your lamp reaches further",
+    grants: "swift-water",
+    grantsLabel: "The Fish — the deep becomes your element",
   },
   gevurah: {
     sefirah: "gevurah",
@@ -77,8 +77,8 @@ const OFFERS: Record<string, Omit<UshpizinOffer, "figure" | "middah">> = {
     terms: "Vow: reach the exit unveiled",
     price: 0,
     vow: "unveiled",
-    grants: "slow-fall",
-    grantsLabel: "The Support — you descend as though upheld",
+    grants: "return",
+    grantsLabel: "The Beginning — veiled on a branch, you wake at the fork",
   },
   netzach: {
     sefirah: "netzach",
@@ -102,11 +102,11 @@ const OFFERS: Record<string, Omit<UshpizinOffer, "figure" | "middah">> = {
   yesod: {
     sefirah: "yesod",
     saying:
-      "Everything above must pass through a narrow place to reach the world below. I keep that channel. Give me a little of what you carry and it will run more freely.",
+      "Everything above must pass through a narrow place to reach the world below. I keep that channel, and nothing that comes through it falls hard. Give me a little of what you carry and I will see you down gently.",
     terms: "Pay 6 light",
     price: 6,
-    grants: "swift-water",
-    grantsLabel: "The Fish — the deep becomes your element",
+    grants: "slow-fall",
+    grantsLabel: "The Support — you descend as though upheld",
   },
   malchut: {
     sefirah: "malchut",
@@ -114,9 +114,31 @@ const OFFERS: Record<string, Omit<UshpizinOffer, "figure" | "middah">> = {
       "The kingdom asks nothing it has not already given. What is here is yours; I only hand it to you.",
     terms: "Accept",
     price: 0,
-    grants: "second-stone",
-    grantsLabel: "The Palm — you may hold a second standing stone",
+    grants: "light",
+    grantsLabel: "The Spark — your lamp reaches further",
   },
+};
+
+/**
+ * What a grace needs before it is worth anything.
+ *
+ * The reason this exists: two of the seven guests were handing over a power
+ * that could not be used for most of the climb. David gave the Palm — a second
+ * standing stone — at the *first* rung, and a standing stone needs Bet, which
+ * is found at the eighth; Joseph gave the Fish at the second, and the deep
+ * needs Mem, which is found at the seventh. The first two bargains a player is
+ * ever offered both did nothing, and nothing in the codebase could notice,
+ * because a grace is granted by name and the name is always valid.
+ *
+ * So the dependency is written down, and `exposure.test.ts` reads it: a guest
+ * may not grant a grace whose verb lies above their own rung. The Palm is no
+ * longer anyone's gift — Bet and Kaf are both Binah, and no House stands above
+ * the Abyss, so there is no rung that could give it honestly. It is still had
+ * by finding Kaf, like any other letter.
+ */
+export const GRACE_NEEDS: Partial<Record<Grace, Verb>> = {
+  "swift-water": "swim",
+  "second-stone": "block",
 };
 
 /** The guest standing in a region, if that Sefirah keeps one. */

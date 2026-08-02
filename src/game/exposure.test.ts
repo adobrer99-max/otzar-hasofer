@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { ILLUMINED_MULTIPLIER } from "./encounter";
-import { regions, TOTAL_REGIONS } from "./regions";
+import { lettersOnEntering, regions, TOTAL_REGIONS } from "./regions";
 import { readAscentTime } from "./sacredAscent";
-import { offerFor } from "./ushpizinOffers";
-import { buildRegion } from "./world/build";
+import { GRACE_NEEDS, offerFor } from "./ushpizinOffers";
+import { buildRegion, verbsOf } from "./world/build";
 import { kindleCost } from "../storage/ascentRepo";
 
 /**
@@ -52,6 +52,33 @@ describe("what a climb actually runs into", () => {
     // some are vows, or the choice is a price list.
     const vows = regions.map((r) => offerFor(r.sefirah)?.vow).filter(Boolean);
     expect(vows.length, "no guest asks for a vow").toBeGreaterThan(1);
+  });
+
+  /**
+   * **A guest may not give what cannot be used.**
+   *
+   * The two lowest rungs both did. David handed over the Palm — a second
+   * standing stone — at the first rung, and a standing stone needs Bet, found
+   * at the eighth. Joseph handed over the Fish at the second, and the deep
+   * needs Mem, found at the seventh. So the first two bargains a player is
+   * ever offered were both inert, for six rungs and five, and nothing could
+   * notice: a grace is granted by name and every name is valid.
+   *
+   * `GRACE_NEEDS` writes the dependency down and this reads it. It is a
+   * sequencing rule, not a taste one — the boon has to work when it is given
+   * or the bargain is a trick.
+   */
+  it("never lets a guest grant a power the Scribe cannot yet use", () => {
+    for (const region of regions) {
+      const offer = offerFor(region.sefirah);
+      const needs = offer && GRACE_NEEDS[offer.grants];
+      if (!offer || !needs) continue;
+      const held = verbsOf([...lettersOnEntering(region.index), ...region.letters]);
+      expect(
+        held.includes(needs),
+        `${region.name}'s guest gives ${offer.grantsLabel}, which needs "${needs}" — not held here`,
+      ).toBe(true);
+    }
   });
 
   /**
