@@ -20,12 +20,12 @@ import { TILE_SIZE } from "./tiles";
  * rather than reasoned about. Then it floods the cost to the exit backwards
  * through it. If the Scribe's own tile has a finite cost, a way exists.
  *
- * It is asked **with the floors on**, which is the point. `rowsFor` still
- * returns one, so nothing here is what ships today; `FLOOR_ROWS` is the shape
- * that will, and this is what makes turning it on a decision about the driver
- * rather than a leap of faith. Building this graph is also what found the fault
- * in `sheer-face` — a screen crossed by standing on top of a wall, which needs
- * open sky above it and does not have any on a lower storey.
+ * It is asked **with the floors on**, and it is what made turning them on a
+ * decision rather than a leap of faith. Building this graph is what found the
+ * fault in `sheer-face` — a screen crossed by standing on top of a wall, which
+ * needs open sky above it and has none on a lower storey — and it is what
+ * caught the graph itself inventing a fourteen-tile leap that arrived at the
+ * height it left from, which is not a jump, because a jump falls.
  */
 
 const SEEDS = [3, 91, 555, 12345, 777, 40404, 1, 2, 8, 99, 1000, 65535];
@@ -46,10 +46,15 @@ describe("the way out", () => {
     ).toEqual([]);
   });
 
-  it("still exists when a rung is one row, which is what ships", () => {
+  /**
+   * And on a corridor, which is what the foot of the Tree still is — and what
+   * every rung was before the rooms. A rung built flat must stay sound, or the
+   * teaching ground could break without anything noticing.
+   */
+  it("still exists when a rung is built flat", () => {
     for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
       for (const seed of SEEDS) {
-        const world = buildRegion(region, seed);
+        const world = buildRegion(region, seed, 1, false, 1);
         const route = routeTo(world, verbsOf(lettersOnEntering(region)));
         expect(route.usable, `region ${region} seed ${seed}`).toBe(true);
       }

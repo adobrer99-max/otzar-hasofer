@@ -41,35 +41,23 @@ export const ROW_SCREENS_PER_ROOM = 2;
  * line and keeps the pacing that was measured and fixed. The map deepens as it
  * is climbed, which is the whole of what the shape is meant to say.
  */
-export const FLOOR_ROWS = (regionIndex: number): number =>
-  regionIndex <= 3 ? 1 : regionIndex <= 7 ? 2 : 3;
-
+/**
+ * **The Tree grows taller.** One row is a corridor, which is what every rung
+ * was before rooms existed, so the foot is untouched: Malchut goes on teaching
+ * in a straight line and keeps the pacing that was measured and fixed. The map
+ * deepens as it is climbed, which is the whole of what the shape says.
+ */
 export function rowsFor(regionIndex: number): number {
-  // **Still held at one, and the reason has moved.**
-  //
-  // It used to be that the traversal probe could not path in two dimensions at
-  // all, and there was no way to tell a floor with a hole in it from a floor
-  // the bot merely failed to cross. That half is done: `route.ts` builds the
-  // graph of the places a body can stand and the leaps and falls between them,
-  // and `route.test.ts` walks it from the start to the way out on **every rung
-  // and every seed with the rows on** — a hundred and twenty of them, all
-  // reachable. Building that graph found a real fault, too, and fixed it: the
-  // `sheer-face` screen is crossed by standing on top of the wall, which needs
-  // the row above the wall *and the one above that*, and on any storey but the
-  // topmost the second of those is the floor of the storey overhead. It was a
-  // wall with no way past, and the whole lower storey behind it was cut off.
-  //
-  // What is left is the driver. Given the route to steer by, the probe now
-  // crosses a hundred and eighteen of those hundred and twenty, against ninety
-  // with the old rule — and the two it does not cross are execution, not
-  // ground: it reaches ninety-one per cent of Netzach on one seed and falls
-  // back down the stairwell it has just climbed. `FLOOR_ROWS` above is the
-  // shape that ships the day the last two go green, and it is what the route
-  // test already measures against; this returns one until then, because a
-  // guarantee with two known exceptions is not a guarantee.
-  void regionIndex;
-  return 1;
+  return regionIndex <= 3 ? 1 : regionIndex <= 7 ? 2 : 3;
 }
+
+/**
+ * The same function under the name the tests reach for. `route.test.ts` builds
+ * rungs at an explicit shape — flat, and as they ship — and naming the shape at
+ * those call sites keeps the test agreeing with what it means rather than with
+ * whatever the generator happens to say.
+ */
+export const FLOOR_ROWS = rowsFor;
 
 /** The verbs a set of held letters amounts to. */
 export function verbsOf(letterIds: readonly string[]): Verb[] {
@@ -140,9 +128,14 @@ export function buildRegion(
  * that the assembly can be inspected directly rather than inferred from tiles.
  * `build.test.ts` reads the chain and the demand curve straight off this.
  */
-export function layoutOf(regionIndex: number, seed: number, teaching = false): Chunk[] {
+export function layoutOf(
+  regionIndex: number,
+  seed: number,
+  teaching = false,
+  rows?: number,
+): Chunk[] {
   const region = regionAt(regionIndex);
-  return layout(region, makeRng((seed ^ (regionIndex * 0x9e3779b9)) >>> 0), teaching).laid;
+  return layout(region, makeRng((seed ^ (regionIndex * 0x9e3779b9)) >>> 0), teaching, rows).laid;
 }
 
 function layout(
@@ -962,8 +955,46 @@ function scatterHusks(
   }
   if (standing.length === 0) return;
 
-  const ground = shuffle(rng, standing);
-  const air = shuffle(rng, floating);
+  /**
+   * **Dealt across the rooms, not sprinkled over the grid.**
+   *
+   * A corridor is one room deep, so scattering into random standing places put
+   * a klipah more or less on the way through whatever happened. A floor is a
+   * room grid, and the Scribe walks one route across it — so the same scatter
+   * left half of them in corners of rooms nobody has any reason to enter.
+   * Measured, the moment the rows came on: the share of shells a Scribe who
+   * fights actually breaks fell from about three quarters on the corridors to
+   * one fifth on the floors, and the rest were content nobody would ever see.
+   * The way through passes every room, so one to a room, in order, and the
+   * remainder round again.
+   */
+  const byRoom = new Map<number, { x: number; y: number }[]>();
+  const roomOf = (spot: { x: number; y: number }) =>
+    Math.floor(spot.y / ROOM_H) * 1000 + Math.floor(spot.x / ROOM_W);
+  const deal = (spots: { x: number; y: number }[]) => {
+    byRoom.clear();
+    for (const spot of spots) {
+      const key = roomOf(spot);
+      const list = byRoom.get(key);
+      if (list) list.push(spot);
+      else byRoom.set(key, [spot]);
+    }
+    const rooms = [...byRoom.keys()].sort((l, r) => l - r).map((k) => byRoom.get(k) ?? []);
+    const out: { x: number; y: number }[] = [];
+    for (let round = 0; out.length < spots.length; round += 1) {
+      let laid = false;
+      for (const room of rooms) {
+        if (round >= room.length) continue;
+        out.push(room[round]);
+        laid = true;
+      }
+      if (!laid) break;
+    }
+    return out;
+  };
+
+  const ground = deal(shuffle(rng, standing));
+  const air = deal(shuffle(rng, floating));
   const taken = new Set<string>();
   let g = 0;
   let a = 0;

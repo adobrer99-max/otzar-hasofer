@@ -50,6 +50,9 @@ export interface Route {
   costAt(px: number, py: number, ph: number): number;
   /** -1, 0 or 1: which way the next step lies. */
   towards(px: number, py: number, ph: number): number;
+
+  /** The row of the next place to stand, in tiles, or `undefined` from nowhere. */
+  landingRow(px: number, py: number, ph: number): number | undefined;
   /** Whether the way out is reachable at all from where the Scribe began. */
   usable: boolean;
   /** Tiles from the Scribe's starting place, or nought if there is no way. */
@@ -254,7 +257,16 @@ export function routeTo(world: World, verbs: readonly Verb[]): Route {
     // always to get over it.
     if (fence) {
       for (const dir of [-1, 1] as const) {
-        for (let d = 1; d <= across; d += 1) {
+        // **Within a stride, not within a leap.** Searching the whole jump
+        // envelope for a face to catch granted a fourteen-tile dash across open
+        // air that arrived at the same height it left — which is not a jump,
+        // because a jump falls. Measured, the graph used exactly that to route
+        // Chesed up the outside of a wall the Scribe could never have reached,
+        // and the probe spent its whole budget under it. A face you can catch
+        // is one you are practically beside; anything further is a leap to
+        // somewhere you can stand, and the envelope above already knows about
+        // those.
+        for (let d = 1; d <= 3; d += 1) {
           const face = x + dir * d;
           if (face < 0 || face >= w) break;
           if (!solid(face, y)) continue;
@@ -423,13 +435,14 @@ export function routeTo(world: World, verbs: readonly Verb[]): Route {
   };
 
   return {
-    // @ts-expect-error temporary
-    _debug: { nodes, cost, index, w, h, forward },
     usable: Number.isFinite(cost0),
     cost0: Number.isFinite(cost0) ? cost0 : 0,
     costAt(px, py, ph) {
       const n = nodeAt(px, py, ph);
       return n >= 0 ? cost[n] : Infinity;
+    },
+    landingRow(px, py, ph) {
+      return legFrom(px, py, ph)?.toY;
     },
     towards(px, py, ph) {
       const leg = legFrom(px, py, ph);

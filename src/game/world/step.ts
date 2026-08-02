@@ -1121,9 +1121,15 @@ function stepHusks(world: World, ctx: StepContext): void {
           break;
         }
         // Under. It slides toward the Scribe's column and rises when it is
-        // beneath him, or when it has waited long enough to be worth surfacing.
+        // beneath him — but never further than the ground it haunts. Stone is
+        // nothing to it, so without a leash it simply followed the Scribe
+        // through the rock for the length of a floor and opened under him again
+        // and again: measured, the moment the rows came on, it took sixty lamps
+        // in a hundred runs, more than twice any other klipah.
+        const home = husk.home.x - husk.x;
+        const chase = Math.abs(home) > TILE_SIZE * 12 ? home : toward;
         husk.vy = 90;
-        husk.vx = Math.sign(toward) * spec.speed;
+        husk.vx = Math.sign(chase) * spec.speed;
         if (Math.abs(toward) < TILE_SIZE && husk.cooldown === 0 && spec.throws) {
           husk.charging = 42;
           husk.cooldown = spec.throws;
@@ -1196,10 +1202,16 @@ function stepHusks(world: World, ctx: StepContext): void {
       // it. The first of them and the shape of all the rest: it never hurries,
       // because it has never needed to.
       case "nachash": {
-        const off = Math.hypot(toward, p.y - husk.y) || 1;
-        husk.vx = (toward / off) * spec.speed;
-        husk.vy = ((p.y - husk.y) / off) * spec.speed;
-        husk.facing = (toward > 0 ? 1 : -1) as 1 | -1;
+        // It does not stop, and it does not leave its own ground either. A
+        // relentless pursuer that ignores stone will cross a whole floor to
+        // reach you, and then there is nowhere on the rung that is not it.
+        const strayed = Math.hypot(husk.home.x - husk.x, husk.home.y - husk.y) > TILE_SIZE * 16;
+        const toX = strayed ? husk.home.x - husk.x : toward;
+        const toY = strayed ? husk.home.y - husk.y : p.y - husk.y;
+        const off = Math.hypot(toX, toY) || 1;
+        husk.vx = (toX / off) * spec.speed;
+        husk.vy = (toY / off) * spec.speed;
+        husk.facing = (husk.vx > 0 ? 1 : -1) as 1 | -1;
         break;
       }
     }

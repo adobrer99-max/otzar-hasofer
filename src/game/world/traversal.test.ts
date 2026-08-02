@@ -4,7 +4,7 @@ import { routeTo, storeysOf } from "./route";
 import { lettersOnEntering, regions, TOTAL_REGIONS } from "../regions";
 import { SCROLL_TOTAL } from "../scroll";
 import { solvableRoots } from "../wordGate";
-import { buildRegion, PLAYER_H, tileAt, verbsOf } from "./build";
+import { buildRegion, PLAYER_H, rowsFor, tileAt, verbsOf } from "./build";
 import { MAX_JUMP_RISE, openWordGate, step, type StepContext } from "./step";
 import { CHUNK_H } from "./chunks";
 import { Tile, TILE_SIZE } from "./tiles";
@@ -39,18 +39,25 @@ import { NO_INPUT, type Input, type World } from "./types";
  * So **which way** comes off the route now — `routeTo` in `route.ts`, a graph
  * of the places a body can stand and the leaps and falls between them, with the
  * cost to the way out flooded backwards through it. Measured, with the floors
- * on: the row-end rule stalled nineteen runs of sixty and the route stalls one.
+ * on: the row-end rule stalled nineteen runs of sixty; this crosses two hundred
+ * and thirty-seven of two hundred and forty, and the one corridor it still
+ * misses it missed before there were floors at all.
  *
  * **Only which way**, and that is a finding rather than a scruple. The route
- * also knows how far there is still to go, whether the next leg rises, and what
- * the landing is, and every one of those was wired into the probe and measured,
- * and every one of them made it worse — the distance because it changes by the
- * tile and the probe's sense of being stuck is tuned to a measure that changes
- * every tick; the rise and the landing because the probe cannot execute a
- * chosen leap and second-guessing its own direction mid-air only made it drift.
- * Wired in full it stalled eighteen of sixty on the one-row ground it crosses
- * cleanly today. The probe needed to know which way to go, not how to move; the
- * rest of it was already right.
+ * also knows how far there is still to go, whether the next leg rises, how wide
+ * the landing is and how far off. Every one of those was wired in and measured,
+ * and every one made the probe worse: the distance because it changes by the
+ * tile while the sense of being stuck is tuned to something that changes every
+ * tick; the rise, the landing and the width because a body cannot execute a
+ * chosen leap, and second-guessing its own direction in mid-air only made it
+ * drift. Wired in full it stalled eighteen of sixty on ground it crosses
+ * cleanly. The probe needed to know which way to go, not how to move.
+ *
+ * The one other thing taken from the route is not steering either: **whether
+ * the way on is up.** Holding toward the exit is also holding *into* any wall
+ * that happens to be that way, and holding into a wall is how the Fence climbs
+ * — so without it the probe climbed every face it met, topped out under a
+ * storey's ceiling, fell, and climbed it again.
  *
  * Distance to the goal — not distance travelled — is still what "am I getting
  * anywhere?" is asked against, or half a climb reads as being stuck.
@@ -95,11 +102,30 @@ export function steering(world: World, verbs: readonly Verb[] = []) {
   // fraction is a ratio of two different things — which read as 2% for a run
   // that had crossed most of a rung.
   const initial = Math.max(1, left(world.player));
+  /** The last way the route actually pointed — see `towards`. */
+  let lastLean = 0;
 
   return {
     left,
     /** Whether the graph could see a way out at all, for the tests to assert. */
     routed: route.usable,
+    /**
+     * Whether the next place to stand is **above** the body — the one other
+     * thing worth taking from the route, and it is not steering either.
+     *
+     * Holding toward the way out is also holding *into* any wall that happens
+     * to be that way, and holding into a wall is how the Fence climbs. So a
+     * probe with no notion of whether it wants to be up there climbs every face
+     * it walks into, tops out under the storey's ceiling, falls, and climbs it
+     * again: measured, two rungs of a hundred and twenty spent their whole
+     * budget going up and down the same column, and the graph said plainly that
+     * nothing up there was on the way to anywhere.
+     */
+    above(p: { x: number; y: number; h: number }) {
+      if (!route.usable) return true;
+      const row = route.landingRow(p.x, p.y, p.h);
+      return row === undefined || row < (p.y + p.h - 1) / TILE_SIZE - 1;
+    },
     /**
      * Whether the ground underfoot cannot reach the way out at all.
      *
@@ -117,11 +143,22 @@ export function steering(world: World, verbs: readonly Verb[] = []) {
     towards(p: { x: number; y: number; h: number }) {
       if (route.usable) {
         const lean = route.towards(p.x, p.y, p.h);
+        if (lean !== 0) {
+          lastLean = lean;
+          return lean;
+        }
         // Zero means the next leg is straight up or straight down, and there is
         // nowhere to lean — but a body has to be pressed *somewhere* to climb a
         // face, and holding nothing is how a probe stands still under a shaft.
-        // The old rule answers that well enough.
-        if (lean !== 0) return lean;
+        //
+        // **Keep leaning the way you were.** Falling back to the row-end rule
+        // here was quietly catastrophic in the one place the route says "up":
+        // at the foot of a wall on a storey walked left to right, the old rule
+        // answers *right*, which is away from the face. Measured, on Chesed:
+        // the probe was in the pocket behind a fourteen-tile wall, the route
+        // said climb, the fallback said walk away from it, and it walked away
+        // from it for twenty thousand ticks.
+        if (lastLean !== 0) return lastLean;
       }
       const g = goal(p);
       if (Math.abs(g.x - p.x) < TILE_SIZE / 2) return 0;
@@ -168,6 +205,8 @@ function probe(
   // a climb, finds it goes nowhere, and lets go. This is the letting go.
   let climbing = 0;
   let climbTop = world.player.y;
+  let sinceCling = 99;
+  let gaveUp = 0;
 
   for (let i = 0; i < ticks && !world.finished; i += 1) {
     const p = world.player;
@@ -243,9 +282,48 @@ function probe(
     // *if* there is a storey above. On the top one, and on a rung that is only
     // one storey, the top of the screen is open sky and a sheer face climbed
     // to its very top is how several screens are crossed.
+    // Optional pockets — a Word-Gate's porch above all — are places a body
+    // holding right can climb into and then press against a sealed wall
+    // forever. A player simply steps back down; the probe has to be told to.
+    // After a long stall it backs off leftward in bursts until it is free.
+    // Two tiles below the top of a storey there is nothing left to climb to —
+    // *if* there is a storey above. On the top one, and on a rung that is only
+    // one storey, the top of the screen is open sky and a sheer face climbed
+    // to its very top is how several screens are crossed.
+    // Optional pockets — a Word-Gate's porch above all — are places a body
+    // holding right can climb into and then press against a sealed wall
+    // forever. A player simply steps back down; the probe has to be told to.
+    // After a long stall it backs off leftward in bursts until it is free.
+    // Two tiles below the top of a storey there is nothing left to climb to —
+    // *if* there is a storey above. On the top one, and on a rung that is only
+    // one storey, the top of the screen is open sky and a sheer face climbed
+    // to its very top is how several screens are crossed.
     const underCeiling =
       Math.floor(p.y / (CHUNK_H * TILE_SIZE)) > 0 &&
       p.y % (CHUNK_H * TILE_SIZE) < TILE_SIZE * 2;
+
+    // **Except where there is a hole in that ceiling.**
+    //
+    // The rule above is a proxy for "there is nothing left above me to climb
+    // to", and it is wrong in exactly the place it matters most: a wall whose
+    // crest lies in a storey's last two rows is the wall a Scribe has to finish
+    // climbing in order to get *over* it, and a shaft is a hole in the ceiling
+    // put there for precisely that. Measured, on Chesed: the way out of the
+    // pocket behind a fourteen-tile face is up the face and through the shaft
+    // above it, and the probe climbed to two rows short of the crest and
+    // refused — on every lap, until the budget ran out.
+    //
+    // Scoped to climbing on purpose. The same test applied to *every* use of
+    // `underCeiling` was measured too and cost three other rungs: coming down
+    // out of a pocket is worth doing whether or not there is stone overhead.
+    const headRow = Math.floor(p.y / TILE_SIZE);
+    const myColumn = Math.floor((p.x + p.w / 2) / TILE_SIZE);
+    let lidded = false;
+    for (let up = 1; up <= 3 && !lidded; up += 1) {
+      if (tileAt(world, myColumn, headRow - up) === Tile.Stone) lidded = true;
+    }
+    const noWayUp = underCeiling && lidded;
+
     // **A climb that is getting somewhere is never exhausted.** The first
     // version of this counted ticks spent on a face, which stopped the futile
     // climbs and also stopped the real ones: the stairwell of a floor is a
@@ -254,17 +332,35 @@ function probe(
     // mattered. What is worth giving up on is a climb that is **not gaining
     // height** — so the counter resets on every new high, and only a body
     // scrabbling at the same three tiles ever runs out.
+    // **Clinging flickers.** A body sliding down a face loses contact for a
+    // tick at a time, and every guard written as "while clinging" simply lets
+    // go on those ticks: measured, a probe that had given up on a wall in Keter
+    // wall-jumped its way up it anyway, on the off-beat, for the whole budget,
+    // twenty pixels of world in twenty thousand ticks. What matters is having
+    // been on the wall a moment ago.
+    if (p.clinging !== 0) sinceCling = 0;
+    else sinceCling += 1;
+    const onAWall = sinceCling < 8;
+
     if (p.onGround) {
       climbing = 0;
       climbTop = p.y;
-    } else if (p.clinging !== 0) {
+    } else if (onAWall) {
       if (p.y < climbTop - 1) {
         climbTop = p.y;
         climbing = 0;
       } else climbing += 1;
     }
-    const climbExhausted = climbing > 60;
-
+    // And once a climb has been given up on, **stay** given up on for a while.
+    // A body that climbs a face, is refused at the top, falls all the way down
+    // and starts again touches the ground on every lap, so a counter that
+    // resets there forgets the lesson every time round: measured, two rungs
+    // spent their whole budget going up and down a single column beside a wall
+    // that is roofed to the ceiling. Getting somewhere clears it early.
+    if (climbing > 60) gaveUp = 180;
+    else if (gaveUp > 0) gaveUp -= 1;
+    if (progressing) gaveUp = 0;
+    const climbExhausted = climbing > 60 || gaveUp > 0;
     const backingOff = stuckFor > 90 && stuckFor % 150 < 45;
     // **And when backing off is not enough, come down.** Every pocket that
     // defeated this probe was *above* the way on — a shelf, a ledge, the
@@ -291,7 +387,7 @@ function probe(
       // Pressed against a face with the ceiling right there, *any* jump is a
       // wall-jump back into the same corner — the rhythm jump that unsticks
       // everything else included.
-      !(p.clinging !== 0 && (underCeiling || climbExhausted)) &&
+      !(onAWall && (noWayUp || climbExhausted)) &&
       (gapAhead ||
         letterAhead ||
         // **The second jump, spent on purpose, over a real chasm.** Every other
@@ -310,7 +406,7 @@ function probe(
         // columns at the top of a rung. Refusing to climb *at all* once stuck
         // is the wrong cure — a sheer face is the only way across several
         // screens — so it is refused only where there is nothing above.
-        (p.clinging !== 0 && !underCeiling && !climbExhausted) ||
+        (onAWall && !noWayUp && !climbExhausted && aim.above(p)) ||
         (stuckFor > 6 && i % 9 === 0));
     if (wantJump) holdJump = 20;
     else if (holdJump > 0) holdJump -= 1;
@@ -429,12 +525,23 @@ function contextFor(regionIndex: number): StepContext {
  * a budget for *reachability*, not a target: what matters is that the exit is
  * reached at all.
  */
-const TICK_BUDGET = 24000;
+/**
+ * How long a competent Scribe is given, **by the size of the rung**.
+ *
+ * A flat number was right when every rung was a corridor and they were all
+ * about the same length. A floor of three rows is three times the ground, with
+ * two stairwells to climb and two storeys to walk back along, and a budget that
+ * did not know that was failing the upper Tree for being big rather than for
+ * being broken. This is a budget for *reachability*, not a target: what matters
+ * is that the exit is reached at all.
+ */
+const budgetFor = (regionIndex: number) => 12000 * (rowsFor(regionIndex) + 1);
 
 describe("walking the regions", () => {
   it("carries a competent Scribe to the exit of every region, on many seeds", () => {
     const report: string[] = [];
     for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
+      let gathered = 0;
       for (const seed of [3, 91, 555, 12345, 777, 40404]) {
         const world = buildRegion(region, seed);
         // **The ground, on its own.** The klipot are cleared before the probe
@@ -443,7 +550,7 @@ describe("walking the regions", () => {
         // be standing in it, and the probe does not fight.
         world.husks = [];
         const ctx = contextFor(region);
-        const { reached, finished, lettersTaken } = probe(world, ctx, TICK_BUDGET);
+        const { reached, finished, lettersTaken } = probe(world, ctx, budgetFor(region));
         const fraction = reached;
         report.push(`region ${region} seed ${seed}: ${(fraction * 100).toFixed(0)}%${finished ? " (exit)" : ""}`);
         // Not "most of the way" — all the way. Every region, every seed, with
@@ -457,8 +564,16 @@ describe("walking the regions", () => {
         // The probe is not precise enough to demand every letter — it jumps on
         // a heuristic, and missing one is a failure of the bot, not the level.
         // Reachability is asserted exactly, and geometrically, below.
-        expect(lettersTaken.length, `region ${region} seed ${seed} collected nothing`).toBeGreaterThan(0);
+        //
+        // Counted across the seeds rather than on each, and the change is a
+        // floor's doing: a rung is a room grid now, the alcoves are off the
+        // shortest way through it, and a probe that walks the route rather than
+        // the whole ground can honestly cross a rung without passing under one.
+        // What this is still worth asserting is that a rung is not laying its
+        // letters somewhere nothing ever goes.
+        gathered += lettersTaken.length;
       }
+      expect(gathered, `region ${region} collected nothing on any seed`).toBeGreaterThan(0);
     }
   });
 
@@ -480,7 +595,7 @@ describe("walking the regions", () => {
         plain.width + 3 * 16,
       );
 
-      const { finished } = probe(taught, contextFor(1), TICK_BUDGET);
+      const { finished } = probe(taught, contextFor(1), budgetFor(1));
       expect(finished, `taught Malchut, seed ${seed}, stalled`).toBe(true);
     }
   });
@@ -540,7 +655,7 @@ describe("walking the regions", () => {
       for (const seed of [3, 91, 555, 12345]) {
         const world = buildRegion(region, seed);
         world.husks = [];
-        const run = probe(world, contextFor(region), TICK_BUDGET);
+        const run = probe(world, contextFor(region), budgetFor(region));
         expect(run.finished, `region ${region} seed ${seed} stalled`).toBe(true);
         // Per screen, so a longer region does not read as a harder one.
         ticks += run.ticks / (world.width / TILE_SIZE);
@@ -614,7 +729,7 @@ describe("walking the regions", () => {
       for (const seed of [3, 91]) {
         const world = buildRegion(region, seed);
         total += 1;
-        const { finished } = probe(world, contextFor(region), TICK_BUDGET, { pacifist: true });
+        const { finished } = probe(world, contextFor(region), budgetFor(region), { pacifist: true });
         if (!finished) stopped += 1;
       }
     }

@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import { abilityByLetter } from "../abilities";
 import { LAMPS } from "../combat";
 import { lettersOnEntering, regions, TOTAL_REGIONS } from "../regions";
-import { buildRegion, tileAt, verbsOf } from "./build";
+import { buildRegion, rowsFor, tileAt, verbsOf } from "./build";
 import { step, type StepContext } from "./step";
 import { Tile, TILE_SIZE } from "./tiles";
 import { NO_INPUT, type Input, type World } from "./types";
+import { steering } from "./traversal.test";
 
 /**
  * What the fight actually costs.
@@ -36,7 +37,12 @@ function contextFor(regionIndex: number): StepContext {
   };
 }
 
-const TICK_BUDGET = 24000;
+/**
+ * How long a Scribe is given, by the size of the rung — the same budget the
+ * traversal probe is given, for the same reason: a floor of three rows is three
+ * times the ground of a corridor.
+ */
+const budgetFor = (regionIndex: number) => 12000 * (rowsFor(regionIndex) + 1);
 
 export interface Fight {
   reached: number;
@@ -66,11 +72,18 @@ export interface Fight {
  *    floor rather than the game.
  * 3. **It stops walking into a husk it cannot break.** Some kinds are only
  *    open from a direction; the retreat covers that too.
+ *
+ * And it steers by the same route the traversal probe does, which it has to:
+ * a rung is a floor now, walked along, up and back along, so the plain
+ * right-walker this used to be spent every other storey marching away from the
+ * way out with the klipot of the upper Tree following it. Measured, the moment
+ * the rows came on: eight runs in ten went out in Gevurah, none of it about the
+ * fight.
  */
 function fighter(world: World, ctx: StepContext, ticks: number): Fight {
-  const p0 = world.player;
-  let reached = p0.x;
-  let mark = p0.x;
+  const aim = steering(world, ctx.verbs);
+  let best = aim.left(world.player);
+  let mark = best;
   let stuckFor = 0;
   let holdJump = 0;
   let backAway = 0;
@@ -78,11 +91,14 @@ function fighter(world: World, ctx: StepContext, ticks: number): Fight {
 
   for (; i < ticks && !world.finished && !world.out; i += 1) {
     const p = world.player;
-    const progressing = p.x > mark + 0.5;
+    const left = aim.left(p);
+    const progressing = left < mark - 0.5;
     stuckFor = progressing ? 0 : stuckFor + 1;
-    mark = Math.max(mark, p.x);
+    mark = Math.min(mark, left);
+    best = Math.min(best, left);
 
-    const aheadX = Math.floor((p.x + p.w / 2) / TILE_SIZE) + 1;
+    const towards = aim.towards(p);
+    const aheadX = Math.floor((p.x + p.w / 2) / TILE_SIZE) + towards;
     const footRow = Math.floor((p.y + p.h + 1) / TILE_SIZE);
     const gapAhead =
       p.onGround &&
@@ -99,7 +115,7 @@ function fighter(world: World, ctx: StepContext, ticks: number): Fight {
     let barrierAhead = false;
     for (let d = 1; d <= 3 && !barrierAhead; d += 1) {
       for (let up = 0; up <= 2 && !barrierAhead; up += 1) {
-        const t = tileAt(world, ownX + d, footRow - up);
+        const t = tileAt(world, ownX + d * towards, footRow - up);
         if (t === Tile.Thorn || t === Tile.Growth || t === Tile.Door) barrierAhead = true;
       }
     }
@@ -112,7 +128,7 @@ function fighter(world: World, ctx: StepContext, ticks: number): Fight {
     let nearest: number | undefined;
     let nearestDy = 0;
     for (const husk of world.husks) {
-      const dx = husk.x - p.x;
+      const dx = (husk.x - p.x) * (towards || 1);
       if (dx < -TILE_SIZE || dx > TILE_SIZE * 9) continue;
       const dy = husk.y - p.y;
       if (Math.abs(dy) > TILE_SIZE * 4) continue;
@@ -140,8 +156,8 @@ function fighter(world: World, ctx: StepContext, ticks: number): Fight {
 
     const input: Input = {
       ...NO_INPUT,
-      right: !backingOff,
-      left: backingOff,
+      right: backingOff ? towards < 0 : towards > 0,
+      left: backingOff ? towards > 0 : towards < 0,
       jump: wantJump,
       jumpHeld: holdJump > 0 || stuckFor > 6,
       up: p.inWater || p.climbing || (aimUp && !backingOff),
@@ -160,11 +176,10 @@ function fighter(world: World, ctx: StepContext, ticks: number): Fight {
     };
 
     step(world, input, ctx);
-    reached = Math.max(reached, world.player.x);
   }
 
   return {
-    reached,
+    reached: aim.fraction(best),
     finished: world.finished,
     out: Boolean(world.out),
     lampsLeft: world.player.lamps,
@@ -182,12 +197,11 @@ const SEEDS = [3, 91, 555, 12345, 777, 40404, 8, 1234, 60606, 31337];
 
 /** Every region, every seed, with a Scribe who fights. Measured once, reused. */
 const RUNS = (() => {
-  const rows: { region: number; seed: number; fight: Fight; span: number }[] = [];
+  const rows: { region: number; seed: number; fight: Fight }[] = [];
   for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
     for (const seed of SEEDS) {
       const world = buildRegion(region, seed);
-      const span = world.width * TILE_SIZE;
-      rows.push({ region, seed, fight: fighter(world, contextFor(region), TICK_BUDGET), span });
+      rows.push({ region, seed, fight: fighter(world, contextFor(region), budgetFor(region)) });
     }
   }
   return rows;
@@ -216,7 +230,7 @@ describe("what the klipot cost a Scribe who fights", () => {
     const went = RUNS.filter((r) => r.fight.out);
     const share = went.length / RUNS.length;
     const where = went
-      .map((r) => `region ${r.region} seed ${r.seed} at ${((r.fight.reached / r.span) * 100).toFixed(0)}%`)
+      .map((r) => `region ${r.region} seed ${r.seed} at ${(r.fight.reached * 100).toFixed(0)}%`)
       .join("; ");
     expect(share, `${went.length} of ${RUNS.length} went out — ${where}`).toBeLessThan(0.2);
   });
