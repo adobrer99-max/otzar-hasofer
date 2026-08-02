@@ -227,6 +227,74 @@ export const WORD_GATE_CHUNK: Chunk = chunk("word-gate", { demand: 1 }, [
   F,
 ]);
 
+// ---------------------------------------------------------------------------
+// the shaft — how a floor gets a second storey
+// ---------------------------------------------------------------------------
+
+/**
+ * The columns a shaft runs through, and why they are these four.
+ *
+ * A floor is walked as a boustrophedon — along, up, back along — so every
+ * other row is laid **mirrored**, which is what keeps the edge contract true
+ * when a row is read right to left. Mirroring maps column `c` to `15 - c`, so
+ * the shaft has to sit on columns that mirror onto themselves or a `LANDING`
+ * would come down in a different place from the `RISE` under it. `{6,7,8,9}`
+ * is the widest such set that leaves the edge profiles alone.
+ */
+export const SHAFT_COLS = [6, 7, 8, 9];
+
+/**
+ * The way up, and the way down: the last screen of a row and the first screen
+ * of the row above it.
+ *
+ * Together they are a two-storey stairwell rather than a hole to be threaded.
+ * That is deliberate — a two-tile hole demands a jump aimed to the pixel, and
+ * every letterless step in this library is a plain two-tile rise for the same
+ * reason. The `RISE` climbs in two-tile steps to a ledge at its very ceiling;
+ * the `LANDING` is open through both floor rows above that ledge, with a
+ * **ledge** across the opening. A ledge is solid from above only, so the Scribe
+ * rises through it and lands on top of it — the one-way floor the game has had
+ * since the first day, finally doing the job it was built for.
+ *
+ * Letterless by construction, which is the no-soft-lock guarantee pointed
+ * upward: there is always a way up that asks for nothing. In practice nobody
+ * meets a shaft without the Breath — floors start at Netzach — but the
+ * guarantee is what stops a later letter order from quietly stranding anyone.
+ */
+export const RISE_CHUNK: Chunk = chunk("rise", { demand: 2 }, [
+  "......====......",
+  E,
+  ".....====.......",
+  E,
+  "........====....",
+  E,
+  ".....====.......",
+  E,
+  "..====..........",
+  E,
+  ".....====.......",
+  E,
+  "........====....",
+  E,
+  ".....====.......",
+  E,
+  F,
+  F,
+]);
+
+/**
+ * Note the **ledge** across the opening rather than a hole in both floor rows.
+ * From the ledge at the rise's ceiling a plain two-tile jump puts the feet
+ * exactly on it, and from there the Scribe steps sideways onto the floor at
+ * the same height. Every number in that sentence is the library's standard
+ * step; nothing here asks for a jump aimed to the pixel.
+ */
+export const LANDING_CHUNK: Chunk = chunk("landing", { demand: 1 }, [
+  E, E, E, E, E, E, E, E, E, E, E, E, E, E, E, E,
+  "######====######",
+  "######....######",
+]);
+
 /** Where the House's figure stands, in the seven lower regions. */
 export const HOUSE_CHUNK: Chunk = chunk("house", { demand: 1 }, [
   E, E, E, E, E, E, E, E, E, E, E, E, E, E,

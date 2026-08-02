@@ -70,13 +70,14 @@ describe("the floor", () => {
       let open = 0;
       for (let y = room.y; y < room.y + room.h; y += 1) {
         for (let x = room.x; x < room.x + room.w; x += 1) {
-          const edgeX = x === room.x || x === room.x + room.w - 1;
-          const edgeY = y === room.y || y === room.y + room.h - 1;
-          if (!edgeX && !edgeY) continue;
-          // Only boundaries that face another room count as ways through.
+          const topOrBottom = y === room.y || y === room.y + room.h - 1;
+          // The corners are counted with the top and the bottom, never twice —
+          // nobody passes through a corner.
+          const side = !topOrBottom && (x === room.x || x === room.x + room.w - 1);
+          if (!topOrBottom && !side) continue;
           const facing =
-            (x === room.x && room.x > 0) ||
-            (x === room.x + room.w - 1 && room.x + room.w < world.width) ||
+            (side && x === room.x && room.x > 0) ||
+            (side && x === room.x + room.w - 1 && room.x + room.w < world.width) ||
             (y === room.y && room.y > 0) ||
             (y === room.y + room.h - 1 && room.y + room.h < world.height);
           if (facing && world.tiles[y * world.width + x] === Tile.Empty) open += 1;

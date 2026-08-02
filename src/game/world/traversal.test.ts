@@ -5,6 +5,7 @@ import { SCROLL_TOTAL } from "../scroll";
 import { solvableRoots } from "../wordGate";
 import { buildRegion, PLAYER_H, tileAt, verbsOf } from "./build";
 import { MAX_JUMP_RISE, openWordGate, step, type StepContext } from "./step";
+import { CHUNK_H } from "./chunks";
 import { Tile, TILE_SIZE } from "./tiles";
 import { NO_INPUT, type Input, type World } from "./types";
 
@@ -23,6 +24,63 @@ import { NO_INPUT, type Input, type World } from "./types";
  * bot could do, and the levels obliged. `naive` below is the other half: a
  * Scribe who only walks and jumps, and who is now expected to **fail**.
  */
+/**
+ * Where to head, on a floor.
+ *
+ * A rung used to be a corridor and "the way out" was "to the right". It is a
+ * floor now, walked as a boustrophedon — along, up, back along — so a probe
+ * that holds right is walking *away* from the exit on every other storey. The
+ * rule is the level's own construction restated: while the way out is on a
+ * storey above you, head for the end of the row you are on, because that is
+ * always where the stairwell is; once you are on its storey, head for the exit
+ * itself.
+ *
+ * Distance to the goal — not distance travelled — is also what "am I getting
+ * anywhere?" has to be asked against, or half a climb reads as being stuck.
+ */
+export function steering(world: World) {
+  const exit = world.entities.find((e) => e.kind === "exit");
+  const storeyH = CHUNK_H * TILE_SIZE;
+  const storeys = Math.max(1, Math.round(world.height / CHUNK_H));
+  const goalX = exit ? exit.x : world.width * TILE_SIZE;
+  const goalY = exit ? exit.y : 0;
+  /** Counting up from the bottom, which is the order they are walked in. */
+  const fromBottom = (y: number) => storeys - 1 - Math.floor(y / storeyH);
+
+  const goal = (p: { x: number; y: number; h: number }) => {
+    const mine = fromBottom(p.y + p.h - 1);
+    if (mine >= fromBottom(goalY)) return { x: goalX, y: goalY };
+    // The stairwell is at the end of the row: the far right of an even storey,
+    // the far left of an odd one, because odd storeys are laid mirrored.
+    return { x: mine % 2 === 0 ? world.width * TILE_SIZE : 0, y: p.y };
+  };
+
+  /** How far there is still to go, in pixels of Manhattan distance. */
+  const left = (p: { x: number; y: number; h: number }) => {
+    const g = goal(p);
+    const climbs = Math.max(0, fromBottom(goalY) - fromBottom(p.y + p.h - 1));
+    return Math.abs(g.x - p.x) + climbs * storeyH;
+  };
+  // Measured the same way as the progress it is compared against, or the
+  // fraction is a ratio of two different things — which read as 2% for a run
+  // that had crossed most of a rung.
+  const initial = Math.max(1, left(world.player));
+
+  return {
+    left,
+    /** -1, 0 or 1: which way to lean. */
+    towards(p: { x: number; y: number; h: number }) {
+      const g = goal(p);
+      if (Math.abs(g.x - p.x) < TILE_SIZE / 2) return 0;
+      return g.x > p.x ? 1 : -1;
+    },
+    /** How much of the way there the best attempt got, as a fraction. */
+    fraction(best: number) {
+      return Math.max(0, Math.min(1, 1 - best / initial));
+    },
+  };
+}
+
 function probe(
   world: World,
   ctx: StepContext,
@@ -39,8 +97,10 @@ function probe(
   // be asked against — a body pressed to a wall still shuffles by fractions of
   // a pixel, and comparing against this tick's own motion would read that as
   // progress and never trigger a jump.
-  let reached = world.player.x;
-  let mark = world.player.x;
+  const aim = steering(world);
+  let best = aim.left(world.player);
+  let mark = best;
+  let reached = 0;
   let stuckFor = 0;
   // Ticks left to keep holding the jump key. Every reason to jump is spotted
   // while grounded, so without this the key releases the instant the body
@@ -50,16 +110,24 @@ function probe(
 
   for (let i = 0; i < ticks && !world.finished; i += 1) {
     const p = world.player;
-    const progressing = p.x > mark + 0.5;
+    // **Progress is distance left to the way out, not distance travelled.** A
+    // rung is a floor now and every other row is walked backwards, so a probe
+    // that measured progress as "x got bigger" would read half the climb as
+    // being stuck and jump the whole way along it.
+    const left = aim.left(p);
+    const progressing = left < mark - 0.5;
     stuckFor = progressing ? 0 : stuckFor + 1;
-    mark = Math.max(mark, p.x);
+    mark = Math.min(mark, left);
+    best = Math.min(best, left);
+
+    const towards = aim.towards(p);
 
     // Look one stride ahead for a floor that isn't there. Without this the
     // probe walks into every pit at full speed, which tests nothing except
     // that pits exist — but looking *two* ahead is no better, because then it
     // leaves the ground a whole tile early and spends the arc clearing runway
     // instead of the gap. One ahead, plus coyote time, is where a hand jumps.
-    const aheadX = Math.floor((p.x + p.w / 2) / TILE_SIZE) + 1;
+    const aheadX = Math.floor((p.x + p.w / 2) / TILE_SIZE) + towards;
     const footRow = Math.floor((p.y + p.h + 1) / TILE_SIZE);
     const gapAhead =
       p.onGround &&
@@ -81,29 +149,69 @@ function probe(
     // A letter on its shelf just ahead is worth a jump. Without this the probe
     // runs straight underneath every alcove in the game and collects nothing,
     // which would let an unreachable letter pass unnoticed.
+    // "Ahead" means *in the direction of travel*, which used to be the same as
+    // "to the right" and no longer is. Measured rightward on a storey walked
+    // leftward, a letter already behind the Scribe stayed permanently "ahead" —
+    // so the probe jumped on every single tick, was almost never grounded, and
+    // stalled halfway along a rung it could otherwise cross.
     const letterAhead =
       p.onGround &&
       !gapAhead &&
-      world.entities.some(
-        (e) =>
-          e.kind === "letter" &&
-          !e.taken &&
-          e.x - (p.x + p.w) > -TILE_SIZE &&
-          e.x - (p.x + p.w) < TILE_SIZE * 2.5,
-      );
+      towards !== 0 &&
+      world.entities.some((e) => {
+        if (e.kind !== "letter" || e.taken) return false;
+        const ahead = (e.x - (p.x + p.w / 2)) * towards;
+        return ahead > -TILE_SIZE && ahead < TILE_SIZE * 2.5;
+      });
 
     // Optional pockets — a Word-Gate's porch above all — are places a body
     // holding right can climb into and then press against a sealed wall
     // forever. A player simply steps back down; the probe has to be told to.
     // After a long stall it backs off leftward in bursts until it is free.
+    // Two tiles below the top of a storey there is nothing left to climb to —
+    // *if* there is a storey above. On the top one, and on a rung that is only
+    // one storey, the top of the screen is open sky and a sheer face climbed
+    // to its very top is how several screens are crossed.
+    const underCeiling =
+      Math.floor(p.y / (CHUNK_H * TILE_SIZE)) > 0 &&
+      p.y % (CHUNK_H * TILE_SIZE) < TILE_SIZE * 2;
     const backingOff = stuckFor > 90 && stuckFor % 150 < 45;
+    // **And when backing off is not enough, come down.** Every pocket that
+    // defeated this probe was *above* the way on — a shelf, a ledge, the
+    // corner under a storey's ceiling — and the cure for all of them is the
+    // same and needs no direction chosen: stop jumping, and walk off whatever
+    // you are standing on. Gravity does the rest, and a fall costs a veiling
+    // at worst, which is ground rather than the run.
+    // ...but only up under a ceiling, which is where every pocket that
+    // actually defeated it was. Applied wherever the Scribe happened to be off
+    // the floor it was worse than the disease: the high road *is* off the
+    // floor, so a probe that refuses to jump up there is dropped off it every
+    // three hundred ticks and can never cross one.
+    const grounding = stuckFor > 120 && stuckFor % 300 < 90 && underCeiling;
 
     // Jump for a reason — a gap, a letter on its shelf, a wall caught, or
     // plain stalling — and never on an idle rhythm: a probe that hops
     // constantly is almost never grounded once it has the second jump, and
     // every reason above is only visible while grounded.
     const wantJump =
-      !backingOff && (gapAhead || letterAhead || p.clinging !== 0 || (stuckFor > 6 && i % 9 === 0));
+      !backingOff &&
+      !grounding &&
+      // Pressed against a face with the ceiling right there, *any* jump is a
+      // wall-jump back into the same corner — the rhythm jump that unsticks
+      // everything else included.
+      !(p.clinging !== 0 && underCeiling) &&
+      (gapAhead ||
+        letterAhead ||
+        // A wall is a way up until it runs out of up. Holding into a face and
+        // jumping climbs it — the Fence working exactly as intended — but a
+        // storey has a ceiling over it now, and a Scribe who climbs into the
+        // corner beneath one will climb straight back into it every time they
+        // come down. Measured: twenty thousand ticks oscillating between two
+        // columns at the top of a rung. Refusing to climb *at all* once stuck
+        // is the wrong cure — a sheer face is the only way across several
+        // screens — so it is refused only where there is nothing above.
+        (p.clinging !== 0 && !underCeiling) ||
+        (stuckFor > 6 && i % 9 === 0));
     if (wantJump) holdJump = 20;
     else if (holdJump > 0) holdJump -= 1;
 
@@ -114,22 +222,33 @@ function probe(
     let barrierAhead = false;
     for (let d = 1; d <= 3 && !barrierAhead; d += 1) {
       for (let up = 0; up <= 2 && !barrierAhead; up += 1) {
-        const t = tileAt(world, ownX + d, footRow - up);
+        const t = tileAt(world, ownX + d * towards, footRow - up);
         if (t === Tile.Thorn || t === Tile.Growth || t === Tile.Door) barrierAhead = true;
       }
     }
 
     const input: Input = {
       ...NO_INPUT,
-      // Holding right is also holding *into* a wall on the right, which is
-      // exactly what climbing one asks for — so the probe needs no special
-      // case for the Fence.
-      right: !backingOff,
-      left: backingOff,
+      // Holding toward the way out is also holding *into* a wall in that
+      // direction, which is exactly what climbing one asks for — so the probe
+      // needs no special case for the Fence.
+      // Backing off and coming down both mean *away*: a Scribe stranded on a
+      // shelf with a wall in front of them has to walk off the edge behind
+      // them, and walking into the wall while refusing to jump is standing
+      // still with extra steps.
+      right: backingOff || grounding ? towards < 0 : towards > 0,
+      left: backingOff || grounding ? towards > 0 : towards < 0,
       jump: wantJump,
       jumpHeld: holdJump > 0 || stuckFor > 6,
       // Rise in water and up vines.
       up: p.inWater || p.climbing,
+      // And come *down* when backing off. A storey has a floor over it now, so
+      // a Scribe who climbs a wall can end up in a pocket against the ceiling
+      // with the way on below — where holding away from the wall only shuffles
+      // along the same shelf. Measured: the probe oscillated between two
+      // columns at the top of a storey for twenty thousand ticks. A player
+      // drops through the ledge; this is that, and no more.
+      down: (backingOff || grounding) && p.onGround,
       // Reach for the hook while falling over nothing — which is when a gap
       // actually needs it.
       // On the ground, act clears a barrier (thorn, door, overgrowth) — in the
@@ -145,9 +264,9 @@ function probe(
     };
 
     step(world, input, watching);
-    reached = Math.max(reached, world.player.x);
   }
 
+  reached = aim.fraction(best);
   return {
     reached,
     finished: world.finished,
@@ -219,9 +338,8 @@ describe("walking the regions", () => {
         // be standing in it, and the probe does not fight.
         world.husks = [];
         const ctx = contextFor(region);
-        const span = world.width * TILE_SIZE;
         const { reached, finished, lettersTaken } = probe(world, ctx, TICK_BUDGET);
-        const fraction = reached / span;
+        const fraction = reached;
         report.push(`region ${region} seed ${seed}: ${(fraction * 100).toFixed(0)}%${finished ? " (exit)" : ""}`);
         // Not "most of the way" — all the way. Every region, every seed, with
         // only the letters the Scribe could have on arriving. If this ever
@@ -379,8 +497,7 @@ describe("walking the regions", () => {
         // Lamps enough that going out is not what stops them — this measures
         // whether the *ground* is still walkable with husks on it.
         world.player.lamps = 99;
-        const { reached } = probe(world, contextFor(region), TICK_BUDGET);
-        const fraction = reached / (world.width * TILE_SIZE);
+        const { reached: fraction } = probe(world, contextFor(region), TICK_BUDGET);
         expect(
           fraction,
           `region ${region} seed ${seed}: only ${(fraction * 100).toFixed(0)}% with husks standing`,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { lettersOnEntering, regionAt, regions, TOTAL_REGIONS } from "../regions";
-import { CHUNKS, CHUNK_W } from "./chunks";
+import { CHUNKS, CHUNK_H, CHUNK_W } from "./chunks";
 import { buildRegion, layoutOf, verbsOf } from "./build";
 import { ROOM_H, ROOM_W } from "./rooms";
 
@@ -43,7 +43,9 @@ describe("assembling a region", () => {
             // Solid on one side and open on the other is fine mid-screen; what
             // must never happen is the *floor* disagreeing, which is what a
             // profile mismatch looks like on the ground.
-            if (y >= 16) {
+            // Floor rows *within a screen*, not within the world: a floor is
+            // several storeys tall now, and every storey has its own floor.
+            if (y % CHUNK_H >= 16) {
               expect(
                 left === right,
                 `region ${region} seed ${seed}: floor disagrees at seam ${seam}, row ${y}`,

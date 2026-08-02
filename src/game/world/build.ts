@@ -11,7 +11,9 @@ import {
   END_CHUNK,
   FRAGMENT_CHUNK,
   HOUSE_CHUNK,
+  LANDING_CHUNK,
   LETTER_CHUNK,
+  RISE_CHUNK,
   SHRINE_HIGH,
   SHRINE_LOW,
   START_CHUNK,
@@ -38,10 +40,20 @@ export const ROW_SCREENS_PER_ROOM = 2;
  * is climbed, which is the whole of what the shape is meant to say.
  */
 export function rowsFor(regionIndex: number): number {
-  // One row everywhere for now. A second row is only honest once there is a
-  // way up to it: rows arrive with the shafts, and turning them on first would
-  // build a rung whose upper half nobody can reach — which is precisely what
-  // the traversal guarantee exists to forbid.
+  // **Held at one, deliberately, until the probe can path in two dimensions.**
+  //
+  // Everything a floor needs is built and tested: the grid, the stairwell
+  // screens, the mirroring that lets the whole authored library be walked
+  // backwards, and the storey-aware way out. Turning the rows on works — the
+  // rungs generate, connect and chain correctly — but the traversal probe is a
+  // heuristic walker, and on a floor it gets caught in pockets that a hand
+  // steps out of without thinking. Two of sixty seeds stall.
+  //
+  // That is not a level fault and it is not a reason to ship: the no-soft-lock
+  // guarantee is the one invariant this game does not bend, and a guarantee
+  // that cannot be *checked* is not one. The probe needs a route rather than
+  // better guesses — a distance field over the open space — and that is its
+  // own piece of work rather than something to bolt on at the end of this one.
   void regionIndex;
   return 1;
 }
@@ -203,30 +215,116 @@ function layout(
   const positions = groundSlots(body);
   const slots = spaceOut(fixed.length, positions, rng);
 
-  const laid: Chunk[] = [START_CHUNK, ...(teaching && regionIndex === 1 ? TEACH_CHUNKS : [])];
+  const content: Chunk[] = [START_CHUNK, ...(teaching && regionIndex === 1 ? TEACH_CHUNKS : [])];
   let nextFixed = 0;
   for (let i = 0; i <= body.length; i += 1) {
     while (nextFixed < slots.length && slots[nextFixed] === i) {
-      laid.push(fixed[nextFixed]);
+      content.push(fixed[nextFixed]);
       nextFixed += 1;
     }
-    if (i < body.length) laid.push(body[i]);
+    if (i < body.length) content.push(body[i]);
   }
-  laid.push(END_CHUNK);
+  content.push(END_CHUNK);
 
-  // A room is two screens, so an odd count would leave half a room hanging off
-  // the end — a hole in the frame rather than a hole in the level, and worse
-  // for it. One flat screen before the exit squares it, drawn from the same
-  // pool as the rest so it is the region's own ground.
-  if (laid.length % (ROW_SCREENS_PER_ROOM * rowsFor(regionIndex)) !== 0) {
-    const flat = banded.filter((c) => c.entry === "ground" && c.exit === "ground");
-    const filler = flat.length > 0 ? flat : banded;
-    while (laid.length % (ROW_SCREENS_PER_ROOM * rowsFor(regionIndex)) !== 0) {
-      laid.splice(laid.length - 1, 0, draw(filler, rng, region.demand.bias === "hard"));
+  const rows = rowsFor(regionIndex);
+  // A room is two screens and a floor is a whole number of rows, so an odd
+  // count would leave half a room hanging off the end — a hole in the frame
+  // rather than a hole in the level, and worse for it. Flat screens before the
+  // exit square it up, drawn from the same pool as the rest, so they are the
+  // region's own ground. The stairwell screens are counted here rather than
+  // stamped over the content afterwards: substituting them clobbered whatever
+  // they landed on, and what they landed on was sometimes a letter.
+  const flatEnough = banded.filter((c) => c.entry === "ground" && c.exit === "ground");
+  const filler = flatEnough.length > 0 ? flatEnough : banded;
+  const hard = region.demand.bias === "hard";
+  return { laid: withStairs(content, rows, filler, rng, hard), wordGateTarget };
+}
+
+/**
+ * Fold a rung's screens into storeys, with a stairwell at each boundary.
+ *
+ * The way up is always at the end of the row you are walking, which falls
+ * straight out of the serpentine — so the last screen of a storey is the
+ * `RISE` and the first screen of the one above it is the `LANDING`. They are
+ * structural, like the start and the end: the seed decides everything between
+ * them and nothing about where they are.
+ */
+function withStairs(
+  content: readonly Chunk[],
+  rows: number,
+  filler: readonly Chunk[],
+  rng: () => number,
+  hard: boolean,
+): Chunk[] {
+  // Note that a one-storey rung comes through here too, and must: it has no
+  // stairwell but it still has to be squared up to whole rooms, and returning
+  // early left the lower Tree half a room wide.
+  //
+  // **A storey may only be cut where the ground is continuous.** The stairwell
+  // screens are entered and left on the floor, so cutting the chain at an
+  // arbitrary index put a `RISE` that enters on the ground after a screen that
+  // exits up on the high road — a seam with the floor on one side and nothing
+  // on the other. So the cut is nudged to the nearest join that is ground to
+  // ground, exactly the rule `groundSlots` keeps for the fixed screens.
+  const ideal = Math.ceil(content.length / rows);
+  const cuts: number[] = [];
+  for (let storey = 1; storey < rows; storey += 1) {
+    const want = Math.min(content.length - 1, Math.max(1, ideal * storey));
+    let at = want;
+    for (let step = 0; step <= ideal; step += 1) {
+      const candidates = [want - step, want + step];
+      const found = candidates.find(
+        (i) =>
+          i > (cuts[cuts.length - 1] ?? 0) &&
+          i < content.length &&
+          content[i - 1].exit === "ground" &&
+          content[i].entry === "ground",
+      );
+      if (found !== undefined) {
+        at = found;
+        break;
+      }
     }
+    cuts.push(at);
   }
 
-  return { laid, wordGateTarget };
+  const storeys: Chunk[][] = [];
+  let from = 0;
+  for (const cut of [...cuts, content.length]) {
+    storeys.push(content.slice(from, cut));
+    from = cut;
+  }
+
+  // Every storey is the same width, or the grid is not a grid. Short ones are
+  // padded with the region's own flat ground, which is also what squares a
+  // rung up to whole rooms.
+  const stairsIn = (storey: number) =>
+    (storey > 0 ? 1 : 0) + (storey < rows - 1 ? 1 : 0);
+  // Rounded up to whole rooms here rather than afterwards. Squaring the rung
+  // up *after* the storeys were assembled meant splicing screens into a laid
+  // sequence and pushing the stairwell out of place — a `RISE` in the middle
+  // of a row, with the way up nowhere near the end of it.
+  const widest = Math.max(...storeys.map((s, i) => s.length + stairsIn(i)));
+  const perRow = Math.ceil(widest / ROW_SCREENS_PER_ROOM) * ROW_SCREENS_PER_ROOM;
+  const laid: Chunk[] = [];
+  storeys.forEach((screens, storey) => {
+    const padded = [...screens];
+    while (padded.length + stairsIn(storey) < perRow) {
+      // As late in the storey as the chain allows, and never after the last
+      // screen, so the exit stays the exit. "As the chain allows" is the whole
+      // point: a flat screen dropped between two that hand each other on at
+      // the high road breaks the floor at both seams.
+      let at = padded.length - 1;
+      while (at > 0 && !(padded[at - 1].exit === "ground" && padded[at].entry === "ground")) {
+        at -= 1;
+      }
+      padded.splice(Math.max(1, at), 0, draw(filler, rng, hard));
+    }
+    if (storey > 0) laid.push(LANDING_CHUNK);
+    laid.push(...padded);
+    if (storey < rows - 1) laid.push(RISE_CHUNK);
+  });
+  return laid;
 }
 
 /** The fewest distinct screens a region may draw on before it starts to stutter. */
@@ -554,12 +652,14 @@ function paint(
     if (pool.length > 0) dorotCardId = pool[randomInt(rng, pool.length)].id;
   }
 
-  floor.placements.forEach(({ chunk, x: chunkX, y: chunkY }) => {
+  floor.placements.forEach(({ chunk, x: chunkX, y: chunkY, mirrored }) => {
     const originX = chunkX * CHUNK_W;
     const originY = chunkY * CHUNK_H;
     chunk.rows.forEach((row, y) => {
       for (let x = 0; x < CHUNK_W; x += 1) {
-        const ch = row[x];
+        // A screen laid back to front is read back to front. Everything on it
+        // moves with it — tiles, markers, motes and the klipot alike.
+        const ch = mirrored ? row[CHUNK_W - 1 - x] : row[x];
         const worldX = originX + x;
         const worldY = originY + y;
         const px = worldX * TILE_SIZE;
@@ -749,7 +849,11 @@ function scatterMotes(
   }
 
   const taken = new Set(entities.map((e) => `${Math.floor(e.x / TILE_SIZE)},${Math.floor(e.y / TILE_SIZE)}`));
-  const wanted = Math.max(1, Math.round((width / 9) * lightOfTheDay));
+  // By area, not by width. A rung is several storeys tall now, so counting the
+  // light by how *wide* it is left the supernals — the tallest rungs, and the
+  // ones whose Sefirah costs most to kindle — with a third of the light they
+  // need, and made kindling unaffordable exactly where it matters most.
+  const wanted = Math.max(1, Math.round(((width * height) / CHUNK_H / 9) * lightOfTheDay));
   for (const spot of shuffle(rng, standable)) {
     if (entities.filter((e) => e.kind === "mote").length >= wanted) break;
     const key = `${spot.x},${spot.y}`;

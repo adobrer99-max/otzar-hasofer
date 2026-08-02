@@ -41,6 +41,16 @@ export interface Placement {
   /** Chunk column within the whole floor, not within the room. */
   x: number;
   y: number;
+  /**
+   * Whether the screen is laid back to front.
+   *
+   * Every other row of a floor is walked right to left, and a screen read that
+   * way meets its neighbours the wrong way round — its *entry* edge would face
+   * the previous screen's *entry*. Mirroring the screen swaps the two, so the
+   * edge contract holds in both directions and the whole authored library
+   * works backwards for free. It also doubles what the eye sees.
+   */
+  mirrored: boolean;
 }
 
 export interface Floor {
@@ -82,19 +92,21 @@ export function planFloor(laid: readonly Chunk[], rows: number): Floor {
   const rooms: Room[] = [];
 
   for (let i = 0; i < laid.length; i += 1) {
-    const row = Math.min(rows - 1, Math.floor(i / perRow));
-    const withinRow = i - row * perRow;
-    // Serpentine: the second row is walked back the way you came, which is what
+    const storey = Math.min(rows - 1, Math.floor(i / perRow));
+    const withinRow = i - storey * perRow;
+    // Serpentine: the row above is walked back the way you came, which is what
     // makes a floor a floor rather than a very long corridor drawn in stripes.
-    const x = row % 2 === 0 ? withinRow : perRow - 1 - withinRow;
-    placements.push({ chunk: laid[i], x, y: row });
+    const mirrored = storey % 2 === 1;
+    const x = mirrored ? perRow - 1 - withinRow : withinRow;
+    // **Storey nought is the bottom.** Tile rows count downward from the top of
+    // the grid and the Scribe climbs upward, so the first screens laid are the
+    // last rows painted — otherwise a rung would be entered at its ceiling.
+    placements.push({ chunk: laid[i], x, y: rows - 1 - storey, mirrored });
   }
 
   for (let row = 0; row < rows; row += 1) {
     for (let col = 0; col < cols; col += 1) {
-      const inside = placements.filter(
-        (p) => p.y === row && Math.floor(p.x / 2) === col,
-      );
+      const inside = placements.filter((p) => p.y === row && Math.floor(p.x / 2) === col);
       if (inside.length === 0) continue;
       const named = inside.map((p) => KIND_OF[p.chunk.id]).find(Boolean);
       rooms.push({
@@ -143,9 +155,12 @@ export function doorsOf(
     if (open.length > 0) doors.push({ side, tiles: open });
   };
 
+  // The corners belong to the top and the bottom, not to both. Nobody passes
+  // through a corner, and counting one twice would have a tile sealed by two
+  // doors and reported by two — which is exactly how this was first wrong.
   const left: { x: number; y: number }[] = [];
   const right: { x: number; y: number }[] = [];
-  for (let y = room.y; y < room.y + room.h; y += 1) {
+  for (let y = room.y + 1; y < room.y + room.h - 1; y += 1) {
     left.push({ x: room.x, y });
     right.push({ x: room.x + room.w - 1, y });
   }

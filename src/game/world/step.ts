@@ -1,5 +1,6 @@
 import type { Grace, Verb } from "../abilities";
 import { setTile, tileAt } from "./build";
+import { CHUNK_H } from "./chunks";
 import {
   isClimbable,
   isHazard,
@@ -566,6 +567,11 @@ function touchTiles(world: World, ctx: StepContext): void {
   }
 }
 
+/** Which storey of a floor a world-space y falls in. */
+function storeyOf(y: number): number {
+  return Math.floor(y / (CHUNK_H * TILE_SIZE));
+}
+
 function touchEntities(world: World, ctx: StepContext): void {
   const p = world.player;
   const pull = ctx.graces.includes("draw-motes") ? TILE_SIZE * 3 : 0;
@@ -578,7 +584,15 @@ function touchEntities(world: World, ctx: StepContext): void {
     // region and be left running at the wall beyond it.
     const near =
       e.kind === "exit"
-        ? p.x < e.x + TILE_SIZE && p.x + p.w > e.x
+        ? p.x < e.x + TILE_SIZE &&
+          p.x + p.w > e.x &&
+          // ...the full height of *its own screen*, which is not the same as
+          // the full height of the world once a rung has storeys. Read as the
+          // world's height it made the way out a column running through every
+          // floor: a walk along the bottom row ended the rung the moment it
+          // passed under an exit two storeys up. It crossed twenty-six of
+          // forty-two regions that way before the floors were even climbable.
+          storeyOf(p.y + p.h - 1) === storeyOf(e.y)
         : overlaps(p, e, e.kind === "mote" ? pull : 0);
 
     // The Word-Gate's porch is a place you *stand* — so it must be triggered
