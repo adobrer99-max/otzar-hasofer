@@ -35,6 +35,14 @@ export interface Probe {
   veiled: boolean;
   /** Hanging from the Hook — the one state where pressing act again is wrong. */
   grappled: boolean;
+  /**
+   * In water, and on a vine. Both are states a driver cannot infer from
+   * position and both need the *up* key held — `step` starts a climb on
+   * `onVine && (up || down || climbing)`, so a driver that never presses up
+   * cannot begin one, which is not a thing you find by watching a video.
+   */
+  inWater: boolean;
+  onVine: boolean;
   lamps: number;
   iframes: number;
   or: number;
@@ -79,6 +87,8 @@ export function probeOf(
     vx: Math.round(world.player.vx),
     onGround: world.player.onGround,
     veiled: world.player.veiled > 0,
+    inWater: world.player.inWater,
+    onVine: world.player.climbing || onVine(world),
     grappled: Boolean(world.player.grappleTo),
     lamps: world.player.lamps,
     iframes: world.player.iframes,
@@ -156,6 +166,20 @@ const TILE_NAMES: Record<number, string> = {
 export interface ProbeApi {
   read: () => Probe | null;
   look: (radius?: number) => string[][];
+}
+
+/**
+ * Whether the Scribe's own body overlaps a vine — which is what `step` asks
+ * before it will begin a climb, and which a driver cannot see from the tile
+ * grid alone without knowing the body's height.
+ */
+function onVine(world: World): boolean {
+  const p = world.player;
+  const x = Math.floor((p.x + p.w / 2) / TILE_SIZE);
+  for (let y = Math.floor(p.y / TILE_SIZE); y <= Math.floor((p.y + p.h - 1) / TILE_SIZE); y += 1) {
+    if (world.tiles[y * world.width + x] === Tile.Vine) return true;
+  }
+  return false;
 }
 
 /** Hang the readout on `window`, and return the way to take it down again. */

@@ -331,6 +331,36 @@ function decide(p, look, memory, opts) {
     right: !backingOff,
     left: backingOff,
     jump: memory.jumpFor > 0,
+    // **Up, on a vine and in water** — and it was hardcoded false, which meant
+    // this harness could not climb a vine or rise through water at all.
+    // `step` begins a climb on `onVine && (up || down || climbing)`, so a
+    // driver that never presses up never starts one, and every vine in the
+    // game was scenery to the tool built for looking at the game. The same
+    // bug, in the same shape, was found in the traversal probe on the same
+    // afternoon — two drivers, written months apart, both unable to use a
+    // third of what the route graph counts on.
+    /**
+     * **Held false, and it is a known gap rather than an oversight.**
+     *
+     * `step` begins a climb on `onVine && (up || down || climbing)`, so a driver
+     * that never presses up can never start one: every vine in the game is
+     * scenery to this harness, and so is rising through water. The traversal
+     * probe had the identical bug — written months apart, both drivers unable
+     * to use a third of what the route graph counts on — and there it is fixed,
+     * against `p.climbing` and a vine within the body.
+     *
+     * The same fix was tried here, reading `inWater` and `onVine` off the dev
+     * probe (which now reports both, for whoever picks this up). It measured
+     * catastrophically: the `path` script goes from ninety-seven per cent and a
+     * finished rung to **not moving at all** — progress two millionths, on a
+     * screen with no vine and no water anywhere in it. Something about holding
+     * the real ArrowUp key against a real browser stops this driver dead, and
+     * whatever it is, it is not the thing the change was for.
+     *
+     * So it stays false and the note stays here. What the harness cannot show
+     * is a vine screen and a swim, which is worth knowing when reading its
+     * videos: an absence there is the tool, not the game.
+     */
     up: false,
     // Leaving a gate chamber usually means getting *down* out of it first.
     down: memory.leaveGate > 30,

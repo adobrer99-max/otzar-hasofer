@@ -33,8 +33,15 @@ import { TILE_SIZE } from "./tiles";
 
 const SEEDS = [3, 91, 555, 12345, 777, 40404, 1, 2, 8, 99, 1000, 65535];
 
+/**
+ * These carry their own budgets, for the reason `traversal.test.ts` records:
+ * flooding a graph over ten regions and twelve seeds sits just under vitest's
+ * five-second default, which is the absence of a budget rather than a choice,
+ * and it fails intermittently the moment anything else is using the machine. A
+ * timing flake in a deterministic test reads as a broken level.
+ */
 describe("the way out", () => {
-  it("exists on every rung and every seed, with the floors on", () => {
+  it("exists on every rung and every seed, with the floors on", { timeout: 60000 }, () => {
     const lost: string[] = [];
     for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
       for (const seed of SEEDS) {
@@ -54,7 +61,7 @@ describe("the way out", () => {
    * every rung was before the rooms. A rung built flat must stay sound, or the
    * teaching ground could break without anything noticing.
    */
-  it("still exists when a rung is built flat", () => {
+  it("still exists when a rung is built flat", { timeout: 60000 }, () => {
     for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
       for (const seed of SEEDS) {
         const world = buildRegion(region, seed, 1, false, 1);
@@ -93,7 +100,7 @@ describe("the way out", () => {
    * cannot cross the ground the upper Tree is built from — if the empty-handed
    * graph reached the exit of Keter, the envelope would be fiction.
    */
-  it("grants only the reach the letters held actually buy", () => {
+  it("grants only the reach the letters held actually buy", { timeout: 60000 }, () => {
     let barred = 0;
     for (let region = 5; region <= TOTAL_REGIONS; region += 1) {
       for (const seed of SEEDS.slice(0, 6)) {
