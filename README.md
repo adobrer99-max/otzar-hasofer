@@ -80,4 +80,36 @@ exercise a path a player never takes. It is gated on `import.meta.env.DEV` and a
 test asserts none of it reaches `dist/`. **Note that `import.meta.env.DEV` is
 false under `vite preview`** — the panel is invisible there; use `npm run dev`.
 
+### Recording a run
+
+```sh
+npm run dev                      # in one terminal
+npm run playtest                 # in another — every script
+npm run playtest -- crown-mute   # or one, by name
+npm run playtest -- --list
+```
+
+`tools/playtest.mjs` drives a real browser through a scripted session and
+writes, per script, into `playtest/` (git-ignored):
+
+- **a video** of the whole run,
+- **a contact sheet** — canvas frames composed into one PNG *inside the page*,
+  so the tool needs no image library,
+- **a full-size screenshot of every plate** raised, since those are pages of
+  text meant to be read,
+- **a JSON report** — lamps over time, husks broken and left standing, letters
+  taken, every caption raised, how far across, and how it ended.
+
+The scripts are the things that shipped without ever being watched: the taught
+porch, a husk broken, a House met, the crown reached whole / alone / mute, and
+the lamps going out. `playwright-core` is the only devDependency it needs; the
+seven runtime dependencies are untouched.
+
+The driver mirrors the traversal probe in `world/traversal.test.ts` — look one
+stride ahead for a missing floor, hold the jump rather than tap it, clear a
+thornbrake from a distance, back out of a pocket after a long stall. A harness
+that plays worse than the player the test suite guarantees can finish would
+report every region as impossible, which is the exact false alarm this exists
+to end.
+
 Built with Vite, React, and TypeScript. Installable as an offline-capable PWA.
