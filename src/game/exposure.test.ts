@@ -82,21 +82,34 @@ describe("what a climb actually runs into", () => {
   });
 
   /**
-   * **Kindling has to be affordable, and it has to cost something.** It is the
-   * only thing light can ever be spent on, offered ten times a climb, so if
-   * the price outran what a rung holds it would be a choice in name only —
-   * and if it were trivially cheap the light would have no weight.
+   * **Kindling has to be affordable, and it has to cost something.**
+   *
+   * This used to pin the price of one kindling to roughly one rung's sweep,
+   * because on a line that is exactly what it was: ten rungs walked in order,
+   * ten Sefirot kindled, one choice at each doorway. The Tree unpicked that.
+   * A climb now buys all ten out of one purse — three hundred light against a
+   * whole route — so a per-rung ratio is measuring a design that no longer
+   * exists, and it failed the moment the price was set from measurement rather
+   * than from that ratio.
+   *
+   * What is left here is the *exposure* question this file is for, which is
+   * still worth asking: a Scribe standing on a rung must be able to see the
+   * price as something between "already paid" and "never". The real balance
+   * lives in `economy.test.ts`, which walks climbs and counts what they carry.
    */
-  it("prices kindling within reach of what a rung holds", () => {
+  it("prices kindling within sight of what a rung holds", () => {
     for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
       const light = mean(
         SEEDS.map((seed) => buildRegion(region, seed).entities.filter((e) => e.kind === "mote").length),
       );
       const cost = kindleCost(region);
-      expect(cost, `region ${region}: ${cost} light to kindle, ${light.toFixed(0)} lying in it`).toBeLessThan(
-        light * 4,
+      expect(
+        cost,
+        `region ${region}: ${cost} light to kindle, ${light.toFixed(0)} lying in it — out of sight`,
+      ).toBeLessThan(light * 4);
+      expect(cost, `region ${region} kindles for ${cost}, which is nothing`).toBeGreaterThan(
+        light * 0.2,
       );
-      expect(cost, `region ${region} kindles for ${cost} — one rung's sweep`).toBeGreaterThan(light * 0.5);
     }
   });
 

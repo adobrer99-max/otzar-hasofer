@@ -17,8 +17,35 @@ export interface AscentRecord {
   seedLabel: string;
   createdAt: string;
   updatedAt: string;
-  /** 1 = Malchut … 10 = Keter. */
+  /**
+   * 1 = Malchut … 10 = Keter.
+   *
+   * **Kept, and no longer the whole truth.** The climb was a line and this was
+   * the whole of where you were; it is now derived from `at` and held for the
+   * saved-game format, the HUD, and every caller that predates the Tree. A
+   * record written before the overworld existed has no `at` and reads exactly
+   * as it always did.
+   */
   regionIndex: number;
+  /**
+   * Which Sefirah the Scribe is standing on, on the overworld.
+   *
+   * Absent on a record from before the Tree was walkable, and on those the
+   * kingdom is where you are — which is also true, because a linear climb
+   * begins there. Everything that reads a position should go through
+   * `standingAt` rather than reaching for this, so the default lives in one
+   * place.
+   */
+  at?: SefirahId;
+  /**
+   * The paths walked, in the order they were walked — which is the order the
+   * alphabet was gathered in, and therefore the shape of this particular climb.
+   *
+   * A path may appear twice: crossing back is how the Tree is a map rather than
+   * a list, and `lettersFrom` in `game/tree.ts` gives a path's letter once
+   * however often it is walked.
+   */
+  pathsWalked?: string[];
   /** Letter ids found so far, in the order they were taken. */
   lettersHeld: string[];
   /**
@@ -81,16 +108,52 @@ export interface FormedWord {
 }
 
 /**
- * What it costs to kindle a Sefirah.
+ * What it costs to kindle a Sefirah — twelve at the kingdom, forty-eight at the
+ * crown, **three hundred for all ten**, which is the price of a whole climb.
  *
- * Pitched deliberately close to what a whole region yields — roughly a mote
- * every nine tiles, plus whatever the Word-Gate paid — so that kindling one
- * rung costs most of what was gathered to reach it. A cheaper price is not a
- * choice at all: the first tuning made it about a fifth of a region's light,
- * and there was never a reason to say no.
+ * The first pitch was `20 + 5i`, four hundred and seventy-five for the tour,
+ * and it was set against what a single region yields on a line — where ten
+ * rungs paid for ten kindlings and the only question was whether to spend.
+ *
+ * The Tree makes it a real question and the answer had to be measured.
+ * `economy.test.ts` walks climbs with the fighting probe and records what a
+ * Scribe actually leaves each path carrying, which is roughly a third of what
+ * the rung was built holding — motes are only light once someone has walked
+ * over them, a klipah's light only once its shell is broken, and every veiling
+ * takes two back. Six climbs at each length:
+ *
+ * ```
+ *    9 walks: worst  95   median 154   best 167
+ *   15 walks: worst 223   median 258   best 316
+ *   22 walks: worst 358   median 434   best 509
+ * ```
+ *
+ * Nine walks is the fewest that can stand on all ten Sefirot. Twenty-two is
+ * every path on the Tree. Four hundred and seventy-five sat above all but the
+ * luckiest full tour, which is a game that mostly cannot be finished; and it
+ * would have shipped, because nothing had ever asked.
+ *
+ * Three hundred puts the price where it does the work it was for: the dash
+ * cannot buy it — nine walks pays at best a little over half — and a climb that
+ * has been most places clears it with room even on a poor seed. The gap between
+ * the two is the whole of what the map is for.
+ *
+ * The steeper slope (four a rung rather than five, on a lower base) is
+ * deliberate: the crown costs four times the kingdom rather than under three,
+ * because the paths into it are the ones a Scribe has to earn the letters to
+ * walk at all.
  */
 export function kindleCost(regionIndex: number): number {
-  return 20 + regionIndex * 5;
+  return 8 + regionIndex * 4;
+}
+
+/**
+ * Where the Scribe is standing. Malchut is where an angel cast down wakes, so
+ * it is the answer for a climb that has not begun and for every record written
+ * before the Tree could be walked.
+ */
+export function standingAt(ascent: Pick<AscentRecord, "at">): SefirahId {
+  return ascent.at ?? "malchut";
 }
 
 export async function saveAscent(record: AscentRecord): Promise<void> {

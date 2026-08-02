@@ -4,9 +4,12 @@ import { routeTo, storeysOf } from "./route";
 import { lettersOnEntering, regions, TOTAL_REGIONS } from "../regions";
 import { SCROLL_TOTAL } from "../scroll";
 import { solvableRoots } from "../wordGate";
-import { buildRegion, PLAYER_H, rowsFor, tileAt, verbsOf } from "./build";
+import { makeRng, randomInt } from "../rng";
+import { lettersFrom, otherEnd, pathsFrom } from "../tree";
+import type { SefirahId } from "../../types/letter";
+import { buildPath, buildRegion, PLAYER_H, rowsFor, tileAt, verbsOf } from "./build";
 import { MAX_JUMP_RISE, openWordGate, step, type StepContext } from "./step";
-import { CHUNK_H } from "./chunks";
+import { CHUNK_H, CHUNK_W } from "./chunks";
 import { Tile, TILE_SIZE } from "./tiles";
 import { NO_INPUT, type Input, type World } from "./types";
 
@@ -123,6 +126,15 @@ export function steering(world: World, verbs: readonly Verb[] = []) {
      */
     above(p: { x: number; y: number; h: number }) {
       if (!route.usable) return true;
+      // **Being stranded is not a reason to come down**, however much it looks
+      // like one. `landingRow` has no answer from a place the way out cannot be
+      // reached from, and answering "no, not up" there was tried: the body
+      // catching the outer face of a chasm screen and climbing it forever is
+      // exactly the case it was written for, and it did fix that rung — while
+      // costing three others, because a stairwell is a sheer face too and a
+      // body halfway up one is often off the graph for a tile or two. One rung
+      // gained, three lost. The silence stays read as "up"; coming down is
+      // `grounding`'s job, and it is asked only from the floor.
       const row = route.landingRow(p.x, p.y, p.h);
       return row === undefined || row < (p.y + p.h - 1) / TILE_SIZE - 1;
     },
@@ -207,6 +219,28 @@ function probe(
   let climbTop = world.player.y;
   let sinceCling = 99;
   let gaveUp = 0;
+  /**
+   * **A veiling is not a reset, and that is a finding rather than an oversight.**
+   *
+   * `mark` is the closest the Scribe has ever been to the way out, and being
+   * closer than that is the only thing this probe calls progress. A veiling sets
+   * the body back to where it woke, so from that tick on it is *further* from
+   * the exit than its own record and cannot be nearer again until it has
+   * re-walked everything it lost — which means `stuckFor` climbs and never comes
+   * down, and the rest of the budget is spent in the state kept for being
+   * trapped: jumping every few ticks, dashing every twenty-one, pressing act
+   * every seven. That is plainly the wrong reading of a body that is simply
+   * walking back, and it was fixed — the mark reset to where the Scribe woke,
+   * which is what a player's own sense of progress does.
+   *
+   * It measured **worse**: eight stalls of a hundred and sixty against six, and
+   * resetting the stuck-counters with it, nine. The panic behaviours are how
+   * this probe gets past most of what stops it, and a veiling is the moment it
+   * has just been proved to need them. Keeping the record is what keeps them on.
+   * So the counter is only watched, never acted on — and this note is here so
+   * the same correct-looking fix is not made a third time.
+   */
+  void world.veilings;
 
   for (let i = 0; i < ticks && !world.finished; i += 1) {
     const p = world.player;
@@ -215,6 +249,8 @@ function probe(
     // that measured progress as "x got bigger" would read half the climb as
     // being stuck and jump the whole way along it.
     const left = aim.left(p);
+    // Woken somewhere else: the record of how far it ever got stands, but what
+    // counts as getting anywhere starts again from here.
     const progressing = left < mark - 0.5;
     stuckFor = progressing ? 0 : stuckFor + 1;
     mark = Math.min(mark, left);
@@ -274,22 +310,6 @@ function probe(
       if (nearestHusk === undefined || dx < nearestHusk) nearestHusk = dx;
     }
 
-    // Optional pockets — a Word-Gate's porch above all — are places a body
-    // holding right can climb into and then press against a sealed wall
-    // forever. A player simply steps back down; the probe has to be told to.
-    // After a long stall it backs off leftward in bursts until it is free.
-    // Two tiles below the top of a storey there is nothing left to climb to —
-    // *if* there is a storey above. On the top one, and on a rung that is only
-    // one storey, the top of the screen is open sky and a sheer face climbed
-    // to its very top is how several screens are crossed.
-    // Optional pockets — a Word-Gate's porch above all — are places a body
-    // holding right can climb into and then press against a sealed wall
-    // forever. A player simply steps back down; the probe has to be told to.
-    // After a long stall it backs off leftward in bursts until it is free.
-    // Two tiles below the top of a storey there is nothing left to climb to —
-    // *if* there is a storey above. On the top one, and on a rung that is only
-    // one storey, the top of the screen is open sky and a sheer face climbed
-    // to its very top is how several screens are crossed.
     // Optional pockets — a Word-Gate's porch above all — are places a body
     // holding right can climb into and then press against a sealed wall
     // forever. A player simply steps back down; the probe has to be told to.
@@ -537,8 +557,19 @@ function contextFor(regionIndex: number): StepContext {
  */
 const budgetFor = (regionIndex: number) => 12000 * (rowsFor(regionIndex) + 1);
 
+/**
+ * **The probe tests carry their own budgets.**
+ *
+ * Everything below that drives the probe runs tens of thousands of ticks a
+ * seed, and a few of them sat just under vitest's five-second default — which
+ * is not a considered budget for them, it is the absence of one. They passed
+ * for as long as nothing else was competing for the machine, and started
+ * failing intermittently the day `economy.test.ts` arrived and put a minute of
+ * probe runs alongside them. A timing flake in a deterministic test is the
+ * worst kind of noise: the thing it appears to be reporting is a level.
+ */
 describe("walking the regions", () => {
-  it("carries a competent Scribe to the exit of every region, on many seeds", () => {
+  it("carries a competent Scribe to the exit of every region, on many seeds", { timeout: 60000 }, () => {
     const report: string[] = [];
     for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
       let gathered = 0;
@@ -617,7 +648,7 @@ describe("walking the regions", () => {
    * and jumping is not enough. If this test starts passing, the levels have
    * gone soft.
    */
-  it("stops a Scribe who has learned nothing, past the on-ramp", () => {
+  it("stops a Scribe who has learned nothing, past the on-ramp", { timeout: 60000 }, () => {
     // From Netzach up. Not arbitrary: a Scribe *entering* Malchut, Yesod or
     // Hod holds no verb that is reached for — Aleph and Chet both live on the
     // leap key — so those three regions have nothing to gate terrain on and
@@ -649,7 +680,7 @@ describe("walking the regions", () => {
    * was a solved one-press problem, so the crown used to cost a competent
    * Scribe *less* than the foot of the Tree.
    */
-  it("costs more the higher the Tree is climbed", () => {
+  it("costs more the higher the Tree is climbed", { timeout: 60000 }, () => {
     const cost = (region: number) => {
       let ticks = 0;
       for (const seed of [3, 91, 555, 12345]) {
@@ -869,7 +900,7 @@ describe("the Word-Gates", () => {
       for (const seed of [3, 91, 555, 12345]) {
         const world = buildRegion(region, seed);
         const gates = world.entities.filter((e) => e.kind === "word-gate");
-        const spellable = solvableRoots(region).length > 0;
+        const spellable = solvableRoots(lettersOnEntering(region)).length > 0;
         expect(gates.length, `region ${region} seed ${seed}`).toBe(spellable ? 1 : 0);
         // The target is always one the Scribe can spell on arrival.
         if (spellable) {
@@ -963,4 +994,92 @@ describe("standing in a Word-Gate's porch", () => {
     for (let i = 0; i < 20; i += 1) step(world, NO_INPUT, ctx);
     expect(asked).toBe(0);
   });
+});
+
+
+/**
+ * **And the hands, on the Tree.**
+ *
+ * `route.test.ts` asks whether a way exists across every path a wander can take.
+ * This asks whether a body can walk it — the same two questions in one coat that
+ * the route graph was built to tell apart, now asked of ground that is generated
+ * from what the Scribe is carrying rather than from how far up they have got.
+ *
+ * Fewer wanders than the route test runs, because a probe costs a thousand times
+ * what a flood fill does, and the route test is the one that has to be
+ * exhaustive: a path with no way through is a soft lock, while a path the probe
+ * fumbles is a path the probe fumbles. So this is a sample, and it is asked with
+ * the klipot cleared, because whether the fight is survivable is `fight.test.ts`
+ * and mixing the two makes both unreadable.
+ */
+describe("walking the Tree", () => {
+  /**
+   * **What this asserts, and why it is a share rather than a zero.**
+   *
+   * `route.test.ts` asks whether a way exists across every path a wander can
+   * take, and it answers *always* — six hundred and sixty of six hundred and
+   * sixty. That is the no-soft-lock guarantee and it is a hard zero, because a
+   * path with no way through is a run that cannot be finished.
+   *
+   * This asks the other half: whether *this* pair of hands can walk it. And it
+   * is a share, because the honest measurement is a share. Ninety-eight of a
+   * hundred and twenty sampled paths, and the shortfall is understood rather
+   * than mysterious: the library's screens were authored against a Scribe who
+   * had the letters the *line* would have given them by then, and a handful
+   * assume more of a body than they declare. Measured screen by screen, holding
+   * exactly what each one asks and nothing else: `anchor-gap` and `high-anchors`
+   * want the Bridge, `set-stone` and `vault-to-high` want any of the Fence, the
+   * Bridge or the House, `vine-ascent` wants more than any single letter
+   * supplies. None of them is under-declared about the letter it *gates* on —
+   * every one is crossable in the route graph holding exactly what it says, and
+   * `chunks.test.ts` holds them to that. What they assume is a body that can do
+   * more than step and jump.
+   *
+   * That is level work, screen by screen, of the kind `wide-chasm` has just had:
+   * measured against the hands, reshaped, measured again. It is not done, and
+   * this test says so rather than pretending. What it is for is catching a
+   * *collapse* — a change that makes the Tree broadly unwalkable will take this
+   * well below three quarters, and the named screens above are the list to work
+   * through to raise it.
+   *
+   * The klipot are cleared, because whether a fight is survivable is
+   * `fight.test.ts` and mixing the two makes both unreadable.
+   */
+  it("carries a competent Scribe along most paths, holding what the route there paid", () => {
+    const stalled: string[] = [];
+    let walked = 0;
+    for (let seed = 1; seed <= 12; seed += 1) {
+      const rng = makeRng((seed * 7919) >>> 0);
+      let at: SefirahId = "malchut";
+      const gathered: string[] = [];
+      for (let step = 0; step < 10; step += 1) {
+        const out = pathsFrom(at);
+        const path = out[randomInt(rng, out.length)];
+        const held = lettersFrom(gathered);
+        const world = buildPath(path, seed, held);
+        world.husks = [];
+        const ctx: StepContext = {
+          verbs: verbsOf(held),
+          graces: held
+            .map((id) => abilityByLetter[id]?.grace)
+            .filter((g): g is NonNullable<typeof g> => Boolean(g)),
+        };
+        walked += 1;
+        // By the ground rather than by the storeys: a path blends two Sefirot's
+        // lengths, so two rungs of the same height can differ by half again.
+        const screens = (world.width / CHUNK_W) * Math.max(1, Math.round(world.height / CHUNK_H));
+        if (!probe(world, ctx, Math.max(24000, 2000 * screens)).finished) {
+          stalled.push(`${path.id} seed ${seed} holding [${held.join(",") || "nothing"}]`);
+        }
+        gathered.push(path.id);
+        at = otherEnd(path, at);
+      }
+    }
+    expect(walked, "the wander walked nowhere").toBeGreaterThan(100);
+    const crossed = (walked - stalled.length) / walked;
+    expect(
+      crossed,
+      `crossed only ${(crossed * 100).toFixed(0)}% of ${walked} paths walked:\n  ${stalled.slice(0, 10).join("\n  ")}`,
+    ).toBeGreaterThan(0.75);
+  }, 300000);
 });

@@ -1,0 +1,290 @@
+import { describe, expect, it } from "vitest";
+import { abilityByLetter } from "./abilities";
+import { HUSKS } from "./combat";
+import { makeRng, randomInt } from "./rng";
+import { kindleCost } from "../storage/ascentRepo";
+import { afterWalking, otherEnd, pathsFrom, TREE_PATHS, type Standing } from "./tree";
+import { buildPath, rowsFor, verbsOf } from "./world/build";
+import { fighter } from "./world/fight.test";
+import type { World } from "./world/types";
+import type { StepContext } from "./world/step";
+import { regions } from "./regions";
+
+/** The region standing at a Sefirah — the ten are a small table. */
+const regionOf = (sefirah: SefirahId) => {
+  const found = regions.find((r) => r.sefirah === sefirah);
+  if (!found) throw new Error(`No region stands at ${sefirah}`);
+  return found;
+};
+import type { SefirahId } from "../types/letter";
+
+/**
+ * **What a climb of the Tree costs, and what it pays.**
+ *
+ * A climb is sealed when every Sefirah has been kindled, and the whole tour
+ * prices at `sum(20 + 5i)` over the ten — four hundred and seventy-five light.
+ * That number was authored and never measured, and the plan that authored it
+ * said so: *"must be measured, not assumed"*. This is the measuring.
+ *
+ * It is a real question rather than arithmetic, because the Tree decoupled two
+ * things a line held together. On a line, ten rungs paid for ten kindlings and
+ * the only decision was whether to spend. On the Tree the Scribe chooses which
+ * of twenty-two paths to walk, `earnedRung` sizes each rung by what they are
+ * carrying, and the shortest tour that touches all ten Sefirot is nine walks.
+ * So there are three ways this can be wrong, and each has its own assertion
+ * below: the tour can be unaffordable, which is a game that cannot be won; the
+ * nine-walk dash can be affordable, which is a map that decides nothing; and
+ * the first kindling can be out of reach of the first path, which is a Scribe
+ * told to come back later before they have spent anything.
+ *
+ * ## Two instruments
+ *
+ * **The supply** is exact and costs nothing: `lightIn` counts what a rung is
+ * built holding. **The yield** is what a Scribe actually leaves with, and needs
+ * the fighting probe from `fight.test.ts` — motes are only light once someone
+ * has walked over them, and a klipah's light is only light once its shell is
+ * broken. The two differ by a lot and the difference is the game.
+ */
+
+const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / (xs.length || 1);
+
+/** The price of kindling every Sefirah — the whole climb, in one number. */
+export const FULL_TOUR = regions.reduce((sum, r) => sum + kindleCost(r.index), 0);
+
+/**
+ * Every scrap of light a rung is built holding: the motes lying on it, and what
+ * is inside the klipot standing on it. A ceiling, not a forecast — nobody
+ * gathers all of it.
+ */
+function lightIn(world: World): number {
+  const motes = world.entities.filter((e) => e.kind === "mote").length * world.orPerMote;
+  const inShells = world.husks.reduce((sum, h) => sum + HUSKS[h.kind].light, 0) * world.orPerMote;
+  return motes + inShells;
+}
+
+function contextFor(held: readonly string[]): StepContext {
+  return {
+    verbs: verbsOf(held),
+    graces: held
+      .map((id) => abilityByLetter[id]?.grace)
+      .filter((g): g is NonNullable<typeof g> => Boolean(g)),
+  };
+}
+
+/** The same budget by ground the Tree's probe test uses. */
+const budgetFor = (world: World) =>
+  Math.max(24000, 2000 * (world.width / 16) * Math.max(1, Math.round(world.height / 18)));
+
+/**
+ * One walk, played. Returns the light carried out — which is already net of the
+ * two a veiling costs, because `veil` takes it off `world.or` as it happens.
+ */
+function walk(path: (typeof TREE_PATHS)[number], seed: number, held: string[], spent: boolean) {
+  const world = buildPath(path, seed, held, 1, false, spent);
+  return { or: fighter(world, contextFor(held), budgetFor(world)).or, supply: lightIn(world) };
+}
+
+/**
+ * A climb, walked. Wanders from Malchut taking a path at random, gathering the
+ * letters each one pays — which is what a Scribe does, and what makes the rungs
+ * grow, since `earnedRung` sizes them by what is carried.
+ *
+ * The letters are credited in full, which is generous: a Scribe has to reach an
+ * alcove to lift one. That generosity is deliberate and one-sided — it makes
+ * the rungs *bigger* and so the supply *larger*, so every "not enough light"
+ * result below is a floor rather than a guess.
+ */
+function climb(seed: number, walks: number) {
+  const rng = makeRng((seed * 7919) >>> 0);
+  let standing: Standing = { at: "malchut", pathsWalked: [] };
+  let carried = 0;
+  const held: string[] = [];
+  const legs: { or: number; supply: number; spent: boolean }[] = [];
+
+  for (let i = 0; i < walks; i += 1) {
+    // **A Scribe with a map prefers ground they have not taken.** Choosing
+    // uniformly among the ways out models someone wandering, and on a graph
+    // this dense that is mostly re-walking — which pays `SPENT_LIGHT`, so it
+    // measured the economy of a Scribe who had not noticed the map. Fresh
+    // paths first, and the walked ones only when there is nothing else out of
+    // here, which is also how a route across the Tree actually goes.
+    const all = pathsFrom(standing.at);
+    const fresh = all.filter((p) => !standing.pathsWalked.includes(p.id));
+    const from = fresh.length > 0 ? fresh : all;
+    const path = from[randomInt(rng, from.length)];
+    const spent = standing.pathsWalked.includes(path.id);
+    const leg = walk(path, seed, held, spent);
+    carried += leg.or;
+    legs.push({ ...leg, spent });
+    if (!held.includes(path.letter)) held.push(path.letter);
+    standing = afterWalking(standing, path);
+  }
+  return { carried, legs, held, at: standing.at, walked: standing.pathsWalked };
+}
+
+describe("the price of the Tree", () => {
+  /**
+   * The arithmetic, stated once so the rest of the file can talk about a number
+   * rather than a formula — and so that changing `kindleCost` fails here first,
+   * where the reason is written down, instead of somewhere further out.
+   */
+  it("prices the whole tour at what kindling every Sefirah comes to", () => {
+    expect(FULL_TOUR).toBe(regions.reduce((sum, r) => sum + 8 + r.index * 4, 0));
+    // Every Sefirah costs something, and the crown costs most.
+    expect(Math.min(...regions.map((r) => kindleCost(r.index)))).toBeGreaterThan(0);
+    expect(kindleCost(10)).toBeGreaterThan(kindleCost(1));
+  });
+
+  /**
+   * **The first kindling is within reach of the first path.**
+   *
+   * Malchut is where a Scribe wakes and where they will stand after one walk,
+   * carrying whatever that one rung paid. If the kingdom cost more than a rung
+   * holds, the first thing the map would ever say is *not yet*, before the
+   * Scribe had spent anything or learned that light is spent at all.
+   */
+  it("lets a Scribe kindle where they land, a few paths in", () => {
+    // Two rather than one, because one path takes you *out* of the kingdom —
+    // the first Sefirah anybody is standing on with light in hand is Yesod, Hod
+    // or Netzach, not Malchut. And measured against the median rather than the
+    // worst of the sample: a fifth of walks stall the probe outright, and those
+    // carry nothing at all, which is a statement about the probe and not about
+    // the price.
+    // Per climb, not across climbs: what *this* Scribe is carrying against what
+    // *this* Scribe is standing on. Comparing a median purse to the dearest
+    // landing anywhere in the sample compares two different Scribes.
+    const rows = [1, 2, 3, 4, 5, 6].map((seed) => {
+      const c = climb(seed, 3);
+      return { purse: c.carried, cost: kindleCost(regionOf(c.at).index), at: c.at };
+    });
+    const afford = rows.filter((r) => r.purse >= r.cost).length;
+    expect(
+      afford,
+      `only ${afford} of ${rows.length} climbs could kindle where three paths left them: ` +
+        rows.map((r) => `${r.at} ${Math.round(r.purse)}/${r.cost}`).join(", "),
+    ).toBeGreaterThan(rows.length / 2);
+  }, 120000);
+
+  /**
+   * **The dash cannot be afforded.**
+   *
+   * Nine walks is the fewest that can put a Scribe on all ten Sefirot, so if
+   * nine walks paid for all ten kindlings the map would decide nothing: every
+   * climb would be the same sprint and the other thirteen paths would be
+   * scenery. This is the assertion that makes the tour a tour.
+   */
+  it("cannot be paid for by the shortest tour that touches all ten", () => {
+    const short = [1, 2, 3, 4].map((seed) => climb(seed, 9).carried);
+    const best = Math.max(...short);
+    expect(
+      best,
+      `nine walks paid ${best} of the ${FULL_TOUR} the ten Sefirot ask — the dash is affordable`,
+    ).toBeLessThan(FULL_TOUR);
+  }, 300000);
+
+  /**
+   * **And the tour can.** The other side of the same coin, and the one that
+   * decides whether the game can be finished at all. Twenty-two walks — the
+   * number of paths on the Tree, which is a climb that has been everywhere —
+   * has to clear the price with room, because a route also spends walks getting
+   * from one end of the Tree to the other and those are re-walks, which pay
+   * `SPENT_LIGHT`.
+   */
+  it("is affordable to a climb that walks the whole Tree", () => {
+    const full = [1, 2, 3, 4, 5, 6].map((seed) => climb(seed, 22).carried);
+    const worst = Math.min(...full);
+    expect(
+      worst,
+      `the leanest of four climbs of twenty-two walks carried ${worst} against ${FULL_TOUR} — ` +
+        `all four: ${full.map((n) => Math.round(n)).join(", ")}`,
+    ).toBeGreaterThan(FULL_TOUR);
+  }, 300000);
+
+  /**
+   * **A path already walked pays little.**
+   *
+   * `buildPath` is deterministic, so without this a Scribe short of light walks
+   * the cheapest path again, and again, and kindling all ten stops being a
+   * route and becomes a farm — the map would decide nothing for a second and
+   * worse reason. `SPENT_LIGHT` in `build.ts` is the knob; this is what holds
+   * it honest. Not *nothing*, on purpose: the klipot are rebuilt with the rung,
+   * so crossing back still pays, and the fight is the reason it does.
+   */
+  it("leaves little on a path already walked", () => {
+    const path = pathsFrom("malchut")[0];
+    const fresh = mean([3, 91, 555, 12345].map((seed) => walk(path, seed, [], false).supply));
+    const again = mean([3, 91, 555, 12345].map((seed) => walk(path, seed, [], true).supply));
+    expect(
+      again,
+      `a re-walk holds ${again.toFixed(0)} against a first walk's ${fresh.toFixed(0)} — the farm is open`,
+    ).toBeLessThan(fresh * 0.6);
+    // But not empty: what is left is the klipot, and they are worth breaking.
+    expect(again, "a re-walked path holds nothing at all").toBeGreaterThan(0);
+  }, 120000);
+
+  /**
+   * **Light grows with letters**, which is what stops a bolt for the crown
+   * being the optimal line.
+   *
+   * `earnedRung` caps a rung's storeys, its band and its length by the highest
+   * rung whose entry kit the Scribe could pass for. So a Scribe who runs ahead
+   * of their letters walks small, poor ground — rushing the crown makes the
+   * crown shallow, and it makes it cheap. That is a load-bearing consequence of
+   * the cap rather than a happy accident, and it should fail here if the cap
+   * ever comes off.
+   */
+  it("pays a well-lettered Scribe more for the same ground", () => {
+    const everything = TREE_PATHS.map((p) => p.letter);
+    const upper = TREE_PATHS.filter((p) => p.ends.includes("keter"));
+    const bare = mean(upper.flatMap((p) => [3, 91].map((s) => walk(p, s, [], false).supply)));
+    const full = mean(
+      upper.flatMap((p) => [3, 91].map((s) => walk(p, s, [...everything], false).supply)),
+    );
+    expect(
+      full,
+      `the crown's paths hold ${full.toFixed(0)} to a full hand and ${bare.toFixed(0)} to an empty one`,
+    ).toBeGreaterThan(bare);
+  }, 120000);
+});
+
+describe("what a rung holds against what is taken from it", () => {
+  /**
+   * The gap between the two instruments, recorded because it is the number
+   * every balance decision in this file rests on and because it is not
+   * obvious: a Scribe leaves with well under what a rung was built holding, and
+   * anyone reasoning from the supply alone would price the climb far too low.
+   */
+  it("hands a Scribe a fraction of what a rung is built holding", () => {
+    const rows = [1, 2, 3].flatMap((seed) => climb(seed, 6).legs);
+    const supply = mean(rows.map((r) => r.supply));
+    const taken = mean(rows.map((r) => r.or));
+    const share = taken / supply;
+    expect(
+      share,
+      `a Scribe leaves with ${(share * 100).toFixed(0)}% of what a rung holds ` +
+        `(${taken.toFixed(0)} of ${supply.toFixed(0)})`,
+    ).toBeGreaterThan(0.1);
+    expect(share, "a Scribe sweeps a rung clean, so the supply is the yield").toBeLessThan(0.95);
+  }, 300000);
+
+  /** Nothing on the Tree is a rung with no light in it. */
+  it("puts light on every path, however it is reached", () => {
+    for (const path of TREE_PATHS) {
+      for (const seed of [3, 91]) {
+        const world = buildPath(path, seed, [], 1, false, false);
+        expect(lightIn(world), `${path.id} seed ${seed} holds no light`).toBeGreaterThan(0);
+      }
+    }
+  }, 120000);
+});
+
+/** Kept for the failure messages above — the ten, by name, in kindling order. */
+export const TOUR: readonly { sefirah: SefirahId; cost: number }[] = regions.map((r) => ({
+  sefirah: r.sefirah,
+  cost: kindleCost(r.index),
+}));
+
+// Referenced so the helpers above cannot rot unnoticed if a test is removed.
+void otherEnd;
+void rowsFor;
+

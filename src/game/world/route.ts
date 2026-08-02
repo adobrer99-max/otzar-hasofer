@@ -27,16 +27,28 @@ import type { World } from "./types";
  * carrying the Breath is granted the seven tiles it is measured at and one who
  * is not carrying it is not.
  *
- * It is deliberately **conservative**: it grants only moves it is sure of, and
- * leaves the Hook out entirely. Missing an edge costs a longer route; inventing
- * one would send a body at a wall. And when the way out turns out to be
- * unreachable *in the graph* — which is what a missing edge looks like — the
- * caller falls back to its own rule rather than freezing.
+ * It is deliberately **conservative**: it grants only moves it is sure of.
+ * Missing an edge costs a longer route; inventing one would send a body at a
+ * wall. And when the way out turns out to be unreachable *in the graph* — which
+ * is what a missing edge looks like — the caller falls back to its own rule
+ * rather than freezing.
  *
- * The vine was left out too, on the same reasoning, and that was wrong and
- * measurable: the lower storey of a two-row rung is joined to the high road by
- * a hanging vine as often as by a wall, and without it a third of the Tree came
- * out unreachable. Being conservative is only a virtue where it costs a detour.
+ * That principle has now been wrong four times, in the same way each time, and
+ * the pattern is worth stating because it will happen again: **a move left out
+ * of the graph does not read as a longer route, it reads as a broken level.**
+ * The vine went first — without it the lower storey of a two-row rung was a
+ * dead end, and a third of the Tree came out unreachable. Then water, the Hook,
+ * and the Eye's own revealed stone, all found together the moment the linear
+ * order stopped hiding them: twenty-two paths hand the generator letter sets it
+ * had never been given before, and every screen crossed by a verb this graph
+ * did not model came back "impassable". Fourteen of them, and the first
+ * diagnosis was that fourteen screens under-declared what they need. They do
+ * not. The graph could not swim, could not cast, and could not stand on stone
+ * the Eye had revealed.
+ *
+ * So: being conservative is only a virtue where it costs a detour. Where a verb
+ * is the *only* answer a screen has, leaving it out is not caution — it is the
+ * instrument reporting a fault in the thing it is measuring.
  */
 
 /** A node is the tile a standing body's feet rest on top of. */
@@ -76,6 +88,14 @@ export interface Route {
 const FALL_ACROSS = 6;
 const FALL_DEPTH = 22;
 
+/**
+ * How far the Hook is cast, in tiles. `GRAPPLE_RANGE` in `step.ts` is seven
+ * tiles measured centre to centre; six is taken here so that a ring at the very
+ * edge of the throw, which the hands would reach only from exactly the right
+ * pixel, is not a route the graph promises.
+ */
+const CAST = 6;
+
 export function routeTo(world: World, verbs: readonly Verb[]): Route {
   const w = world.width;
   const h = world.height;
@@ -95,10 +115,26 @@ export function routeTo(world: World, verbs: readonly Verb[]): Route {
     if (t === Tile.Ledge) return true;
     return !isSolid(t, { verbs, crawling: true, revealed: verbs.includes("reveal") });
   };
+  /**
+   * What would stop a falling body — **which depends on the letters held**, and
+   * naming the three obviously-solid tiles instead was a quiet fault that
+   * survived four rounds of tuning.
+   *
+   * A Scribe holding the Eye stands on revealed stone; that was the whole point
+   * of revealing it. Listing Stone, Ledge and Placed by hand meant `veiled-span`
+   * — three floating slabs over a gap, and nothing else — had no floor in the
+   * graph at all, so the one screen built entirely around Ayin read as a
+   * twelve-tile leap. Growth, a shut door and a Word-Gate are the same: solid
+   * until the letter that removes them, and standable until then.
+   *
+   * `open` already knows every one of those answers, so the honest form of this
+   * question is its negation. The Ledge is the single exception in the other
+   * direction: open from below, solid from above, which is what a ledge *is*.
+   */
   const solid = (x: number, y: number) => {
     if (y >= h) return false;
-    const t = tileAt(world, x, y);
-    return t === Tile.Stone || t === Tile.Ledge || t === Tile.Placed;
+    if (tileAt(world, x, y) === Tile.Ledge) return true;
+    return !open(x, y);
   };
   /** A body fits here, and there is something under it. */
   const stands = (x: number, y: number) => open(x, y) && open(x, y - 1) && solid(x, y + 1);
@@ -113,8 +149,51 @@ export function routeTo(world: World, verbs: readonly Verb[]): Route {
    * other, with a rung above and below it.
    */
   const vines = verbs.includes("climb");
+  const inGrid = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h;
   const hangs = (x: number, y: number) =>
-    vines && x >= 0 && y >= 0 && x < w && y < h && tileAt(world, x, y) === Tile.Vine;
+    vines && inGrid(x, y) && tileAt(world, x, y) === Tile.Vine;
+
+  /**
+   * Water, to a Scribe holding Mem — and the same argument as the vine, learned
+   * the same way.
+   *
+   * A body in water is a body without a floor, so nothing here could ever stand
+   * in it and the graph had no nodes below a waterline at all. `deep-channel`
+   * is ten tiles of water between two banks and declares Mem, which is exactly
+   * true; the graph read it as ten tiles of *gap* and answered that it needs
+   * the Breath and the Bridge, which is a fourteen-tile leap over a channel a
+   * Scribe is meant to swim.
+   *
+   * `swimTick` moves a body through water in any direction it likes, so the
+   * edges are simple neighbourly ones rather than an envelope: no leap is
+   * granted from mid-water, because there is nothing to push off. Getting out
+   * is the diagonal onto the bank, which is what climbing out of water is.
+   */
+  const swims = verbs.includes("swim");
+  const wet = (x: number, y: number) =>
+    swims && inGrid(x, y) && tileAt(world, x, y) === Tile.Water;
+
+  /**
+   * And the rings, to a Scribe holding Vav — which this graph left out on
+   * purpose and called caution.
+   *
+   * It is not caution when it is a screen's only answer. Five screens in the
+   * library are built as a run of anchors over nothing: leaving the Hook out
+   * did not make them expensive, it made them impassable, and the audit dutifully
+   * reported that `anchor-gap` — whose whole content is two rings — requires the
+   * Bridge and the Breath.
+   *
+   * A ring is somewhere a body arrives at rather than rests on, so it is a node
+   * with a cast in and a throw out: reachable from anywhere within `CAST` with
+   * a clear line to it, and left by the ordinary envelope, because `grappleTick`
+   * throws the Scribe up and forward off the ring rather than leaving them
+   * hanging — which is the move the chained-anchor screens are built from.
+   */
+  const hooks = verbs.includes("grapple");
+  const ring = (x: number, y: number) =>
+    hooks && inGrid(x, y) && tileAt(world, x, y) === Tile.Anchor;
+
+  const blocks = verbs.includes("block");
 
   // The reach of a leap, measured rather than guessed: `chunks.ts` records a
   // plain jump crossing four tiles of gap and two of rise, the Breath seven,
@@ -131,15 +210,26 @@ export function routeTo(world: World, verbs: readonly Verb[]): Route {
   const across = bridge && breath ? 14 : breath ? 6 : 5;
   const rise = breath ? 4 : 2;
 
+  // And the throw off a ring, by the same arithmetic against `step.ts`: three
+  // hundred up under a gravity of seventeen-fifty is twenty-six pixels, barely
+  // a tile, where a jump's four-seventy is sixty-three. The carry across is the
+  // throw's own two-fifty for the third of a second it hangs. What the Breath
+  // and the Bridge add on top is added the same way they are anywhere else.
+  const THROW_ACROSS = bridge && breath ? 10 : breath ? 5 : 3;
+  const THROW_RISE = breath ? 3 : 1;
+
   const nodes: Node[] = [];
   const index = new Int32Array(w * h).fill(-1);
   /** Nodes by column, so an edge search looks at places to stand and not at air. */
   const byColumn: number[][] = Array.from({ length: w }, () => []);
+  /** The rings, kept apart: a cast searches them, not the whole graph. */
+  const rings: number[] = [];
   for (let y = 0; y < h - 1; y += 1) {
     for (let x = 0; x < w; x += 1) {
-      if (!stands(x, y) && !hangs(x, y)) continue;
+      if (!stands(x, y) && !hangs(x, y) && !wet(x, y) && !ring(x, y)) continue;
       index[y * w + x] = nodes.length;
       byColumn[x].push(nodes.length);
+      if (ring(x, y)) rings.push(nodes.length);
       nodes.push(y * w + x);
     }
   }
@@ -207,7 +297,7 @@ export function routeTo(world: World, verbs: readonly Verb[]): Route {
    * as gravity takes it, and the further it falls the further it carries.
    */
   const spread = Math.max(across, FALL_ACROSS);
-  const envelope = (n: number, x: number, y: number, base = 0) => {
+  const envelope = (n: number, x: number, y: number, base = 0, reach = across, lift = rise) => {
     for (let dx = -spread; dx <= spread; dx += 1) {
       const nx = x + dx;
       if (nx < 0 || nx >= w) continue;
@@ -215,10 +305,10 @@ export function routeTo(world: World, verbs: readonly Verb[]): Route {
         if (m === n) continue;
         const ny = Math.floor(nodes[m] / w);
         const dy = ny - y;
-        if (dy < -rise || dy > FALL_DEPTH) continue;
+        if (dy < -lift || dy > FALL_DEPTH) continue;
         // Up or level asks for the jump's reach; downward gets whichever is
         // further, the jump or the carry of the fall itself.
-        const limit = dy <= 0 ? across : Math.max(across, Math.min(dy + 2, FALL_ACROSS));
+        const limit = dy <= 0 ? reach : Math.max(reach, Math.min(dy + 2, FALL_ACROSS));
         if (Math.abs(dx) > limit) continue;
         if (!reaches(x, y, nx, ny)) continue;
         forward[n].push(m);
@@ -231,7 +321,64 @@ export function routeTo(world: World, verbs: readonly Verb[]): Route {
     const at = nodes[n];
     const x = at % w;
     const y = (at - x) / w;
-    envelope(n, x, y);
+    // Everywhere except mid-water, where there is nothing to push off. A body
+    // in water that also has ground under it is both, and keeps its leap.
+    //
+    // **A ring is left on a throw, and a throw is not a jump.** `grappleTick`
+    // lets go at three hundred upward against the jump's four hundred and
+    // seventy, which is a rise of about one tile rather than two and a half,
+    // and the arc is correspondingly shorter across. Granting the ordinary
+    // envelope here would have invented the most seductive kind of false edge —
+    // one that looks like the move the screen is built around.
+    if (ring(x, y)) envelope(n, x, y, 0, THROW_ACROSS, THROW_RISE);
+    else if (!wet(x, y) || stands(x, y)) envelope(n, x, y);
+
+    // Through water, a tile at a time and in any direction — including the
+    // diagonal, which is both the step off the bank and the climb back out.
+    // Written from either side, so a bank tile beside a channel is joined to it
+    // whichever of the two the loop reaches first.
+    for (let dy = -1; dy <= 1; dy += 1) {
+      for (let dx = -1; dx <= 1; dx += 1) {
+        if ((dx === 0 && dy === 0) || (!wet(x, y) && !wet(x + dx, y + dy))) continue;
+        const m = inGrid(x + dx, y + dy) ? index[(y + dy) * w + x + dx] : -1;
+        if (m < 0) continue;
+        forward[n].push(m);
+        lengths[n].push(1);
+      }
+    }
+
+    /**
+     * The cast: any ring within the throw, with nothing in the way of the line.
+     *
+     * **Cast from the top of the jump, not from the feet.** `anchor-chain` is
+     * three rings eight rows above the floor, and from a stand tile the first of
+     * them is seven and a third tiles away — outside the throw. A Scribe does
+     * not cast from the ground; they jump and cast at the apex, which is two
+     * tiles nearer and turns the same ring into an easy five. So the line is
+     * tried from each height the body can rise to, and stops at the first thing
+     * over its head.
+     *
+     * A ring casts at a ring, too, for the reason `grappleTick` gives when it
+     * throws rather than leaves you hanging: the throw hangs a third of a second
+     * and the Hook is ready again after a quarter, so the second ring is caught
+     * in the air off the first. That is the whole content of the chained screens
+     * and there is no other way to read them.
+     */
+    if (hooks) {
+      const highest = ring(x, y) ? 0 : rise;
+      for (let lift = 0; lift <= highest; lift += 1) {
+        if (lift > 0 && !open(x, y - lift - 1)) break;
+        for (const m of rings) {
+          if (m === n) continue;
+          const rx = nodes[m] % w;
+          const ry = Math.floor(nodes[m] / w);
+          if (Math.hypot(rx - x, ry - (y - lift)) > CAST) continue;
+          if (!clear(x, y - lift, rx, ry)) continue;
+          forward[n].push(m);
+          lengths[n].push(Math.max(1, Math.round(Math.hypot(rx - x, ry - y))));
+        }
+      }
+    }
 
     // Up and down a vine, a rung at a time.
     if (hangs(x, y)) {
@@ -279,6 +426,32 @@ export function routeTo(world: World, verbs: readonly Verb[]): Route {
           // Only the first face met: everything past it is behind a wall.
           break;
         }
+      }
+    }
+
+    /**
+     * **The House sets a step where there was none** — the last verb this graph
+     * could not see, and the one whose absence was hardest to read, because a
+     * screen made entirely of a five-tile gap looks like a screen about jumping.
+     * `set-stone` is a five-tile gap and declares Bet alone, and the graph
+     * answered that it needs the Breath.
+     *
+     * `toggleStone` sets a stone *beside* the Scribe at the height of their own
+     * feet, so a stone is worth one tile across and one tile up: step to the
+     * lip, set, climb on. It is written here as a move out of a stand tile
+     * rather than as a place in its own right, which is the same shape as the
+     * wall catch above and has the same happy consequence — **stones cannot
+     * chain**, and neither can they in the hands, because only one stands at a
+     * time and setting the next takes back the one under your feet.
+     */
+    if (blocks) {
+      for (const dir of [-1, 1] as const) {
+        const sx = x + dir;
+        // Bet refuses anything that is not plain air, and a body needs room to
+        // stand on what it sets.
+        if (!inGrid(sx, y) || tileAt(world, sx, y) !== Tile.Empty) continue;
+        if (!open(sx, y - 1) || !open(sx, y - 2)) continue;
+        envelope(n, sx, y - 1, 2);
       }
     }
   }

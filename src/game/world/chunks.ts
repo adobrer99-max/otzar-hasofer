@@ -624,11 +624,48 @@ export const CHUNKS: Chunk[] = [
    * There is eighteen pixels of headroom in the corridor. A body that walks
    * off the lip falls; the dash is flat — it holds `vy` at zero for twelve
    * ticks — and it is the one motion in the game that crosses this.
+   *
+   * **And it does not cross it alone.** The dash is the motion that gets a body
+   * across, but the Breath is what gets it *started* — it has to be in the air
+   * before the dash is worth anything. That was invisible for as long as the
+   * climb was a line, because the Breath is found in Malchut and the Bridge
+   * much later, so no Scribe ever held one without the other. The Tree hands
+   * out letters in whatever order the route takes, and the first thing it did
+   * was ask this screen a question it had never been asked.
+   *
+   * **Which found that the screen was, on its own terms, absurd.** Measured
+   * against a competent body holding exactly the two letters it asks for: a
+   * corridor with no headroom and eight tiles of gap was crossed six times in
+   * six by a Scribe holding only the Bridge, and **none** in six by one holding
+   * the Bridge and the Breath — because with the Breath in hand a body spends
+   * it on the way out over the lip, and a second jump is the one thing that
+   * ruins a flat dash. A screen that punishes you for holding a letter is not
+   * a gate, it is a trap.
+   *
+   * So the corridor gains **two rows of headroom** and the gap stays at eight.
+   * That is the whole of the fix, and it is the same one row that cured
+   * `sheer-face`: the Breath now has somewhere to be spent, and a body holding
+   * both letters crosses six times in six instead of none. The route graph
+   * still refuses the crossing to a Scribe holding either letter alone, which is
+   * what the two in `requires` are for.
+   *
+   * Said plainly, because it is the sort of thing that should not be discovered:
+   * at this shape the *probe* can also cross it with the Bridge and no Breath,
+   * where the graph says it cannot. The screen is therefore declared more
+   * strictly than a very good pair of hands strictly needs — which is the safe
+   * direction to be wrong in, since over-declaring costs a screen its place in a
+   * layout and under-declaring costs a Scribe their run. Narrowing the gap to
+   * seven closes that gap in the other direction and was measured too: it gates
+   * exactly, and it cost a rung of the linear climb. Eight and roomy is the
+   * shape that is green everywhere.
    */
-  chunk("wide-chasm", { requires: ["dash"], demand: 1 }, [
-    F, F, F, F, F, F, F, F, F, F, F, F,
+  // And it is not a walk, now that it asks for two: a screen that needs the
+  // Breath to leave the ground and the Bridge to stay off it is a two.
+  chunk("wide-chasm", { requires: ["dash", "double-jump"], demand: 2 }, [
+    F, F, F, F, F, F, F, F, F, F, F,
     "..############..",
-    "..############..",
+    E,
+    E,
     E,
     E,
     "####........####",
@@ -874,7 +911,11 @@ export const CHUNKS: Chunk[] = [
   ]),
 
   /** A door at the bottom of the water, which will not be walked around. */
-  chunk("sealed-deep", { requires: ["open", "swim"], demand: 3 }, [
+  // The doors run floor to surface, so opening them does not make a way
+  // through — it makes a two-tile *hole* in the water, with the bottom of the
+  // world under it. The crossing is over the top of the shaft, out of the
+  // water, which is a jump; and the Breath is what a jump out of water is.
+  chunk("sealed-deep", { requires: ["open", "swim", "double-jump"], demand: 3 }, [
     E, E, E, E, E, E, E, E, E, E, E, E,
     E,
     "...wwwDDwwww....",
@@ -884,8 +925,15 @@ export const CHUNKS: Chunk[] = [
     "###wwwDDwwww####",
   ]),
 
-  /** Set a stone in the middle of nothing, cross to it, and set the next. */
-  chunk("stone-chain", { requires: ["block", "dash"], demand: 3 }, [
+  /**
+   * Set a stone in the middle of nothing, cross to it, and set the next.
+   *
+   * Only one stone stands at a time, so "the next" takes back the one underfoot
+   * — which is fine in the air and fatal on the ground. The crossing is a leap
+   * from each bank onto its own stone and a leap between them, and twelve tiles
+   * of nothing does not yield to two stones and a dash without the Breath.
+   */
+  chunk("stone-chain", { requires: ["block", "dash", "double-jump"], demand: 3 }, [
     E, E, E, E, E, E, E, E, E, E, E, E, E, E,
     "......*..*......",
     E,
