@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { dorotCardsById, dorotHousesById, housesBySefirah } from "../data/dorot";
 import type { AscentRecord } from "../storage/ascentRepo";
 import { regions } from "./regions";
-import { CARDS_IN_ALL, housesMet, lastSealed, lexicon, pagesOf, tally } from "./book";
+import { CARDS_IN_ALL, housesMet, lastSealed, lexicon, pagesOf, tally, timesStood } from "./book";
 import { endingOf } from "./story";
 
 /**
@@ -203,5 +203,42 @@ describe("the tally", () => {
       rootsEver: 0,
       cardsEver: 0,
     });
+  });
+});
+
+/**
+ * **How often a House has stood, which is not how often it was met.**
+ *
+ * Walking past a figure is not being spoken for. A Scribe who has gone mute
+ * every time has met a great many of them and been stood for by nobody — and
+ * this is the counter that decides how far into a House's episodes the rungs
+ * may draw, so getting the two confused would hand the whole collection to
+ * somebody who never carried the Mouth.
+ */
+describe("how often each House has stood", () => {
+  it("counts a Sefirah once per sealed climb that named it", () => {
+    const stood = timesStood([
+      climb({ sealedAt: "2026-01-01T00:00:00.000Z", witnessSefirot: ["malchut", "hod"], endingPlea: "heard" }),
+      climb({ sealedAt: "2026-01-02T00:00:00.000Z", witnessSefirot: ["malchut"], endingPlea: "heard" }),
+    ]);
+    expect(stood.malchut).toBe(2);
+    expect(stood.hod).toBe(1);
+    expect(stood.keter).toBeUndefined();
+  });
+
+  it("counts nothing for a climb that met figures and went mute", () => {
+    // Met three cards, carried no Peh: nobody stood, so nothing deepens.
+    const stood = timesStood([
+      climb({
+        sealedAt: "2026-01-01T00:00:00.000Z",
+        lettersHeld: ["aleph"],
+        housesMet: cardsOfMalchut.slice(0, 3).map((c) => c.id),
+      }),
+    ]);
+    expect(stood).toEqual({});
+  });
+
+  it("counts nothing from a climb that is not sealed", () => {
+    expect(timesStood([climb({ witnessSefirot: ["malchut"], endingPlea: "heard" })])).toEqual({});
   });
 });

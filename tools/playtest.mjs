@@ -531,6 +531,14 @@ const SCRIPTS = [
       });
       await page.reload({ waitUntil: "domcontentloaded" });
       await page.waitForTimeout(900);
+      // **The threshold remembers.** It used to say every climb "reached the
+      // crown" — the linear road's only ending — and nothing at all about the
+      // plea, which is the thing the whole climb was for. The newest sealed
+      // record here is the lit one, which pleaded alone.
+      const front = (await page.textContent("body")) ?? "";
+      if (!/Last time: the Tree stood lit/.test(front)) {
+        throw new Error(`the threshold forgot the last climb: ${front.replace(/\s+/g, " ").slice(0, 300)}`);
+      }
       const door = page.getByRole("button", { name: /The Book of Ascents/ });
       if (!(await door.count())) throw new Error("the threshold offered no Book");
       await door.first().click();

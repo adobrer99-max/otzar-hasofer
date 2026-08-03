@@ -64,6 +64,7 @@ import {
   ABYSS_WORD,
   endingOf,
   pleaFor,
+  PLEA_NAMED,
   PROLOGUE,
   PROLOGUE_PAGES,
   sefirahOfCard,
@@ -71,11 +72,12 @@ import {
   witnessesOf,
   WITNESSES_POSSIBLE,
 } from "./story";
-import { buildArena, buildPath, verbsOf } from "./world/build";
+import { buildArena, buildPath, regionOfPath, verbsOf } from "./world/build";
 import { boonsFrom, guardianOf } from "./guardians";
 import { guardiansFreed } from "../storage/ascentRepo";
 import { TreeMap } from "./TreeMap";
 import { Book } from "./Book";
+import { lastSealed, timesStood } from "./book";
 import { afterWalking, crossesAbyss, nodeOf, TREE_PATHS, type TreePath } from "./tree";
 import { readWarp, warpParams, warpRecord, type WarpOptions } from "./dev/warp";
 import { frameStats, installProbe, neighbourhood, probeOf } from "./dev/probe";
@@ -213,6 +215,8 @@ export function GamePage() {
    * so is what the threshold now remembers about the last ending.
    */
   const [history, setHistory] = useState<AscentRecord[]>([]);
+  /** How often each Sefirah's House has stood at the crown, across every climb. */
+  const stoodFor = useMemo(() => timesStood(history), [history]);
   const [bookOpen, setBookOpen] = useState(false);
 
   // Read inside a setState updater, where reading `time` directly would make
@@ -920,6 +924,11 @@ export function GamePage() {
         (ascent.pathsWalked ?? []).includes(path.id),
         rulesFor(encounter)?.klipot ?? 1,
         ascent.items ?? [],
+        // **The Houses remember.** How often this rung's House has stood for
+        // the Scribe at the crown decides how far into its episodes the rung
+        // may draw — see `cardsOpen`. A fold over sealed climbs, so it is
+        // history rather than anything this climb has done.
+        stoodFor[regionOfPath(path).sefirah] ?? 0,
       );
       const carried = powersFrom(ascent.items ?? [], boons);
       next.player.lamps += carried.lamps;
@@ -931,7 +940,7 @@ export function GamePage() {
       setVow(null);
       setPlate(null);
     },
-    [ascent, time.lightOfTheDay, layEncounter, encounter],
+    [ascent, time.lightOfTheDay, layEncounter, encounter, stoodFor],
   );
 
   /**
@@ -1229,7 +1238,7 @@ export function GamePage() {
 
       {!world && (!ascent || ascent.sealedAt) && (
         <Threshold
-          ascent={ascent}
+          last={lastSealed(history)}
           time={time}
           encounter={encounter}
           taught={allLearned(taught)}
@@ -1530,7 +1539,7 @@ function Standing({ ascent }: { ascent: AscentRecord }) {
  * way in.
  */
 function Threshold({
-  ascent,
+  last,
   time,
   encounter,
   taught,
@@ -1539,7 +1548,8 @@ function Threshold({
   onBook,
   onBegin,
 }: {
-  ascent: AscentRecord | null;
+  /** The most recent sealed climb, if there is one — see `book.ts`. */
+  last: ReturnType<typeof lastSealed>;
   time: ReturnType<typeof readAscentTime>;
   encounter: ReturnType<typeof encounterFor>;
   /** Whether this Scribe has been through the opening lessons before. */
@@ -1551,7 +1561,6 @@ function Threshold({
   onBook: () => void;
   onBegin: () => void;
 }) {
-  const sealed = ascent?.sealedAt;
   return (
     <section className={styles.start}>
       <div className={styles.startInner}>
@@ -1585,10 +1594,16 @@ function Threshold({
           )}
         </div>
 
-        {sealed && ascent && (
+        {/* **What happened last time, in the words it happened in.**
+            This used to say every climb "reached the crown", which was the
+            linear road's only ending and is now one of two — and it said
+            nothing at all about the plea, which is the thing the whole climb
+            was for. The four endings are named in `PLEA_NAMED`, and a record
+            from before any of that existed still has one, derived. */}
+        {last && (
           <p className={styles.startLast}>
-            Your last ascent reached the crown with {ascent.lettersHeld.length} of the twenty-two
-            letters and {ascent.or} light.
+            Last time: {last.ending === "kindled" ? "the Tree stood lit" : "you reached the crown"},
+            and {PLEA_NAMED[last.plea].short}.
           </p>
         )}
 

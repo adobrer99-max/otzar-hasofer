@@ -195,6 +195,37 @@ export function lexicon(ascents: readonly AscentRecord[]): LexiconEntry[] {
   return [...by.values()].sort((a, b) => a.transliteration.localeCompare(b.transliteration));
 }
 
+/**
+ * **How often each Sefirah's House has stood for this Scribe**, across every
+ * sealed climb.
+ *
+ * Counted from `witnessSefirot` — the frozen half of the ending — rather than
+ * from `housesMet`, and the difference is the whole point: meeting a figure is
+ * walking past them, and *standing* is being spoken for at the crown, which
+ * only happens on a climb that arrived carrying the Mouth. A Scribe who has
+ * gone mute seven times has met a great many figures and been stood for by
+ * nobody.
+ *
+ * This is what deepens the Houses — see `cardsOpen` in `world/build.ts`.
+ */
+export function timesStood(ascents: readonly AscentRecord[]): Record<string, number> {
+  const stood: Record<string, number> = {};
+  for (const page of pagesOf(ascents)) {
+    /**
+     * **A mute climb's witnesses were met, not heard.** `witnessSefirot` is
+     * filled from `housesMet` whatever the Scribe was carrying, because a
+     * figure spoken with is a figure spoken with — the crown plate already
+     * knows this and says "met on the way" rather than "stood for you" when
+     * the Mouth is missing. Reading the field without the plea would hand the
+     * whole collection to a Scribe who never once carried Peh, which is the
+     * exact opposite of what standing is supposed to mean.
+     */
+    if (page.plea === "mute") continue;
+    for (const sefirah of page.witnesses) stood[sefirah] = (stood[sefirah] ?? 0) + 1;
+  }
+  return stood;
+}
+
 // ---------------------------------------------------------------------------
 // the tally
 // ---------------------------------------------------------------------------

@@ -766,6 +766,39 @@ function groundSlots(body: readonly Chunk[]): number[] {
   return slots;
 }
 
+/**
+ * **The Houses remember, and open further.**
+ *
+ * A hundred and sixty-eight Dorot cards ship with this game and a climb meets
+ * about four per cent of them, drawn uniformly at random — which meant that
+ * after twenty climbs a Scribe had a flat, shallow sample of everybody and a
+ * deep acquaintance with nobody. The figures were an anthology rather than a
+ * relationship.
+ *
+ * So the pool a rung draws from is a *window*, and it widens with how often
+ * that Sefirah's House has stood for the Scribe at the crown — `witnessSefirot`
+ * across every sealed climb, folded by `timesStood` in `book.ts`. Standing is
+ * the right counter rather than meeting: walking past a figure is not being
+ * spoken for, and a Scribe who has gone mute every time has met a great many
+ * of them and been stood for by nobody.
+ *
+ * Two at first and two more per standing, per House. A patriarchal House has
+ * eight cards and opens fully at the third standing; a matriarchal one has
+ * sixteen and opens at the seventh — which is the length of the Seven
+ * Encounters, and is not a coincidence.
+ *
+ * **Applied per House rather than to the pool**, which matters: the pool is
+ * both Houses' cards end to end, so a window over the concatenation would give
+ * a new Scribe the patriarchal House's opening and lock the matriarchal one
+ * out entirely — and `story.ts` leans on either being able to stand at a rung.
+ */
+export const FIRST_CARDS = 2;
+export const CARDS_PER_STANDING = 2;
+
+export function cardsOpen(total: number, timesStood: number): number {
+  return Math.max(1, Math.min(total, FIRST_CARDS + Math.max(0, timesStood) * CARDS_PER_STANDING));
+}
+
 /** Writes the laid chunks into a tile grid and lifts the markers into entities. */
 function paint(
   laid: readonly Chunk[],
@@ -788,6 +821,11 @@ function paint(
    * and what the Scribe is already carrying — and `paint` has none of those.
    */
   keli?: Keli,
+  /**
+   * How many times this Sefirah's House has stood for the Scribe at the crown,
+   * across every sealed climb — see `cardsOpen`.
+   */
+  cardDepth = 0,
 ): World {
   // The screens are dealt into a floor before anything is written. One row is
   // a corridor and is exactly what every rung was before rooms existed, so
@@ -806,10 +844,14 @@ function paint(
   let entityId = 0;
 
   // The House figure, when the region has one: a card from either of the
-  // Sefirah's Houses, patriarchal or matriarchal — both stand at the rung.
+  // Sefirah's Houses, patriarchal or matriarchal — both stand at the rung, and
+  // how far into each one's episodes this Scribe has earned is `cardsOpen`.
   let dorotCardId: string | undefined;
   if (hasHouse) {
-    const pool = housesBySefirah(sefirah).flatMap((house) => cardsByHouse(house.id));
+    const pool = housesBySefirah(sefirah).flatMap((house) => {
+      const cards = cardsByHouse(house.id);
+      return cards.slice(0, cardsOpen(cards.length, cardDepth));
+    });
     if (pool.length > 0) dorotCardId = pool[randomInt(rng, pool.length)].id;
   }
 
@@ -1450,6 +1492,12 @@ export function buildPath(
    * finds are the ones they went out of their way for.
    */
   items: readonly string[] = [],
+  /**
+   * How often this rung's House has stood for the Scribe at the crown. Passed
+   * in rather than looked up, because it is a fold over every sealed climb
+   * (`timesStood` in `book.ts`) and the generator knows nothing about storage.
+   */
+  cardDepth = 0,
 ): World {
   const region = regionOfPath(path, held, klipot);
   // Seeded by the path rather than the region, so walking Malchut→Hod is not
@@ -1477,6 +1525,7 @@ export function buildPath(
     undefined,
     laid.length > 0 ? 1 : 0,
     keli,
+    cardDepth,
   );
 }
 
