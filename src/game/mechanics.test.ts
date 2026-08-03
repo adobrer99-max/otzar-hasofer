@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { festivals } from "../data/festivals";
 import { ushpizinBySefirah } from "../data/ushpizin";
-import { encounterFor, encounterTitle, isIllumined, sealedCount } from "./encounter";
+import { encounterFor, encounterTitle, illuminedBy, ruleByNumber, sealedCount } from "./encounter";
 import { readAscentTime } from "./sacredAscent";
 import { kindleCost, type AscentRecord } from "../storage/ascentRepo";
 import { offerFor, vowKept } from "./ushpizinOffers";
@@ -35,13 +35,14 @@ describe("the Seven Encounters across ascents", () => {
   it("illumines exactly one region, and one the Tree actually has", () => {
     for (let i = 0; i < 7; i += 1) {
       const encounter = encounterFor(i)!;
-      const lit = regions.filter((r) => isIllumined(encounter, r.sefirah));
+      const lit = regions.filter((r) => r.sefirah === illuminedBy(ruleByNumber[encounter.number]));
       expect(lit, `Encounter ${encounter.number}`).toHaveLength(1);
     }
   });
 
-  it("illumines nothing once the seven are behind you", () => {
-    expect(regions.some((r) => isIllumined(encounterFor(7), r.sefirah))).toBe(false);
+  it("illumines nothing for a climb under no rule at all", () => {
+    expect(encounterFor(7)).toBeUndefined();
+    expect(illuminedBy(undefined)).toBeUndefined();
   });
 });
 

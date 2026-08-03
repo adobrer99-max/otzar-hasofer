@@ -56,8 +56,20 @@ export function encounterTitle(encounter: Encounter): string {
  */
 export const ILLUMINED_MULTIPLIER = 2;
 
-export function isIllumined(encounter: Encounter | undefined, sefirah: string): boolean {
-  return Boolean(encounter && encounter.sefirah === sefirah);
+/**
+ * **Which Sefirah a rule lights, whether it came from the order or was chosen.**
+ *
+ * `isIllumined` asks the live Encounter, which is `undefined` past the
+ * seventh seal — so a Scribe who *chose* the First would have watched the
+ * threshold print "light gathered in Chesed counts double" and then gathered
+ * ordinary light in Chesed, because the doubling had nowhere to land. The
+ * rule that changes nothing is exactly the failure the table above is written
+ * to prevent, and choosing one would have reintroduced it.
+ *
+ * A rule's Sefirah is a fact about its own number, so it is read from there.
+ */
+export function illuminedBy(rule: EncounterRule | undefined): string | undefined {
+  return rule ? getEncounterForReadingIndex(rule.number - 1)?.sefirah : undefined;
 }
 
 // ---------------------------------------------------------------------------

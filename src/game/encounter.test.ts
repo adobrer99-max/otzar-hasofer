@@ -6,7 +6,7 @@ import {
   encounterTitle,
   ENCOUNTER_RULES,
   ILLUMINED_MULTIPLIER,
-  isIllumined,
+  illuminedBy,
   ruleByNumber,
   ruleOf,
   rulesFor,
@@ -156,8 +156,10 @@ describe("the Seven Encounters", () => {
   it("keeps the doubling as the First's own rule", () => {
     expect(ruleByNumber[1].motes).toBe(ILLUMINED_MULTIPLIER);
     expect(encounters[0].sefirah).toBe("chesed");
-    expect(isIllumined(encounters[0], "chesed")).toBe(true);
-    expect(isIllumined(encounters[0], "gevurah")).toBe(false);
+    // Read off the *rule*, which is what ships — past the seventh seal there
+    // is no live Encounter, and a chosen First has to light Chesed anyway.
+    expect(illuminedBy(ruleByNumber[1])).toBe("chesed");
+    expect(illuminedBy(undefined)).toBeUndefined();
   });
 
   /** Every rule is worth *having*: none of them makes a climb harder. */
@@ -375,6 +377,25 @@ describe("the rule a climb is played under", () => {
       const chosen = ruleOf({ ruleNumber: rule.number });
       expect(chosen, `the ${rule.number} cannot be chosen`).toBe(rule);
       expect(moved(chosen!), `the ${rule.number} moves nothing`).not.toEqual([]);
+    }
+  });
+
+  /**
+   * **The trap this nearly walked into.** Every rule but the First moves a
+   * number that is a fact about the rule; the First's is a fact about a
+   * *place* — light doubles in Chesed — and that place was read off the live
+   * Encounter, which past the seventh seal is `undefined`. A Scribe who chose
+   * the First would have been shown "light gathered in Chesed counts double"
+   * and then gathered ordinary light in Chesed. A rule that changes nothing is
+   * indistinguishable from a rule that works, which is the thing this whole
+   * table is written to prevent.
+   */
+  it("still knows which Sefirah a chosen rule lights, with no Encounter to ask", () => {
+    for (const rule of ENCOUNTER_RULES) {
+      if (!rule.motes) continue;
+      const lit = illuminedBy(ruleOf({ ruleNumber: rule.number }));
+      expect(lit, `the ${rule.number} doubles light nowhere`).toBeTruthy();
+      expect(regions.some((r) => r.sefirah === lit), `${lit} is not on the Tree`).toBe(true);
     }
   });
 });

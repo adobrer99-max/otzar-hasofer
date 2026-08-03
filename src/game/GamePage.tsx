@@ -46,7 +46,7 @@ import {
   encounterFor,
   encounterTitle,
   ENCOUNTER_RULES,
-  isIllumined,
+  illuminedBy,
   ruleByNumber,
   ruleOf,
   sealedCount,
@@ -386,7 +386,7 @@ export function GamePage() {
     world ? regionAt(world.regionIndex).sefirah : undefined,
     letters,
     time.snapshot.activeFestivalIds,
-    Boolean(world && isIllumined(encounter, regionAt(world.regionIndex).sefirah)),
+    Boolean(world && illuminedBy(ruleOf(ascent)) === regionAt(world.regionIndex).sefirah),
   );
 
   // Persisting is fire-and-forget: a dropped write costs at most one region's
@@ -446,7 +446,10 @@ export function GamePage() {
     (world: World, here: readonly SefirahId[]) => {
       const rule = ruleOf(ascent);
       if (!rule) return;
-      if (rule.motes && here.some((s) => isIllumined(encounter, s))) {
+      // The rule's own Sefirah, not the live Encounter's — past the seven
+      // there is no live Encounter, and a chosen First would have lit nothing.
+      const lights = illuminedBy(rule);
+      if (rule.motes && lights && here.includes(lights as SefirahId)) {
         world.orPerMote = Math.max(1, Math.round(world.orPerMote * rule.motes));
       }
       if (rule.husks) world.huskLight = rule.husks;
