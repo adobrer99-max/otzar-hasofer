@@ -29,6 +29,7 @@ const StylesheetPreview = lazyPage(() => import("./guide/pages/StylesheetPreview
 const HeraldPage = lazyPage(() => import("./herald/HeraldPage"), "HeraldPage");
 const CovenantPage = lazyPage(() => import("./herald/covenant/CovenantPage"), "CovenantPage");
 const GamePage = lazyPage(() => import("./game/GamePage"), "GamePage");
+const GameShell = lazyPage(() => import("./game/GameShell"), "GameShell");
 const MizbeachToolPage = lazyPage(() => import("./mizbeach/MizbeachToolPage"), "MizbeachToolPage");
 const CommentariesPage = lazyPage(() => import("./commentaries/CommentariesPage"), "CommentariesPage");
 const LibraryPage = lazyPage(() => import("./library/LibraryPage"), "LibraryPage");
@@ -60,7 +61,6 @@ export const router = createHashRouter([
       { path: "herald", element: <HeraldPage /> },
       { path: "mizbeach", element: <MizbeachToolPage /> },
       { path: "covenant", element: <CovenantPage /> },
-      { path: "game", element: <GamePage /> },
       { path: "commentaries", element: <CommentariesPage /> },
       { path: "sefarim", element: <LibraryPage /> },
       { path: "sefarim/:id/:entryId?", element: <SeferPage /> },
@@ -69,5 +69,14 @@ export const router = createHashRouter([
       { path: "shared/:token", element: <SharedHeraldPage /> },
       { path: "*", element: <NotFound /> },
     ],
+  },
+  // **Ma'alot stands outside the frame.** Every other route is a document, laid
+  // in `App`'s nav / panel / footer; this one is a game and takes the window.
+  // See `game/GameShell.tsx` for why. The path is unchanged, so the nav link
+  // and every existing bookmark still land here.
+  {
+    path: "/game",
+    element: <GameShell />,
+    children: [{ index: true, element: <GamePage /> }],
   },
 ]);

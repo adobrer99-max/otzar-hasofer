@@ -72,6 +72,7 @@ const regionOf = Object.fromEntries(regions.map((r) => [r.sefirah, r])) as Recor
 export function TreeMap({
   ascent,
   at,
+  readOnly = false,
   onWalk,
   onKindle,
   onFace,
@@ -79,6 +80,8 @@ export function TreeMap({
 }: {
   ascent: AscentRecord;
   at: SefirahId;
+  /** Shown but not acted on, while the Scribe is mid-path — see `GamePage`. */
+  readOnly?: boolean;
   onWalk: (path: TreePath) => void;
   onKindle: () => void;
   /** Go into the room where what holds this Sefirah is standing. */
@@ -282,91 +285,104 @@ export function TreeMap({
             each other. A named list underneath says where each way goes and
             what it pays, which a diagram cannot, and it is the same list a
             screen reader gets. */}
-        <ul className={styles.ways}>
-          {out.map((path) => {
-            const to = otherEnd(path, at);
-            const letter = lettersById[path.letter];
-            const held = gathered.includes(path.letter);
-            const keli = keliOnPath(path, ascent.seed, ascent.items ?? []);
-            const overTheAbyss = crossesAbyss(path);
-            return (
-              <li key={path.id}>
-                <button type="button" className={styles.wayButton} onClick={() => onWalk(path)}>
-                  <span className={styles.wayTo}>
-                  {regionOf[to].name}
-                  {/* **Said before it is taken.** Five of the twenty-two go over
-                      the gulf, and what is on the far side of it is a rung with
-                      no House to bargain at and no shrine to set a mark on — so
-                      a veiling there costs the whole crossing. That is a thing
-                      to know standing here, not to discover halfway across. */}
-                  {overTheAbyss && <span className={styles.wayAbyss}>over the Abyss</span>}
-                </span>
-                  <span className={styles.wayPays}>
-                    {/* **What is on the pedestal, before you walk.** The letter
-                        a path pays is fixed by the arrangement; the vessel is
-                        drawn from the day and the path, so it is the one thing
-                        on this map that is different tomorrow — and the only
-                        reason to walk somewhere for a thing rather than for a
-                        letter. Naming it is what turns twenty-two ways out into
-                        a list of places worth going.
-
-                        And **what it does**, because a pedestal can be walked
-                        past now: some vessels cost something, so a name alone
-                        would be asking the Scribe to route across the Tree for
-                        a surprise. Derived from the numbers rather than written
-                        beside them — see `describeEffect`. */}
-                    {keli && (
-                      <span className={styles.wayKeli}>
-                        ✦ {keli.name}
-                        <span className={styles.wayKeliDoes}>{describeEffect(keli.effect)}</span>
-                      </span>
-                    )}{" "}
-                    {held ? (
-                      // Walked before: it pays nothing again, and saying so is
-                      // the difference between a shortcut and a wasted climb.
-                      <>the way back — {letter?.transliteration ?? path.letter} is already yours</>
-                    ) : (
-                      <>
-                        pays{" "}
-                        <span className={`${styles.wayGlyph} hebrew`} lang="he">
-                          {letter?.glyph ?? "?"}
-                        </span>{" "}
-                        {letter?.transliteration ?? path.letter}
-                      </>
-                    )}
+        {/* **Read-only while a rung is being walked.** The Tree is shown over
+            the ground the Scribe is actually on — where they are, what is lit,
+            what is still held — and none of it can be acted on from the middle
+            of a path. Walking one is a thing you do from a place, and mid-rung
+            you are between two. */}
+        {readOnly ? (
+          <p className={styles.overworldReadOnly}>
+            The ways out are chosen from where you stand, and you are between two places.
+          </p>
+        ) : (
+          <>
+          <ul className={styles.ways}>
+            {out.map((path) => {
+              const to = otherEnd(path, at);
+              const letter = lettersById[path.letter];
+              const held = gathered.includes(path.letter);
+              const keli = keliOnPath(path, ascent.seed, ascent.items ?? []);
+              const overTheAbyss = crossesAbyss(path);
+              return (
+                <li key={path.id}>
+                  <button type="button" className={styles.wayButton} onClick={() => onWalk(path)}>
+                    <span className={styles.wayTo}>
+                    {regionOf[to].name}
+                    {/* **Said before it is taken.** Five of the twenty-two go over
+                        the gulf, and what is on the far side of it is a rung with
+                        no House to bargain at and no shrine to set a mark on — so
+                        a veiling there costs the whole crossing. That is a thing
+                        to know standing here, not to discover halfway across. */}
+                    {overTheAbyss && <span className={styles.wayAbyss}>over the Abyss</span>}
                   </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+                    <span className={styles.wayPays}>
+                      {/* **What is on the pedestal, before you walk.** The letter
+                          a path pays is fixed by the arrangement; the vessel is
+                          drawn from the day and the path, so it is the one thing
+                          on this map that is different tomorrow — and the only
+                          reason to walk somewhere for a thing rather than for a
+                          letter. Naming it is what turns twenty-two ways out into
+                          a list of places worth going.
 
-        <div className={styles.overworldActions}>
-          <span className={styles.overworldLight} title="Light gathered, and what this Sefirah asks">
-            <span aria-hidden="true">✦</span> {ascent.or}
-          </span>
-          {alreadyLit ? (
-            <span className={styles.overworldLit}>{here.name} is kindled.</span>
-          ) : freed ? (
-            <button
-              type="button"
-              className={styles.kindleButton}
-              onClick={onKindle}
-              disabled={!canKindle}
-            >
-              Kindle {here.name} — {cost} light
-            </button>
-          ) : (
-            <button type="button" className={styles.kindleButton} onClick={onFace}>
-              Face {HUSKS[guardian.kind].name}
-            </button>
-          )}
-          {onSeal && (
-            <button type="button" className={styles.sealButton} onClick={onSeal}>
-              Seal the ascent — all ten are kindled
-            </button>
-          )}
-        </div>
+                          And **what it does**, because a pedestal can be walked
+                          past now: some vessels cost something, so a name alone
+                          would be asking the Scribe to route across the Tree for
+                          a surprise. Derived from the numbers rather than written
+                          beside them — see `describeEffect`. */}
+                      {keli && (
+                        <span className={styles.wayKeli}>
+                          ✦ {keli.name}
+                          <span className={styles.wayKeliDoes}>{describeEffect(keli.effect)}</span>
+                        </span>
+                      )}{" "}
+                      {held ? (
+                        // Walked before: it pays nothing again, and saying so is
+                        // the difference between a shortcut and a wasted climb.
+                        <>the way back — {letter?.transliteration ?? path.letter} is already yours</>
+                      ) : (
+                        <>
+                          pays{" "}
+                          <span className={`${styles.wayGlyph} hebrew`} lang="he">
+                            {letter?.glyph ?? "?"}
+                          </span>{" "}
+                          {letter?.transliteration ?? path.letter}
+                        </>
+                      )}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className={styles.overworldActions}>
+            <span className={styles.overworldLight} title="Light gathered, and what this Sefirah asks">
+              <span aria-hidden="true">✦</span> {ascent.or}
+            </span>
+            {alreadyLit ? (
+              <span className={styles.overworldLit}>{here.name} is kindled.</span>
+            ) : freed ? (
+              <button
+                type="button"
+                className={styles.kindleButton}
+                onClick={onKindle}
+                disabled={!canKindle}
+              >
+                Kindle {here.name} — {cost} light
+              </button>
+            ) : (
+              <button type="button" className={styles.kindleButton} onClick={onFace}>
+                Face {HUSKS[guardian.kind].name}
+              </button>
+            )}
+            {onSeal && (
+              <button type="button" className={styles.sealButton} onClick={onSeal}>
+                Seal the ascent — all ten are kindled
+              </button>
+            )}
+          </div>
+          </>
+        )}
 
         {!freed && (
           <p className={styles.overworldHeld}>

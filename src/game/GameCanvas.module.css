@@ -6,14 +6,15 @@
 .stage {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
-  min-height: 260px;
-  max-height: 62vh;
-  border: 1px solid var(--border-hairline);
-  border-radius: var(--radius-lg);
+  /* **The ground takes the room.** This was a 16/9 plate capped at 62vh inside
+     a reading column — a game framed as a figure in a document. The page is the
+     window now (`GameShell.tsx`), so the stage fills it and the HUD floats over
+     it. No border and no radius: there is nothing beside it to be bordered
+     against. */
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
   background: var(--bg-sunken);
-  box-shadow: var(--shadow-lg);
 }
 
 /* The illuminated rule along the top edge, as on every plate in the Treasury. */

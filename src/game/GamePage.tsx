@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { dorotCardsById, dorotHousesById } from "../data/dorot";
 import { lettersById } from "../data/letters";
 import type { SefirahId } from "../types/letter";
-import { Button, Callout, DecoratedRule, PageHeader } from "../components/ui";
+import { Button, Callout, DecoratedRule } from "../components/ui";
 import {
   currentAscent,
   kindleCost,
@@ -25,7 +25,6 @@ import {
 import {
   allLearned,
   ALL_LESSON_KEYS,
-  forgetTaught,
   nextLesson,
   readTaught,
   retire,
@@ -140,6 +139,16 @@ export function GamePage() {
   /** Every Sefirah freed across every climb — what the boons are drawn from. */
   const [freedEver, setFreedEver] = useState<SefirahId[]>([]);
   const [plate, setPlate] = useState<Plate | null>(null);
+  /**
+   * **The Tree, on Tab.** It used to be a whole screen you were returned to
+   * between rungs; it is one overlay now, over whatever is behind it. Mid-rung
+   * it is read-only — where you are, what is lit — and standing on a Sefirah it
+   * is where the next path is chosen, which is the only place that choice has
+   * ever been made.
+   */
+  const [mapOpen, setMapOpen] = useState(false);
+  /** Everything that used to be stacked above the game, on Esc. */
+  const [paused, setPaused] = useState(false);
   const [hud, setHud] = useState<HudSample>({
     or: 0,
     veiled: false,
@@ -149,7 +158,6 @@ export function GamePage() {
     lamps: LAMPS,
     out: false,
   });
-  const [showKeys, setShowKeys] = useState(false);
   /** Which lessons this Scribe has already been taught — per Scribe, not per run. */
   const [taught, setTaught] = useState<LessonKey[]>(() => readTaught());
   /** A vow taken at a House, and the counters it will be judged against. */
@@ -981,6 +989,47 @@ export function GamePage() {
     setPlate(null);
   }, []);
 
+  /**
+   * **Arriving on the Tree opens the Tree.** Standing between rungs *is* the
+   * map — there is nothing else to be doing there — so it raises itself rather
+   * than asking for a keypress the Scribe has not learned yet. Tab closes it
+   * again, and Tab brings it back.
+   */
+  useEffect(() => {
+    if (!world && ascent && !ascent.sealedAt) setMapOpen(true);
+    if (world) setMapOpen(false);
+  }, [world, ascent]);
+
+  /**
+   * Tab is the map and Esc is the menu — the two keys this page has, beyond the
+   * ones the body uses.
+   *
+   * **A plate outranks both.** It has its own handler (below) and its own
+   * Escape, and a Scribe reading what a guest just offered should not have the
+   * Tree thrown over the top of it by a mistyped Tab.
+   */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (plate) return;
+      if (e.key === "Tab") {
+        // Or focus leaves for the browser's own furniture, which on a full
+        // window is nothing the Scribe wants.
+        e.preventDefault();
+        if (!paused && ascent) setMapOpen((open) => !open);
+        return;
+      }
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      // Innermost first: the map closes before the menu opens, so Escape always
+      // means "back one" rather than "somewhere else".
+      if (paused) setPaused(false);
+      else if (mapOpen && world) setMapOpen(false);
+      else setPaused(true);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [plate, paused, mapOpen, world, ascent]);
+
   // Dismiss a plate with the keyboard, so a run never needs the mouse.
   useEffect(() => {
     if (!plate) return;
@@ -1048,39 +1097,15 @@ export function GamePage() {
 
   return (
     <div className={styles.page}>
-      {/* The full illuminated header belongs to the threshold. Once a climb is
-          underway it collapses to a single line, so the canvas sits at the top
-          of the screen where a game belongs rather than below the fold. */}
-      {world ? (
-        <div className={styles.runningHeader}>
-          <span className={styles.runningKicker}>The Practice</span>
-          <h1 className={styles.runningTitle}>
-            Ma'alot <span className={`${styles.runningHeb} hebrew`} lang="he">מַעֲלוֹת</span>
-          </h1>
-        </div>
-      ) : (
-        <PageHeader
-          kicker="The Practice"
-          title="Ma'alot — The Ascent of the Tree"
-          hebrew="מַעֲלוֹת"
-          lede="You were the scribe of the crown, and you were cast down to the kingdom without being told what for. Climb back on the twenty-two letters — each one a power drawn from its own ancient sense, Vav the hook, Mem the water, Chet the fence — and speak with the figures keeping the Houses on the way, because they were told what you were not. You will need a mouth to plead with, and the Mouth is in pieces. A fall or a thorn only veils you and you wake at your mark — but the klipot, the husks that hold the trapped light, take a lamp, and when the last lamp goes out you go out with it — and the light still in your hand goes out too. You wake at the highest Sefirah you had already spent light to kindle, which is why what you have gathered is worth less than what you have laid down."
-        />
-      )}
+      {/* **No header.** The page used to open with a page title, a Hebrew
+          subtitle and a nine-line lede before anything playable — see
+          `GameShell.tsx`. What is left is the corner bar at the foot of this
+          component, which names the two keys and the way out. */}
 
-      {/* **The overworld stands where the threshold does, once a climb is
-          underway.** The threshold is for beginning and for looking back at a
-          sealed climb; between rungs the Scribe is not at a threshold at all,
-          they are standing somewhere on the Tree deciding which way to go. */}
-      {!world && ascent && !ascent.sealedAt && (
-        <TreeMap
-          ascent={ascent}
-          at={standingAt(ascent)}
-          onWalk={chooseWay}
-          onKindle={kindleHere}
-          onFace={faceGuardian}
-          onSeal={allKindled(ascent) ? () => setPlate({ kind: "sealed" }) : undefined}
-        />
-      )}
+      {/* Standing on the Tree between rungs. The map raises itself over this
+          (see the effect above), so this is what is behind it when the Scribe
+          closes it — quiet on purpose, and never empty. */}
+      {!world && ascent && !ascent.sealedAt && <Standing ascent={ascent} />}
 
       {!world && (!ascent || ascent.sealedAt) && (
         <Threshold
@@ -1093,10 +1118,8 @@ export function GamePage() {
         />
       )}
 
-      {import.meta.env.DEV && !world && DevPanel && <DevPanel onWarp={warpTo} />}
-
       {world && ascent && region && (
-        <>
+        <div className={styles.playing}>
           <div className={styles.hud}>
             {/* **What the Scribe is crossing, which is a path and not a rung.**
                 The three slots were the rung's number, name and Hebrew, and on
@@ -1197,66 +1220,12 @@ export function GamePage() {
             />
           </p>
 
-          <div className={styles.controls}>
-            <Button variant="subtle" onClick={() => setShowKeys((v) => !v)} aria-expanded={showKeys}>
-              {showKeys ? "Hide the keys" : "The keys"}
-            </Button>
-            {/* Audio gets its own control, deliberately not tied to
-                prefers-reduced-motion — the deal's sound is currently
-                silenced by that preference with no way to ask for it back. */}
-            <Button
-              variant="subtle"
-              onClick={audio.toggle}
-              aria-pressed={audio.on}
-              title={audio.on ? "Silence the ascent" : "Sound the ascent"}
-            >
-              {audio.on ? "🔔 Sounding" : "🔕 Silent"}
-            </Button>
-            {allLearned(taught) && (
-              <Button
-                variant="subtle"
-                onClick={() => {
-                  forgetTaught();
-                  setTaught([]);
-                }}
-                title="Walk through the opening lessons again"
-              >
-                Teach me again
-              </Button>
-            )}
-            {/* Seven chips rather than a sentence — the sentence that used to
-                stand here named four of the seven and quietly omitted the two
-                that climb, swim and crawl. */}
-            <span className={styles.controlsHint}>
-              {CONTROLS.map((c) => (
-                <kbd key={c.id} className={styles.kbd} title={`${c.name} — ${c.does}`}>
-                  {c.keys[0]}
-                </kbd>
-              ))}{" "}
-              — all of it under <strong>The keys</strong>.
-            </span>
-          </div>
-
-          {audio.on && audio.score && (
-            <p className={styles.nigunLine}>
-              <span className={styles.nigunMode}>
-                {audio.score.mode.name}
-                <span className={`${styles.nigunHeb} hebrew`} lang="he">
-                  {audio.score.mode.hebrew}
-                </span>
-              </span>
-              <span className={styles.nigunNote}>
-                {audio.score.mode.character} The nigun is{" "}
-                <strong>{audio.score.nigun.name}</strong> ({audio.score.nigun.attribution}).{" "}
-                {audio.score.openDegrees.length === 1
-                  ? "You carry no letters yet, so only the tonic sounds."
-                  : `Your letters have opened ${audio.score.openDegrees.length} of the nine degrees.`}
-              </span>
-            </p>
-          )}
-
-          {showKeys && <Keys held={ascent.lettersHeld} regionIndex={ascent.regionIndex} />}
-        </>
+          {/* **The toolbar is gone.** A row of buttons under the canvas —
+              the keys panel, the sound toggle, a legend of every key, and the
+              nigun's provenance — was the last of the documentation sitting on
+              top of the game. All of it is behind Esc now, which is where a
+              game keeps it. */}
+        </div>
       )}
 
       {plate && (
@@ -1277,14 +1246,111 @@ export function GamePage() {
           onClose={() => setPlate(null)}
         />
       )}
+
+      {/* **The Tree, over whatever is behind it.** One surface for both jobs:
+          read-only while a rung is being walked, and live where the Scribe is
+          actually standing. It used to be a screen you were sent back to. */}
+      {mapOpen && ascent && !ascent.sealedAt && (
+        <div className={styles.overlay} role="dialog" aria-modal="true" aria-label="The Tree">
+          <div className={styles.overlayBody}>
+            <TreeMap
+              ascent={ascent}
+              at={standingAt(ascent)}
+              readOnly={Boolean(world)}
+              onWalk={chooseWay}
+              onKindle={kindleHere}
+              onFace={faceGuardian}
+              onSeal={allKindled(ascent) ? () => setPlate({ kind: "sealed" }) : undefined}
+            />
+          </div>
+          {/* No button. The key that opened it closes it, and saying so once
+              here is how that gets learned. */}
+          <p className={styles.overlayFoot}>
+            {world ? "You are on the way — the Tree is only shown." : "Choose a way out."} Tab or Esc
+            to close.
+          </p>
+        </div>
+      )}
+
+      {paused && (
+        <PauseMenu ascent={ascent} time={time} audio={audio} onClose={() => setPaused(false)}>
+          {/* The warp is a tool, and tools belong in the drawer with the rest
+              of them rather than under the title of the game. */}
+          {import.meta.env.DEV && !world && DevPanel && <DevPanel onWarp={warpTo} />}
+        </PauseMenu>
+      )}
+
+      {/* The whole of the furniture: the two keys, and the way back. */}
+      <div className={styles.cornerBar}>
+        <Link to="/" className={styles.cornerLink}>
+          ← The Treasury
+        </Link>
+        {/* **Tappable, not just named.** A phone has no Tab and no Esc, and
+            the map used to be a page you could scroll to. Buttons, so the two
+            surfaces are reachable by thumb — the key names stay because that is
+            how anyone at a keyboard should be reaching them. */}
+        <span className={styles.cornerKeys}>
+          {ascent && !ascent.sealedAt && (
+            <>
+              <button type="button" className={styles.cornerButton} onClick={() => setMapOpen((o) => !o)}>
+                <kbd>Tab</kbd> the Tree
+              </button>
+              <span aria-hidden="true"> · </span>
+            </>
+          )}
+          <button type="button" className={styles.cornerButton} onClick={() => setPaused((p) => !p)}>
+            <kbd>Esc</kbd> the ways of the body
+          </button>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Standing on the Tree between rungs, behind the map.
+ *
+ * Deliberately almost nothing: the Scribe is here for a moment, on their way to
+ * choosing a path, and the map is already up in front of it. It exists so that
+ * closing the map does not reveal an empty page.
+ */
+function Standing({ ascent }: { ascent: AscentRecord }) {
+  const here = regionOfSefirah(standingAt(ascent));
+  const lit = (ascent.sefirotLit ?? []).length;
+  return (
+    <div className={styles.standing}>
+      <p className={styles.standingKicker}>You stand in</p>
+      <h1 className={styles.standingName}>{here.name}</h1>
+      <p className={`${styles.standingHeb} hebrew`} lang="he">
+        {here.hebrew}
+      </p>
+      <p className={styles.standingLine}>
+        {lit} of ten kindled · {ascent.lettersHeld.length} of twenty-two · {ascent.or} light
+      </p>
+      <p className={styles.standingHint}>
+        <kbd>Tab</kbd> for the Tree
+      </p>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// the threshold: begin, or resume
+// the start screen, and the menu behind Esc
 // ---------------------------------------------------------------------------
 
+/**
+ * **The start screen.**
+ *
+ * What stood here was three and a half thousand pixels: a page header, a
+ * nine-line lede, the Encounter, the prologue open by default, the day's notes,
+ * a complete eight-key reference, the Begin button somewhere in the middle of
+ * it, a ten-row ladder of the Sefirot and the dev warp — inside the site's nav
+ * and footer. A Scribe arriving to play had to read a manual to find the door.
+ *
+ * All of it still exists. It is behind Esc (`PauseMenu`), which is where a game
+ * keeps its manual. What is left here is the title, one line of why, and the
+ * way in.
+ */
 function Threshold({
   ascent,
   time,
@@ -1303,25 +1369,115 @@ function Threshold({
 }) {
   const sealed = ascent?.sealedAt;
   return (
-    <section className={styles.threshold}>
-      <div className={styles.thresholdInner}>
-        {encounter ? (
-          <p className={styles.encounterLine}>
-            <span className={styles.plateKicker}>{encounterTitle(encounter)}</span>
-            <span className={styles.encounterThemes}>{encounter.themes}</span>
-          </p>
-        ) : (
-          <p className={styles.encounterLine}>
-            <span className={styles.plateKicker}>Beyond the seven</span>
-            <span className={styles.encounterThemes}>
-              The Seven Encounters are behind you. What is climbed now is climbed freely.
-            </span>
+    <section className={styles.start}>
+      <div className={styles.startInner}>
+        <p className={styles.startKicker}>The Practice</p>
+        <h1 className={styles.startTitle}>Ma&apos;alot</h1>
+        <p className={`${styles.startHeb} hebrew`} lang="he">
+          מַעֲלוֹת
+        </p>
+        {/* One line, not nine. The rest of the premise is the prologue, and the
+            prologue is behind Esc — or, for a Scribe who has never begun, it is
+            the first thing the game says once they press the button. */}
+        <p className={styles.startLede}>
+          You were the scribe of the crown, and you were cast down to the kingdom without being told
+          what for. Climb back on the twenty-two letters, and ask.
+        </p>
+
+        <div className={styles.startActions}>
+          {ascent && !sealed ? (
+            <>
+              <Button variant="primary" onClick={onResume} autoFocus>
+                Resume — {regionOfSefirah(standingAt(ascent)).name}
+              </Button>
+              <Button onClick={onBegin}>Begin again from Malchut</Button>
+            </>
+          ) : (
+            <Button variant="primary" onClick={onBegin} autoFocus>
+              {taught ? "Begin the ascent" : "Begin — the way will be shown"}
+            </Button>
+          )}
+        </div>
+
+        {sealed && ascent && (
+          <p className={styles.startLast}>
+            Your last ascent reached the crown with {ascent.lettersHeld.length} of the twenty-two
+            letters and {ascent.or} light.
           </p>
         )}
 
-        {/* Why any of this is being climbed. Open by default for a Scribe who
-            has never begun, and foldable for everyone who has. */}
-        <details className={styles.prologue} open={!ascent}>
+        <p className={styles.startDay}>
+          {time.seedLabel} · {encounter ? encounterTitle(encounter) : "Beyond the seven"}
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * **Esc — everything the threshold used to stack on top of the game.**
+ *
+ * The ways of the body, the day's notes, the prologue and the ten Sefirot. None
+ * of it was wrong; all of it was in front of the door. A pause menu is where a
+ * game keeps this, and it is the one place all four belong together: they are
+ * the things a Scribe wants *while* climbing and never wants twice.
+ */
+function PauseMenu({
+  ascent,
+  time,
+  audio,
+  onClose,
+  children,
+}: {
+  ascent: AscentRecord | null;
+  time: ReturnType<typeof readAscentTime>;
+  audio: ReturnType<typeof useGameAudio>;
+  onClose: () => void;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className={styles.overlay} role="dialog" aria-modal="true" aria-label="The ways of the body">
+      <div className={styles.overlayBody}>
+        <div className={styles.pauseHead}>
+          <h2 className={styles.pauseTitle}>The ways of the body</h2>
+          <Button onClick={onClose} autoFocus>
+            Back to the climb
+          </Button>
+        </div>
+
+        {/* What this Scribe can actually do, then every key there is. The
+            first is the useful one mid-climb; the second is the reference the
+            threshold used to open with. */}
+        {ascent && <Keys held={ascent.lettersHeld} regionIndex={ascent.regionIndex} />}
+
+        <details className={styles.waysDetails} open={!ascent}>
+          <summary className={styles.waysSummary}>Every key</summary>
+          <Ways held={[]} />
+        </details>
+
+        <DecoratedRule />
+
+        <p className={styles.seedLine}>
+          Today is <strong>{time.seedLabel}</strong>. The Tree is seeded by the Hebrew date, so every
+          Scribe who begins today climbs the same one.
+        </p>
+        {time.notes.length > 0 && (
+          <ul className={styles.notes}>
+            {time.notes.map((note) => (
+              <li key={note}>{note}</li>
+            ))}
+          </ul>
+        )}
+
+        <p className={styles.pauseToggles}>
+          <label>
+            <input type="checkbox" checked={audio.on} onChange={() => audio.toggle()} /> Sound
+          </label>
+        </p>
+
+        <DecoratedRule />
+
+        <details className={styles.prologue}>
           <summary className={styles.prologueSummary}>{PROLOGUE.kicker}</summary>
           {PROLOGUE.lines.map((line) => (
             <p key={line.slice(0, 24)} className={styles.prologueLine}>
@@ -1331,85 +1487,27 @@ function Threshold({
           <p className={styles.prologueCharge}>{PROLOGUE.charge}</p>
         </details>
 
-        <p className={styles.seedLine}>
-          Today is <strong>{time.seedLabel}</strong>. The Tree is seeded by the Hebrew date, so every
-          Scribe who begins today climbs the same one.
-        </p>
-
-        {time.notes.length > 0 && (
-          <ul className={styles.notes}>
-            {time.notes.map((note) => (
-              <li key={note}>{note}</li>
-            ))}
-          </ul>
-        )}
-
-        {/* Open by default for a Scribe who has never climbed — the one place
-            the whole scheme can be read before anything is at stake. */}
-        <details className={styles.waysDetails} open={!taught}>
-          <summary className={styles.waysSummary}>The ways of the body — every key</summary>
-          <Ways held={[]} />
+        <details className={styles.prologue}>
+          <summary className={styles.prologueSummary}>The ten Sefirot</summary>
+          <ol className={styles.ladder}>
+            {[...regions].reverse().map((r) => {
+              const lit = (ascent?.sefirotLit ?? []).includes(r.sefirah);
+              return (
+                <li key={r.index} className={[styles.rung, lit ? styles.rungLit : ""].filter(Boolean).join(" ")}>
+                  <span className={`${styles.rungHeb} hebrew`} lang="he">
+                    {r.hebrew}
+                  </span>
+                  <span className={styles.rungName}>{r.name}</span>
+                  <span className={styles.rungGloss}>{r.middah}</span>
+                </li>
+              );
+            })}
+          </ol>
         </details>
 
-        <DecoratedRule />
-
-        <div className={styles.thresholdActions}>
-          {ascent && !sealed ? (
-            <>
-              <Button variant="primary" onClick={onResume}>
-                Resume the ascent — {regionAt(ascent.regionIndex).name}
-              </Button>
-              <Button onClick={onBegin}>Begin again from Malchut</Button>
-            </>
-          ) : (
-            <Button variant="primary" onClick={onBegin}>
-              {taught ? "Begin the ascent" : "Begin — the way will be shown"}
-            </Button>
-          )}
-        </div>
-
-        {sealed && ascent && (
-          <Callout>
-            Your last ascent reached the crown with {ascent.lettersHeld.length} of the twenty-two
-            letters found and {ascent.or} light gathered.
-          </Callout>
-        )}
-
-        <DecoratedRule />
-
-        <ol className={styles.ladder}>
-          {[...regions].reverse().map((r) => {
-            const done = ascent?.regionsCleared.includes(r.index);
-            const here = ascent && !sealed && ascent.regionIndex === r.index;
-            const lit = (ascent?.sefirotLit ?? []).includes(r.sefirah);
-            const illumined = encounter?.sefirah === r.sefirah;
-            return (
-              <li
-                key={r.index}
-                title={illumined ? "This Encounter lights this rung — its light counts double." : undefined}
-                className={[
-                  styles.rung,
-                  done ? styles.rungDone : "",
-                  here ? styles.rungHere : "",
-                  lit ? styles.rungLit : "",
-                  illumined ? styles.rungIllumined : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-              >
-                <span className={`${styles.rungHeb} hebrew`} lang="he">
-                  {r.hebrew}
-                </span>
-                <span className={styles.rungName}>{r.name}</span>
-                <span className={styles.rungMiddah}>
-                  {lit ? "✦ kindled" : r.middah}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
+        {children}
       </div>
-    </section>
+    </div>
   );
 }
 
