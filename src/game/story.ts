@@ -136,11 +136,34 @@ export interface Witness {
  * `housesMet` has always been recorded on the ascent and has never been used
  * for anything but a count on the closing plate. It is the case.
  */
+/**
+ * Which rung a House card belongs to — **the card's own answer, not the
+ * rung's**.
+ *
+ * The figure standing on a path comes from the path's *lower* end
+ * (`build.ts`), while `world.regionIndex` is the upper end capped by what the
+ * Scribe's letters have earned. The House plate used to read the second, so
+ * once a Scribe's letters outgrew the ground they stood on, the figure, the
+ * accusation and the guest's bargain could belong to three different rungs:
+ * David's face over Yesod's charge with Joseph asking the price. The ending
+ * counted correctly all along, because `witnessesOf` went through the card —
+ * so the plate and the crown disagreed about where you had just been.
+ *
+ * Exactly the same mistake as the scroll's, one file over: an index that says
+ * *how big the ground is* was asked *which content this is*. One route for
+ * everyone who needs the answer, so there is nothing left to disagree with.
+ */
+export function sefirahOfCard(cardId: string): SefirahId | undefined {
+  const house = dorotHousesById[dorotCardsById[cardId]?.houseId ?? ""];
+  return house ? (house.sefirah as SefirahId) : undefined;
+}
+
 export function witnessesOf(housesMet: readonly string[]): Witness[] {
   const found = new Map<string, Witness>();
   for (const cardId of housesMet) {
     const house = dorotHousesById[dorotCardsById[cardId]?.houseId ?? ""];
-    if (house) found.set(house.sefirah, { sefirah: house.sefirah as SefirahId, figure: house.figure });
+    const sefirah = sefirahOfCard(cardId);
+    if (house && sefirah) found.set(sefirah, { sefirah, figure: house.figure });
   }
   return [...found.values()];
 }

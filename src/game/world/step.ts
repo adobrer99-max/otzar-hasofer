@@ -1082,7 +1082,16 @@ function veil(world: World, ctx: StepContext, message: string): void {
   say(world, `${message} You wake at ${returns ? "the fork" : "your mark"}.`);
 }
 
-function say(world: World, text: string): void {
+/**
+ * The world's own voice — one line, for a few seconds, over the ground it is
+ * about.
+ *
+ * Exported because `GamePage` has one thing to say into a running world: that a
+ * vow has been taken. Everything else it has to say waits for a plate, but a
+ * vow starts binding the moment the guest is answered and the plate closes on
+ * the same frame, so there is nowhere else for it to go.
+ */
+export function say(world: World, text: string): void {
   world.message = { text, until: world.tick + MESSAGE_TICKS };
 }
 

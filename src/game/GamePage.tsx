@@ -13,7 +13,7 @@ import {
   type AscentRecord,
   type FormedWord,
 } from "../storage/ascentRepo";
-import { abilityByLetter, type Grace, type LetterAbility, type Verb } from "./abilities";
+import { abilityByLetter, abilityForVerb, type Grace, type LetterAbility, type Verb } from "./abilities";
 import {
   abilitiesFor,
   BARRIER_OF,
@@ -36,8 +36,8 @@ import { GameCanvas, type HudSample } from "./GameCanvas";
 import { regionAt, regionOfSefirah, regions, TOTAL_REGIONS } from "./regions";
 import { encounterFor, encounterTitle, isIllumined, rulesFor, sealedCount } from "./encounter";
 import { judge, lightFor, opens, type WordGateTarget, type WordGateVerdict } from "./wordGate";
-import { offerFor, vowKept, type UshpizinOffer } from "./ushpizinOffers";
-import { openWordGate } from "./world/step";
+import { dormantFor, offerFor, vowKept, type UshpizinOffer } from "./ushpizinOffers";
+import { openWordGate, say } from "./world/step";
 import { useGameAudio } from "./audio/useGameAudio";
 import { readAscentTime } from "./sacredAscent";
 import { fragmentAt, gather, SCROLL_LETTER, SCROLL_TOTAL, SCROLL_VERSE } from "./scroll";
@@ -48,6 +48,7 @@ import {
   ABYSS_WORD,
   pleaFor,
   PROLOGUE,
+  sefirahOfCard,
   TESTIMONY,
   witnessesOf,
   WITNESSES_POSSIBLE,
@@ -96,7 +97,16 @@ type Plate =
   | { kind: "word-gate" }
   | { kind: "word-result"; verdict: WordGateVerdict }
   | { kind: "region-done" }
-  | { kind: "path-done"; path: TreePath }
+  | {
+      kind: "path-done";
+      path: TreePath;
+      /**
+       * How a vow taken at this rung's House turned out. Reported here because
+       * the exit is where it is judged, and a caption raised at the exit is
+       * hidden behind this plate a frame later.
+       */
+      vow?: { kept: boolean; figure: string; grantsLabel: string; terms: string };
+    }
   | { kind: "guardian-done"; sefirah: SefirahId }
   /**
    * Raised *before* a crossing is walked, not after one is finished — which is
@@ -142,8 +152,6 @@ export function GamePage() {
   const [showKeys, setShowKeys] = useState(false);
   /** Which lessons this Scribe has already been taught — per Scribe, not per run. */
   const [taught, setTaught] = useState<LessonKey[]>(() => readTaught());
-  /** Graces a guest of the Houses has granted this climb. */
-  const [granted, setGranted] = useState<Grace[]>([]);
   /** A vow taken at a House, and the counters it will be judged against. */
   const [vow, setVow] = useState<
     { offer: UshpizinOffer; at: { orGathered: number; veilings: number; marksSet: number } } | null
@@ -218,14 +226,14 @@ export function GamePage() {
   // guest of the Houses has granted. All three are graces, never verbs.
   const graces: Grace[] = useMemo(() => {
     const held = letters.map((id) => abilityByLetter[id]?.grace).filter((g): g is Grace => Boolean(g));
-    const lent = [...held, ...granted];
+    const lent = [...held, ...(ascent?.boons ?? [])];
     if (time.graceOfTheDay && !lent.includes(time.graceOfTheDay)) lent.push(time.graceOfTheDay);
     // And whatever the Encounter this climb belongs to holds open for the whole
     // of it — the Third's second stone is a grace like any other, so it arrives
     // by the same door rather than through a special case.
     for (const g of rulesFor(encounter)?.grants ?? []) if (!lent.includes(g)) lent.push(g);
     return lent;
-  }, [letters, granted, time.graceOfTheDay, encounter]);
+  }, [letters, ascent?.boons, time.graceOfTheDay, encounter]);
 
   /**
    * The boons a Scribe carries into everything, from every guardian they have
@@ -352,7 +360,6 @@ export function GamePage() {
    */
   const beginAt = useCallback(
     (record: AscentRecord, over?: { porch?: boolean; lamps?: number }) => {
-      setGranted([]);
       persist(record);
       enterRegion(record, over);
     },
@@ -391,7 +398,6 @@ export function GamePage() {
    */
   const beginAscent = useCallback(() => {
     const record = newRecord();
-    setGranted([]);
     persist(record);
     setWorld(null);
     setWalking(null);
@@ -631,6 +637,27 @@ export function GamePage() {
     [world, audio],
   );
 
+  /**
+   * A guest's grace, written onto the climb.
+   *
+   * On the record rather than in React state, because it has to outlive the
+   * rung it was given on — see `AscentRecord.boons`. Three of the seven guests
+   * grant at the exit, and the exit used to be the last moment the old state
+   * existed.
+   */
+  const giveBoon = useCallback((grace: Grace) => {
+    setAscent((prev) => {
+      if (!prev || (prev.boons ?? []).includes(grace)) return prev;
+      const next: AscentRecord = {
+        ...prev,
+        boons: [...(prev.boons ?? []), grace],
+        updatedAt: new Date().toISOString(),
+      };
+      void saveAscent(next).catch(() => undefined);
+      return next;
+    });
+  }, []);
+
   /** A guest's bargain accepted — paid for now, or vowed and judged later. */
   const acceptOffer = useCallback(
     (offer: UshpizinOffer) => {
@@ -649,12 +676,15 @@ export function GamePage() {
           offer,
           at: { orGathered: world.orGathered, veilings: world.veilings, marksSet: world.marksSet },
         });
+        // Said into the world, because a vow binds from here and the plate is
+        // about to close over it. Judged at the exit — see `PathDonePlate`.
+        say(world, `You give ${offer.figure} your word: ${offer.terms.toLowerCase()}.`);
       } else {
-        setGranted((prev) => (prev.includes(offer.grants) ? prev : [...prev, offer.grants]));
+        giveBoon(offer.grants);
       }
       setPlate(null);
     },
-    [world, encounter],
+    [world, encounter, giveBoon],
   );
 
   const onHouse = useCallback((cardId: string) => {
@@ -693,15 +723,26 @@ export function GamePage() {
     }
     // A vow taken at a House is judged here, on the way out, against how the
     // rest of the region was actually crossed.
+    let vowOutcome: { kept: boolean; figure: string; grantsLabel: string; terms: string } | undefined;
     if (vow && world) {
       const since = {
         orGathered: world.orGathered - vow.at.orGathered,
         veilings: world.veilings - vow.at.veilings,
         marksSet: world.marksSet - vow.at.marksSet,
       };
-      if (vowKept(vow.offer.vow!, since)) {
-        setGranted((prev) => (prev.includes(vow.offer.grants) ? prev : [...prev, vow.offer.grants]));
-      }
+      const kept = vowKept(vow.offer.vow!, since);
+      if (kept) giveBoon(vow.offer.grants);
+      // **Said out loud, either way.** A vow was the one bargain in this game
+      // with a delayed outcome and the only one that reported nothing: the
+      // Scribe was never told it was taken, never told it was kept, and never
+      // told it was broken. With the reward inert as well, the three vow guests
+      // were indistinguishable from Decline.
+      vowOutcome = {
+        kept,
+        figure: vow.offer.figure,
+        grantsLabel: vow.offer.grantsLabel,
+        terms: vow.offer.terms,
+      };
       setVow(null);
     }
 
@@ -746,7 +787,7 @@ export function GamePage() {
     });
     setPlate(
       walking
-        ? { kind: "path-done", path: walking }
+        ? { kind: "path-done", path: walking, vow: vowOutcome }
         : ascent?.regionIndex === TOTAL_REGIONS
           ? { kind: "sealed" }
           : // The Abyss plate used to be raised here, on the linear road's
@@ -757,7 +798,7 @@ export function GamePage() {
             // travel guide handed out at the destination.
             { kind: "region-done" },
     );
-  }, [ascent?.regionIndex, world, vow, audio, walking, facing]);
+  }, [ascent?.regionIndex, world, vow, audio, walking, facing, giveBoon]);
 
   /**
    * Step onto a path from the overworld — which is what a rung is now.
@@ -786,7 +827,6 @@ export function GamePage() {
       next.orPerMote = Math.max(1, Math.round(next.orPerMote * carried.light));
       // The path's own two ends, not the rung's capped index — see `layEncounter`.
       layEncounter(next, path.ends);
-      setGranted([]);
       setWalking(path);
       setWorld(next);
       setVow(null);
@@ -836,7 +876,6 @@ export function GamePage() {
     const room = buildArena(at, ascent.seed);
     const carried = powersFrom(ascent.items ?? [], boons);
     room.player.lamps += carried.lamps;
-    setGranted([]);
     setWalking(null);
     setFacing(at);
     setWorld(room);
@@ -1225,6 +1264,7 @@ export function GamePage() {
           plate={plate}
           ascent={ascent}
           world={world}
+          verbs={verbs}
           encounter={encounter}
           onNext={climbOn}
           onWalk={walkPath}
@@ -1636,6 +1676,7 @@ function PlateOverlay({
   plate,
   ascent,
   world,
+  verbs,
   encounter,
   onNext,
   onWalk,
@@ -1650,6 +1691,8 @@ function PlateOverlay({
   plate: Plate;
   ascent: AscentRecord | null;
   world: World | null;
+  /** What this body can do — the House plate says when a boon would sleep. */
+  verbs: readonly Verb[];
   encounter: ReturnType<typeof encounterFor>;
   onNext: (kindle?: boolean) => void;
   /** Step onto the path the Abyss plate is standing at the near edge of. */
@@ -1679,7 +1722,7 @@ function PlateOverlay({
     <div className={styles.plateScrim} role="dialog" aria-modal="true">
       <div className={styles.plate} ref={body}>
         {plate.kind === "path-done" && ascent && (
-          <PathDonePlate ascent={ascent} path={plate.path} onBack={onBack} />
+          <PathDonePlate ascent={ascent} path={plate.path} vow={plate.vow} onBack={onBack} />
         )}
         {plate.kind === "guardian-done" && (
           <GuardianDonePlate sefirah={plate.sefirah} onBack={onBack} />
@@ -1700,8 +1743,8 @@ function PlateOverlay({
         {plate.kind === "house" && ascent && world && (
           <HousePlate
             cardId={plate.cardId}
-            sefirah={regionAt(world.regionIndex).sefirah}
             or={world.or}
+            verbs={verbs}
             onAccept={onAccept}
             onClose={onClose}
           />
@@ -2060,24 +2103,35 @@ function WordResultPlate({ verdict, onClose }: { verdict: WordGateVerdict; onClo
 
 function HousePlate({
   cardId,
-  sefirah,
   or,
+  verbs,
   onAccept,
   onClose,
 }: {
   cardId: string;
-  sefirah: SefirahId;
   or: number;
+  /** What this body can do — so a boon it could not use yet says so. */
+  verbs: readonly Verb[];
   onAccept: (offer: UshpizinOffer) => void;
   onClose: () => void;
 }) {
   const card = dorotCardsById[cardId];
   const house = card ? dorotHousesById[card.houseId] : undefined;
-  const offer = offerFor(sefirah);
+  // **The card says which rung this is**, and it is the only thing here that
+  // can. The figure was placed from the path's lower end; `world.regionIndex`
+  // is the upper end capped by the Scribe's letters, and this used to be
+  // passed that — so the face, the accusation and the bargain could come from
+  // three different Sefirot. See `sefirahOfCard`.
+  const sefirah = sefirahOfCard(cardId);
+  const offer = sefirah ? offerFor(sefirah) : undefined;
   // The piece of the charge this rung holds. Keyed by Sefirah rather than by
   // figure, because either House may stand here and both of them did the same
   // thing at this rung — see `story.ts`.
-  const testimony = TESTIMONY[sefirah];
+  const testimony = sefirah ? TESTIMONY[sefirah] : undefined;
+  const dormant = offer ? dormantFor(offer, verbs) : undefined;
+  const dormantLetter = dormant
+    ? lettersById[abilityForVerb(dormant)?.letterId ?? ""]?.transliteration
+    : undefined;
   if (!card) return null;
   return (
     <>
@@ -2112,6 +2166,19 @@ function HousePlate({
           </p>
           <p className={styles.offerSaying}>&ldquo;{offer.saying}&rdquo;</p>
           <p className={styles.offerGrants}>{offer.grantsLabel}</p>
+          {/* **A bargain for a body that cannot yet use it.** `GRACE_NEEDS`
+              wrote this dependency down and `exposure.test.ts` enforces it
+              against the *linear* letter order — which was the whole truth
+              until the Tree let a route decide the alphabet. Said rather than
+              hidden: the offer is still theirs to take, and whether to take it
+              now or come back holding the letter is the Scribe's call. */}
+          {dormant && (
+            <p className={styles.offerShort}>
+              {dormantLetter
+                ? `This needs ${dormantLetter}, which you do not carry — take it now and it sleeps until you do.`
+                : "You cannot use this yet — take it now and it sleeps until you can."}
+            </p>
+          )}
           {offer.price > 0 && or < offer.price && (
             <p className={styles.offerShort}>
               You carry {or} light; {offer.price} is asked. Come back with more.
@@ -2151,10 +2218,13 @@ function HousePlate({
 function PathDonePlate({
   ascent,
   path,
+  vow,
   onBack,
 }: {
   ascent: AscentRecord;
   path: TreePath;
+  /** How a vow taken at this rung's House was judged, if one was taken. */
+  vow?: { kept: boolean; figure: string; grantsLabel: string; terms: string };
   onBack: () => void;
 }) {
   const arrived = regionOfSefirah(standingAt(ascent));
@@ -2177,6 +2247,16 @@ function PathDonePlate({
           : `${letter?.transliteration ?? path.letter} lies on this path still — it was not lifted.`}{" "}
         {ascent.lettersHeld.length} of the twenty-two · {ascent.or} light carried.
       </p>
+      {/* **The vow, judged.** The only bargain in this game whose outcome comes
+          later than its acceptance, and until now the only one that reported
+          nothing at all — not when taken, not when kept, not when broken. */}
+      {vow && (
+        <p className={styles.plateQuestion}>
+          {vow.kept
+            ? `You said you would ${vow.terms.toLowerCase()}, and you did. ${vow.figure} keeps the bargain: ${vow.grantsLabel.toLowerCase()}.`
+            : `You said you would ${vow.terms.toLowerCase()}, and you did not. ${vow.figure} says nothing about it, and the blessing stays where it was.`}
+        </p>
+      )}
       <div className={styles.plateActions}>
         <Button variant="primary" onClick={onBack} autoFocus>
           Stand on the Tree
