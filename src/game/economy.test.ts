@@ -8,14 +8,8 @@ import { buildPath, rowsFor, verbsOf } from "./world/build";
 import { fighter } from "./world/fight.test";
 import type { World } from "./world/types";
 import type { StepContext } from "./world/step";
-import { regions } from "./regions";
-
-/** The region standing at a Sefirah — the ten are a small table. */
-const regionOf = (sefirah: SefirahId) => {
-  const found = regions.find((r) => r.sefirah === sefirah);
-  if (!found) throw new Error(`No region stands at ${sefirah}`);
-  return found;
-};
+import { regionOfSefirah, regions } from "./regions";
+import { wakeAt } from "./fall";
 import type { SefirahId } from "../types/letter";
 
 /**
@@ -99,7 +93,9 @@ function climb(seed: number, walks: number) {
   let standing: Standing = { at: "malchut", pathsWalked: [] };
   let carried = 0;
   const held: string[] = [];
-  const legs: { or: number; supply: number; spent: boolean }[] = [];
+  // `at` is where the Scribe is standing **after** the leg, which is the
+  // Sefirah the map offers to kindle and the one a fall would measure from.
+  const legs: { or: number; supply: number; spent: boolean; at: SefirahId }[] = [];
 
   for (let i = 0; i < walks; i += 1) {
     // **A Scribe with a map prefers ground they have not taken.** Choosing
@@ -115,9 +111,9 @@ function climb(seed: number, walks: number) {
     const spent = standing.pathsWalked.includes(path.id);
     const leg = walk(path, seed, held, spent);
     carried += leg.or;
-    legs.push({ ...leg, spent });
     if (!held.includes(path.letter)) held.push(path.letter);
     standing = afterWalking(standing, path);
+    legs.push({ ...leg, spent, at: standing.at });
   }
   return { carried, legs, held, at: standing.at, walked: standing.pathsWalked };
 }
@@ -155,7 +151,7 @@ describe("the price of the Tree", () => {
     // landing anywhere in the sample compares two different Scribes.
     const rows = [1, 2, 3, 4, 5, 6].map((seed) => {
       const c = climb(seed, 3);
-      return { purse: c.carried, cost: kindleCost(regionOf(c.at).index), at: c.at };
+      return { purse: c.carried, cost: kindleCost(regionOfSefirah(c.at).index), at: c.at };
     });
     const afford = rows.filter((r) => r.purse >= r.cost).length;
     expect(
@@ -245,6 +241,137 @@ describe("the price of the Tree", () => {
       `the crown's paths hold ${full.toFixed(0)} to a full hand and ${bare.toFixed(0)} to an empty one`,
     ).toBeGreaterThan(bare);
   }, 120000);
+});
+
+/**
+ * **What the fall is for**, and the one number this whole piece of work exists
+ * to move.
+ *
+ * Light buys exactly one thing — kindling — and the offer comes every time the
+ * Scribe stands somewhere. Until the fall stopped ending a climb, nothing could
+ * ever take `or` back, so hoarding all three hundred for a grand finale was
+ * *strictly* correct and the game's only economic decision had one answer. See
+ * `game/fall.ts`.
+ *
+ * Both policies are run over **the same legs of the same climb**, so this is not
+ * two stochastic runs being compared: the ground, the seeds and the probe's own
+ * clumsiness are held fixed, and the only difference is when the light was laid
+ * down. That also makes the no-fall case an exact identity rather than a near
+ * miss, which is the fairness check the comparison rests on.
+ *
+ * The kindler's second advantage is deliberately **not** counted: waking at a
+ * kindled Sefirah rather than in the kingdom saves them the walk back, and the
+ * ground they would re-walk pays `SPENT_LIGHT`. Leaving it out makes every
+ * margin below a floor rather than a guess — the same one-sided generosity
+ * `climb` already keeps by crediting letters in full.
+ */
+describe("what the fall costs, and what kindling early is worth", () => {
+  /** A policy walked over a climb's legs: light laid into the Tree, and light still in hand. */
+  function underPolicy(
+    legs: readonly { or: number; at: SefirahId }[],
+    opts: { kindle: boolean; fallAfter?: number },
+  ) {
+    let purse = 0;
+    const lit: SefirahId[] = [];
+    legs.forEach((leg, i) => {
+      purse += leg.or;
+      if (opts.kindle && !lit.includes(leg.at)) {
+        const cost = kindleCost(regionOfSefirah(leg.at).index);
+        if (purse >= cost) {
+          purse -= cost;
+          lit.push(leg.at);
+        }
+      }
+      // The fall: the light in hand goes out, and nothing else does.
+      if (i === opts.fallAfter) purse = 0;
+    });
+    const banked = lit.reduce((sum, s) => sum + kindleCost(regionOfSefirah(s).index), 0);
+    return { banked, purse, lit, total: banked + purse };
+  }
+
+  const CLIMBS = [1, 2, 3, 4].map((seed) => climb(seed, 12));
+
+  /**
+   * The fairness check, and a real claim about the design: **kindling costs
+   * nothing when nothing goes wrong.** Light converts into a lit Sefirah at
+   * par, so a Scribe who spends as they go and one who saves to the end are
+   * exactly level until something takes the purse. Which is precisely why the
+   * decision did not exist before.
+   */
+  it("makes no difference at all to a climb that never goes out", () => {
+    for (const { legs } of CLIMBS) {
+      const kindling = underPolicy(legs, { kindle: true });
+      const hoarding = underPolicy(legs, { kindle: false });
+      expect(kindling.total).toBe(hoarding.total);
+      expect(hoarding.lit).toEqual([]);
+    }
+  }, 300000);
+
+  it("takes the whole purse from a Scribe who was carrying it", () => {
+    for (const { legs } of CLIMBS) {
+      const straight = underPolicy(legs, { kindle: false });
+      const fell = underPolicy(legs, { kindle: false, fallAfter: Math.floor(legs.length * 0.7) });
+      expect(fell.total).toBeLessThan(straight.total);
+      expect(fell.banked).toBe(0);
+    }
+  }, 300000);
+
+  /**
+   * **And this is the number.** If a hoarder still came out ahead through a
+   * fall, the change did not do its job and this is where that shows.
+   *
+   * Measured over four twelve-walk climbs, with the fall dropped in at seven
+   * tenths of the way: kindling as it went kept **161, 241, 172 and 127**
+   * against hoarding's **77, 105, 64 and 67**. Between one and three quarters
+   * and two and three quarters as much, and the leanest margin sixty light —
+   * five kindlings' worth at the foot of the Tree.
+   *
+   * The bar is a *ratio* rather than those absolutes, because the probe's own
+   * clumsiness sets the scale and a better driver would move every number here
+   * together. What must not move is which policy wins.
+   */
+  it("leaves a Scribe who kindled as they went well ahead of one who saved it up", () => {
+    const margins = CLIMBS.map(({ legs }) => {
+      const fallAfter = Math.floor(legs.length * 0.7);
+      const kindling = underPolicy(legs, { kindle: true, fallAfter });
+      const hoarding = underPolicy(legs, { kindle: false, fallAfter });
+      return {
+        kindling,
+        hoarding,
+        kept: kindling.total - hoarding.total,
+        ratio: kindling.total / Math.max(1, hoarding.total),
+      };
+    });
+    const told = margins
+      .map((m) => `${m.kindling.total.toFixed(0)} against ${m.hoarding.total.toFixed(0)}`)
+      .join("; ");
+    const worst = Math.min(...margins.map((m) => m.kept));
+    expect(worst, `through one fall, kindling kept ${told} — leanest margin ${worst.toFixed(0)}`)
+      .toBeGreaterThan(0);
+    const leanest = Math.min(...margins.map((m) => m.ratio));
+    expect(
+      leanest,
+      `the leanest ratio was ${leanest.toFixed(2)}× — measured at 1.9× when this was written (${told})`,
+    ).toBeGreaterThan(1.4);
+    // And the light it kept is light *in the Tree* — the win condition, not a
+    // number on the HUD.
+    expect(margins.every((m) => m.kindling.banked > 0)).toBe(true);
+  }, 300000);
+
+  /**
+   * The other half of the same rule, and the one that keeps the fall from being
+   * a warp: a Scribe wakes at the highest Sefirah they lit **at or below where
+   * they set out**, so falling can never carry them up the Tree.
+   */
+  it("wakes the Scribe no higher than they set out, whatever they lit", () => {
+    for (const { legs } of CLIMBS) {
+      const { lit } = underPolicy(legs, { kindle: true });
+      for (const leg of legs) {
+        const woke = wakeAt({ at: leg.at, sefirotLit: lit });
+        expect(regionOfSefirah(woke).index).toBeLessThanOrEqual(regionOfSefirah(leg.at).index);
+      }
+    }
+  }, 300000);
 });
 
 describe("what a rung holds against what is taken from it", () => {

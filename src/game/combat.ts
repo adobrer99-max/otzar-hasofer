@@ -670,8 +670,15 @@ export function takeHit(lamps: number, iframes: number, grace = 1): Hit {
  *
  * This game was built with no failure state, and combat retires that. What
  * replaces it is not a death screen but the premise: an angel made of light,
- * whose light goes out, is cast back down to the kingdom — which is exactly
- * what already happened to him once, before the first rung. The run ends, the
- * record keeps every letter he found, and Malchut is where he wakes.
+ * whose light goes out, is cast back down — which is exactly what already
+ * happened to him once, before the first rung.
+ *
+ * **And the run does not end.** This once said it did, and so did the plate,
+ * and the plate's button proved it by sealing the record. What the fall costs
+ * is the light in hand and the ground back up; what it cannot touch is a
+ * letter, a vessel, or a Sefirah already lit. See `game/fall.ts`, which owns
+ * the rule — nothing in this file needs to know it, and that is the point of
+ * the split: `combat.ts` says the lamps are out, and something else says what
+ * that means.
  */
 export const GOING_OUT = "The light goes out of you, and the kingdom comes up to meet you.";

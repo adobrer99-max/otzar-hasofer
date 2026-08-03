@@ -317,6 +317,22 @@ export function regionAt(index: number): Region {
   return region;
 }
 
+/**
+ * The region standing at a Sefirah — the other way round from `regionAt`, and
+ * the one the Tree asks for, since a place on the overworld is a Sefirah and
+ * not a number.
+ *
+ * Written three times before it was written once: `build.ts` had a copy for
+ * `regionOfPath` and `GamePage` had another, and `fall.ts` would have been the
+ * third. `index` is the only total order over the ten — how far up the Tree a
+ * place is — so anything that has to compare two Sefirot comes through here.
+ */
+export function regionOfSefirah(sefirah: string): Region {
+  const region = regions.find((r) => r.sefirah === sefirah);
+  if (!region) throw new Error(`No region stands at ${sefirah}`);
+  return region;
+}
+
 /** How many scroll fragments lie in the regions *before* this one. */
 export function fragmentsBefore(regionIndex: number): number {
   return regions.slice(0, regionIndex - 1).reduce((n, r) => n + (r.fragments ?? 0), 0);

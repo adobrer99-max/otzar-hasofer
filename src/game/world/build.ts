@@ -6,6 +6,7 @@ import {
   fragmentsBefore,
   lettersOnEntering,
   regionAt,
+  regionOfSefirah,
   regions,
   TOTAL_REGIONS,
   type Region,
@@ -1412,12 +1413,6 @@ function earnedRung(held: readonly string[]): number {
     if (verbsOf(lettersOnEntering(n)).every((v) => mine.has(v))) earned = n;
   }
   return earned;
-}
-
-function regionOfSefirah(sefirah: string): Region {
-  const region = regions.find((r) => r.sefirah === sefirah);
-  if (!region) throw new Error(`No region for ${sefirah}`);
-  return region;
 }
 
 /**

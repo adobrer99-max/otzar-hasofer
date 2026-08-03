@@ -17,6 +17,10 @@ const ascent = (over: Partial<AscentRecord>): AscentRecord => ({
 describe("the Seven Encounters across ascents", () => {
   it("counts only sealed climbs", () => {
     expect(sealedCount([ascent({}), ascent({ sealedAt: "now" }), ascent({ sealedAt: "now" })])).toBe(2);
+    // A climb that went out four times and is still being walked is not one of
+    // them — see `fall.ts`. The Encounters are earned by finishing, and until
+    // recently they could be bought with failure.
+    expect(sealedCount([ascent({ falls: 4 }), ascent({ falls: 4, sealedAt: "now" })])).toBe(1);
   });
 
   it("walks the seven in order and then stops", () => {

@@ -313,8 +313,12 @@ export interface World {
   /** How many husks have been broken here — for the record, and for doors. */
   husksBroken: number;
   /**
-   * Set when the Scribe's light goes out. The run is over; `GamePage` seals it
-   * as a fall rather than a crowning.
+   * Set when the Scribe's light goes out.
+   *
+   * **This rung is over; the climb is not.** `GamePage` raises the plate, which
+   * pauses the loop, and the Scribe wakes at the highest Sefirah he has kindled
+   * — see `game/fall.ts`. For most of this game's life it said "the run is over"
+   * and meant it, which is the debt that file was written to pay.
    */
   out?: boolean;
   /** Ticks elapsed — the simulation's own clock, never wall time. */

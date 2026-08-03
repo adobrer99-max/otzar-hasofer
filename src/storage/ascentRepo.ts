@@ -100,7 +100,27 @@ export interface AscentRecord {
   /** Sacred Time's notes for the day this ascent belongs to. */
   sacredNotes: string[];
   ascendantLetterId?: string;
-  /** Set when Keter is reached. */
+  /**
+   * How many times the last lamp went out on this climb.
+   *
+   * A fall does not end a climb — see `game/fall.ts`. So it has to be counted,
+   * or the record would say nothing about the difference between a Tree lit at
+   * the first attempt and one lit after four goings-out, which is most of what
+   * there is to say about a climb.
+   */
+  falls?: number;
+  /**
+   * Set when the climb is **carried to its ending** — the crown, or all ten
+   * kindled.
+   *
+   * This used to say "Set when Keter is reached" and was set by going out as
+   * well, which made `sealedCount` — and therefore the Seven Encounters —
+   * advance on a death exactly as on a crowning. A Scribe could walk the seven
+   * by going out seven times in the kingdom. Going out no longer touches this;
+   * it is what divides the two across-runs systems, which is worth stating in
+   * one line: **the guardians accrue from doing, the Encounters from
+   * finishing.**
+   */
   sealedAt?: string;
 }
 
