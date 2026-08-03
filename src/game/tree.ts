@@ -225,6 +225,42 @@ export function pathBetween(a: SefirahId, b: SefirahId): TreePath | undefined {
   return TREE_PATHS.find((p) => p.ends.includes(a) && p.ends.includes(b));
 }
 
+// ---------------------------------------------------------------------------
+// the Abyss
+// ---------------------------------------------------------------------------
+
+/**
+ * **The gulf, and which ways go over it.**
+ *
+ * The Abyss is the single most important structural fact about this diagram: the
+ * three supernals stand on the far side of a gap the lower seven do not reach
+ * across, and `regions.ts` has always known it — Binah, Chochmah and Keter hold
+ * no House and no shrine "above the Abyss", and `story.ts` carries a paragraph
+ * about it that is one of the best things in the game.
+ *
+ * **None of it fired on the Tree.** `GamePage` raised the Abyss plate on
+ * `regionIndex === 7`, which is the *linear* road's index for the rung above
+ * Chesed, and on the Tree a path always sets `walking`, so `path-done` won every
+ * time. The plate had never once been shown to a Scribe on the road that
+ * replaced the one it was written for. It is raised on stepping onto a crossing
+ * now, before the ground is built, because what it says is about the far side.
+ *
+ * So: the gulf is between the fourth row and the fifth, and a path crosses it
+ * when one end is above and the other below. That is five of the twenty-two —
+ * and the fifth is Keter–Tiferet, the long middle pillar, which passes straight
+ * through the place Da'at is drawn on every printed Tree. Counted rather than
+ * listed, so the rule survives anyone moving a node.
+ */
+export const ABYSS_BELOW = 4;
+
+export function crossesAbyss(path: TreePath): boolean {
+  const [a, b] = path.ends.map((s) => nodeOf[s].row);
+  return Math.min(a, b) <= ABYSS_BELOW && Math.max(a, b) > ABYSS_BELOW;
+}
+
+/** The ways over, for the map and for anything that needs to count them. */
+export const ABYSS_PATHS: readonly TreePath[] = TREE_PATHS.filter(crossesAbyss);
+
 /** Where a path sets you down, given where you stepped onto it. */
 export function otherEnd(path: TreePath, from: SefirahId): SefirahId {
   return path.ends[0] === from ? path.ends[1] : path.ends[0];
@@ -456,8 +492,16 @@ function ribbon(
  * render — which is the same data twice and a lookup between them.
  */
 export interface TreeLimb extends TreeLine {
-  /** The tapered outline, in drawing units. */
+  /**
+   * The tapered outline, in drawing units.
+   *
+   * **Two of them on a crossing.** A limb over the Abyss is drawn as the wood
+   * either side of a gap, because that is what the Abyss *is* — and it needs no
+   * legend, no colour and no label to say so. Everything else is one shape.
+   */
   d: string;
+  /** Whether this limb goes over the gulf, for anything that draws it apart. */
+  crosses: boolean;
   /** A leaf sits along the limb, on alternating sides, and turns with it. */
   leaves: { x: number; y: number; angle: number }[];
 }
@@ -465,6 +509,14 @@ export interface TreeLimb extends TreeLine {
 /** Where along a limb the leaves come out, and how far off it they sit. */
 const LEAF_ALONG = [0.28, 0.5, 0.72];
 const LEAF_OFF = 0.075;
+/**
+ * How much of a crossing is missing, as a fraction of its length.
+ *
+ * A third: less and it reads as a join in the drawing rather than a gap, and
+ * more leaves the shorter crossings — Chochmah–Chesed is one row tall — with
+ * two stubs and no limb.
+ */
+const ABYSS_GAP = 0.34;
 
 export const TREE_LIMBS: readonly TreeLimb[] = TREE_LINES.map((line) => {
   const { path, from, to } = line;
@@ -475,20 +527,55 @@ export const TREE_LIMBS: readonly TreeLimb[] = TREE_LINES.map((line) => {
   const nx = -dy / span;
   const ny = dx / span;
   const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+  const crosses = crossesAbyss(path);
+  const at = (t: number) => ({ x: from.x + dx * t, y: from.y + dy * t });
+  const near = 0.5 - ABYSS_GAP / 2;
+  const far = 0.5 + ABYSS_GAP / 2;
   return {
     ...line,
-    d: ribbon(from, to, limbHalf(from.y), limbHalf(to.y), bow),
-    leaves: LEAF_ALONG.map((t, i) => {
-      const side = i % 2 === 0 ? 1 : -1;
-      const w = limbHalf(from.y + (to.y - from.y) * t);
-      return {
-        x: from.x + dx * t + nx * (w + LEAF_OFF) * side,
-        y: from.y + dy * t + ny * (w + LEAF_OFF) * side,
-        angle: angle + side * 34,
-      };
-    }),
+    crosses,
+    d: crosses
+      ? // The wood on either side of the gulf. Bowed the same way as one piece
+        // would have been, so the two halves plainly belong to one limb that is
+        // no longer whole.
+        `${ribbon(from, at(near), limbHalf(from.y), limbHalf(at(near).y), bow * near)} ${ribbon(
+          at(far),
+          to,
+          limbHalf(at(far).y),
+          limbHalf(to.y),
+          bow * (1 - far),
+        )}`
+      : ribbon(from, to, limbHalf(from.y), limbHalf(to.y), bow),
+    leaves: LEAF_ALONG
+      // Nothing grows in the gap. A leaf hanging in the Abyss on a limb that
+      // is not there would undo the one thing the break is saying.
+      .filter((t) => !crosses || t < near || t > far)
+      .map((t, i) => {
+        const side = i % 2 === 0 ? 1 : -1;
+        const w = limbHalf(from.y + (to.y - from.y) * t);
+        return {
+          x: from.x + dx * t + nx * (w + LEAF_OFF) * side,
+          y: from.y + dy * t + ny * (w + LEAF_OFF) * side,
+          angle: angle + side * 34,
+        };
+      }),
   };
 });
+
+/**
+ * **Da'at**, in the gulf on the middle pillar.
+ *
+ * Deliberately *not* a `TreePoint` and deliberately not in `TREE_POINTS`: the
+ * ten are places a Scribe stands, and the eleventh is the one place on this
+ * diagram that is not a station. Nothing kindles it, no path ends at it, and it
+ * has no name written under it — it is drawn because leaving it out is the
+ * mistake every simplified Tree makes, and because Keter–Tiferet runs straight
+ * through where it sits.
+ */
+export const DAAT = {
+  x: TREE_VIEW.width / 2,
+  y: nodeOf.keter.row - (ABYSS_BELOW + 0.5),
+} as const;
 
 /**
  * A root or a crown-branch: the same ribbon, growing out of a Sefirah.

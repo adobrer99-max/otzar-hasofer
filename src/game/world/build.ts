@@ -13,6 +13,7 @@ import {
 import { makeRng, randomInt, shuffle } from "../rng";
 import { chooseTarget, type WordGateTarget } from "../wordGate";
 import {
+  ABYSS_GATE_CHUNK,
   ARENA_A,
   ARENA_B,
   ARENA_SEA_A,
@@ -39,7 +40,7 @@ import { drawKeli, keliFor, type Keli } from "../items";
 import { guardianOf } from "../guardians";
 import { MARKER_CHARS, Tile, TILE_CHARS, TILE_SIZE } from "./tiles";
 import { doorsOf, planFloor, roomAtPoint, ROOM_H, ROOM_W } from "./rooms";
-import { TREE_PATHS, type TreePath } from "../tree";
+import { crossesAbyss, TREE_PATHS, type TreePath } from "../tree";
 import type { Chunk, Edge, Entity, Husk, Player, World } from "./types";
 
 export const PLAYER_W = 16;
@@ -269,6 +270,22 @@ function layout(
   // not permitted to express an unsolvable one.
   const wordGateTarget = chooseTarget(held, rng);
 
+  /**
+   * **Over the gulf the gate stops being a niche and becomes the way.**
+   *
+   * A Word-Gate elsewhere is one room off the path, worth twelve light for the
+   * exact root and free to walk past — which made the one place the game asks a
+   * Scribe to actually *know* something the one place it costs nothing to
+   * shrug at. Once a climb, at the Abyss, it is the door.
+   *
+   * Conditioned on the target rather than on the crossing alone, and that is
+   * the whole soft-lock argument: no target means no root this Scribe can
+   * spell, and a barrier with no answer is not a question. Then the crossing
+   * simply ends the way every other rung does. The rung tests measure how often
+   * that fallback is reached — it should be never, and it is.
+   */
+  const overTheAbyss = Boolean(region.overTheAbyss && wordGateTarget);
+
   // The fixed screens are inserted at positions within the body. Their *order*
   // here is their order on the ground, because the chosen slots are sorted
   // ascending — and that ordering carries a rule: the genizah niches always
@@ -279,7 +296,12 @@ function layout(
   const fixed: Chunk[] = [
     ...Array.from({ length: region.fragments ?? 0 }, () => FRAGMENT_CHUNK),
     ...region.letters.map(() => LETTER_CHUNK),
-    ...(wordGateTarget ? [WORD_GATE_CHUNK] : []),
+    // ...but not on a crossing, where the gate has moved to the way out and a
+    // second one beside the road would let the Scribe answer the question
+    // somewhere it costs nothing and walk through the door it opened.
+    // `openWordGate` dissolves every barrier in the world, and that is right:
+    // there is one gate per rung, and over the gulf it is the last one.
+    ...(wordGateTarget && !overTheAbyss ? [WORD_GATE_CHUNK] : []),
     // One mark per region below the Abyss, and none above it. Low at the foot
     // of the Tree where it is walked into, on a shelf higher up where taking
     // it is a choice.
@@ -341,7 +363,7 @@ function layout(
     }
     if (i < body.length) content.push(body[i]);
   }
-  content.push(END_CHUNK);
+  content.push(overTheAbyss ? ABYSS_GATE_CHUNK : END_CHUNK);
 
   const rows = rowsOverride ?? rowsFor(regionIndex);
   // A room is two screens and a floor is a whole number of rows, so an odd
@@ -1319,6 +1341,7 @@ export function regionOfPath(
   const earned = regionAt(earnedRung(held));
   /** The Scribe has wandered higher up the Tree than their letters have carried them. */
   const behind = earned.index < upper.index;
+  const over = crossesAbyss(path);
   return {
     ...lower,
     // The rung's index is the *upper* end's, because that is what says how far
@@ -1362,8 +1385,17 @@ export function regionOfPath(
     maskit: Math.min(lower.maskit, earned.maskit),
     // The fixed screens stay with the lower end, which is a place rather than a
     // crossing. Fragments likewise, so the scroll is still strewn low.
-    hasHouse: lower.hasHouse,
-    hasShrine: lower.hasShrine,
+    //
+    // **Except over the gulf, where nothing stays.** Chochmah–Chesed would
+    // otherwise inherit Chesed's House and Chesed's shrine, and carry the
+    // kingdom's furniture out over the one stretch of the Tree that has none:
+    // *nothing stands here, no House, no figure, no one to ask*, which is the
+    // first line of `ABYSS_WORD` and has never until now been true of the
+    // ground it is said over. No shrine is not a cosmetic loss — no shrine
+    // means no mark, so a veiling on a crossing costs the whole rung.
+    hasHouse: over ? false : lower.hasHouse,
+    hasShrine: over ? false : lower.hasShrine,
+    overTheAbyss: over,
     fragments: lower.fragments,
   };
 }

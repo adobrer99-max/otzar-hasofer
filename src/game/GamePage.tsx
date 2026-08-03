@@ -33,7 +33,7 @@ import {
   type LessonKey,
 } from "./tutorial";
 import { GameCanvas, type HudSample } from "./GameCanvas";
-import { ABYSS_AFTER_REGION, regionAt, regions, TOTAL_REGIONS } from "./regions";
+import { regionAt, regions, TOTAL_REGIONS } from "./regions";
 import { encounterFor, encounterTitle, isIllumined, rulesFor, sealedCount } from "./encounter";
 import { judge, lightFor, opens, type WordGateTarget, type WordGateVerdict } from "./wordGate";
 import { offerFor, vowKept, type UshpizinOffer } from "./ushpizinOffers";
@@ -55,7 +55,7 @@ import { buildArena, buildPath, buildRegion, verbsOf } from "./world/build";
 import { boonsFrom, guardianOf } from "./guardians";
 import { guardiansFreed } from "../storage/ascentRepo";
 import { TreeMap } from "./TreeMap";
-import { afterWalking, TREE_PATHS, type TreePath } from "./tree";
+import { afterWalking, crossesAbyss, nodeOf, TREE_PATHS, type TreePath } from "./tree";
 import { readWarp, warpParams, warpRecord, type WarpOptions } from "./dev/warp";
 import { installProbe, neighbourhood, probeOf } from "./dev/probe";
 import type { World } from "./world/types";
@@ -103,7 +103,11 @@ type Plate =
   | { kind: "region-done" }
   | { kind: "path-done"; path: TreePath }
   | { kind: "guardian-done"; sefirah: SefirahId }
-  | { kind: "abyss" }
+  /**
+   * Raised *before* a crossing is walked, not after one is finished — which is
+   * the whole reason it now fires. See `crossesAbyss`.
+   */
+  | { kind: "abyss"; path: TreePath }
   | { kind: "out" }
   | { kind: "sealed" };
 
@@ -747,9 +751,13 @@ export function GamePage() {
         ? { kind: "path-done", path: walking }
         : ascent?.regionIndex === TOTAL_REGIONS
           ? { kind: "sealed" }
-          : ascent?.regionIndex === ABYSS_AFTER_REGION
-            ? { kind: "abyss" }
-            : { kind: "region-done" },
+          : // The Abyss plate used to be raised here, on the linear road's
+            // seventh index, and on the Tree `walking` is always set, so it
+            // never once fired. It is raised on stepping *onto* a crossing
+            // now — see `chooseWay` — which is where it belonged: the plate
+            // says what is on the far side, and saying it afterwards is a
+            // travel guide handed out at the destination.
+            { kind: "region-done" },
     );
   }, [ascent?.regionIndex, world, vow, audio, walking, facing]);
 
@@ -787,6 +795,24 @@ export function GamePage() {
       setPlate(null);
     },
     [ascent, time.lightOfTheDay, layEncounter, encounter],
+  );
+
+  /**
+   * Choosing a way out of where you stand — and the one place the Tree stops
+   * and says something first.
+   *
+   * A crossing is told about before it is walked, because what the plate says
+   * is what is on the *far* side: no House, no figure, no mark, and a gate on
+   * the way out that has to be answered. All of that is a decision to make at
+   * the near edge of the gulf, so it is put there. Every other path is stepped
+   * onto without ceremony, which is what keeps this one meaning anything.
+   */
+  const chooseWay = useCallback(
+    (path: TreePath) => {
+      if (crossesAbyss(path)) setPlate({ kind: "abyss", path });
+      else walkPath(path);
+    },
+    [walkPath],
   );
 
   /** Back to the map, from the plate at the end of a path. */
@@ -979,7 +1005,7 @@ export function GamePage() {
         <TreeMap
           ascent={ascent}
           at={standingAt(ascent)}
-          onWalk={walkPath}
+          onWalk={chooseWay}
           onKindle={kindleHere}
           onFace={faceGuardian}
           onSeal={allKindled(ascent) ? () => setPlate({ kind: "sealed" }) : undefined}
@@ -1170,6 +1196,7 @@ export function GamePage() {
           world={world}
           encounter={encounter}
           onNext={climbOn}
+          onWalk={walkPath}
           onSeal={sealAscent}
           onBack={backToTree}
           onInscribe={inscribe}
@@ -1579,6 +1606,7 @@ function PlateOverlay({
   world,
   encounter,
   onNext,
+  onWalk,
   onSeal,
   onBack,
   onInscribe,
@@ -1591,6 +1619,8 @@ function PlateOverlay({
   world: World | null;
   encounter: ReturnType<typeof encounterFor>;
   onNext: (kindle?: boolean) => void;
+  /** Step onto the path the Abyss plate is standing at the near edge of. */
+  onWalk: (path: TreePath) => void;
   onSeal: () => void;
   /** Back to the overworld, at the end of a path. */
   onBack: () => void;
@@ -1653,7 +1683,9 @@ function PlateOverlay({
           <WordResultPlate verdict={plate.verdict} onClose={onClose} />
         )}
         {plate.kind === "region-done" && ascent && <RegionDonePlate ascent={ascent} onNext={onNext} />}
-        {plate.kind === "abyss" && <AbyssPlate onNext={onNext} />}
+        {plate.kind === "abyss" && (
+          <AbyssPlate path={plate.path} onCross={() => onWalk(plate.path)} onBack={onClose} />
+        )}
         {plate.kind === "out" && ascent && <OutPlate ascent={ascent} onSeal={onSeal} />}
         {plate.kind === "sealed" && ascent && (
           <SealedPlate ascent={ascent} encounter={encounter} onSeal={onSeal} />
@@ -2210,7 +2242,19 @@ function OutPlate({ ascent, onSeal }: { ascent: AscentRecord; onSeal: () => void
   );
 }
 
-function AbyssPlate({ onNext }: { onNext: () => void }) {
+function AbyssPlate({
+  path,
+  onCross,
+  onBack,
+}: {
+  path: TreePath;
+  onCross: () => void;
+  onBack: () => void;
+}) {
+  // Which end is which. A crossing is walked in either direction — Keter down
+  // to Tiferet is the same gulf as Tiferet up to Keter — so the plate names the
+  // near shore and the far one rather than assuming a climb.
+  const [low, high] = [...path.ends].sort((a, b) => nodeOf[a].row - nodeOf[b].row);
   return (
     <>
       <p className={styles.plateKicker}>The Abyss</p>
@@ -2219,17 +2263,21 @@ function AbyssPlate({ onNext }: { onNext: () => void }) {
         דעת
       </p>
       <p className={styles.plateUse}>
-        Chesed is behind you and the supernal three are above. Da'at is not a Sefirah and there is
-        no station here — only the gap that the lower seven do not reach across.
+        {regionOfSefirah(low).name} is on this side and {regionOfSefirah(high).name} on the other.
+        Da'at is not a Sefirah and there is no station in between — only the gap the lower seven do
+        not reach across, which is why this is the one way on the Tree you are told about before you
+        take it.
       </p>
       <p className={styles.plateDerivation}>
-        Beyond it there are no more Houses. Binah, Chochmah and Keter are crossed on the letters
-        alone.
+        No House stands over the gulf and there is no mark to set, so a veiling here costs the whole
+        crossing. And the way out is a Word-Gate: you will be asked for a root, and until you write
+        one that is true there is no door.
       </p>
       <p className={styles.plateQuestion}>{ABYSS_WORD}</p>
-      <Button variant="primary" onClick={onNext} autoFocus>
+      <Button variant="primary" onClick={onCross} autoFocus>
         Cross
       </Button>
+      <Button onClick={onBack}>Not this way</Button>
     </>
   );
 }

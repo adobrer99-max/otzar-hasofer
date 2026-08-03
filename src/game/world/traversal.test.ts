@@ -5,7 +5,7 @@ import { lettersOnEntering, regions, TOTAL_REGIONS } from "../regions";
 import { SCROLL_TOTAL } from "../scroll";
 import { solvableRoots } from "../wordGate";
 import { makeRng, randomInt } from "../rng";
-import { lettersFrom, otherEnd, pathsFrom } from "../tree";
+import { crossesAbyss, lettersFrom, otherEnd, pathsFrom } from "../tree";
 import type { SefirahId } from "../../types/letter";
 import { buildPath, buildRegion, paintChunks, PLAYER_H, rowsFor, tileAt, verbsOf } from "./build";
 import { MAX_JUMP_RISE, openWordGate, step, type StepContext } from "./step";
@@ -1240,6 +1240,14 @@ describe("walking the Tree", () => {
         const path = out[randomInt(rng, out.length)];
         const held = lettersFrom(gathered);
         const world = buildPath(path, seed, held);
+        // **The probe cannot spell, and must not have to.** Over the Abyss the
+        // way out stands behind a Word-Gate, so the barrier is dissolved before
+        // the ground is asked about — the same way the probe is handed every
+        // verb the letters buy. What is measured here is still only the floor.
+        // Whether a Scribe can answer the question is `abyss.test.ts`, and it
+        // is a different guarantee: this one covers the walk to the gate and
+        // the walk from it, and nothing about knowing anything.
+        if (crossesAbyss(path)) openWordGate(world, "The gate opens.");
         world.husks = [];
         // **And the pool they would be drawn from.** A figured stone gives way
         // under the probe and stands something up out of the floor — see

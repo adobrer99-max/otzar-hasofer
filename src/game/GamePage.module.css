@@ -1150,6 +1150,38 @@
   color: var(--color-copper, var(--accent));
 }
 
+/* **Da'at.** A broken ring rather than a disc, because it is the one place on
+   this diagram that is not a station: nothing kindles it and no path ends at
+   it. Dashed, so it reads as a thing that is not quite there. */
+.treeDaatRing {
+  fill: none;
+  stroke: var(--bark);
+  stroke-width: 2;
+  stroke-dasharray: 7 9;
+  opacity: 0.7;
+}
+
+.treeDaatName {
+  fill: var(--text-muted);
+  font-size: 17px;
+  font-style: italic;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: var(--bg-raised);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+  opacity: 0.85;
+}
+
+/* A way that goes over the gulf, named in the list of ways out. */
+.wayAbyss {
+  margin-left: var(--space-2);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
 /* What the vessel does, under its name — quieter than the name, because the
    name is what a Scribe routes toward and this is what they weigh. */
 .wayKeliDoes {

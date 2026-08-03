@@ -70,6 +70,11 @@ const KIND_OF: Record<string, RoomKind> = {
   house: "house",
   vessel: "vessel",
   end: "exit",
+  // The crossing's way out is a gate *and* an exit, and it is named for the
+  // exit — because the one thing the kind is asked functionally is whether the
+  // room may close behind the Scribe, and a room that holds the way out never
+  // may. See `stepRooms`.
+  "abyss-gate": "exit",
 };
 
 /**

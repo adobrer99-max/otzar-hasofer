@@ -283,6 +283,49 @@ export const WORD_GATE_CHUNK: Chunk = chunk("word-gate", { demand: 1 }, [
   F,
 ]);
 
+/**
+ * The way out of a crossing: **the gate is the door.**
+ *
+ * Laid in place of `END_CHUNK` on the five paths that cross the Abyss, and
+ * nowhere else. Everything `WORD_GATE_CHUNK` is careful not to be, this is: the
+ * exit stands inside a sealed chamber, the barrier is its only mouth, and the
+ * ground floor no longer runs past underneath. A Scribe who will not answer
+ * does not cross.
+ *
+ * That inverts the traversal guarantee on purpose and in one place. The
+ * guarantee is not weakened, it is moved: `layout` lays this screen only when
+ * `chooseTarget` has already found a root the Scribe can spell with the letters
+ * in hand, `opens()` accepts *any* true root rather than only the one asked
+ * for, and a wrong inscription may be tried again forever. The gate cannot be
+ * failed, only refused — which is what makes refusing it mean something.
+ *
+ * The chamber's roof runs to row 0 rather than stopping at a ceiling. Columns
+ * 11–15 are solid the whole way up because the way out is read as a doorway the
+ * full height of its storey (see `touchEntities`), so a Scribe who wall-climbed
+ * over a mere lintel would leave the rung by standing above the chamber without
+ * ever going into it. There is nothing over the Abyss to climb onto.
+ */
+export const ABYSS_GATE_CHUNK: Chunk = chunk("abyss-gate", { demand: 1 }, [
+  "...........#####",
+  "...........#####",
+  "...........#####",
+  "...........#####",
+  "...........#####",
+  "...........#####",
+  "...........#####",
+  "...........#####",
+  "...........#####",
+  "...........#####",
+  "...........#####",
+  "...........#####",
+  "...........W....",
+  "...........W....",
+  "...........W.E..",
+  ".........?.W....",
+  F,
+  F,
+]);
+
 // ---------------------------------------------------------------------------
 // the shaft — how a floor gets a second storey
 // ---------------------------------------------------------------------------
@@ -1342,6 +1385,7 @@ export const chunksById: Record<string, Chunk> = Object.fromEntries(
     LETTER_CHUNK,
     FRAGMENT_CHUNK,
     WORD_GATE_CHUNK,
+    ABYSS_GATE_CHUNK,
     HOUSE_CHUNK,
   ].map((c) => [c.id, c]),
 );

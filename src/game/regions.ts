@@ -124,6 +124,17 @@ export interface Region {
    * ground — the only real consequence in a game that will not kill you.
    */
   hasShrine: boolean;
+  /**
+   * Set only by `regionOfPath`, and only on the five paths that cross the gulf
+   * (see `crossesAbyss` in `tree.ts`). No Sefirah is over the Abyss — a
+   * Sefirah is a place, and the Abyss is the absence of one — so no entry in
+   * the table below carries it.
+   *
+   * A crossing takes neither House nor shrine, which is the supernals' own
+   * severity beginning one rung early, and its way out stands behind a
+   * Word-Gate rather than beside the road. See `ABYSS_GATE_CHUNK`.
+   */
+  overTheAbyss?: boolean;
   teaching: string;
 }
 
@@ -299,9 +310,6 @@ export const regions: Region[] = [
 ];
 
 export const TOTAL_REGIONS = regions.length;
-
-/** The Abyss stands between Chesed and Binah — after region 7, before 8. */
-export const ABYSS_AFTER_REGION = 7;
 
 export function regionAt(index: number): Region {
   const region = regions[index - 1];

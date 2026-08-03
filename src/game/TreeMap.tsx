@@ -3,6 +3,8 @@ import type { SefirahId } from "../types/letter";
 import { kindleCost, type AscentRecord } from "../storage/ascentRepo";
 import { regions } from "./regions";
 import {
+  crossesAbyss,
+  DAAT,
   otherEnd,
   pathsFrom,
   stateOfPath,
@@ -203,6 +205,19 @@ export function TreeMap({
             );
           })}
 
+          {/* **Da'at**, and the reason it is drawn at all.
+              Not a Sefirah, not a station, and nothing kindles it — a broken
+              ring in the gulf on the middle pillar, where every printed Tree
+              puts it and where Keter–Tiferet passes straight through. Left out,
+              the five broken limbs above look like a rendering fault; drawn,
+              they are obviously the same gap. */}
+          <g className={styles.treeDaat} aria-hidden="true">
+            <circle cx={DAAT.x * SCALE} cy={DAAT.y * SCALE} r={20} className={styles.treeDaatRing} />
+            <text x={DAAT.x * SCALE} y={(DAAT.y + 0.34) * SCALE} className={styles.treeDaatName}>
+              Da&rsquo;at
+            </text>
+          </g>
+
           {TREE_POINTS.map((point) => {
             const region = regionOf[point.sefirah];
             const isHere = point.sefirah === at;
@@ -273,10 +288,19 @@ export function TreeMap({
             const letter = lettersById[path.letter];
             const held = gathered.includes(path.letter);
             const keli = keliOnPath(path, ascent.seed, ascent.items ?? []);
+            const overTheAbyss = crossesAbyss(path);
             return (
               <li key={path.id}>
                 <button type="button" className={styles.wayButton} onClick={() => onWalk(path)}>
-                  <span className={styles.wayTo}>{regionOf[to].name}</span>
+                  <span className={styles.wayTo}>
+                  {regionOf[to].name}
+                  {/* **Said before it is taken.** Five of the twenty-two go over
+                      the gulf, and what is on the far side of it is a rung with
+                      no House to bargain at and no shrine to set a mark on — so
+                      a veiling there costs the whole crossing. That is a thing
+                      to know standing here, not to discover halfway across. */}
+                  {overTheAbyss && <span className={styles.wayAbyss}>over the Abyss</span>}
+                </span>
                   <span className={styles.wayPays}>
                     {/* **What is on the pedestal, before you walk.** The letter
                         a path pays is fixed by the arrangement; the vessel is
