@@ -70,7 +70,11 @@ export const LESSONS: Lesson[] = [
   },
   {
     key: "ways",
-    text: "That is the whole of it. The rest is letters — open The keys, below, whenever you want the scheme again.",
+    // "The keys, below" named a toolbar under the canvas that was taken out
+    // when the game stopped being a page. The reference outlived the thing,
+    // which is this codebase's own oldest failure — a line claiming what the
+    // code no longer does. It is Esc now, and Esc is named in the corner.
+    text: "That is the whole of it. The rest is letters — press Esc for the ways of the body whenever you want the scheme again.",
     retiredBy: [],
     retiredAtLetters: 1,
   },

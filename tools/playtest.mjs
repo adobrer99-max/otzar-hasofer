@@ -63,6 +63,27 @@ const KEYS = {
  * Tree is kindled, and choosing to seal. The warp lights the ten (`lit`) —
  * three hundred light is not something a harness can be asked to earn.
  */
+/**
+ * Put the prologue down, if it is being told.
+ *
+ * Every playwright context is a fresh browser with empty storage, so **every**
+ * script that presses Begin is by definition a first Begin: the prologue plays
+ * before the Tree rises, and a script that clicked straight through to a way
+ * out stood waiting on a button behind a plate. That is exactly what happened
+ * to `path` the first time the whole set was run after the prologue landed —
+ * a thirty-second timeout on a Yesod that was never going to appear.
+ *
+ * `first-run` is the one script that wants the telling, and it walks it page
+ * by page rather than calling this.
+ */
+const pastThePrologue = async (page) => {
+  const skip = page.getByRole("button", { name: /^Skip/ });
+  if (await skip.count()) {
+    await skip.first().click();
+    await page.waitForTimeout(500);
+  }
+};
+
 const sealFromTheMap = async (page) => {
   const seal = page.getByRole("button", { name: /Seal the ascent/ }).first();
   await seal.waitFor({ state: "visible", timeout: 10000 }).catch(() => {});
@@ -70,6 +91,59 @@ const sealFromTheMap = async (page) => {
 };
 
 const SCRIPTS = [
+  {
+    name: "first-run",
+    about: "A stranger's first minute — the prologue played, and the Tree teaching itself.",
+    /**
+     * **The one script that begins with nothing.** Every other script warps or
+     * seeds a record; this one wipes the drawers a returning Scribe carries —
+     * the lessons, the telling, the sound preference — and presses Begin, so
+     * what it photographs is what a person who has never seen this game sees.
+     *
+     * It exists because the prologue and the map's own lessons are both
+     * *first-time-only*, which makes them the two things in the game most
+     * likely to break unnoticed: they never appear again on any machine that
+     * has already run once, including every machine anyone develops on.
+     */
+    warp: {},
+    enter: async (page) => {
+      await page.evaluate(() => {
+        localStorage.removeItem("otzar-game-taught");
+        localStorage.removeItem("otzar-game-taught-tree");
+        localStorage.removeItem("otzar-game-told");
+        localStorage.removeItem("otzar-game-sound");
+      });
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(700);
+      // The score is offered on the threshold, to somebody who has never said.
+      const sound = page.getByRole("button", { name: /Play with sound/ });
+      if (!(await sound.count())) throw new Error("the threshold never offered the score");
+      await page.getByRole("button", { name: /^Begin/ }).first().click();
+      await page.waitForTimeout(500);
+      // The prologue, page by page, to its charge — and the map must stay down
+      // until it is done. Pressing Enter is how a person turns it.
+      let pages = 0;
+      for (; pages < 12; pages += 1) {
+        const go = page.getByRole("button", { name: /^Go on$|^Begin the ascent$/ });
+        if (!(await go.count())) break;
+        if (await page.locator("[class*=wayButton]").count()) {
+          throw new Error("the Tree rose while the prologue was still being told");
+        }
+        await page.keyboard.press("Enter");
+        await page.waitForTimeout(250);
+      }
+      if (pages < 2) throw new Error(`the prologue played ${pages} pages`);
+      await page.waitForTimeout(600);
+      // And what is left is the Tree, teaching itself.
+      const lesson = await page.locator("[class*=overlayLesson]").textContent().catch(() => "");
+      if (!/Tree/.test(lesson ?? "")) throw new Error(`the map taught nothing: ${lesson}`);
+      await page.screenshot({ path: join(outDir, "first-run-tree.png") });
+      // Then out of the kingdom, so the run has ground to photograph.
+      await walkOut(page);
+    },
+    until: (p) => p.progress > 0.1 || p.finished,
+    seconds: 90,
+  },
   {
     name: "porch",
     about: "The taught opening in Malchut — the three lessons and the first gap.",
@@ -149,6 +223,7 @@ const SCRIPTS = [
     enter: async (page) => {
       await page.getByRole("button", { name: /^Begin/ }).first().click();
       await page.waitForTimeout(400);
+      await pastThePrologue(page);
       // Out by Yesod, which is the path that pays the Breath — so the rung is
       // built for a Scribe holding nothing, which is the hardest thing the
       // generator is ever asked for and the right thing to look at first.

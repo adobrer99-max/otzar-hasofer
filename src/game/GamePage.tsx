@@ -1249,8 +1249,16 @@ export function GamePage() {
                   <span className={styles.hudName}>
                     {regionOfSefirah(walking.ends[0]).name} → {regionOfSefirah(walking.ends[1]).name}
                   </span>
-                  <span className={`${styles.hudHeb} hebrew`} lang="he">
+                  <span
+                    className={`${styles.hudHeb} hebrew`}
+                    lang="he"
+                    aria-hidden="true"
+                    title={`Pays ${lettersById[walking.letter]?.name ?? walking.letter}`}
+                  >
                     {lettersById[walking.letter]?.glyph ?? ""}
+                  </span>
+                  <span className="sr-only">
+                    This way pays {lettersById[walking.letter]?.name ?? walking.letter}
                   </span>
                 </>
               ) : (
@@ -1278,7 +1286,8 @@ export function GamePage() {
               ))}
             </div>
             <div className={styles.hudOr} title="Light gathered in this region">
-              <span aria-hidden="true">✦</span> {hud.or}
+              <span aria-hidden="true">✦</span> <span aria-hidden="true">{hud.or}</span>
+              <span className="sr-only">{hud.or} light gathered on this rung</span>
             </div>
             <LetterBelt held={ascent.lettersHeld} ascendant={ascent.ascendantLetterId} />
             <VesselBelt held={ascent.items ?? []} />
@@ -1771,9 +1780,10 @@ function VesselBelt({ held }: { held: readonly string[] }) {
             className={`${styles.beltLetter} ${lit.has(id) ? styles.beltAscendant : ""}`}
             title={`${keli.name} — ${keli.found}`}
           >
-            <span className="hebrew" lang="he">
+            <span className="hebrew" lang="he" aria-hidden="true">
               {keli.hebrew.slice(0, 1)}
             </span>
+            <span className="sr-only">{`${keli.name} — ${keli.found}`}</span>
           </li>
         );
       })}
@@ -1794,8 +1804,16 @@ function LetterBelt({ held, ascendant }: { held: readonly string[]; ascendant?: 
             className={`${styles.beltLetter} ${id === ascendant ? styles.beltAscendant : ""}`}
             title={ability ? `${letter.name} — ${ability.name}: ${ability.use}` : letter.name}
           >
-            <span className="hebrew" lang="he">
+            <span className="hebrew" lang="he" aria-hidden="true">
               {letter.glyph}
+            </span>
+            {/* **A glyph is not a label.** `title` is a mouse's affordance —
+                no touch device shows it and no screen reader is obliged to
+                read it — so the belt announced itself as twenty-two Hebrew
+                characters and nothing else. The name and what it does are
+                carried in text that is there for anything not looking. */}
+            <span className="sr-only">
+              {ability ? `${letter.name} — ${ability.name}: ${ability.use}` : letter.name}
             </span>
           </li>
         );
@@ -2906,10 +2924,13 @@ function SealedPlate({
             ? "All twenty-two letters are in your hand. The alphabet is complete, and the Tree was climbed on nothing else."
             : `You arrive carrying ${found} of the twenty-two letters. The crown is reached either way — that was never in question — but the letters left in the regions below are still there.`}
       </p>
-      <ul className={styles.sealedLetters}>
+      <ul className={styles.sealedLetters} aria-label="The letters carried to the crown">
         {ascent.lettersHeld.map((id) => (
-          <li key={id} className="hebrew" lang="he">
-            {lettersById[id]?.glyph}
+          <li key={id}>
+            <span className="hebrew" lang="he" aria-hidden="true">
+              {lettersById[id]?.glyph}
+            </span>
+            <span className="sr-only">{lettersById[id]?.name}</span>
           </li>
         ))}
       </ul>
