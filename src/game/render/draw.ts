@@ -111,6 +111,37 @@ export function drawWorld(
 // ground and sky
 // ---------------------------------------------------------------------------
 
+/**
+ * A number in `[0, 1)` from a pair of integers, stable forever.
+ *
+ * Everything in the margin has to vary and nothing in it may *shimmer*: the
+ * background is redrawn sixty times a second and a random leaf is a leaf that
+ * is somewhere else on the next frame. So the variation is a hash of where the
+ * thing is, which makes the same bough grow the same way every time it drifts
+ * past and costs nothing to store.
+ */
+function jitter(a: number, b: number): number {
+  const h = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+  return h - Math.floor(h);
+}
+
+/**
+ * **The margin is the Tree.**
+ *
+ * It was an arcade — distant arches and a nearer band of columns, drifting at a
+ * fraction of the camera. Good drawing, and it was the wrong subject: a Scribe
+ * on this ground is walking a *path of the Tree*, and the thing behind them was
+ * a cloister.
+ *
+ * Nothing about the hand changes. An illuminated margin is full of foliage —
+ * vine-scroll, rinceau, acanthus running up a border — so the same thin gold
+ * line at the same low alphas draws boughs instead of arches, and the canon and
+ * the subject stop pulling against each other.
+ *
+ * Three layers, slowest first, and the slowest one is the point: **a great limb
+ * passes now and again**, far enough back to be almost nothing, and it is what
+ * says this ground is up in something rather than out in the open.
+ */
 function drawBackground(
   ctx: CanvasRenderingContext2D,
   camera: Camera,
@@ -124,34 +155,155 @@ function drawBackground(
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, viewW, viewH);
 
-  // A manuscript margin: distant arcades, drifting at a fraction of the
-  // camera's speed so the region reads as deep rather than flat.
-  const drift = camera.x * 0.22;
-  ctx.strokeStyle = alpha(palette.gold, palette.light ? 0.28 : 0.075);
-  ctx.lineWidth = 1.5;
-  const archW = 150;
-  const baseY = viewH * 0.82;
-  for (let i = -1; i < viewW / archW + 2; i += 1) {
-    const ax = i * archW - (drift % archW);
+  const ink = (at: number) => alpha(palette.gold, palette.light ? at * 3.6 : at);
+
+  // --- the great limbs, furthest back and slowest ---------------------------
+  //
+  // One every eleven hundred pixels of world, rising from below the frame and
+  // leaning off to one side, with two boughs off it. Drawn thick and nearly
+  // invisible, because what it is doing is giving the emptiness a scale.
+  const farDrift = camera.x * 0.1;
+  const trunkEvery = 1100;
+  ctx.strokeStyle = ink(0.075);
+  ctx.lineCap = "round";
+  for (let i = -1; i < viewW / trunkEvery + 2; i += 1) {
+    const base = i * trunkEvery - (farDrift % trunkEvery);
+    const seed = Math.floor((farDrift + base) / trunkEvery);
+    const lean = (jitter(seed, 3) - 0.5) * viewW * 0.45;
+    ctx.lineWidth = 26;
     ctx.beginPath();
-    ctx.moveTo(ax, baseY);
-    ctx.lineTo(ax, baseY - 78);
-    ctx.arc(ax + archW / 2, baseY - 78, archW / 2, Math.PI, 0);
-    ctx.lineTo(ax + archW, baseY);
+    ctx.moveTo(base, viewH * 1.05);
+    ctx.quadraticCurveTo(base + lean * 0.4, viewH * 0.5, base + lean, -viewH * 0.15);
     ctx.stroke();
+    ctx.lineWidth = 11;
+    for (const side of [-1, 1]) {
+      const at = 0.3 + jitter(seed, side) * 0.35;
+      const fromX = base + lean * at;
+      const fromY = viewH * (1.05 - at * 1.2);
+      ctx.beginPath();
+      ctx.moveTo(fromX, fromY);
+      ctx.quadraticCurveTo(
+        fromX + side * 150,
+        fromY - 40,
+        fromX + side * 300,
+        fromY - 130 - jitter(seed, side * 7) * 80,
+      );
+      ctx.stroke();
+    }
   }
 
-  // A nearer band of columns, faster, warmer.
-  const drift2 = camera.x * 0.45;
-  ctx.strokeStyle = alpha(palette.gold, palette.light ? 0.3 : 0.1);
-  const colW = 96;
-  for (let i = -1; i < viewW / colW + 2; i += 1) {
-    const cx = i * colW - (drift2 % colW);
+  // --- boughs across the frame, with leaves ---------------------------------
+  //
+  // **At any height, not only near the top**, which was the first version and
+  // read as a border rather than a place: a Scribe on a three-row rung stood in
+  // a bare lower half with a canopy printed above it. Limbs cross a tree at
+  // every height, and on the corridors the low ones are simply behind the
+  // floor, which is what being inside something looks like.
+  const drift = camera.x * 0.24;
+  const boughEvery = 260;
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = ink(0.085);
+  for (let i = -1; i < viewW / boughEvery + 2; i += 1) {
+    const bx = i * boughEvery - (drift % boughEvery);
+    const seed = Math.floor((drift + bx) / boughEvery);
+    const top = viewH * (0.04 + jitter(seed, 11) * 0.72);
+    const dip = 40 + jitter(seed, 13) * 70;
     ctx.beginPath();
-    ctx.moveTo(cx, viewH);
-    ctx.lineTo(cx, viewH * 0.62);
+    ctx.moveTo(bx - 30, top);
+    ctx.quadraticCurveTo(bx + boughEvery / 2, top + dip, bx + boughEvery + 30, top);
     ctx.stroke();
+    // Two leaves on it, on alternating sides, angled with the bough.
+    for (const t of [0.34, 0.68]) {
+      const lx = bx + boughEvery * t;
+      const ly = top + dip * (1 - (2 * t - 1) ** 2);
+      leaf(ctx, lx, ly + 6, 9, 4, (jitter(seed, t * 100) - 0.5) * 1.6, ink(0.11));
+    }
   }
+
+  // --- tendrils hanging nearer, faster --------------------------------------
+  //
+  // The vine-scroll of a border: down, then a curl. It is the one element that
+  // moves quickly enough to be *felt* rather than seen, which is what a near
+  // parallax layer is for.
+  const drift2 = camera.x * 0.5;
+  const vineEvery = 118;
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = ink(0.1);
+  for (let i = -1; i < viewW / vineEvery + 2; i += 1) {
+    const slot = i * vineEvery - (drift2 % vineEvery);
+    const seed = Math.floor((drift2 + slot) / vineEvery);
+    // **Off the grid.** Evenly spaced verticals of even length read as rain,
+    // which is what the first pass looked like on the vellum ground. A third of
+    // a slot of wander and a curl that actually curls make them a scroll.
+    const vx = slot + (jitter(seed, 41) - 0.5) * vineEvery * 0.7;
+    const drop = viewH * (0.2 + jitter(seed, 5) * 0.5);
+    const curl = (jitter(seed, 17) - 0.5) * 96;
+    ctx.beginPath();
+    ctx.moveTo(vx, 0);
+    ctx.bezierCurveTo(
+      vx - curl * 0.5,
+      drop * 0.35,
+      vx + curl,
+      drop * 0.7,
+      vx + curl * 0.8,
+      drop,
+    );
+    ctx.quadraticCurveTo(vx + curl * 1.5, drop + 26, vx + curl * 0.2, drop + 32);
+    ctx.stroke();
+    if (jitter(seed, 23) > 0.45) {
+      leaf(ctx, vx + curl * 0.85, drop * 0.72, 7, 3, curl > 0 ? 0.7 : -0.7, ink(0.12));
+    }
+  }
+
+  // --- and what climbs up from below ----------------------------------------
+  //
+  // The same scroll the other way. Only visible where the ground opens — a
+  // shaft, a pit, the gap a Scribe is about to cross — which is exactly where a
+  // player is looking down and wondering how far it goes.
+  const upEvery = 173;
+  ctx.strokeStyle = ink(0.075);
+  for (let i = -1; i < viewW / upEvery + 2; i += 1) {
+    const slot = i * upEvery - ((drift2 * 0.8) % upEvery);
+    const seed = Math.floor((drift2 * 0.8 + slot) / upEvery) + 91;
+    const vx = slot + (jitter(seed, 43) - 0.5) * upEvery * 0.7;
+    const rise = viewH * (0.25 + jitter(seed, 7) * 0.5);
+    const curl = (jitter(seed, 19) - 0.5) * 88;
+    ctx.beginPath();
+    ctx.moveTo(vx, viewH);
+    ctx.bezierCurveTo(
+      vx - curl * 0.5,
+      viewH - rise * 0.35,
+      vx + curl,
+      viewH - rise * 0.7,
+      vx + curl * 0.8,
+      viewH - rise,
+    );
+    ctx.stroke();
+    if (jitter(seed, 29) > 0.5) {
+      leaf(ctx, vx + curl * 0.7, viewH - rise * 0.78, 7, 3, curl > 0 ? -0.7 : 0.7, ink(0.1));
+    }
+  }
+  ctx.lineCap = "butt";
+}
+
+/** One leaf, filled, turned to sit on whatever it grows out of. */
+function leaf(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rx: number,
+  ry: number,
+  angle: number,
+  fill: string,
+): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
 // ---------------------------------------------------------------------------
@@ -179,7 +331,7 @@ function drawTile(
       drawPlacedStone(ctx, x, y, palette);
       break;
     case Tile.Ledge:
-      drawLedge(ctx, x, y, palette);
+      drawLedge(ctx, tx, ty, x, y, palette);
       break;
     case Tile.Water:
       drawWater(ctx, world, tx, ty, x, y, palette);
@@ -276,6 +428,29 @@ function drawStone(
     ctx.moveTo(x, y + 0.75);
     ctx.lineTo(x + TILE_SIZE, y + 0.75);
     ctx.stroke();
+
+    // **What has grown on the lit edge.** Two or three fine blades on about a
+    // third of the exposed tiles, seeded off the tile's own coordinates so the
+    // same stone is mossed the same way every time it is drawn.
+    //
+    // Kept fine and kept faint on purpose. Thorn is the one tile in this game
+    // that costs a Scribe something on contact and it is drawn as spikes on
+    // the floor, so anything standing up off a *safe* floor has to be legibly
+    // not that: half the height, a third of the weight, and bent.
+    if (jitter(tx, ty) > 0.62) {
+      ctx.strokeStyle = alpha(palette.gold, palette.light ? 0.5 : 0.3);
+      ctx.lineWidth = 0.9;
+      const blades = 2 + Math.floor(jitter(tx, ty + 5) * 2);
+      for (let i = 0; i < blades; i += 1) {
+        const bx = x + 4 + jitter(tx + i, ty) * (TILE_SIZE - 8);
+        const h = 3 + jitter(tx, ty + i * 3) * 3;
+        const bend = (jitter(tx + i * 7, ty) - 0.5) * 4;
+        ctx.beginPath();
+        ctx.moveTo(bx, y + 1);
+        ctx.quadraticCurveTo(bx + bend * 0.4, y + 1 - h * 0.6, bx + bend, y + 1 - h);
+        ctx.stroke();
+      }
+    }
   }
 
   ctx.strokeStyle = alpha(palette.stoneEdge, 0.85);
@@ -292,20 +467,50 @@ function drawPlacedStone(ctx: CanvasRenderingContext2D, x: number, y: number, pa
   glyph(ctx, "ב", x + TILE_SIZE / 2, y + TILE_SIZE / 2, 13, palette.goldBright);
 }
 
-function drawLedge(ctx: CanvasRenderingContext2D, x: number, y: number, palette: Palette): void {
+/**
+ * A ledge — solid from above, passable from below.
+ *
+ * Drawn as a slender bough rather than a shelf with three brackets under it,
+ * which is the same affordance said in the language the rest of the ground now
+ * speaks: a line you can stand on, with nothing holding it up, and two leaves
+ * to say what it is. The **top edge stays dead straight** and stays the
+ * brightest thing on the tile, because that edge is the collision and a bough
+ * that visibly sagged would be a bough a Scribe misjudges.
+ */
+function drawLedge(
+  ctx: CanvasRenderingContext2D,
+  tx: number,
+  ty: number,
+  x: number,
+  y: number,
+  palette: Palette,
+): void {
   ctx.strokeStyle = palette.gold;
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(x, y + 3);
   ctx.lineTo(x + TILE_SIZE, y + 3);
   ctx.stroke();
-  ctx.strokeStyle = alpha(palette.gold, 0.4);
+
+  // The underside tapers away from the standing edge — bark, not masonry.
+  ctx.strokeStyle = alpha(palette.gold, 0.35);
   ctx.lineWidth = 1;
-  for (const dx of [5, 12, 19]) {
-    ctx.beginPath();
-    ctx.moveTo(x + dx, y + 4);
-    ctx.lineTo(x + dx, y + 9);
-    ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x, y + 5.5);
+  ctx.quadraticCurveTo(x + TILE_SIZE / 2, y + 7.5, x + TILE_SIZE, y + 5.5);
+  ctx.stroke();
+
+  if (jitter(tx, ty + 31) > 0.5) {
+    const side = jitter(tx + 3, ty) > 0.5 ? 1 : -1;
+    leaf(
+      ctx,
+      x + TILE_SIZE / 2 + side * 6,
+      y + 9,
+      6,
+      2.6,
+      side * 0.6,
+      alpha(palette.gold, palette.light ? 0.55 : 0.34),
+    );
   }
 }
 
