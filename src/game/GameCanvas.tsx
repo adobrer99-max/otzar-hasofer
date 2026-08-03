@@ -44,6 +44,20 @@ export interface HudSample {
    * where Up is, and the world would never know.
    */
   used: ControlId[];
+  /**
+   * The three running totals a vow is judged against — light taken, veilings
+   * suffered, marks set, all counted from the start of the rung.
+   *
+   * Here rather than only at the exit because a vow the Scribe cannot *see* is
+   * a vow they cannot keep on purpose: they were told at the House, and then
+   * for the length of a whole rung the game said nothing until it announced
+   * the verdict. The HUD subtracts the totals at the moment of swearing and
+   * asks `vowKept` on the difference, which is the identical question the exit
+   * asks — one rule, read twice.
+   */
+  orGathered: number;
+  veilings: number;
+  marksSet: number;
 }
 
 export interface GameCanvasProps {
@@ -267,6 +281,9 @@ export function GameCanvas({
           x: world.player.x,
           onGround: world.player.onGround,
           used: [...used.current],
+          orGathered: world.orGathered,
+          veilings: world.veilings,
+          marksSet: world.marksSet,
         });
         used.current.clear();
       }
@@ -301,7 +318,33 @@ export function GameCanvas({
         title={control.does}
         onPointerDown={(e) => {
           e.preventDefault();
+          /**
+           * **Let go of the pointer, so a thumb can slide.**
+           *
+           * A touch pointer is *implicitly captured* by the element it starts
+           * on, which means a thumb dragged from Left onto Right keeps firing
+           * at Left and the Scribe walks the wrong way — the pad behaves as
+           * seven separate buttons rather than one surface, and moving from
+           * walking to leaping means lifting off and landing again. Releasing
+           * the capture hands the events back to whatever is actually under
+           * the thumb, and `onPointerEnter` below picks them up.
+           */
+          // Guarded, not optional-chained: the method exists everywhere and
+          // *throws* when there is no active pointer with that id — which a
+          // synthetic event does, and which surfaced immediately as a page
+          // error the first time this was driven from a test.
+          try {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+          } catch {
+            // Nothing was captured. Sliding already works.
+          }
           touch(id, true);
+        }}
+        // Slid onto, with the thumb still down. `buttons` is 1 for a touch
+        // that is in contact and 0 for a pointer merely passing over, so a
+        // mouse hovering the pad presses nothing.
+        onPointerEnter={(e) => {
+          if (e.buttons !== 0) touch(id, true);
         }}
         onPointerUp={() => touch(id, false)}
         onPointerLeave={() => touch(id, false)}

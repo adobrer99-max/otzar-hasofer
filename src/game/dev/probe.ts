@@ -52,6 +52,8 @@ export interface Probe {
   width: number;
   progress: number;
   husks: { total: number; standing: number; broken: number; nearest?: number };
+  /** Where the rung's House figure stands, from the Scribe. Absent if none. */
+  house?: { dx: number; dy: number };
   marks: number;
   letters: string[];
   housesMet: number;
@@ -116,6 +118,17 @@ export function probeOf(
     .map((h) => Math.abs(h.x - world.player.x))
     .sort((a, b) => a - b)[0];
   const px = world.width * TILE_SIZE; // `width` is in tiles
+  /**
+   * **Where the figure of the Houses is standing, relative to the Scribe.**
+   *
+   * A House comes from an `H` marker inside whichever chunks a rung happens to
+   * lay, so it can be anywhere — including a ledge the walking driver has no
+   * reason to climb onto. That is not a guess: the `house` script and three
+   * attempts at the `vow` script all walked past the marker's column and never
+   * raised a plate. A driver cannot steer to something it cannot see, so this
+   * is the seeing.
+   */
+  const house = world.entities.find((e) => e.kind === "house" && !e.taken);
   return {
     tick: world.tick,
     regionIndex: world.regionIndex,
@@ -142,6 +155,9 @@ export function probeOf(
       nearest: nearest === undefined ? undefined : Math.round(nearest),
     },
     marks: world.marks.length,
+    house: house
+      ? { dx: Math.round(house.x - world.player.x), dy: Math.round(house.y - world.player.y) }
+      : undefined,
     letters: [...(ascent?.lettersHeld ?? [])],
     housesMet: ascent?.housesMet.length ?? 0,
     fragments: ascent?.scrollFragments?.length ?? 0,

@@ -73,6 +73,35 @@ describe("a vow, judged at the exit", () => {
     expect(vowKept("unveiled", { orGathered: 40, veilings: 0, marksSet: 3 })).toBe(true);
     expect(vowKept("no-mark", { orGathered: 40, veilings: 3, marksSet: 0 })).toBe(true);
   });
+
+  /**
+   * **What lets the HUD show a vow while it is still being kept.**
+   *
+   * All three counters only ever go up inside a rung, so once a vow reads
+   * broken it can never read kept again. That is what makes an early reading
+   * the verdict rather than a guess at one, and it is the whole justification
+   * for `VowMark` printing "broken" before the exit has said so — a Scribe
+   * who sees it struck through has genuinely lost that boon, and the alternative
+   * (saying nothing until the exit) is what made two of these three vows feel
+   * like a trick: a veiling and a mark happen *to* you mid-fight, and by the
+   * exit there was never a moment where the word could have been saved.
+   */
+  it("can only ever be broken, never un-broken", () => {
+    const vows = ["gather-nothing", "unveiled", "no-mark"] as const;
+    for (const kind of vows) {
+      let seenBroken = false;
+      // A rung's counters, climbing the only direction they climb.
+      for (let n = 0; n <= 4; n += 1) {
+        const kept = vowKept(kind, { orGathered: n, veilings: n, marksSet: n });
+        if (!kept) seenBroken = true;
+        expect(
+          kept && seenBroken,
+          `${kind} came back to life at ${n}`,
+        ).toBe(false);
+      }
+      expect(seenBroken, `${kind} was never broken by anything`).toBe(true);
+    }
+  });
 });
 
 /**

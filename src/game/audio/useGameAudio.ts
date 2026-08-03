@@ -3,6 +3,7 @@ import type { SefirahId } from "../../types/letter";
 import * as fx from "./effects";
 import {
   ensureGameAudio,
+  isGameSoundAnswered,
   isGameSoundOn,
   setGameSoundOn,
   setDrone,
@@ -32,6 +33,12 @@ import type { World } from "../world/types";
 export interface GameAudio {
   on: boolean;
   toggle: () => void;
+  /**
+   * Whether this Scribe has ever said either way. The score is the least
+   * discoverable thing in the game — a checkbox inside a menu most players
+   * never open — so the threshold offers it once to whoever has not answered.
+   */
+  answered: boolean;
   /** The score currently sounding, for the sound panel. */
   score: Score | undefined;
   onLetter: (letterId: string) => void;
@@ -49,6 +56,7 @@ export function useGameAudio(
   illumined: boolean,
 ): GameAudio {
   const [on, setOn] = useState(false);
+  const [answered, setAnswered] = useState(() => isGameSoundAnswered());
   const [veiled, setVeiled] = useState(false);
 
   // The score is pure and cheap, so it is simply recomputed whenever the
@@ -65,6 +73,7 @@ export function useGameAudio(
   scoreRef.current = score;
 
   const toggle = useCallback(() => {
+    setAnswered(true);
     setOn((prev) => {
       const next = !prev;
       setGameSoundOn(next);
@@ -160,6 +169,7 @@ export function useGameAudio(
   return {
     on,
     toggle,
+    answered,
     score,
     onLetter: useCallback(
       (letterId: string) => {

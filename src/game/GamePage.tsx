@@ -27,14 +27,30 @@ import {
   ALL_LESSON_KEYS,
   nextLesson,
   readTaught,
+  readTaughtTree,
+  readTold,
   retire,
+  retireTree,
+  treeLesson,
   writeTaught,
+  writeTaughtTree,
+  writeTold,
   type LessonKey,
+  type TreeDeed,
+  type TreeLessonKey,
 } from "./tutorial";
 import { GameCanvas, type HudSample } from "./GameCanvas";
 import { regionAt, regionOfSefirah, regions, TOTAL_REGIONS } from "./regions";
 import { encounterFor, encounterTitle, isIllumined, rulesFor, sealedCount } from "./encounter";
-import { judge, lightFor, opens, type WordGateTarget, type WordGateVerdict } from "./wordGate";
+import {
+  hintsFor,
+  HINT_COST,
+  judge,
+  lightFor,
+  opens,
+  type WordGateTarget,
+  type WordGateVerdict,
+} from "./wordGate";
 import { dormantFor, offerFor, vowKept, type UshpizinOffer } from "./ushpizinOffers";
 import { openWordGate, say } from "./world/step";
 import { useGameAudio } from "./audio/useGameAudio";
@@ -48,6 +64,7 @@ import {
   endingOf,
   pleaFor,
   PROLOGUE,
+  PROLOGUE_PAGES,
   sefirahOfCard,
   TESTIMONY,
   witnessesOf,
@@ -89,6 +106,12 @@ function allKindled(ascent: AscentRecord): boolean {
 }
 
 type Plate =
+  /**
+   * **Why you are climbing, said once, before anything else.** Paged rather
+   * than dumped: `page` indexes `PROLOGUE_PAGES`, and the last page is the
+   * charge. Raised only on a Scribe's first Begin — see `readTold`.
+   */
+  | { kind: "prologue"; page: number }
   | { kind: "letter"; letterId: string }
   | { kind: "fragment"; index: number; held: number }
   | { kind: "scroll-whole" }
@@ -157,9 +180,21 @@ export function GamePage() {
     used: [],
     lamps: LAMPS,
     out: false,
+    orGathered: 0,
+    veilings: 0,
+    marksSet: 0,
   });
   /** Which lessons this Scribe has already been taught — per Scribe, not per run. */
   const [taught, setTaught] = useState<LessonKey[]>(() => readTaught());
+  /** And the map's own three, which no keypress can retire — only the deed. */
+  const [taughtTree, setTaughtTree] = useState<TreeLessonKey[]>(() => readTaughtTree());
+  const learnTree = useCallback((deed: TreeDeed) => {
+    setTaughtTree((prev) => {
+      const next = retireTree(prev, deed);
+      if (next.length !== prev.length) writeTaughtTree(next);
+      return next;
+    });
+  }, []);
   /** A vow taken at a House, and the counters it will be judged against. */
   const [vow, setVow] = useState<
     { offer: UshpizinOffer; at: { orGathered: number; veilings: number; marksSet: number } } | null
@@ -248,6 +283,22 @@ export function GamePage() {
   lettersCountRef.current = letters.length;
   const verbs: Verb[] = useMemo(() => verbsOf(letters), [letters]);
   /** The one thing worth saying to a Scribe still finding the keys. */
+  /**
+   * What the Tree should be saying, for a Scribe who has just arrived on it.
+   * Answers the question the map is putting in front of them right now rather
+   * than working through a queue — see `treeLesson`.
+   */
+  const lessonOfTree = useMemo(() => {
+    if (!ascent) return undefined;
+    const at = standingAt(ascent);
+    return treeLesson({
+      learned: taughtTree,
+      walked: (ascent.pathsWalked ?? []).length,
+      freed: (ascent.guardiansBroken ?? []).includes(at),
+      lit: (ascent.sefirotLit ?? []).includes(at),
+    });
+  }, [ascent, taughtTree]);
+
   const lesson = useMemo(
     () => nextLesson({ learned: taught, lettersHeld: letters.length }),
     [taught, letters.length],
@@ -427,7 +478,13 @@ export function GamePage() {
       persist(record);
       setWorld(null);
       setWalking(null);
-      setPlate(null);
+      // **The prologue, on a first Begin only.** The threshold's own comment
+      // has promised since the UI was cut back that the premise is "the first
+      // thing the game says once they press the button" — it never was. It is
+      // now, once per Scribe, and the map holds back behind it (see the effect
+      // that raises the Tree) so the first thing a stranger sees is why they
+      // are here rather than a diagram of ten circles.
+      setPlate(readTold() ? null : { kind: "prologue", page: 0 });
     })();
   }, [ascent, newRecord, persist, time.seedLabel]);
 
@@ -614,10 +671,10 @@ export function GamePage() {
    * often as the Scribe likes.
    */
   const inscribe = useCallback(
-    (letterIds: [string, string, string]) => {
+    (letterIds: [string, string, string], hintsTaken = 0) => {
       if (!world?.wordGate) return;
       const verdict = judge(letterIds, world.wordGate);
-      const light = lightFor(verdict);
+      const light = lightFor(verdict, hintsTaken);
       if (light > 0) {
         world.or += light;
         world.orGathered += light;
@@ -874,10 +931,13 @@ export function GamePage() {
    */
   const chooseWay = useCallback(
     (path: TreePath) => {
+      // Choosing is the deed, not arriving: the lesson was "choose one", and a
+      // Scribe standing at the near edge of a crossing has plainly done it.
+      learnTree("way");
       if (crossesAbyss(path)) setPlate({ kind: "abyss", path });
       else walkPath(path);
     },
-    [walkPath],
+    [walkPath, learnTree],
   );
 
   /** Back to the map, from the plate at the end of a path. */
@@ -900,6 +960,7 @@ export function GamePage() {
     if (!ascent) return;
     const at = standingAt(ascent);
     if ((ascent.guardiansBroken ?? []).includes(at)) return;
+    learnTree("guardian");
     const room = buildArena(at, ascent.seed);
     const carried = powersFrom(ascent.items ?? [], boons);
     room.player.lamps += carried.lamps;
@@ -908,7 +969,7 @@ export function GamePage() {
     setWorld(room);
     setVow(null);
     setPlate(null);
-  }, [ascent]);
+  }, [ascent, learnTree]);
 
   /**
    * Kindle where you stand. The same spend the between-rungs plate offered on
@@ -933,10 +994,10 @@ export function GamePage() {
         updatedAt: new Date().toISOString(),
       };
       void saveAscent(next).catch(() => undefined);
+      learnTree("kindle");
       return next;
     });
-  }, []);
-
+  }, [learnTree]);
 
   const sealAscent = useCallback(() => {
     setAscent((prev) => {
@@ -994,9 +1055,12 @@ export function GamePage() {
    * again, and Tab brings it back.
    */
   useEffect(() => {
+    // The one thing that outranks it is the telling: a stranger's first sight
+    // of this game should not be ten circles behind a paragraph.
+    if (plate?.kind === "prologue") return;
     if (!world && ascent && !ascent.sealedAt) setMapOpen(true);
     if (world) setMapOpen(false);
-  }, [world, ascent]);
+  }, [world, ascent, plate]);
 
   /**
    * Tab is the map and Esc is the menu — the two keys this page has, beyond the
@@ -1028,11 +1092,38 @@ export function GamePage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [plate, paused, mapOpen, world, ascent]);
 
+  /**
+   * Turn the prologue's page — or, on Escape, put the rest of it down.
+   *
+   * Either way the Scribe is marked told. A telling you can be made to sit
+   * through a second time because you skipped it the first is a worse thing
+   * than a telling that was skipped; it is available whole behind Esc for as
+   * long as the game exists, which is where a person who wants it will look.
+   */
+  const turnPrologue = useCallback((skip = false) => {
+    setPlate((prev) => {
+      if (prev?.kind !== "prologue") return prev;
+      const next = prev.page + 1;
+      if (skip || next >= PROLOGUE_PAGES.length) {
+        writeTold();
+        return null;
+      }
+      return { kind: "prologue", page: next };
+    });
+  }, []);
+
   // Dismiss a plate with the keyboard, so a run never needs the mouse.
   useEffect(() => {
     if (!plate) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Enter" && e.key !== "Escape" && e.code !== "Space") return;
+      // The prologue is the one plate where Enter means *more*, not *away*:
+      // it turns the page, and only Escape puts it down.
+      if (plate.kind === "prologue") {
+        e.preventDefault();
+        turnPrologue(e.key === "Escape");
+        return;
+      }
       // A pedestal is the one plate that asks a *question*, so the keyboard
       // must not answer it. Swallowed here, Enter would have dismissed the
       // plate — which now means "leave it" — while the Scribe was looking at a
@@ -1080,7 +1171,7 @@ export function GamePage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [plate, sealAscent, fall, backToTree]);
+  }, [plate, sealAscent, fall, backToTree, turnPrologue]);
 
   // Persist letters as they are found, without writing on every frame.
   const lastSaved = useRef("");
@@ -1121,6 +1212,7 @@ export function GamePage() {
           time={time}
           encounter={encounter}
           taught={allLearned(taught)}
+          audio={audio}
           onBegin={beginAscent}
         />
       )}
@@ -1157,8 +1249,16 @@ export function GamePage() {
                   <span className={styles.hudName}>
                     {regionOfSefirah(walking.ends[0]).name} → {regionOfSefirah(walking.ends[1]).name}
                   </span>
-                  <span className={`${styles.hudHeb} hebrew`} lang="he">
+                  <span
+                    className={`${styles.hudHeb} hebrew`}
+                    lang="he"
+                    aria-hidden="true"
+                    title={`Pays ${lettersById[walking.letter]?.name ?? walking.letter}`}
+                  >
                     {lettersById[walking.letter]?.glyph ?? ""}
+                  </span>
+                  <span className="sr-only">
+                    This way pays {lettersById[walking.letter]?.name ?? walking.letter}
                   </span>
                 </>
               ) : (
@@ -1186,10 +1286,13 @@ export function GamePage() {
               ))}
             </div>
             <div className={styles.hudOr} title="Light gathered in this region">
-              <span aria-hidden="true">✦</span> {hud.or}
+              <span aria-hidden="true">✦</span> <span aria-hidden="true">{hud.or}</span>
+              <span className="sr-only">{hud.or} light gathered on this rung</span>
             </div>
             <LetterBelt held={ascent.lettersHeld} ascendant={ascent.ascendantLetterId} />
             <VesselBelt held={ascent.items ?? []} />
+            {/* A word given, and whether it is still good. */}
+            {vow && <VowMark offer={vow.offer} at={vow.at} now={hud} />}
           </div>
 
           <GameCanvas
@@ -1245,6 +1348,7 @@ export function GamePage() {
           onWalk={walkPath}
           onSeal={sealAscent}
           onFall={fall}
+          onTurn={turnPrologue}
           onBack={backToTree}
           onInscribe={inscribe}
           onAccept={acceptOffer}
@@ -1269,6 +1373,17 @@ export function GamePage() {
               onSeal={allKindled(ascent) ? () => setPlate({ kind: "sealed" }) : undefined}
             />
           </div>
+          {/* **The map teaches itself.** The porch taught the body and then
+              the Tree rose with nothing said about it: the one line here read
+              "Choose a way out", which is the first of the three things a
+              Scribe has to learn on this surface and never the other two.
+              Shown only where the map is live — mid-rung the Tree is a
+              picture, and a picture should not give instructions. */}
+          {!world && lessonOfTree && <p className={styles.overlayLesson}>{lessonOfTree.text}</p>}
+          {/* The Tree is where a climb is planned, so it is where the rule this
+              climb is played under belongs — a fourth lamp is worth knowing
+              about before choosing which way to spend it. */}
+          <TheRule encounter={encounter} className={styles.overlayRule} />
           {/* No button. The key that opened it closes it, and saying so once
               here is how that gets learned. */}
           <p className={styles.overlayFoot}>
@@ -1319,6 +1434,20 @@ export function GamePage() {
           )}
           <button type="button" className={styles.cornerButton} onClick={() => setPaused((p) => !p)}>
             <kbd>Esc</kbd> the ways of the body
+          </button>
+          {/* **The score, reachable in one press from anywhere.** It was a
+              checkbox inside a menu most players never open, which for a game
+              with a written nigun per Sefirah is most of the work thrown away
+              on most of the sessions. */}
+          <span aria-hidden="true"> · </span>
+          <button
+            type="button"
+            className={styles.cornerButton}
+            aria-pressed={audio.on}
+            onClick={() => audio.toggle()}
+          >
+            <span aria-hidden="true">{audio.on ? "♪" : "♪̸"}</span>{" "}
+            {audio.on ? "sound on" : "sound off"}
           </button>
         </span>
       </div>
@@ -1375,6 +1504,7 @@ function Threshold({
   time,
   encounter,
   taught,
+  audio,
   onBegin,
 }: {
   ascent: AscentRecord | null;
@@ -1382,6 +1512,8 @@ function Threshold({
   encounter: ReturnType<typeof encounterFor>;
   /** Whether this Scribe has been through the opening lessons before. */
   taught: boolean;
+  /** So the score can be offered once, to whoever has never answered. */
+  audio: ReturnType<typeof useGameAudio>;
   onBegin: () => void;
 }) {
   const sealed = ascent?.sealedAt;
@@ -1418,12 +1550,57 @@ function Threshold({
           </p>
         )}
 
+        {/* **Asked once, and only of someone who has never said.** The score
+            is written per Sefirah and per festival and has always been off by
+            default, behind a checkbox in a menu — so the likeliest way to play
+            this game has been to never learn it has music. Turning it on here
+            is also the only place the browser will let a context be born:
+            inside a click. */}
+        {!audio.answered && (
+          <p className={styles.startSound}>
+            There is a nigun for every Sefirah, and it is silent until you ask.{" "}
+            <button type="button" className={styles.linkButton} onClick={() => audio.toggle()}>
+              Play with sound
+            </button>
+          </p>
+        )}
+
         <p className={styles.startDay}>
           {time.seedLabel} · {encounter ? encounterTitle(encounter) : "Beyond the seven"}
         </p>
+        <TheRule encounter={encounter} />
       </div>
     </section>
   );
+}
+
+/**
+ * **What this Encounter changes, in its own words.**
+ *
+ * Seven rules were authored, each one moving a real number — a fourth lamp, a
+ * doubled shell, guests who ask no price — and `encounter.test.ts` proves no
+ * two of them are the same rule wearing different names. Not one of them had
+ * ever been printed anywhere. The game's only across-run system was invisible:
+ * a Scribe on their fourth climb was carrying a fourth lamp and had no way to
+ * know why, or that it was the Encounter that gave it.
+ *
+ * It goes in the three places a climb is *thought about* — the threshold before
+ * one begins, the Tree while one is being planned, and the plate that seals it
+ * — and nowhere else, because a rule repeated on every rung stops being read.
+ */
+function TheRule({
+  encounter,
+  className,
+}: {
+  encounter: ReturnType<typeof encounterFor>;
+  className?: string;
+}) {
+  const rule = rulesFor(encounter);
+  if (!rule) return null;
+  // "This climb" rather than "today": the Encounter is the *count of sealed
+  // ascents*, not the calendar. Two climbs on one day can sit under different
+  // rules, and a climb left open across a week keeps the one it began under.
+  return <p className={className ?? styles.startRule}>This climb: {rule.rule}</p>;
 }
 
 /**
@@ -1505,6 +1682,8 @@ function PauseMenu({
 
         <DecoratedRule />
 
+        {/* The whole of it, always — this is the promise the skip button on the
+            played prologue makes, and it has to be kept somewhere. */}
         <details className={styles.prologue}>
           <summary className={styles.prologueSummary}>{PROLOGUE.kicker}</summary>
           {PROLOGUE.lines.map((line) => (
@@ -1547,6 +1726,46 @@ function PauseMenu({
  * The vessels, beside the letters and deliberately not among them. One belt
  * says what the Scribe *is*; the other says what he is carrying.
  */
+/**
+ * **A vow, while it is still being kept.**
+ *
+ * The three vow guests were the only bargain in this game with nothing to
+ * watch: a Scribe swore at the House, the plate closed over it, and for the
+ * length of a whole rung the game said nothing — then announced a verdict at
+ * the exit about a promise they had no running account of. Two of the three
+ * are especially cruel that way, because a veiling and a mark are things that
+ * happen *to* you in the middle of a fight, and by the time the exit says the
+ * word was broken there was never a moment where it could have been saved.
+ *
+ * The reading is honest because these vows are **monotone**: light taken,
+ * veilings and marks only ever go up, so a vow that is broken can never come
+ * back — see `ushpizin.test.ts`. What is shown here is therefore the verdict
+ * itself, arrived at early, not a guess at one. And it is the same call the
+ * exit makes: `vowKept` over the difference since the swearing.
+ */
+function VowMark({
+  offer,
+  at,
+  now,
+}: {
+  offer: UshpizinOffer;
+  at: { orGathered: number; veilings: number; marksSet: number };
+  now: HudSample;
+}) {
+  const kept = vowKept(offer.vow!, {
+    orGathered: now.orGathered - at.orGathered,
+    veilings: now.veilings - at.veilings,
+    marksSet: now.marksSet - at.marksSet,
+  });
+  return (
+    <p className={kept ? styles.vowMark : styles.vowMarkBroken}>
+      <span aria-hidden="true">{kept ? "❧" : "✕"}</span> Your word to {offer.figure}:{" "}
+      {offer.terms.replace(/^Vow:\s*/, "")}
+      {!kept && " — broken"}
+    </p>
+  );
+}
+
 function VesselBelt({ held }: { held: readonly string[] }) {
   if (held.length === 0) return null;
   const lit = new Set(synergiesIn(held).flatMap((s) => [s.keli.id, s.keli.synergy?.with ?? ""]));
@@ -1561,9 +1780,10 @@ function VesselBelt({ held }: { held: readonly string[] }) {
             className={`${styles.beltLetter} ${lit.has(id) ? styles.beltAscendant : ""}`}
             title={`${keli.name} — ${keli.found}`}
           >
-            <span className="hebrew" lang="he">
+            <span className="hebrew" lang="he" aria-hidden="true">
               {keli.hebrew.slice(0, 1)}
             </span>
+            <span className="sr-only">{`${keli.name} — ${keli.found}`}</span>
           </li>
         );
       })}
@@ -1584,8 +1804,16 @@ function LetterBelt({ held, ascendant }: { held: readonly string[]; ascendant?: 
             className={`${styles.beltLetter} ${id === ascendant ? styles.beltAscendant : ""}`}
             title={ability ? `${letter.name} — ${ability.name}: ${ability.use}` : letter.name}
           >
-            <span className="hebrew" lang="he">
+            <span className="hebrew" lang="he" aria-hidden="true">
               {letter.glyph}
+            </span>
+            {/* **A glyph is not a label.** `title` is a mouse's affordance —
+                no touch device shows it and no screen reader is obliged to
+                read it — so the belt announced itself as twenty-two Hebrew
+                characters and nothing else. The name and what it does are
+                carried in text that is there for anything not looking. */}
+            <span className="sr-only">
+              {ability ? `${letter.name} — ${ability.name}: ${ability.use}` : letter.name}
             </span>
           </li>
         );
@@ -1807,6 +2035,7 @@ function PlateOverlay({
   onWalk,
   onSeal,
   onFall,
+  onTurn,
   onBack,
   onInscribe,
   onAccept,
@@ -1824,9 +2053,11 @@ function PlateOverlay({
   onSeal: () => void;
   /** The last lamp is out: wake, and go on climbing. Never the same as `onSeal`. */
   onFall: () => void;
+  /** The prologue's next page, or — given `true` — the rest of it put down. */
+  onTurn: (skip?: boolean) => void;
   /** Back to the overworld, at the end of a path. */
   onBack: () => void;
-  onInscribe: (letterIds: [string, string, string]) => void;
+  onInscribe: (letterIds: [string, string, string], hintsTaken: number) => void;
   onAccept: (offer: UshpizinOffer) => void;
   /** A vessel accepted off its pedestal. Declining is `onClose`. */
   onTakeVessel: (keliId: string) => void;
@@ -1845,6 +2076,7 @@ function PlateOverlay({
   return (
     <div className={styles.plateScrim} role="dialog" aria-modal="true">
       <div className={styles.plate} ref={body}>
+        {plate.kind === "prologue" && <ProloguePlate page={plate.page} onTurn={onTurn} />}
         {plate.kind === "path-done" && ascent && (
           <PathDonePlate ascent={ascent} path={plate.path} vow={plate.vow} onBack={onBack} />
         )}
@@ -1895,6 +2127,51 @@ function PlateOverlay({
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * **The prologue, played.**
+ *
+ * One page at a time, the charge last, and the button says which it is — a
+ * stranger who has just pressed Begin should be able to tell at a glance
+ * whether they are three paragraphs from the game or one. The pages are dots
+ * rather than "4 of 6" because this is a telling, not a form.
+ *
+ * Skipping is offered on every page and is honoured permanently. It is the
+ * only honest way to put a story in front of a person who did not ask for one:
+ * the whole of it stays behind Esc for as long as the game exists.
+ */
+function ProloguePlate({ page, onTurn }: { page: number; onTurn: (skip?: boolean) => void }) {
+  const last = page >= PROLOGUE_PAGES.length - 1;
+  return (
+    <>
+      <p className={styles.plateKicker}>{PROLOGUE.kicker}</p>
+      <p className={styles.prologuePage}>{PROLOGUE_PAGES[page]}</p>
+      <ul className={styles.prologueDots} aria-label={`Page ${page + 1} of ${PROLOGUE_PAGES.length}`}>
+        {PROLOGUE_PAGES.map((text, i) => (
+          <li
+            key={text.slice(0, 16)}
+            aria-hidden="true"
+            className={i <= page ? styles.prologueDotOn : styles.prologueDot}
+          />
+        ))}
+      </ul>
+      <div className={styles.plateActions}>
+        <Button variant="primary" onClick={() => onTurn()} autoFocus>
+          {last ? "Begin the ascent" : "Go on"}
+        </Button>
+      </div>
+      {!last && (
+        <p className={styles.prologueSkip}>
+          <button type="button" className={styles.linkButton} onClick={() => onTurn(true)}>
+            Skip — I know why I am here
+          </button>
+          {" · it is kept under "}
+          <kbd>Esc</kbd>
+        </p>
+      )}
+    </>
   );
 }
 
@@ -2087,10 +2364,16 @@ function WordGatePlate({
 }: {
   target: WordGateTarget;
   held: readonly string[];
-  onInscribe: (letterIds: [string, string, string]) => void;
+  onInscribe: (letterIds: [string, string, string], hintsTaken: number) => void;
   onClose: () => void;
 }) {
   const [sockets, setSockets] = useState<(string | null)[]>([null, null, null]);
+  /** How many rungs of the ladder have been asked for. */
+  const [asked, setAsked] = useState(0);
+  const ladder = useMemo(
+    () => hintsFor(target, (id) => lettersById[id]?.name ?? id),
+    [target],
+  );
   const place = (letterId: string) => {
     setSockets((prev) => {
       const next = [...prev];
@@ -2101,6 +2384,7 @@ function WordGatePlate({
     });
   };
   const filled = sockets.filter(Boolean).length === 3;
+  const next = ladder[asked];
 
   return (
     <>
@@ -2115,12 +2399,20 @@ function WordGatePlate({
           <button
             key={i}
             type="button"
-            className={`${styles.socket} hebrew`}
-            lang="he"
+            className={letterId ? styles.socket : `${styles.socket} ${styles.socketEmpty}`}
             aria-label={letterId ? `Socket ${i + 1}: ${lettersById[letterId]?.name}` : `Socket ${i + 1}, empty`}
             onClick={() => setSockets((prev) => prev.map((v, j) => (j === i ? null : v)))}
           >
-            {letterId ? lettersById[letterId]?.glyph : ""}
+            <span className="hebrew" lang="he">
+              {letterId ? lettersById[letterId]?.glyph : ""}
+            </span>
+            {/* **The sound, under the shape.** Without it the sockets read back
+                as three drawings, and a person who does not read Hebrew cannot
+                even check their own work — they placed a shape, and the plate
+                shows them the shape again. */}
+            <span className={styles.socketSound}>
+              {letterId ? lettersById[letterId]?.transliteration : ""}
+            </span>
           </button>
         ))}
       </div>
@@ -2130,8 +2422,7 @@ function WordGatePlate({
           <li key={id}>
             <button
               type="button"
-              className={`${styles.paletteLetter} hebrew`}
-              lang="he"
+              className={styles.paletteLetter}
               title={lettersById[id]?.name}
               // Named as well as drawn. A glyph is the whole label otherwise,
               // which leaves a screen reader saying "פ" and the harness with
@@ -2141,22 +2432,57 @@ function WordGatePlate({
               data-letter={id}
               onClick={() => place(id)}
             >
-              {lettersById[id]?.glyph}
+              <span className="hebrew" lang="he">
+                {lettersById[id]?.glyph}
+              </span>
+              <span className={styles.paletteSound}>{lettersById[id]?.transliteration}</span>
             </button>
           </li>
         ))}
       </ul>
 
+      {/* **The ladder.** Everything already asked for stays on the plate — a
+          hint that scrolls away has to be remembered, and remembering is the
+          thing this is for. */}
+      {asked > 0 && (
+        <ul className={styles.hints}>
+          {ladder.slice(0, asked).map((hint) => (
+            <li key={hint.rung}>
+              <span className={styles.hintKicker}>{hint.kicker}</span> {hint.text}
+            </li>
+          ))}
+        </ul>
+      )}
+
       <div className={styles.plateActions}>
         <Button
           variant="primary"
           disabled={!filled}
-          onClick={() => filled && onInscribe(sockets as [string, string, string])}
+          onClick={() => filled && onInscribe(sockets as [string, string, string], asked)}
         >
           Inscribe
         </Button>
         <Button onClick={onClose}>Step back</Button>
       </div>
+
+      {next && (
+        <p className={styles.hintAsk}>
+          <button
+            type="button"
+            className={styles.linkButton}
+            onClick={() => {
+              setAsked((n) => n + 1);
+              // The last rung is the answer, so it sets the sockets rather than
+              // asking a person to copy three shapes by eye — which is the same
+              // wall one rung further down.
+              if (next.answer) setSockets([...next.answer]);
+            }}
+          >
+            {next.answer ? "Tell me the word" : "Ask for a hint"}
+          </button>{" "}
+          · costs {HINT_COST} of the light this root pays, and nothing else
+        </p>
+      )}
     </>
   );
 }
@@ -2295,6 +2621,21 @@ function HousePlate({
           </p>
           <p className={styles.offerSaying}>&ldquo;{offer.saying}&rdquo;</p>
           <p className={styles.offerGrants}>{offer.grantsLabel}</p>
+          {/* **What a vow is**, said where it is taken. The three vow guests
+              ask for something that will not be judged for another whole rung,
+              and until now nothing told the Scribe that — not when it is
+              settled, not that the game will keep the account for them, and
+              not that breaking it costs nothing but the boon. A person who
+              does not know the last of those reads "vow" as a trap and
+              declines, which is the opposite of the choice this is meant to
+              be. */}
+          {offer.vow && (
+            <p className={styles.offerVow}>
+              A vow is judged at the way out of this rung, and you will see it standing in the
+              corner until then. Keep it and the grace is given there. Break it and you simply do
+              not get it — nothing is taken from you for having tried.
+            </p>
+          )}
           {/* **A bargain for a body that cannot yet use it.** `GRACE_NEEDS`
               wrote this dependency down and `exposure.test.ts` enforces it
               against the *linear* letter order — which was the whole truth
@@ -2583,10 +2924,13 @@ function SealedPlate({
             ? "All twenty-two letters are in your hand. The alphabet is complete, and the Tree was climbed on nothing else."
             : `You arrive carrying ${found} of the twenty-two letters. The crown is reached either way — that was never in question — but the letters left in the regions below are still there.`}
       </p>
-      <ul className={styles.sealedLetters}>
+      <ul className={styles.sealedLetters} aria-label="The letters carried to the crown">
         {ascent.lettersHeld.map((id) => (
-          <li key={id} className="hebrew" lang="he">
-            {lettersById[id]?.glyph}
+          <li key={id}>
+            <span className="hebrew" lang="he" aria-hidden="true">
+              {lettersById[id]?.glyph}
+            </span>
+            <span className="sr-only">{lettersById[id]?.name}</span>
           </li>
         ))}
       </ul>
@@ -2638,6 +2982,8 @@ function SealedPlate({
         <>
           <DecoratedRule />
           <p className={styles.plateKicker}>{encounterTitle(encounter)}</p>
+          {/* What it did to the climb that just ended, beside what it asks. */}
+          <TheRule encounter={encounter} className={styles.plateDerivation} />
           <p className={styles.plateQuestion}>{encounter.question}</p>
         </>
       )}

@@ -50,7 +50,14 @@
   inset: auto 0 0 0;
   display: none;
   justify-content: space-between;
+  /* **Clear of the home indicator.** With `viewport-fit=cover` the page runs
+     under the gesture bar, and the pad sat in it: on a modern iPhone the jump
+     button and "swipe up to leave the app" were the same thirty pixels. The
+     insets are zero everywhere else, so this costs nothing on a desktop. */
   padding: var(--space-3);
+  padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+  padding-left: calc(var(--space-3) + env(safe-area-inset-left, 0px));
+  padding-right: calc(var(--space-3) + env(safe-area-inset-right, 0px));
   gap: var(--space-3);
   pointer-events: none;
 }

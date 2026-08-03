@@ -7,6 +7,7 @@ import {
   ABYSS_WORD,
   pleaFor,
   PROLOGUE,
+  PROLOGUE_PAGES,
   TESTIMONY,
   witnessesOf,
   WITNESSES_POSSIBLE,
@@ -65,6 +66,23 @@ describe("the charge, held one piece per rung", () => {
     expect(PROLOGUE.lines.length).toBeGreaterThanOrEqual(3);
     expect(PROLOGUE.charge).toMatch(/Mouth/);
     expect(ABYSS_WORD.length).toBeGreaterThan(80);
+  });
+
+  /**
+   * The prologue is *played* now — a page at a time on a first Begin — so the
+   * order it is played in is a fact rather than a rendering detail. The charge
+   * goes last because it is the only page that says what to do next; a telling
+   * that ended on the fall would be a mood.
+   */
+  it("plays as pages, and leaves the Scribe on the charge", () => {
+    expect(PROLOGUE_PAGES).toHaveLength(PROLOGUE.lines.length + 1);
+    expect(PROLOGUE_PAGES.slice(0, -1)).toEqual([...PROLOGUE.lines]);
+    expect(PROLOGUE_PAGES[PROLOGUE_PAGES.length - 1]).toBe(PROLOGUE.charge);
+    // Every page is a page: nothing blank, and nothing so long it is a wall.
+    for (const page of PROLOGUE_PAGES) {
+      expect(page.length).toBeGreaterThan(40);
+      expect(page.length).toBeLessThan(700);
+    }
   });
 });
 

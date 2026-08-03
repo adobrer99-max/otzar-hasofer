@@ -31,6 +31,23 @@ export function isGameSoundOn(): boolean {
   }
 }
 
+/**
+ * Whether the Scribe has ever answered the question at all.
+ *
+ * The preference stores "on" or "off", so *absent* is a third state and a
+ * real one: nobody has said. It is what lets the threshold offer the score
+ * once, to someone who has no idea there is one, and then never again —
+ * including for a Scribe who turned it off, since that is an answer.
+ */
+export function isGameSoundAnswered(): boolean {
+  try {
+    return localStorage.getItem(PREF_KEY) !== null;
+  } catch {
+    // Storage denied: treat it as answered rather than asking every load.
+    return true;
+  }
+}
+
 export function setGameSoundOn(on: boolean): void {
   try {
     localStorage.setItem(PREF_KEY, on ? "on" : "off");

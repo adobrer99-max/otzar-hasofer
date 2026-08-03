@@ -79,6 +79,22 @@
   letter-spacing: 0.04em;
 }
 
+/* The one-time offer of the score. */
+.startSound {
+  margin: var(--space-3) 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+/* What the Encounter changes. Copper rather than muted, because unlike the
+   date beside it this is a thing that is *acting on* the climb. */
+.startRule {
+  margin: var(--space-1) 0 0;
+  font-size: 0.85rem;
+  color: var(--color-copper, var(--accent));
+  font-style: italic;
+}
+
 /* ---- standing on the Tree, behind the map ------------------------------- */
 
 .standing {
@@ -166,6 +182,33 @@
   color: var(--muted);
 }
 
+/* What the Tree is teaching, at its foot — one line, never more, and gone for
+   good once the deed it names has been done once. */
+.overlayLesson {
+  flex: none;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  max-width: var(--measure);
+  border-left: 2px solid var(--accent);
+  background: var(--bg-sunken);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  font-size: 0.88rem;
+  line-height: var(--line-height);
+  text-align: left;
+}
+
+/* The Encounter's rule, at the foot of the Tree it is acting on. */
+.overlayRule {
+  flex: none;
+  margin: 0;
+  padding: var(--space-2) 0 0;
+  font-size: 0.82rem;
+  color: var(--color-copper, var(--accent));
+  font-style: italic;
+  text-align: center;
+}
+
 .pauseHead {
   display: flex;
   align-items: baseline;
@@ -197,7 +240,8 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  padding: 6px var(--space-3);
+  /* Under the notch and the gesture bar otherwise — see `index.html`. */
+  padding: 6px calc(var(--space-3) + env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) calc(var(--space-3) + env(safe-area-inset-left, 0px));
   font-size: 0.74rem;
   color: var(--muted);
   pointer-events: none;
@@ -362,7 +406,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-3);
-  padding: 8px var(--space-3);
+  padding: calc(8px + env(safe-area-inset-top, 0px)) calc(var(--space-3) + env(safe-area-inset-right, 0px)) 8px calc(var(--space-3) + env(safe-area-inset-left, 0px));
   pointer-events: none;
   background: linear-gradient(
     to bottom,
@@ -515,6 +559,65 @@
   color: var(--accent-bright);
   line-height: var(--line-height);
   font-style: italic;
+}
+
+/* The prologue as it is *played*, on a first Begin: one page at a time on a
+   plate, rather than five paragraphs inside a collapsed panel. Left-aligned
+   and wide-measured because these are sentences, not captions — everything
+   else on a plate is centred, and prose set centred over five lines is the
+   fastest way to make a stranger stop reading. */
+.prologuePage {
+  margin: var(--space-4) 0;
+  text-align: left;
+  color: var(--text);
+  font-size: 1.02rem;
+  line-height: 1.65;
+}
+
+.prologueDots {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: center;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.prologueDot,
+.prologueDotOn {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  border: 1px solid var(--accent);
+}
+
+.prologueDotOn {
+  background: var(--accent-bright);
+  border-color: var(--accent-bright);
+}
+
+.prologueSkip {
+  margin: var(--space-3) 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* A button that reads as a sentence — for the one action on a plate that must
+   be plainly *lesser* than the button above it. */
+.linkButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.linkButton:hover,
+.linkButton:focus-visible {
+  color: var(--accent-bright);
 }
 
 /* What a figure of the Houses says the Scribe is accused of. */
@@ -944,10 +1047,14 @@
 }
 
 .socket {
-  width: 3.4rem;
-  height: 3.4rem;
-  display: grid;
-  place-items: center;
+  width: 3.6rem;
+  min-height: 3.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  padding: var(--space-1) 0;
   font-size: 2rem;
   line-height: 1;
   color: var(--accent-bright);
@@ -957,9 +1064,27 @@
   cursor: pointer;
 }
 
-.socket:empty {
+/* An empty socket is a dashed outline. This used to be `:empty`, which stopped
+   being true the moment a socket carried a glyph *and* its sound. */
+.socketEmpty {
   border-style: dashed;
   border-color: var(--border-hairline);
+}
+
+/* How a letter sounds, under how it is drawn — the whole of what makes this
+   screen usable by someone who does not read the alphabet. */
+.socketSound,
+.paletteSound {
+  font-size: 0.6rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  text-transform: lowercase;
+}
+
+.socketSound {
+  font-size: 0.68rem;
+  min-height: 0.7rem;
 }
 
 .palette {
@@ -973,11 +1098,18 @@
 }
 
 .paletteLetter {
-  width: 2.1rem;
-  height: 2.1rem;
-  display: grid;
-  place-items: center;
+  /* Wide enough for the longest name the sounds run to — "samekh" — because a
+     transliteration clipped by its own button teaches nothing. */
+  min-width: 2.9rem;
+  min-height: 2.6rem;
+  padding: 0 0.15rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.05rem;
   font-size: 1.25rem;
+  line-height: 1;
   color: var(--accent);
   background: var(--bg-raised);
   border: 1px solid var(--border-hairline);
@@ -985,9 +1117,42 @@
   cursor: pointer;
 }
 
-.paletteLetter:hover {
+.paletteLetter:hover,
+.paletteLetter:focus-visible {
   border-color: var(--accent);
   color: var(--accent-bright);
+}
+
+/* The ladder, and the one line that offers the next rung of it. */
+.hints {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  list-style: none;
+  text-align: left;
+  border-left: 2px solid var(--color-copper, var(--accent));
+  background: var(--bg-sunken);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: var(--line-height);
+}
+
+.hints li + li {
+  margin-top: var(--space-2);
+}
+
+.hintKicker {
+  display: block;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.hintAsk {
+  margin: var(--space-3) 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
 }
 
 .plateActions {
@@ -1049,6 +1214,43 @@
   margin: 0 0 var(--space-3);
   color: var(--text-muted);
   font-size: 0.88rem;
+}
+
+/* What a vow is, said where one is taken. Boxed like a rule rather than set as
+   prose, because it is the terms of the thing and not more of the guest's
+   voice — everything above it in italics is somebody speaking. */
+.offerVow {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-hairline);
+  border-left: 2px solid var(--color-copper, var(--accent));
+  border-radius: var(--radius-md);
+  text-align: left;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  line-height: var(--line-height);
+}
+
+/* A word given, in the corner, for as long as it is still worth something. */
+.vowMark,
+.vowMarkBroken {
+  flex-basis: 100%;
+  margin: var(--space-1) 0 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.vowMark {
+  color: var(--color-copper, var(--accent));
+}
+
+/* Broken is muted and struck rather than red: nothing was taken, the boon
+   simply is not coming, and the HUD should not shout about a loss that is
+   only a loss of something never held. */
+.vowMarkBroken {
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
 }
 
 /* ---- what is sounding --------------------------------------------------- */

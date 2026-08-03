@@ -63,6 +63,27 @@ const KEYS = {
  * Tree is kindled, and choosing to seal. The warp lights the ten (`lit`) —
  * three hundred light is not something a harness can be asked to earn.
  */
+/**
+ * Put the prologue down, if it is being told.
+ *
+ * Every playwright context is a fresh browser with empty storage, so **every**
+ * script that presses Begin is by definition a first Begin: the prologue plays
+ * before the Tree rises, and a script that clicked straight through to a way
+ * out stood waiting on a button behind a plate. That is exactly what happened
+ * to `path` the first time the whole set was run after the prologue landed —
+ * a thirty-second timeout on a Yesod that was never going to appear.
+ *
+ * `first-run` is the one script that wants the telling, and it walks it page
+ * by page rather than calling this.
+ */
+const pastThePrologue = async (page) => {
+  const skip = page.getByRole("button", { name: /^Skip/ });
+  if (await skip.count()) {
+    await skip.first().click();
+    await page.waitForTimeout(500);
+  }
+};
+
 const sealFromTheMap = async (page) => {
   const seal = page.getByRole("button", { name: /Seal the ascent/ }).first();
   await seal.waitFor({ state: "visible", timeout: 10000 }).catch(() => {});
@@ -70,6 +91,59 @@ const sealFromTheMap = async (page) => {
 };
 
 const SCRIPTS = [
+  {
+    name: "first-run",
+    about: "A stranger's first minute — the prologue played, and the Tree teaching itself.",
+    /**
+     * **The one script that begins with nothing.** Every other script warps or
+     * seeds a record; this one wipes the drawers a returning Scribe carries —
+     * the lessons, the telling, the sound preference — and presses Begin, so
+     * what it photographs is what a person who has never seen this game sees.
+     *
+     * It exists because the prologue and the map's own lessons are both
+     * *first-time-only*, which makes them the two things in the game most
+     * likely to break unnoticed: they never appear again on any machine that
+     * has already run once, including every machine anyone develops on.
+     */
+    warp: {},
+    enter: async (page) => {
+      await page.evaluate(() => {
+        localStorage.removeItem("otzar-game-taught");
+        localStorage.removeItem("otzar-game-taught-tree");
+        localStorage.removeItem("otzar-game-told");
+        localStorage.removeItem("otzar-game-sound");
+      });
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(700);
+      // The score is offered on the threshold, to somebody who has never said.
+      const sound = page.getByRole("button", { name: /Play with sound/ });
+      if (!(await sound.count())) throw new Error("the threshold never offered the score");
+      await page.getByRole("button", { name: /^Begin/ }).first().click();
+      await page.waitForTimeout(500);
+      // The prologue, page by page, to its charge — and the map must stay down
+      // until it is done. Pressing Enter is how a person turns it.
+      let pages = 0;
+      for (; pages < 12; pages += 1) {
+        const go = page.getByRole("button", { name: /^Go on$|^Begin the ascent$/ });
+        if (!(await go.count())) break;
+        if (await page.locator("[class*=wayButton]").count()) {
+          throw new Error("the Tree rose while the prologue was still being told");
+        }
+        await page.keyboard.press("Enter");
+        await page.waitForTimeout(250);
+      }
+      if (pages < 2) throw new Error(`the prologue played ${pages} pages`);
+      await page.waitForTimeout(600);
+      // And what is left is the Tree, teaching itself.
+      const lesson = await page.locator("[class*=overlayLesson]").textContent().catch(() => "");
+      if (!/Tree/.test(lesson ?? "")) throw new Error(`the map taught nothing: ${lesson}`);
+      await page.screenshot({ path: join(outDir, "first-run-tree.png") });
+      // Then out of the kingdom, so the run has ground to photograph.
+      await walkOut(page);
+    },
+    until: (p) => p.progress > 0.1 || p.finished,
+    seconds: 90,
+  },
   {
     name: "porch",
     about: "The taught opening in Malchut — the three lessons and the first gap.",
@@ -87,9 +161,29 @@ const SCRIPTS = [
   {
     name: "house",
     about: "A figure of the Dorot standing on a rung, and what they say.",
+    /**
+     * **This script has never once met a figure, and now it is known why.**
+     *
+     * It has shipped green for its whole life because `until` also passes on
+     * `p.finished`, and its reports quietly read "the clock ran out · plates:
+     * fragment" run after run. Chasing a vow through it produced the
+     * measurement: the probe reports where the House stands, and on two
+     * different rungs it came back **174px and 392px above the Scribe's
+     * head**, with the horizontal offset at 26 and −31 — the driver standing
+     * directly underneath it, jumping, and getting nowhere.
+     *
+     * So the figures are up on ledges, off the walking line, reached by a
+     * shaft or a stone. Meeting one is an *optional climb*, which is a fact
+     * about the game worth knowing; and this driver climbs nothing, which is
+     * the same limitation already written down against `up` below. Whoever
+     * teaches it to take a shaft gets the Houses, the vows and the vow HUD in
+     * one go — `seekHouse` is the half of it that already works: the probe
+     * says where the figure is and the driver walks to its column.
+     */
     warp: { rung: 4, letters: "as-of-rung", lamps: 3, seed: 3 },
     until: (p) => p.housesMet > 0 || p.finished,
     seconds: 180,
+    driver: { seekHouse: true },
   },
   {
     name: "crown-whole",
@@ -129,6 +223,7 @@ const SCRIPTS = [
     enter: async (page) => {
       await page.getByRole("button", { name: /^Begin/ }).first().click();
       await page.waitForTimeout(400);
+      await pastThePrologue(page);
       // Out by Yesod, which is the path that pays the Breath — so the rung is
       // built for a Scribe holding nothing, which is the hardest thing the
       // generator is ever asked for and the right thing to look at first.
@@ -217,9 +312,41 @@ const SCRIPTS = [
     warp: { rung: 6, letters: "all", lamps: 3, seed: 5, freed: 1 },
     until: (p) => p.plate === "word-result" || p.finished,
     seconds: 180,
+    driver: { intoGates: true },
     onPlate: async (page, plate) => {
       if (plate !== "word-gate") return false;
       return await answerGate(page);
+    },
+  },
+  {
+    name: "hint",
+    about: "The same gate, answered by someone who reads nothing — the ladder to the end.",
+    // The counterpart to `gate`, and the one that proves the "for anyone"
+    // claim rather than the machinery: `gate` answers cold, off the root read
+    // out of the probe, which is a thing only the harness can do. This one
+    // touches nothing but what a person sees — it presses "Ask for a hint"
+    // until the plate hands over the word, and inscribes what it was given.
+    // If this passes, the gate has no reading requirement left in it.
+    warp: { rung: 6, letters: "all", lamps: 3, seed: 5, freed: 1 },
+    until: (p) => p.plate === "word-result" || p.finished,
+    seconds: 180,
+    driver: { intoGates: true },
+    onPlate: async (page, plate) => {
+      if (plate !== "word-gate") return false;
+      for (let rung = 0; rung < 6; rung += 1) {
+        const ask = page.getByRole("button", { name: /Ask for a hint|Tell me the word/ });
+        if (!(await ask.count())) break;
+        await ask.first().click();
+        await page.waitForTimeout(200);
+      }
+      // The plate is photographed when it *appears*, which is before any of
+      // this — so the ladder itself would never be seen without a second shot.
+      await page.screenshot({ path: join(outDir, "hint-ladder.png") });
+      const inscribe = page.getByRole("button", { name: "Inscribe" });
+      if (await inscribe.isDisabled().catch(() => true)) return false;
+      await inscribe.click();
+      await page.waitForTimeout(400);
+      return true;
     },
   },
   {
@@ -499,13 +626,31 @@ function decide(p, look, memory, opts) {
   // linear warp, which has no crossings in it. Whoever teaches this harness to
   // walk a Tree path has to teach it to spell first; until then a crossing is
   // unfinishable by the tool by construction, not by accident.
-  if (gateAhead) memory.leaveGate = 60;
+  // **Unless the script is here for the gate.** Walking away from gates is
+  // right for every script that cannot spell — and exactly wrong for the one
+  // that can, which spent three runs being steered out of the chamber it came
+  // to answer. `gate` reached 29% and no plate at all on one of them.
+  if (gateAhead && !opts?.intoGates) memory.leaveGate = 60;
   else if (memory.leaveGate > 0) memory.leaveGate -= 1;
 
   const backingOff =
     memory.leaveGate > 0 || (memory.stuckFor > 90 && memory.stuckFor % 150 < 45);
 
-  const wantJump = !backingOff && (gapAhead || wallAhead || memory.stuckFor > 6);
+  /**
+   * **Steering to the figure of the Houses**, when a script has asked for it.
+   *
+   * Walking right is enough to *pass* a House and not enough to *meet* one: the
+   * `H` marker sits wherever its chunk puts it, which is often a ledge a
+   * walking driver has no reason to climb onto. Measured, not guessed — the
+   * `house` script and three attempts at `vow` all crossed the marker's column
+   * and raised no plate. So the probe reports where it is (`p.house`) and this
+   * turns around for it and jumps at it.
+   */
+  const seek = opts?.seekHouse ? p.house : undefined;
+  const houseBehind = Boolean(seek && seek.dx < -16);
+  const houseAbove = Boolean(seek && Math.abs(seek.dx) < 110 && seek.dy < -20);
+
+  const wantJump = !backingOff && (gapAhead || wallAhead || houseAbove || memory.stuckFor > 6);
 
   // **Jump is an edge, not a state.** `GameCanvas` reads `jump` from the keys
   // *pressed since the last frame* and `jumpHeld` from the keys still down —
@@ -522,8 +667,8 @@ function decide(p, look, memory, opts) {
 
   return {
     // Held.
-    right: !backingOff,
-    left: backingOff,
+    right: !backingOff && !houseBehind,
+    left: backingOff || houseBehind,
     jump: memory.jumpFor > 0,
     // **Up, on a vine and in water** — and it was hardcoded false, which meant
     // this harness could not climb a vine or rise through water at all.
