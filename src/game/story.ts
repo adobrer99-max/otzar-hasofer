@@ -51,6 +51,18 @@ export const PROLOGUE = {
 } as const;
 
 /**
+ * **The prologue as it is played** — one page at a time, the charge last.
+ *
+ * The same words as above, in the order a first Begin walks through them. It is
+ * a separate export rather than a `map` at the call site so that the *shape* of
+ * the telling is a fact this module states and a test can hold: the charge is
+ * the page a Scribe is left on, because it is the only one that says what to do
+ * next, and a prologue that ended on the fall would be a mood rather than an
+ * instruction.
+ */
+export const PROLOGUE_PAGES: readonly string[] = [...PROLOGUE.lines, PROLOGUE.charge];
+
+/**
  * What the figure at each rung says the Scribe is accused of.
  *
  * One per Sefirah rather than one per figure, because either House may stand

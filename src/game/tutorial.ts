@@ -148,7 +148,45 @@ export function writeTaught(learned: readonly LessonKey[]): void {
 export function forgetTaught(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(TOLD_KEY);
   } catch {
     // Nothing to undo.
+  }
+}
+
+// --- the telling ------------------------------------------------------------
+
+/**
+ * **Whether this Scribe has been told why they are climbing.**
+ *
+ * Separate from the lessons above, and deliberately so. A lesson is about the
+ * hands and is retired by using the key; the prologue is about the *reason*,
+ * and nothing a player presses can retire it — it is either said or it is not.
+ * It lived for the game's whole life in a collapsed `<details>` behind a menu,
+ * under a comment on the threshold promising it was "the first thing the game
+ * says once they press the button", which it never was.
+ *
+ * It rides in the same drawer as the lessons because it answers the same
+ * question — what does this person already know — and because `forgetTaught`
+ * has to clear both or asking for the tutorial again would replay the hands
+ * and skip the reason.
+ */
+const TOLD_KEY = "otzar-game-told";
+
+export function readTold(): boolean {
+  try {
+    return localStorage.getItem(TOLD_KEY) === "1";
+  } catch {
+    // Storage denied means the prologue plays every time. Better than a
+    // stranger who is never told what they are doing.
+    return false;
+  }
+}
+
+export function writeTold(): void {
+  try {
+    localStorage.setItem(TOLD_KEY, "1");
+  } catch {
+    // No worse than being told twice.
   }
 }

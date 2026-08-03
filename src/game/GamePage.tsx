@@ -27,8 +27,10 @@ import {
   ALL_LESSON_KEYS,
   nextLesson,
   readTaught,
+  readTold,
   retire,
   writeTaught,
+  writeTold,
   type LessonKey,
 } from "./tutorial";
 import { GameCanvas, type HudSample } from "./GameCanvas";
@@ -48,6 +50,7 @@ import {
   endingOf,
   pleaFor,
   PROLOGUE,
+  PROLOGUE_PAGES,
   sefirahOfCard,
   TESTIMONY,
   witnessesOf,
@@ -89,6 +92,12 @@ function allKindled(ascent: AscentRecord): boolean {
 }
 
 type Plate =
+  /**
+   * **Why you are climbing, said once, before anything else.** Paged rather
+   * than dumped: `page` indexes `PROLOGUE_PAGES`, and the last page is the
+   * charge. Raised only on a Scribe's first Begin — see `readTold`.
+   */
+  | { kind: "prologue"; page: number }
   | { kind: "letter"; letterId: string }
   | { kind: "fragment"; index: number; held: number }
   | { kind: "scroll-whole" }
@@ -427,7 +436,13 @@ export function GamePage() {
       persist(record);
       setWorld(null);
       setWalking(null);
-      setPlate(null);
+      // **The prologue, on a first Begin only.** The threshold's own comment
+      // has promised since the UI was cut back that the premise is "the first
+      // thing the game says once they press the button" — it never was. It is
+      // now, once per Scribe, and the map holds back behind it (see the effect
+      // that raises the Tree) so the first thing a stranger sees is why they
+      // are here rather than a diagram of ten circles.
+      setPlate(readTold() ? null : { kind: "prologue", page: 0 });
     })();
   }, [ascent, newRecord, persist, time.seedLabel]);
 
@@ -994,9 +1009,12 @@ export function GamePage() {
    * again, and Tab brings it back.
    */
   useEffect(() => {
+    // The one thing that outranks it is the telling: a stranger's first sight
+    // of this game should not be ten circles behind a paragraph.
+    if (plate?.kind === "prologue") return;
     if (!world && ascent && !ascent.sealedAt) setMapOpen(true);
     if (world) setMapOpen(false);
-  }, [world, ascent]);
+  }, [world, ascent, plate]);
 
   /**
    * Tab is the map and Esc is the menu — the two keys this page has, beyond the
@@ -1028,11 +1046,38 @@ export function GamePage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [plate, paused, mapOpen, world, ascent]);
 
+  /**
+   * Turn the prologue's page — or, on Escape, put the rest of it down.
+   *
+   * Either way the Scribe is marked told. A telling you can be made to sit
+   * through a second time because you skipped it the first is a worse thing
+   * than a telling that was skipped; it is available whole behind Esc for as
+   * long as the game exists, which is where a person who wants it will look.
+   */
+  const turnPrologue = useCallback((skip = false) => {
+    setPlate((prev) => {
+      if (prev?.kind !== "prologue") return prev;
+      const next = prev.page + 1;
+      if (skip || next >= PROLOGUE_PAGES.length) {
+        writeTold();
+        return null;
+      }
+      return { kind: "prologue", page: next };
+    });
+  }, []);
+
   // Dismiss a plate with the keyboard, so a run never needs the mouse.
   useEffect(() => {
     if (!plate) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Enter" && e.key !== "Escape" && e.code !== "Space") return;
+      // The prologue is the one plate where Enter means *more*, not *away*:
+      // it turns the page, and only Escape puts it down.
+      if (plate.kind === "prologue") {
+        e.preventDefault();
+        turnPrologue(e.key === "Escape");
+        return;
+      }
       // A pedestal is the one plate that asks a *question*, so the keyboard
       // must not answer it. Swallowed here, Enter would have dismissed the
       // plate — which now means "leave it" — while the Scribe was looking at a
@@ -1080,7 +1125,7 @@ export function GamePage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [plate, sealAscent, fall, backToTree]);
+  }, [plate, sealAscent, fall, backToTree, turnPrologue]);
 
   // Persist letters as they are found, without writing on every frame.
   const lastSaved = useRef("");
@@ -1245,6 +1290,7 @@ export function GamePage() {
           onWalk={walkPath}
           onSeal={sealAscent}
           onFall={fall}
+          onTurn={turnPrologue}
           onBack={backToTree}
           onInscribe={inscribe}
           onAccept={acceptOffer}
@@ -1269,6 +1315,10 @@ export function GamePage() {
               onSeal={allKindled(ascent) ? () => setPlate({ kind: "sealed" }) : undefined}
             />
           </div>
+          {/* The Tree is where a climb is planned, so it is where the rule this
+              climb is played under belongs — a fourth lamp is worth knowing
+              about before choosing which way to spend it. */}
+          <TheRule encounter={encounter} className={styles.overlayRule} />
           {/* No button. The key that opened it closes it, and saying so once
               here is how that gets learned. */}
           <p className={styles.overlayFoot}>
@@ -1421,9 +1471,39 @@ function Threshold({
         <p className={styles.startDay}>
           {time.seedLabel} · {encounter ? encounterTitle(encounter) : "Beyond the seven"}
         </p>
+        <TheRule encounter={encounter} />
       </div>
     </section>
   );
+}
+
+/**
+ * **What this Encounter changes, in its own words.**
+ *
+ * Seven rules were authored, each one moving a real number — a fourth lamp, a
+ * doubled shell, guests who ask no price — and `encounter.test.ts` proves no
+ * two of them are the same rule wearing different names. Not one of them had
+ * ever been printed anywhere. The game's only across-run system was invisible:
+ * a Scribe on their fourth climb was carrying a fourth lamp and had no way to
+ * know why, or that it was the Encounter that gave it.
+ *
+ * It goes in the three places a climb is *thought about* — the threshold before
+ * one begins, the Tree while one is being planned, and the plate that seals it
+ * — and nowhere else, because a rule repeated on every rung stops being read.
+ */
+function TheRule({
+  encounter,
+  className,
+}: {
+  encounter: ReturnType<typeof encounterFor>;
+  className?: string;
+}) {
+  const rule = rulesFor(encounter);
+  if (!rule) return null;
+  // "This climb" rather than "today": the Encounter is the *count of sealed
+  // ascents*, not the calendar. Two climbs on one day can sit under different
+  // rules, and a climb left open across a week keeps the one it began under.
+  return <p className={className ?? styles.startRule}>This climb: {rule.rule}</p>;
 }
 
 /**
@@ -1505,6 +1585,8 @@ function PauseMenu({
 
         <DecoratedRule />
 
+        {/* The whole of it, always — this is the promise the skip button on the
+            played prologue makes, and it has to be kept somewhere. */}
         <details className={styles.prologue}>
           <summary className={styles.prologueSummary}>{PROLOGUE.kicker}</summary>
           {PROLOGUE.lines.map((line) => (
@@ -1807,6 +1889,7 @@ function PlateOverlay({
   onWalk,
   onSeal,
   onFall,
+  onTurn,
   onBack,
   onInscribe,
   onAccept,
@@ -1824,6 +1907,8 @@ function PlateOverlay({
   onSeal: () => void;
   /** The last lamp is out: wake, and go on climbing. Never the same as `onSeal`. */
   onFall: () => void;
+  /** The prologue's next page, or — given `true` — the rest of it put down. */
+  onTurn: (skip?: boolean) => void;
   /** Back to the overworld, at the end of a path. */
   onBack: () => void;
   onInscribe: (letterIds: [string, string, string]) => void;
@@ -1845,6 +1930,7 @@ function PlateOverlay({
   return (
     <div className={styles.plateScrim} role="dialog" aria-modal="true">
       <div className={styles.plate} ref={body}>
+        {plate.kind === "prologue" && <ProloguePlate page={plate.page} onTurn={onTurn} />}
         {plate.kind === "path-done" && ascent && (
           <PathDonePlate ascent={ascent} path={plate.path} vow={plate.vow} onBack={onBack} />
         )}
@@ -1895,6 +1981,51 @@ function PlateOverlay({
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * **The prologue, played.**
+ *
+ * One page at a time, the charge last, and the button says which it is — a
+ * stranger who has just pressed Begin should be able to tell at a glance
+ * whether they are three paragraphs from the game or one. The pages are dots
+ * rather than "4 of 6" because this is a telling, not a form.
+ *
+ * Skipping is offered on every page and is honoured permanently. It is the
+ * only honest way to put a story in front of a person who did not ask for one:
+ * the whole of it stays behind Esc for as long as the game exists.
+ */
+function ProloguePlate({ page, onTurn }: { page: number; onTurn: (skip?: boolean) => void }) {
+  const last = page >= PROLOGUE_PAGES.length - 1;
+  return (
+    <>
+      <p className={styles.plateKicker}>{PROLOGUE.kicker}</p>
+      <p className={styles.prologuePage}>{PROLOGUE_PAGES[page]}</p>
+      <ul className={styles.prologueDots} aria-label={`Page ${page + 1} of ${PROLOGUE_PAGES.length}`}>
+        {PROLOGUE_PAGES.map((text, i) => (
+          <li
+            key={text.slice(0, 16)}
+            aria-hidden="true"
+            className={i <= page ? styles.prologueDotOn : styles.prologueDot}
+          />
+        ))}
+      </ul>
+      <div className={styles.plateActions}>
+        <Button variant="primary" onClick={() => onTurn()} autoFocus>
+          {last ? "Begin the ascent" : "Go on"}
+        </Button>
+      </div>
+      {!last && (
+        <p className={styles.prologueSkip}>
+          <button type="button" className={styles.linkButton} onClick={() => onTurn(true)}>
+            Skip — I know why I am here
+          </button>
+          {" · it is kept under "}
+          <kbd>Esc</kbd>
+        </p>
+      )}
+    </>
   );
 }
 
@@ -2638,6 +2769,8 @@ function SealedPlate({
         <>
           <DecoratedRule />
           <p className={styles.plateKicker}>{encounterTitle(encounter)}</p>
+          {/* What it did to the climb that just ended, beside what it asks. */}
+          <TheRule encounter={encounter} className={styles.plateDerivation} />
           <p className={styles.plateQuestion}>{encounter.question}</p>
         </>
       )}

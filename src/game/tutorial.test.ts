@@ -1,6 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { CONTROLS } from "./controls";
-import { allLearned, ALL_LESSON_KEYS, LESSONS, nextLesson, retire } from "./tutorial";
+import {
+  allLearned,
+  ALL_LESSON_KEYS,
+  forgetTaught,
+  LESSONS,
+  nextLesson,
+  readTold,
+  retire,
+  writeTold,
+} from "./tutorial";
 
 const nothing = { learned: [], lettersHeld: 0 } as const;
 
@@ -77,5 +86,61 @@ describe("the opening lessons", () => {
       const canEnd = lesson.retiredBy.length > 0 || lesson.retiredAtLetters !== undefined;
       expect(canEnd, `${lesson.key} can never be retired`).toBe(true);
     }
+  });
+});
+
+/**
+ * **The telling, which is not a lesson.**
+ *
+ * The prologue is the one first-run thing no keypress retires, so it needs a
+ * flag of its own — and the flag has to survive a browser that refuses
+ * storage, because a game that throws on `localStorage` in private mode is a
+ * game that does not start. The suite runs under node with no `localStorage`
+ * at all, which is exactly that case; the shim below is how the other half is
+ * reached.
+ */
+describe("whether the Scribe has been told why they are climbing", () => {
+  const install = () => {
+    const store = new Map<string, string>();
+    (globalThis as { localStorage?: unknown }).localStorage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    };
+    return store;
+  };
+
+  afterEach(() => {
+    delete (globalThis as { localStorage?: unknown }).localStorage;
+  });
+
+  it("says no before anything has been written", () => {
+    install();
+    expect(readTold()).toBe(false);
+  });
+
+  it("remembers the telling once", () => {
+    install();
+    writeTold();
+    expect(readTold()).toBe(true);
+  });
+
+  it("is forgotten alongside the lessons, or asking for the tutorial again would skip it", () => {
+    install();
+    writeTold();
+    forgetTaught();
+    expect(readTold()).toBe(false);
+  });
+
+  /**
+   * The guarantee that matters more than remembering: **a denied store must
+   * never take the game down.** With no `localStorage` on the global at all,
+   * reading is false — the prologue plays, which is the safe side of the
+   * failure — and writing is silent.
+   */
+  it("survives a browser with no storage at all", () => {
+    expect(readTold()).toBe(false);
+    expect(() => writeTold()).not.toThrow();
+    expect(() => forgetTaught()).not.toThrow();
   });
 });

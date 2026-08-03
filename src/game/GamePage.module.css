@@ -79,6 +79,15 @@
   letter-spacing: 0.04em;
 }
 
+/* What the Encounter changes. Copper rather than muted, because unlike the
+   date beside it this is a thing that is *acting on* the climb. */
+.startRule {
+  margin: var(--space-1) 0 0;
+  font-size: 0.85rem;
+  color: var(--color-copper, var(--accent));
+  font-style: italic;
+}
+
 /* ---- standing on the Tree, behind the map ------------------------------- */
 
 .standing {
@@ -164,6 +173,17 @@
   padding: var(--space-2) 0;
   font-size: 0.8rem;
   color: var(--muted);
+}
+
+/* The Encounter's rule, at the foot of the Tree it is acting on. */
+.overlayRule {
+  flex: none;
+  margin: 0;
+  padding: var(--space-2) 0 0;
+  font-size: 0.82rem;
+  color: var(--color-copper, var(--accent));
+  font-style: italic;
+  text-align: center;
 }
 
 .pauseHead {
@@ -515,6 +535,65 @@
   color: var(--accent-bright);
   line-height: var(--line-height);
   font-style: italic;
+}
+
+/* The prologue as it is *played*, on a first Begin: one page at a time on a
+   plate, rather than five paragraphs inside a collapsed panel. Left-aligned
+   and wide-measured because these are sentences, not captions — everything
+   else on a plate is centred, and prose set centred over five lines is the
+   fastest way to make a stranger stop reading. */
+.prologuePage {
+  margin: var(--space-4) 0;
+  text-align: left;
+  color: var(--text);
+  font-size: 1.02rem;
+  line-height: 1.65;
+}
+
+.prologueDots {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: center;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.prologueDot,
+.prologueDotOn {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  border: 1px solid var(--accent);
+}
+
+.prologueDotOn {
+  background: var(--accent-bright);
+  border-color: var(--accent-bright);
+}
+
+.prologueSkip {
+  margin: var(--space-3) 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* A button that reads as a sentence — for the one action on a plate that must
+   be plainly *lesser* than the button above it. */
+.linkButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.linkButton:hover,
+.linkButton:focus-visible {
+  color: var(--accent-bright);
 }
 
 /* What a figure of the Houses says the Scribe is accused of. */
