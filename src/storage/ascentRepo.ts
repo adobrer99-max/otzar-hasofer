@@ -1,3 +1,4 @@
+import type { Grace } from "../game/abilities";
 import type { SefirahId } from "../types/letter";
 import { getDb } from "./db";
 
@@ -97,6 +98,25 @@ export interface AscentRecord {
    * can do.
    */
   items?: string[];
+  /**
+   * The graces guests of the Houses have given on this climb — see
+   * `game/ushpizinOffers.ts`. The other half of `items`: a vessel changes what
+   * the numbers are, a boon changes what a body can do.
+   *
+   * **It is on the record because it has to outlive the rung it was given on.**
+   * This was React state, cleared at the top of every `walkPath` and every
+   * `faceGuardian`, which made three of the seven guests give nothing at all: a
+   * vow is judged at the exit, so its grace was granted and then wiped before
+   * the next rung's first frame, and the Scribe never held it for a single
+   * tick. The two priced guests fared better only by accident — they grant on
+   * acceptance, so their grace lasted the back half of one screen, for ten
+   * light and six.
+   *
+   * A climb's, not a Scribe's: `beginAscent` starts empty. Vessels are the
+   * thing that carries between climbs, and the guests are a bargain struck
+   * inside one.
+   */
+  boons?: Grace[];
   /** Sacred Time's notes for the day this ascent belongs to. */
   sacredNotes: string[];
   ascendantLetterId?: string;

@@ -1,7 +1,238 @@
 .page {
-  max-width: var(--measure);
-  margin: 0 auto;
-  padding: 0 var(--space-3) var(--space-6);
+  /* **The window, not a column.** This was a centred `--measure` column with
+     page padding, which is right for a document and wrong for a game: the
+     canvas was pinned to a reading width in the middle of a screen. It now
+     fills the shell (`GameShell.module.css`), and anything that still wants a
+     column — the start screen, the overlays — sets its own. */
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 0;
+}
+
+/* ---- the start screen --------------------------------------------------- */
+
+.start {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  width: 100%;
+  padding: var(--space-4);
+}
+
+.startInner {
+  max-width: 44ch;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.startKicker {
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-ink);
+  margin: 0;
+}
+
+.startTitle {
+  font-family: var(--font-display, var(--font-latin));
+  font-size: clamp(2.6rem, 8vw, 4.2rem);
+  line-height: 1.05;
+  margin: 0;
+}
+
+.startHeb {
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  color: var(--gold-ink);
+  margin: 0;
+}
+
+.startLede {
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+}
+
+.startActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: center;
+  margin-top: var(--space-3);
+}
+
+.startLast,
+.startDay {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.startDay {
+  margin-top: var(--space-3);
+  letter-spacing: 0.04em;
+}
+
+/* ---- standing on the Tree, behind the map ------------------------------- */
+
+.standing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  flex: 1;
+  text-align: center;
+}
+
+.standingKicker {
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-ink);
+  margin: 0;
+}
+
+.standingName {
+  font-family: var(--font-display, var(--font-latin));
+  font-size: clamp(2rem, 6vw, 3rem);
+  margin: 0;
+}
+
+.standingHeb {
+  font-size: 1.4rem;
+  color: var(--gold-ink);
+  margin: 0;
+}
+
+.standingLine,
+.standingHint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.standingHint {
+  margin-top: var(--space-3);
+}
+
+/* ---- a rung being walked ------------------------------------------------ */
+
+.playing {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* ---- the two overlays: Tab and Esc -------------------------------------- */
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Dark enough that the game behind reads as *behind*, and translucent enough
+     that it is plainly still there. */
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(3px);
+  padding: var(--space-3) var(--space-3) 0;
+}
+
+.overlayBody {
+  width: min(var(--measure), 100%);
+  flex: 1;
+  min-height: 0;
+  /* The overlay scrolls, the page never does. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.overlayFoot {
+  flex: none;
+  margin: 0;
+  padding: var(--space-2) 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.pauseHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.pauseTitle {
+  margin: 0;
+  font-family: var(--font-display, var(--font-latin));
+  font-size: 1.6rem;
+}
+
+.pauseToggles {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* ---- the corner bar ----------------------------------------------------- */
+
+.cornerBar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 6px var(--space-3);
+  font-size: 0.74rem;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.cornerLink {
+  pointer-events: auto;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.cornerLink:hover {
+  color: var(--gold-ink);
+}
+
+.cornerButton {
+  pointer-events: auto;
+  background: none;
+  border: 0;
+  padding: 4px 2px;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.cornerButton:hover {
+  color: var(--gold-ink);
+}
+
+.cornerKeys kbd {
+  font-family: inherit;
+  font-size: 0.72rem;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 0 4px;
 }
 
 /* ---- the threshold ------------------------------------------------------ */
@@ -120,15 +351,24 @@
 /* ---- the HUD ------------------------------------------------------------ */
 
 .hud {
+  /* Over the ground, not above it — every pixel this used to occupy was a pixel
+     the game did not have. */
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  margin-bottom: var(--space-2);
-  border: 1px solid var(--border-hairline);
-  border-radius: var(--radius-md);
-  background: var(--bg-raised);
+  padding: 8px var(--space-3);
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--bg) 82%, transparent),
+    transparent
+  );
 }
 
 .hudRegion {
@@ -195,6 +435,13 @@
 }
 
 .caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 26px;
+  z-index: 10;
+  text-align: center;
+  pointer-events: none;
   margin: var(--space-2) 0 0;
   min-height: 2.6em;
   color: var(--text-muted);

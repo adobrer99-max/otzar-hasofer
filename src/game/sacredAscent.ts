@@ -61,7 +61,17 @@ const GESTURE_GRACES: Record<string, Grace> = {
   "Listen/Reflect": "farsight", // the window cut in the wall
   "Return/Repent": "return", // teshuvah — back to the beginning
   "Reveal/Unmask": "light", // the hidden face, lit
-  Receive: "speech", // on the day the letters were given, the Houses answer
+  // **Not `speech`.** The rule eight lines up says a grace unlocks nothing, and
+  // `speech` is the one grace that does: it is the sole gate on the Houses
+  // (`world/step.ts`), and through them every guest, all seven testimonies and
+  // the ending's branch. Lending it for a day opened all of that without Peh —
+  // and then the crown still called the Scribe *mute*, because `hasMouth` asks
+  // for the letter, so the closing plate printed "you walked past them" over
+  // "7 of 7 Houses met on the way".
+  //
+  // Farsight instead, which is receiving of the kind a grace is allowed to be:
+  // the view widens, and nothing opens that was shut.
+  Receive: "farsight", // on the day the letters were given, you see further
   Remember: "light", // a lamp kept burning
   Plant: "second-stone", // something set down that stands
   Connect: "swift-water", // the flow between

@@ -346,6 +346,18 @@ export function letterFor(ability: LetterAbility): LetterCard {
 }
 
 /** Does the Scribe hold this verb? */
+/**
+ * The letter a verb comes from — the other way round from `abilityByLetter`.
+ *
+ * One verb per letter, so this is a lookup and not a search with a policy. It
+ * is here so a plate can name the letter a Scribe is missing rather than the
+ * verb, which is an internal word: *the deep needs Mem* means something, *the
+ * deep needs "swim"* does not.
+ */
+export function abilityForVerb(verb: Verb): LetterAbility | undefined {
+  return abilities.find((a) => a.verb === verb);
+}
+
 export function has(held: readonly string[], verb: Verb): boolean {
   return held.includes(verbLetters[verb]);
 }

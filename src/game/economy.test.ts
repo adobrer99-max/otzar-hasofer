@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { abilityByLetter } from "./abilities";
+import { abilityByLetter, type Grace } from "./abilities";
 import { HUSKS } from "./combat";
 import { makeRng, randomInt } from "./rng";
 import { kindleCost } from "../storage/ascentRepo";
@@ -56,12 +56,13 @@ function lightIn(world: World): number {
   return motes + inShells;
 }
 
-function contextFor(held: readonly string[]): StepContext {
+function contextFor(held: readonly string[], lent: readonly Grace[] = []): StepContext {
+  const own = held
+    .map((id) => abilityByLetter[id]?.grace)
+    .filter((g): g is Grace => Boolean(g));
   return {
     verbs: verbsOf(held),
-    graces: held
-      .map((id) => abilityByLetter[id]?.grace)
-      .filter((g): g is NonNullable<typeof g> => Boolean(g)),
+    graces: [...own, ...lent.filter((g) => !own.includes(g))],
   };
 }
 
@@ -73,9 +74,16 @@ const budgetFor = (world: World) =>
  * One walk, played. Returns the light carried out — which is already net of the
  * two a veiling costs, because `veil` takes it off `world.or` as it happens.
  */
-function walk(path: (typeof TREE_PATHS)[number], seed: number, held: string[], spent: boolean) {
+function walk(
+  path: (typeof TREE_PATHS)[number],
+  seed: number,
+  held: string[],
+  spent: boolean,
+  /** Graces a guest of the Houses has given — see `ushpizinOffers.ts`. */
+  lent: readonly Grace[] = [],
+) {
   const world = buildPath(path, seed, held, 1, false, spent);
-  return { or: fighter(world, contextFor(held), budgetFor(world)).or, supply: lightIn(world) };
+  return { or: fighter(world, contextFor(held, lent), budgetFor(world)).or, supply: lightIn(world) };
 }
 
 /**
@@ -371,6 +379,111 @@ describe("what the fall costs, and what kindling early is worth", () => {
         expect(regionOfSefirah(woke).index).toBeLessThanOrEqual(regionOfSefirah(leg.at).index);
       }
     }
+  }, 300000);
+});
+
+/**
+ * **What a guest's bargain is worth**, which nothing had ever asked.
+ *
+ * Hod's Angler costs **10** light and Yesod's Support costs **6**, against a
+ * `kindleCost` that starts at twelve — so a guest can be a fifth of a kindling,
+ * priced by feel and never once measured. Until the boon went onto the record
+ * the question was unanswerable anyway: the grace expired at the end of the rung
+ * it was bought on, so a Scribe was paying climb-scale light for the back half
+ * of one screen.
+ *
+ * Measured over the same paths with and without the grace, so the ground and the
+ * seeds are held fixed and only the body differs.
+ */
+describe("what a guest's boon is worth", () => {
+  const ALL = TREE_PATHS.map((p) => p.letter);
+  /** Paths off the lower Sefirot — where the guests actually stand. */
+  const RUNGS = TREE_PATHS.filter((p) =>
+    ["malchut", "yesod", "hod", "netzach", "tiferet"].includes(p.ends[0]),
+  ).slice(0, 6);
+  /**
+   * **Holding everything but the letter the boon duplicates.** A full hand
+   * already carries all ten graces — Tzadi *is* `draw-motes` and Lamed *is*
+   * `high-jump` — so lending one to a Scribe who has it measures nothing, which
+   * is exactly the null result this pair of tests first produced. A guest's gift
+   * only means anything to a body that has not found the letter.
+   */
+  const without = (letterId: string) => ALL.filter((l) => l !== letterId);
+
+  /**
+   * **The Angler pays for itself in about one rung — and only because the boon
+   * now outlives the rung it was bought on.**
+   *
+   * Hod asks **10** light for `draw-motes`, which widens the collection radius
+   * by three tiles (`touchEntities`). Measured over twelve rungs against a body
+   * holding everything *except* Tzadi: **22→31, 24→28, 18→25, 22→30**, a mean of
+   * **9.2 light a rung**.
+   *
+   * Which is the whole argument for `AscentRecord.boons` in one number. The
+   * grace used to be cleared at the top of the next `walkPath`, so ten light
+   * bought about nine light of value across the back half of a single screen —
+   * a bargain that lost money, offered by a guest, in a game about light. It now
+   * pays roughly its own price on the first rung and every rung after that.
+   *
+   * The bar is a floor rather than the measured figure: the probe is a route
+   * ceiling, not a player, and a real Scribe's imperfect route is exactly what
+   * this grace forgives, so the true value is higher and should not be pinned.
+   */
+  it("returns about what Hod asks for it, every rung, once it survives the rung", () => {
+    const rows = RUNGS.flatMap((path) =>
+      [3, 91].map((seed) => ({
+        path: path.id,
+        without: walk(path, seed, without("tzadi"), false).or,
+        with: walk(path, seed, without("tzadi"), false, ["draw-motes"]).or,
+      })),
+    );
+    const gain = mean(rows.map((r) => r.with - r.without));
+    const told = rows
+      .slice(0, 4)
+      .map((r) => `${r.path} ${r.without}→${r.with}`)
+      .join("; ");
+    expect(
+      gain,
+      `the Angler was worth ${gain.toFixed(1)} light a rung against its price of 10 — measured at 9.2 when this was written (${told})`,
+    ).toBeGreaterThan(3);
+    // Over the rungs still ahead when a guest is met, it has to clear its own
+    // price. That it could not, while the grace expired at the exit, is what
+    // made the bargain a trick.
+    expect(
+      gain * 3,
+      `three rungs of the Angler come to ${(gain * 3).toFixed(0)} against a price of 10`,
+    ).toBeGreaterThan(10);
+  }, 300000);
+
+  /**
+   * A control on the measurement above, and the check that first caught it: with
+   * a **full** hand the harness showed exactly zero for every boon, because a
+   * Scribe holding all twenty-two already carries all ten graces — Tzadi *is*
+   * `draw-motes`, Lamed *is* `high-jump`. Lending someone what they have
+   * measures nothing.
+   *
+   * So: a boon the probe can feel moves a number, on most rungs. Eleven of
+   * twelve when this was written.
+   */
+  it("moves the ground under a body that has not got the letter", () => {
+    const rows = RUNGS.flatMap((path) =>
+      [3, 91].map((seed) => ({
+        without: walk(path, seed, without("lamed"), false).or,
+        with: walk(path, seed, without("lamed"), false, ["high-jump"]).or,
+      })),
+    );
+    const moved = rows.filter((r) => r.with !== r.without).length;
+    expect(
+      moved,
+      `${moved} rungs of ${rows.length} carried differently with the Staff — 11 when this was written`,
+    ).toBeGreaterThan(rows.length / 2);
+    // And the same lent to a hand that already holds Lamed changes nothing,
+    // which is what makes the line above a measurement rather than noise.
+    const redundant = RUNGS.slice(0, 3).map((path) => ({
+      without: walk(path, 3, [...ALL], false).or,
+      with: walk(path, 3, [...ALL], false, ["high-jump"]).or,
+    }));
+    expect(redundant.every((r) => r.with === r.without)).toBe(true);
   }, 300000);
 });
 

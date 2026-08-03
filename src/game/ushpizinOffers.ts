@@ -141,6 +141,27 @@ export const GRACE_NEEDS: Partial<Record<Grace, Verb>> = {
   "second-stone": "block",
 };
 
+/**
+ * The verb a boon needs and this body has not got — so the plate can say so.
+ *
+ * `GRACE_NEEDS` is checked at design time by `exposure.test.ts`, against
+ * `lettersOnEntering`: on a line, standing at a rung *was* holding its letters,
+ * so writing the dependency down was enough. **The Tree unpicked that.** The
+ * route decides the alphabet now, so a Scribe can be standing in Chesed without
+ * Mem, and Abraham's Fish — the deep becoming your element — is a bargain for a
+ * body that cannot swim. The table was right and the world outgrew the place it
+ * was enforced.
+ *
+ * Not hidden, told. A guest who silently vanished would be worse than one
+ * offering something premature: the offer is still real, it is still theirs to
+ * take, and the Scribe is the one who should decide whether to take it now or
+ * come back holding the letter.
+ */
+export function dormantFor(offer: UshpizinOffer, verbs: readonly Verb[]): Verb | undefined {
+  const needs = GRACE_NEEDS[offer.grants];
+  return needs && !verbs.includes(needs) ? needs : undefined;
+}
+
 /** The guest standing in a region, if that Sefirah keeps one. */
 export function offerFor(sefirah: SefirahId): UshpizinOffer | undefined {
   const base = OFFERS[sefirah];
