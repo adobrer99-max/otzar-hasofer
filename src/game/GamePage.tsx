@@ -536,7 +536,6 @@ export function GamePage() {
       const todays = all.filter((a) => a.seedLabel === time.seedLabel);
       const record = newRecord(todays.length);
       persist(record);
-      setHistory(await listAscents().catch(() => all));
       setWorld(null);
       setWalking(null);
       // **The prologue, on a first Begin only.** The threshold's own comment
@@ -546,6 +545,16 @@ export function GamePage() {
       // that raises the Tree) so the first thing a stranger sees is why they
       // are here rather than a diagram of ten circles.
       setPlate(readTold() ? null : { kind: "prologue", page: 0 });
+      /**
+       * **Last, and deliberately not awaited.** This sat between `persist` and
+       * the plate, and an `await` there is a *frame* between the record
+       * existing and the prologue being raised — long enough for the effect
+       * that raises the Tree to see a climb with no plate over it and open the
+       * map behind the telling. The `first-run` script caught it, which is
+       * exactly the thing it was written for: a surface only a machine with
+       * empty storage ever sees.
+       */
+      void listAscents().then(setHistory).catch(() => setHistory(all));
     })();
   }, [ascent, newRecord, persist, time.seedLabel]);
 
