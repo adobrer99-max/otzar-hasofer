@@ -456,6 +456,110 @@ const SCRIPTS = [
     // Walk into everything, write nothing.
     driver: { strike: false, reckless: true },
   },
+  {
+    name: "book",
+    about: "The Book of Ascents — three climbs of different shapes, read back.",
+    /**
+     * **The one surface that looks backwards**, and therefore the one no
+     * ordinary run can reach: it needs a *history*, and a warp is a single
+     * climb. So three sealed records are written straight into the store —
+     * a lit Tree, a crown taken with three paths, and one in the pre-P0 shape
+     * with no frozen ending at all, which the Book has to derive. Plus a
+     * climb that was put down, because that happened too and is counted.
+     *
+     * If this run ever stops showing three pages, either the folds have
+     * drifted from the record or the record has drifted from history — and
+     * the third one is the interesting case, since a Scribe's old climbs are
+     * the thing this game can least afford to lose.
+     */
+    warp: {},
+    enter: async (page) => {
+      await page.evaluate(async () => {
+        const req = indexedDB.open("otzar-hasofer");
+        const db = await new Promise((res, rej) => {
+          req.onsuccess = () => res(req.result);
+          req.onerror = () => rej(req.error);
+        });
+        const tx = db.transaction("ascents", "readwrite");
+        const store = tx.objectStore("ascents");
+        const ALL = [
+          "malchut", "yesod", "hod", "netzach", "tiferet",
+          "gevurah", "chesed", "binah", "chochmah", "keter",
+        ];
+        store.put({
+          id: "book-lit", seed: 3, seedLabel: "14 Nisan 5786",
+          createdAt: "2026-03-01T00:00:00.000Z", updatedAt: "2026-03-01T00:00:00.000Z",
+          sealedAt: "2026-03-01T00:00:00.000Z", regionIndex: 10, at: "keter",
+          pathsWalked: [
+            "malchut-yesod", "yesod-hod", "gevurah-hod", "gevurah-tiferet",
+            "netzach-tiferet", "malchut-netzach", "yesod-tiferet", "tiferet-keter",
+            "binah-keter", "chochmah-keter", "binah-chesed", "chesed-chochmah",
+          ],
+          lettersHeld: ["aleph", "bet", "gimel", "peh"], or: 40,
+          regionsCleared: [], housesMet: [], sefirotLit: ALL, guardiansBroken: ALL,
+          falls: 2, encounterNumber: 1, endingPlea: "alone", witnessSefirot: [],
+          wordsFormed: [{
+            letterIds: ["nun", "kaf", "lamed"], hebrew: "נכל", transliteration: "nêkel",
+            gloss: "deceit", wasTarget: true, regionIndex: 6,
+          }],
+        });
+        store.put({
+          id: "book-crown", seed: 5, seedLabel: "3 Iyyar 5786",
+          createdAt: "2026-02-01T00:00:00.000Z", updatedAt: "2026-02-01T00:00:00.000Z",
+          sealedAt: "2026-02-01T00:00:00.000Z", regionIndex: 10, at: "keter",
+          pathsWalked: ["malchut-yesod", "yesod-tiferet", "tiferet-keter"],
+          lettersHeld: ["aleph", "bet", "peh"], or: 12, regionsCleared: [], housesMet: [],
+          sefirotLit: [], guardiansBroken: ALL, falls: 0, encounterNumber: 2,
+          endingPlea: "heard", witnessSefirot: ["malchut", "hod"],
+        });
+        // No `endingPlea`, no `witnessSefirot` — the shape every record had
+        // before P0 froze the ending. The Book derives it.
+        store.put({
+          id: "book-old", seed: 9, seedLabel: "9 Av 5785",
+          createdAt: "2025-08-01T00:00:00.000Z", updatedAt: "2025-08-01T00:00:00.000Z",
+          sealedAt: "2025-08-01T00:00:00.000Z", regionIndex: 10,
+          pathsWalked: ["malchut-hod"], lettersHeld: ["aleph"], or: 3,
+          regionsCleared: [], housesMet: [],
+        });
+        store.put({
+          id: "book-putdown", seed: 1, seedLabel: "1 Elul 5786",
+          createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z",
+          abandonedAt: "2026-01-02T00:00:00.000Z", regionIndex: 2,
+          lettersHeld: [], or: 0, regionsCleared: [], housesMet: [],
+        });
+        await new Promise((res) => { tx.oncomplete = res; });
+      });
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(900);
+      const door = page.getByRole("button", { name: /The Book of Ascents/ });
+      if (!(await door.count())) throw new Error("the threshold offered no Book");
+      await door.first().click();
+      await page.waitForTimeout(500);
+      // Case-folded, because `innerText` returns *rendered* text and the
+      // section headings are `text-transform: uppercase` — "The Lexicon" comes
+      // back as "THE LEXICON", which cost one run to work out.
+      const text = (await page.locator('[role="dialog"]').innerText()).toLowerCase();
+      for (const wanted of [
+        "All ten kindled",
+        "The crown reached",
+        // The derived one: a climb with no Peh pleaded without a mouth, and
+        // nothing about that was ever written on its record.
+        "You arrived without a mouth",
+        "one climb was put down",
+        "The Lexicon",
+      ]) {
+        if (!text.includes(wanted.toLowerCase())) {
+          throw new Error(
+            `the Book never said "${wanted}" — it said: ${text.replace(/\s+/g, " ").slice(0, 600)}`,
+          );
+        }
+      }
+      await page.screenshot({ path: join(outDir, "book-shelf.png") });
+    },
+    noPlay: true,
+    until: () => true,
+    seconds: 30,
+  },
 ];
 
 // --- arguments ---------------------------------------------------------------
@@ -778,6 +882,28 @@ async function play(script, browser) {
   } else if (Object.keys(script.warp ?? {}).length > 0) {
     // A warp stands the Scribe on the Tree; a rung is chosen, never given.
     await walkOut(page, script.toward);
+  }
+
+  /**
+   * **A script that has nothing to play.** `book` is about a surface that
+   * exists precisely when no climb does — a shelf of sealed records — so there
+   * is no world, no probe reading, and nothing for the driver to do. It has
+   * already asserted everything it came for inside `enter`. Without this it
+   * failed on "the probe never appeared", which was true and beside the point.
+   */
+  if (script.noPlay) {
+    return {
+      script: script.name,
+      about: script.about,
+      warp: script.warp,
+      startedAt: new Date().toISOString(),
+      samples: [],
+      captions: [],
+      plates: [],
+      letters: [],
+      errors,
+      ended: "the script asked for nothing to be played",
+    };
   }
 
   // Wait for the probe to answer, which is also the check that the warp took.

@@ -75,6 +75,7 @@ import { buildArena, buildPath, verbsOf } from "./world/build";
 import { boonsFrom, guardianOf } from "./guardians";
 import { guardiansFreed } from "../storage/ascentRepo";
 import { TreeMap } from "./TreeMap";
+import { Book } from "./Book";
 import { afterWalking, crossesAbyss, nodeOf, TREE_PATHS, type TreePath } from "./tree";
 import { readWarp, warpParams, warpRecord, type WarpOptions } from "./dev/warp";
 import { frameStats, installProbe, neighbourhood, probeOf } from "./dev/probe";
@@ -203,6 +204,16 @@ export function GamePage() {
   >(null);
   /** How many climbs were sealed before this one — which Encounter this is. */
   const [sealedBefore, setSealedBefore] = useState(0);
+  /**
+   * **Every climb ever, held rather than folded once and dropped.**
+   *
+   * This list was already being read at load for `sealedCount` and
+   * `guardiansFreed`, and then discarded — which is exactly why nothing in the
+   * game could ever look backwards. The Book is folds over it (`book.ts`), and
+   * so is what the threshold now remembers about the last ending.
+   */
+  const [history, setHistory] = useState<AscentRecord[]>([]);
+  const [bookOpen, setBookOpen] = useState(false);
 
   // Read inside a setState updater, where reading `time` directly would make
   // the callback depend on it and re-create on every render.
@@ -267,6 +278,7 @@ export function GamePage() {
         setAscent(found ?? null);
         // A climb still in progress must not count itself.
         setSealedBefore(sealedCount(all.filter((a) => a.id !== found?.id)));
+        setHistory(all);
         // **What a Scribe has become**, as against what this climb holds: every
         // Sefirah they have ever freed, including in climbs long since sealed.
         // Read once, here, so nothing downstream has to know about storage.
@@ -478,6 +490,7 @@ export function GamePage() {
       const todays = all.filter((a) => a.seedLabel === time.seedLabel);
       const record = newRecord(todays.length);
       persist(record);
+      setHistory(await listAscents().catch(() => all));
       setWorld(null);
       setWalking(null);
       // **The prologue, on a first Begin only.** The threshold's own comment
@@ -1012,7 +1025,13 @@ export function GamePage() {
         ...endingOf(prev.lettersHeld, prev.housesMet),
         sealedAt: new Date().toISOString(),
       };
-      void saveAscent(next).catch(() => undefined);
+      // Written, then read back — so the Book has the climb that just ended in
+      // it, rather than everything up to but not including the one the Scribe
+      // is standing in the middle of.
+      void saveAscent(next)
+        .then(listAscents)
+        .then(setHistory)
+        .catch(() => undefined);
       return next;
     });
     setWorld(null);
@@ -1215,6 +1234,8 @@ export function GamePage() {
           encounter={encounter}
           taught={allLearned(taught)}
           audio={audio}
+          hasBook={history.length > 0}
+          onBook={() => setBookOpen(true)}
           onBegin={beginAscent}
         />
       )}
@@ -1396,12 +1417,18 @@ export function GamePage() {
         </div>
       )}
 
+      {bookOpen && <Book ascents={history} onClose={() => setBookOpen(false)} />}
+
       {paused && (
         <PauseMenu
           ascent={ascent}
           time={time}
           audio={audio}
           onClose={() => setPaused(false)}
+          onBook={() => {
+            setPaused(false);
+            setBookOpen(true);
+          }}
           onBeginAgain={
             ascent && !ascent.sealedAt
               ? () => {
@@ -1508,6 +1535,8 @@ function Threshold({
   encounter,
   taught,
   audio,
+  hasBook,
+  onBook,
   onBegin,
 }: {
   ascent: AscentRecord | null;
@@ -1517,6 +1546,9 @@ function Threshold({
   taught: boolean;
   /** So the score can be offered once, to whoever has never answered. */
   audio: ReturnType<typeof useGameAudio>;
+  /** Whether anything has ever been written in it. */
+  hasBook: boolean;
+  onBook: () => void;
   onBegin: () => void;
 }) {
   const sealed = ascent?.sealedAt;
@@ -1544,6 +1576,13 @@ function Threshold({
           <Button variant="primary" onClick={onBegin} autoFocus>
             {taught ? "Begin the ascent" : "Begin — the way will be shown"}
           </Button>
+          {/* Offered only to a Scribe who has something in it. A door onto an
+              empty room is worse than no door. */}
+          {hasBook && (
+            <button type="button" className={styles.linkButton} onClick={onBook}>
+              The Book of Ascents
+            </button>
+          )}
         </div>
 
         {sealed && ascent && (
@@ -1619,6 +1658,7 @@ function PauseMenu({
   time,
   audio,
   onClose,
+  onBook,
   onBeginAgain,
   children,
 }: {
@@ -1626,6 +1666,8 @@ function PauseMenu({
   time: ReturnType<typeof readAscentTime>;
   audio: ReturnType<typeof useGameAudio>;
   onClose: () => void;
+  /** Everything this Scribe has ever done — see `Book.tsx`. */
+  onBook: () => void;
   /**
    * Put this climb down and begin a fresh one — offered only while a climb is
    * open. **This is the only door to abandoning**: the start screen never
@@ -1675,6 +1717,10 @@ function PauseMenu({
           <label>
             <input type="checkbox" checked={audio.on} onChange={() => audio.toggle()} /> Sound
           </label>
+        </p>
+
+        <p className={styles.pauseToggles}>
+          <Button onClick={onBook}>The Book of Ascents</Button>
         </p>
 
         {onBeginAgain && (
