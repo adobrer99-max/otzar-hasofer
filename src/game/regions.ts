@@ -135,6 +135,26 @@ export interface Region {
    * Word-Gate rather than beside the road. See `ABYSS_GATE_CHUNK`.
    */
   overTheAbyss?: boolean;
+  /**
+   * Where this rung's niches start in the scroll — also set only by
+   * `regionOfPath`, and for a sharper reason than `overTheAbyss`.
+   *
+   * A path's `index` is deliberately **not** its own: it is the upper end's,
+   * capped by what the Scribe's letters have earned, because index is what says
+   * *how big the ground is*. Its `fragments` come from the **lower** end,
+   * because that is whose niches they are. So on a path the two answer
+   * different questions, and deriving "which piece of the verse is in this
+   * niche" from `fragmentsBefore(index)` read the wrong one — the count came
+   * from one end of the path and the identity from the other, and they diverged
+   * the moment a Scribe outgrew the ground they stood on. That dealt fragments
+   * `3` and `4` out of a scroll with three pieces, and put the same piece in two
+   * places on the Tree.
+   *
+   * Carried here so it sits beside `fragments` and cannot drift from it again.
+   * Unset on a real Sefirah, where `index` is its own and `fragmentsBefore`
+   * still answers correctly.
+   */
+  fragmentsFrom?: number;
   teaching: string;
 }
 

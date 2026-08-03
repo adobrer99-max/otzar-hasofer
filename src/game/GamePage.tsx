@@ -40,7 +40,7 @@ import { offerFor, vowKept, type UshpizinOffer } from "./ushpizinOffers";
 import { openWordGate } from "./world/step";
 import { useGameAudio } from "./audio/useGameAudio";
 import { readAscentTime } from "./sacredAscent";
-import { fragmentAt, SCROLL_LETTER, SCROLL_TOTAL, SCROLL_VERSE } from "./scroll";
+import { fragmentAt, gather, SCROLL_LETTER, SCROLL_TOTAL, SCROLL_VERSE } from "./scroll";
 import { GOING_OUT, HUSKS, isBeast, LAMPS } from "./combat";
 import { afterFalling, wakeAt } from "./fall";
 import { describeEffect, keliById, powersFrom, synergiesIn } from "./items";
@@ -555,9 +555,12 @@ export function GamePage() {
   const onFragment = useCallback((index: number) => {
     setAscent((prev) => {
       if (!prev) return prev;
-      const already = prev.scrollFragments ?? [];
-      if (already.includes(index)) return prev;
-      const held = [...already, index].sort((a, b) => a - b);
+      // `gather` is the rule, and it refuses an index that names no piece of
+      // the verse as well as one already held — the second lock on the door the
+      // builder's `fragmentsFrom` fixed, because what it guards is the one
+      // letter in this game that has to be walked to.
+      const held = gather(prev.scrollFragments ?? [], index);
+      if (!held) return prev;
       const whole = held.length >= SCROLL_TOTAL;
       const lettersHeld =
         whole && !prev.lettersHeld.includes(SCROLL_LETTER)
@@ -1824,7 +1827,29 @@ function LetterPlate({ letterId, onClose }: { letterId: string; onClose: () => v
 
 function FragmentPlate({ index, held, onClose }: { index: number; held: number; onClose: () => void }) {
   const fragment = fragmentAt(index);
-  if (!fragment) return null;
+  // **A plate that cannot describe itself still has to close.** This returned
+  // `null` — which does not cancel the plate, it empties it: the frame renders
+  // with no text and no button while `paused={plate !== null}` has stopped the
+  // simulation behind it. Escape and Enter still cleared it, so it was a dead
+  // screen rather than a lock, which is worse in the way that matters: nothing
+  // told the Scribe what had happened.
+  //
+  // Unreachable now — `onFragment` refuses an index that names no piece of the
+  // verse, and `regions.fragmentsFrom` stops one being dealt. Kept because the
+  // cost is four lines and the failure was invisible.
+  if (!fragment) {
+    return (
+      <>
+        <p className={styles.plateKicker}>A fragment of the scroll</p>
+        <p className={styles.plateDerivation}>
+          A scrap too worn to read. It is set aside with the rest.
+        </p>
+        <Button variant="primary" onClick={onClose} autoFocus>
+          Fold it away
+        </Button>
+      </>
+    );
+  }
   return (
     <>
       <p className={styles.plateKicker}>A fragment of the scroll</p>

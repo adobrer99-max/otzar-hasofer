@@ -63,3 +63,19 @@ export const SCROLL_LETTER = "peh";
 export function fragmentAt(index: number): ScrollFragment | undefined {
   return SCROLL_FRAGMENTS[index];
 }
+
+/**
+ * Taking a fragment out of a niche: the new set held, or `null` when nothing
+ * changes — already held, or an index that names no piece of the verse.
+ *
+ * Pulled out of `GamePage` so the rule can be stated once and tested. It guards
+ * the one letter in this game that has to be walked to: three of these make
+ * Peh, and Peh opens the Houses. The builder used to deal refs `3` and `4` out
+ * of a scroll with three pieces (see `regions.fragmentsFrom`), and the third
+ * such nothing granted the Mouth.
+ */
+export function gather(held: readonly number[], index: number): number[] | null {
+  if (!Number.isInteger(index) || index < 0 || index >= SCROLL_TOTAL) return null;
+  if (held.includes(index)) return null;
+  return [...held, index].sort((a, b) => a - b);
+}
