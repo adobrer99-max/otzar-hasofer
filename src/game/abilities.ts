@@ -299,7 +299,7 @@ export const abilities: LetterAbility[] = [
     hebrew: "טית",
     kind: "grace",
     grace: "crawl",
-    use: "You can fold yourself into the low passage.",
+    use: "Ducking is not the gift — anyone can duck. Tet is folding small enough to get through the low passage.",
     derivation: "Tet is the coiled serpent in the basket — the good that is hidden, and reachable only by going low.",
     controls: ["down"],
     press: "Hold {down} to fold yourself small, then walk into the low passage.",

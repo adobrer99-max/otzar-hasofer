@@ -138,6 +138,7 @@ export function buildRegion(
     fragmentsBefore(region.index),
     wordGateTarget,
     region.klipot,
+    region.maskit,
     rows,
     // The taught porch stays empty of husks. Its whole job is to land four
     // coaching lines on flat ground, a step and a gap, and a klipah wandering
@@ -169,6 +170,7 @@ export function paintChunks(laid: readonly Chunk[], seed = 1): World {
     0,
     undefined,
     { kinds: [], count: 0 },
+    0,
     1,
     laid.length,
   );
@@ -753,6 +755,8 @@ function paint(
   firstFragmentIndex: number,
   wordGateTarget: WordGateTarget | undefined,
   klipot: Region["klipot"],
+  /** How many figured stones to lay in this rung's floor — see `Tile.Maskit`. */
+  maskit: number,
   rowsOverride: number | undefined,
   quiet: number,
   /**
@@ -892,6 +896,7 @@ function paint(
 
   scatterMotes(tiles, width, height, entities, rng, () => `e${entityId++}`, lightOfTheDay);
   scatterHusks(tiles, width, height, husks, rng, () => `h${entityId++}`, klipot, quiet);
+  layMaskit(tiles, width, height, rng, maskit, quiet);
 
   const player: Player = {
     x: spawn.x,
@@ -911,6 +916,7 @@ function paint(
     climbing: false,
     inWater: false,
     crouching: false,
+    crawling: false,
     veiled: 0,
     grappleCooldown: 0,
     lamps: LAMPS,
@@ -942,10 +948,12 @@ function paint(
     height,
     player,
     entities,
+    klipot: klipot.kinds,
     rooms: floor.rooms,
     roomIndex: Math.max(0, roomAtPoint(floor.rooms, spawn.x / TILE_SIZE, spawn.y / TILE_SIZE)),
     respawn: { ...spawn },
     revealed: false,
+    mending: [],
     placed: [],
     wordGate: wordGateTarget,
     or: 0,
@@ -1046,6 +1054,60 @@ export function setTile(world: World, tx: number, ty: number, tile: Tile): void 
  * - **What flies goes in the air; everything else needs a floor.** A klipah
  *   that walks and is set down over nothing spends the region falling.
  */
+/**
+ * **The figured stones** — אֶבֶן מַשְׂכִּית, the ground that is not ground.
+ *
+ * A tile is eligible only if breaking it opens **no hole in the world**: it has
+ * to be stone, with air above it so it is walked on, and with something solid
+ * directly beneath so that what is left when it gives way is a step down of one
+ * tile onto a floor. That rule is not caution, it is the whole reason this can
+ * exist at all — `route.test.ts` earns the no-soft-lock guarantee over six
+ * hundred sampled paths against the *painted* grid, and a trap that could take
+ * a tile out of a floor would be a trap that can invalidate the proof at
+ * runtime, which no test could ever catch.
+ *
+ * So the trap costs a Scribe a surprise, a moment of falling and whatever comes
+ * up out of it. It cannot cost them the rung.
+ */
+function layMaskit(
+  tiles: Uint8Array,
+  width: number,
+  height: number,
+  rng: () => number,
+  count: number,
+  quiet: number,
+): void {
+  if (count <= 0) return;
+  const margin = Math.max(1, quiet) * CHUNK_W + 4;
+  const eligible: number[] = [];
+  for (let y = 1; y < height - 1; y += 1) {
+    for (let x = margin; x < width - (CHUNK_W + 4); x += 1) {
+      const at = y * width + x;
+      if (tiles[at] !== Tile.Stone) continue;
+      if (tiles[at - width] !== Tile.Empty) continue;
+      if (tiles[at + width] !== Tile.Stone) continue;
+      // **Never on a seam.** Two screens meet at every `CHUNK_W`, and the edge
+      // contract is checked by comparing the tiles either side of the join —
+      // so a figured stone laid there reads as a profile mismatch. It would
+      // also be a trap at the exact moment a Scribe is crossing from one
+      // authored screen to the next, which is the least fair place to put one.
+      const inScreen = x % CHUNK_W;
+      if (inScreen < 2 || inScreen > CHUNK_W - 3) continue;
+      eligible.push(at);
+    }
+  }
+  // Never two in a row: a pair side by side is a two-tile hole, which is a
+  // pit rather than a stumble, and it is also the only way this could drop a
+  // Scribe somewhere a single step down does not reach back out of.
+  const taken = new Set<number>();
+  for (const at of shuffle(rng, eligible)) {
+    if (taken.size >= count) break;
+    if (taken.has(at - 1) || taken.has(at + 1)) continue;
+    taken.add(at);
+    tiles[at] = Tile.Maskit;
+  }
+}
+
 function scatterHusks(
   tiles: Uint8Array,
   width: number,
@@ -1292,6 +1354,12 @@ export function regionOfPath(
     // screens walked by a Scribe with three letters — not ground they could not
     // cross, ground there was too much of.
     length: Math.min(Math.round((lower.length + upper.length) / 2), earned.length),
+    // **And the traps, capped the same way.** A path takes its figured stones
+    // from its lower end, and a Scribe holding three letters walking out of a
+    // high Sefirah would otherwise get the crown's floor with the kingdom's
+    // body. Measured before the cap: the share of Tree paths a competent probe
+    // carried to the exit fell from eighty-eight to eighty-two and a half.
+    maskit: Math.min(lower.maskit, earned.maskit),
     // The fixed screens stay with the lower end, which is a place rather than a
     // crossing. Fragments likewise, so the scroll is still strewn low.
     hasHouse: lower.hasHouse,
@@ -1374,6 +1442,7 @@ export function buildPath(
     fragmentsBefore(region.index),
     wordGateTarget,
     region.klipot,
+    region.maskit,
     undefined,
     laid.length > 0 ? 1 : 0,
     keli,

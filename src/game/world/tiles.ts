@@ -43,6 +43,18 @@ export const Tile = {
    * game that appears and disappears on its own.
    */
   Seal: 13,
+  /**
+   * **אֶבֶן מַשְׂכִּית** — the figured stone.
+   *
+   * Vayikra 26:1: *neither shall ye set up any אֶבֶן מַשְׂכִּית in your land, to
+   * bow down upon it.* A stone made to be looked at and forbidden to be gone
+   * down on — which is, exactly and without any bending, a piece of ground that
+   * must not be trusted underfoot.
+   *
+   * Solid, and indistinguishable from hewn stone but for one hairline. Stand on
+   * it and it gives way, and what was under it comes up.
+   */
+  Maskit: 14,
 } as const;
 
 export type Tile = (typeof Tile)[keyof typeof Tile];
@@ -91,6 +103,11 @@ export function isSolid(
   switch (tile) {
     case Tile.Stone:
     case Tile.Placed:
+    // The figured stone is stone until it is stood on, and being stood on is
+    // the last thing it ever is — `step.ts` replaces the tile. Nothing here
+    // has to know that: to everything that asks whether the way is blocked,
+    // it is a wall.
+    case Tile.Maskit:
       return true;
     case Tile.Growth:
       // Shin burns it back — but only once it has actually been burnt, which

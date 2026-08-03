@@ -337,6 +337,23 @@ export function probe(
       ctx.verbs.includes("climb") &&
       [0, 1].some((up) => tileAt(world, ownX, Math.floor((p.y + p.h - 1) / TILE_SIZE) - up) === Tile.Vine);
 
+    /**
+     * A ledge and nothing else underfoot — which is the only place `down` now
+     * means "drop through" rather than "duck". Same question `step.ts` asks in
+     * `standingOnLedge`, asked here because a probe that presses a key the game
+     * will read differently than it meant is a probe measuring its own driving.
+     */
+    const onALedge = (() => {
+      const row = Math.floor((p.y + p.h + 1) / TILE_SIZE);
+      let ledge = false;
+      for (let tx = Math.floor(p.x / TILE_SIZE); tx <= Math.floor((p.x + p.w - 1) / TILE_SIZE); tx += 1) {
+        const here = tileAt(world, tx, row);
+        if (here === Tile.Ledge) ledge = true;
+        else if (here !== Tile.Empty) return false;
+      }
+      return ledge;
+    })();
+
     const holdsStone = ctx.verbs.includes("block") && !ctx.verbs.includes("grapple");
     /**
      * A step too tall to jump, seen **a stride before reaching it** — which is
@@ -559,7 +576,17 @@ export function probe(
       // along the same shelf. Measured: the probe oscillated between two
       // columns at the top of a storey for twenty thousand ticks. A player
       // drops through the ledge; this is that, and no more.
-      down: (backingOff || grounding) && p.onGround,
+      //
+      // **Only on a ledge**, which is new and is the probe agreeing with the
+      // game rather than the other way round: down used to mean "drop" on any
+      // floor, because ducking was gated behind Tet and a Scribe without it
+      // held down to no effect. Ducking is anybody's now, so down on solid
+      // stone crouches — and a probe that holds it while walking crosses the
+      // rung at forty-five per cent of its speed. Measured, the moment the
+      // duck landed: Chochmah stalled at seventy-two per cent on a seed that
+      // had always been crossed, and it was this line, not the new tile that
+      // shipped alongside it and got the blame first.
+      down: (backingOff || grounding) && p.onGround && onALedge,
       // Reach out while falling over nothing — which is when a gap actually
       // needs it. On the ground, act clears a barrier (thorn, door,
       // overgrowth); in the air it is whichever of the reaching letters the
@@ -693,6 +720,13 @@ describe("walking the regions", () => {
         // terrain: a region must be crossable independently of what happens to
         // be standing in it, and the probe does not fight.
         world.husks = [];
+        // **And the pool they would be drawn from.** A figured stone gives way
+        // under the probe and stands something up out of the floor — see
+        // `Tile.Maskit` — so emptying the list of bodies is no longer the same
+        // act as emptying the rung of klipot. Measured before this line: the
+        // probe stalled at seventy-two per cent of Chochmah, because a pacer
+        // had come up out of the ground in a corridor it will not fight in.
+        world.klipot = [];
         const ctx = contextFor(region);
         const { reached, finished, lettersTaken } = probe(world, ctx, budgetFor(region));
         const fraction = reached;
@@ -775,6 +809,13 @@ describe("walking the regions", () => {
       for (const seed of seeds) {
         const world = buildRegion(region, seed);
         world.husks = [];
+        // **And the pool they would be drawn from.** A figured stone gives way
+        // under the probe and stands something up out of the floor — see
+        // `Tile.Maskit` — so emptying the list of bodies is no longer the same
+        // act as emptying the rung of klipot. Measured before this line: the
+        // probe stalled at seventy-two per cent of Chochmah, because a pacer
+        // had come up out of the ground in a corridor it will not fight in.
+        world.klipot = [];
         if (naive(world, contextFor(region), 9000)) {
           crossed.push(`${regions[region - 1].name}/${seed}`);
         }
@@ -799,6 +840,13 @@ describe("walking the regions", () => {
       for (const seed of [3, 91, 555, 12345]) {
         const world = buildRegion(region, seed);
         world.husks = [];
+        // **And the pool they would be drawn from.** A figured stone gives way
+        // under the probe and stands something up out of the floor — see
+        // `Tile.Maskit` — so emptying the list of bodies is no longer the same
+        // act as emptying the rung of klipot. Measured before this line: the
+        // probe stalled at seventy-two per cent of Chochmah, because a pacer
+        // had come up out of the ground in a corridor it will not fight in.
+        world.klipot = [];
         const run = probe(world, contextFor(region), budgetFor(region));
         expect(run.finished, `region ${region} seed ${seed} stalled`).toBe(true);
         // Per screen, so a longer region does not read as a harder one.
@@ -1193,6 +1241,13 @@ describe("walking the Tree", () => {
         const held = lettersFrom(gathered);
         const world = buildPath(path, seed, held);
         world.husks = [];
+        // **And the pool they would be drawn from.** A figured stone gives way
+        // under the probe and stands something up out of the floor — see
+        // `Tile.Maskit` — so emptying the list of bodies is no longer the same
+        // act as emptying the rung of klipot. Measured before this line: the
+        // probe stalled at seventy-two per cent of Chochmah, because a pacer
+        // had come up out of the ground in a corridor it will not fight in.
+        world.klipot = [];
         const ctx: StepContext = {
           verbs: verbsOf(held),
           graces: held
@@ -1279,6 +1334,13 @@ describe("the library, against a body holding only what it asks", () => {
       for (let seed = 1; seed <= 6; seed += 1) {
         const world = paintChunks(chain, seed);
         world.husks = [];
+        // **And the pool they would be drawn from.** A figured stone gives way
+        // under the probe and stands something up out of the floor — see
+        // `Tile.Maskit` — so emptying the list of bodies is no longer the same
+        // act as emptying the rung of klipot. Measured before this line: the
+        // probe stalled at seventy-two per cent of Chochmah, because a pacer
+        // had come up out of the ground in a corridor it will not fight in.
+        world.klipot = [];
         if (probe(world, { verbs, graces: [] }, 20000).finished) crossed += 1;
       }
       // Five of six rather than six: a probe is one pair of hands and the odd

@@ -18,6 +18,7 @@ import {
   canBeStruck,
   GOING_OUT,
   HUSKS,
+  kindForRole,
   MARK_HUNT,
   KNOCKBACK_X,
   KNOCKBACK_Y,
@@ -206,7 +207,21 @@ export function step(world: World, input: Input, ctx: StepContext): void {
   if (p.grappleCooldown > 0) p.grappleCooldown -= 1;
   p.inWater = anyTile(world, p, isWater);
   const onVine = has(ctx, "climb") && anyTile(world, p, isClimbable);
-  p.crouching = input.down && p.onGround && grace(ctx, "crawl");
+  /**
+   * **Down does one of two things, and which one is decided by the floor.**
+   *
+   * Standing on a ledge, down drops you through it — that is what a ledge is
+   * for, and it has to keep working. Standing on anything else, down ducks.
+   *
+   * Read the other way round it was a collision waiting to happen: ducking used
+   * to require the Coil, so `down` meant "drop" for most of the alphabet and
+   * "crouch, and stop being able to drop through ledges" the moment Tet was
+   * found. A letter that quietly takes a movement away is worse than a letter
+   * that gives nothing.
+   */
+  const overLedge = p.onGround && standingOnLedge(world, p);
+  p.crouching = input.down && p.onGround && !overLedge;
+  p.crawling = p.crouching && grace(ctx, "crawl");
 
   applyVerbs(world, input, ctx);
 
@@ -219,6 +234,13 @@ export function step(world: World, input: Input, ctx: StepContext): void {
     walkTick(world, p, input, ctx);
   }
 
+  // **Down drops whenever it is not ducking**, which is the original line and
+  // is right again for a new reason. Gating the drop on `overLedge` directly
+  // looks tidier and breaks on the second tick: the fall starts, `p.onGround`
+  // goes false, `overLedge` goes false with it, the drop turns off and the
+  // ledge catches the body again — measured, a Scribe holding down bounced
+  // between 258.0 and 258.5 forever. Ducking is the thing that knows about the
+  // floor; dropping only has to know it is not ducking.
   moveAndCollide(world, ctx, p, input.down && !p.crouching);
   touchTiles(world, ctx);
   touchEntities(world, ctx);
@@ -506,13 +528,13 @@ function moveAndCollide(world: World, ctx: StepContext, p: Player, dropping: boo
   // --- horizontal ---
   const stepX = p.vx * DT;
   let nextX = p.x + stepX;
-  if (collides(world, ctx, nextX, p.y + yOffset, p.w, height, p.crouching)) {
+  if (collides(world, ctx, nextX, p.y + yOffset, p.w, height, p.crawling)) {
     const dir = Math.sign(stepX);
     // Back off to the tile boundary rather than to the previous position, so
     // a fast body ends flush against the wall instead of a pixel short.
     if (dir > 0) nextX = Math.floor((nextX + p.w) / TILE_SIZE) * TILE_SIZE - p.w - 0.01;
     else nextX = (Math.floor(nextX / TILE_SIZE) + 1) * TILE_SIZE + 0.01;
-    if (collides(world, ctx, nextX, p.y + yOffset, p.w, height, p.crouching)) nextX = p.x;
+    if (collides(world, ctx, nextX, p.y + yOffset, p.w, height, p.crawling)) nextX = p.x;
     p.vx = 0;
     if (p.dash > 0) p.dash = 0;
     if (p.grappleTo) p.grappleTo = undefined;
@@ -525,14 +547,14 @@ function moveAndCollide(world: World, ctx: StepContext, p: Player, dropping: boo
   let nextY = p.y + stepY;
   let landed = false;
 
-  if (collides(world, ctx, p.x, nextY + yOffset, p.w, height, p.crouching)) {
+  if (collides(world, ctx, p.x, nextY + yOffset, p.w, height, p.crawling)) {
     if (stepY > 0) {
       nextY = Math.floor((nextY + yOffset + height) / TILE_SIZE) * TILE_SIZE - height - yOffset - 0.01;
       landed = true;
     } else {
       nextY = (Math.floor((nextY + yOffset) / TILE_SIZE) + 1) * TILE_SIZE - yOffset + 0.01;
     }
-    if (collides(world, ctx, p.x, nextY + yOffset, p.w, height, p.crouching)) nextY = previousY;
+    if (collides(world, ctx, p.x, nextY + yOffset, p.w, height, p.crawling)) nextY = previousY;
     p.vy = 0;
     if (p.grappleTo) p.grappleTo = undefined;
   } else if (stepY > 0 && !dropping && landsOnLedge(world, p.x, nextY, p.w, p.h, previousY)) {
@@ -569,10 +591,30 @@ function groundedNow(world: World, ctx: StepContext, p: Player, dropping: boolea
   const x0 = Math.floor(p.x / TILE_SIZE);
   const x1 = Math.floor((p.x + p.w - 1) / TILE_SIZE);
   for (let tx = x0; tx <= x1; tx += 1) {
-    if (solidAt(world, ctx, tx, row, p.crouching)) return true;
+    if (solidAt(world, ctx, tx, row, p.crawling)) return true;
     if (!dropping && p.vy >= 0 && isLedge(tileAt(world, tx, row))) return true;
   }
   return false;
+}
+
+/**
+ * Whether what is holding the Scribe up is a ledge and nothing else.
+ *
+ * A ledge over solid stone is still stone underfoot, and down there should duck
+ * rather than fall four inches — so this asks for a ledge with nothing solid
+ * beneath the same column.
+ */
+function standingOnLedge(world: World, p: Player): boolean {
+  const row = Math.floor((p.y + p.h + 1) / TILE_SIZE);
+  const x0 = Math.floor(p.x / TILE_SIZE);
+  const x1 = Math.floor((p.x + p.w - 1) / TILE_SIZE);
+  let ledge = false;
+  for (let tx = x0; tx <= x1; tx += 1) {
+    const here = tileAt(world, tx, row);
+    if (isLedge(here)) ledge = true;
+    else if (here !== Tile.Empty) return false;
+  }
+  return ledge;
 }
 
 // ---------------------------------------------------------------------------
@@ -589,6 +631,113 @@ function touchTiles(world: World, ctx: StepContext): void {
   // they surface back at the mark having lost only the moment.
   if (p.inWater && !has(ctx, "swim")) {
     veil(world, ctx, "The deep will not carry you yet.");
+  }
+  breakMaskit(world);
+  mendFloor(world);
+}
+
+/**
+ * **The figured stone gives way.**
+ *
+ * אֶבֶן מַשְׂכִּית — Vayikra 26:1, a stone set up to be looked at and forbidden to
+ * be gone down upon. It is drawn as stone, it is solid as stone, and the moment
+ * the Scribe's weight is on it, it is not there and something is coming up out
+ * of the place it was.
+ *
+ * Two rules keep it a trap rather than a punishment. **It only springs under a
+ * Scribe who is standing on it**, so a mark thrown at it or a klipah walking
+ * over it leaves it alone — this is about weight, and it should be a Scribe's
+ * own weight that does it. And **`build.ts` only ever lays one over solid
+ * ground**, so what happens is a step down of one tile, never a hole.
+ *
+ * What comes up is drawn from the rung's own pool, so the kingdom would send
+ * Cain and the crown sends what the crown has. Nothing is invented for it.
+ */
+/**
+ * How long the floor stays open. Long enough to fall through and be somewhere
+ * else; short enough that the hole is never a feature of the rung.
+ */
+const MENDS_AFTER = 40;
+
+/**
+ * The floor closing over what opened in it.
+ *
+ * **Never on top of anybody.** A tile that re-solidified around a body would
+ * put the Scribe inside stone, which is the same failure `seal` had and is
+ * worse here because it happens on ordinary ground. It simply waits: the stone
+ * comes back when there is nothing in the way of it, which is also what it
+ * would look like.
+ */
+function mendFloor(world: World): void {
+  if (world.mending.length === 0) return;
+  const p = world.player;
+  world.mending = world.mending.filter((m) => {
+    if (world.tick < m.at) return true;
+    const x = m.x * TILE_SIZE;
+    const y = m.y * TILE_SIZE;
+    const inIt = (b: { x: number; y: number; w: number; h: number }) =>
+      b.x < x + TILE_SIZE && b.x + b.w > x && b.y < y + TILE_SIZE && b.y + b.h > y;
+    if (inIt(p) || world.husks.some((h) => !h.broken && inIt(h))) return true;
+    setTile(world, m.x, m.y, Tile.Stone);
+    return false;
+  });
+}
+
+function breakMaskit(world: World): void {
+  const p = world.player;
+  if (!p.onGround || p.veiled > 0) return;
+  const row = Math.floor((p.y + p.h + 1) / TILE_SIZE);
+  const x0 = Math.floor(p.x / TILE_SIZE);
+  const x1 = Math.floor((p.x + p.w - 1) / TILE_SIZE);
+  for (let tx = x0; tx <= x1; tx += 1) {
+    if (tileAt(world, tx, row) !== Tile.Maskit) continue;
+    setTile(world, tx, row, Tile.Empty);
+    // It closes again, as hewn stone and not as itself: the trap is spent, the
+    // rung is the rung the route graph proved, and the Scribe keeps the fall.
+    world.mending.push({ x: tx, y: row, at: world.tick + MENDS_AFTER });
+    /**
+     * **A pacer, and it comes up beside you rather than under you.**
+     *
+     * Measured: with a charger rising in the Scribe's own tile and moving after
+     * four tenths of a second, the traps alone took going-out from sixteen runs
+     * in a hundred to twenty-three. That is not a trap, it is an ambush at zero
+     * range with no answer — a player meets it exactly as the probe does, which
+     * is by losing a lamp and learning nothing.
+     *
+     * So: something that walks rather than runs you down, standing a couple of
+     * tiles off, and a full second of coming up before it does anything. The
+     * ground still gives way and something still comes out of it; what changes
+     * is that there is a moment in which to decide.
+     */
+    const kind = kindForRole(world.klipot, "pacer", tx);
+    if (kind) {
+      const spec = HUSKS[kind];
+      const away = p.facing * 2 * TILE_SIZE;
+      const x = tx * TILE_SIZE + away + (TILE_SIZE - spec.size.w) / 2;
+      const y = (row + 1) * TILE_SIZE - spec.size.h;
+      world.husks.push({
+        id: `maskit-${world.tick}-${tx}`,
+        kind,
+        x,
+        y,
+        w: spec.size.w,
+        h: spec.size.h,
+        vx: 0,
+        vy: -180,
+        facing: (p.x < x ? -1 : 1) as 1 | -1,
+        shells: spec.shells,
+        home: { x, y },
+        // A second before it does anything, so what happens reads as *this
+        // came out of the floor* rather than as being hit by the scenery.
+        cooldown: 60,
+        charging: 0,
+        struck: 0,
+      });
+      say(world, `${spec.name} was under the stone.`);
+    } else {
+      say(world, "The stone was never stone.");
+    }
+    return;
   }
 }
 

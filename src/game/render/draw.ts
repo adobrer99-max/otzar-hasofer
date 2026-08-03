@@ -327,6 +327,9 @@ function drawTile(
     case Tile.Stone:
       drawStone(ctx, world, tx, ty, x, y, palette);
       break;
+    case Tile.Maskit:
+      drawMaskit(ctx, world, tx, ty, x, y, palette);
+      break;
     case Tile.Placed:
       drawPlacedStone(ctx, x, y, palette);
       break;
@@ -456,6 +459,70 @@ function drawStone(
   ctx.strokeStyle = alpha(palette.stoneEdge, 0.85);
   ctx.lineWidth = 1;
   ctx.strokeRect(x + 0.5, y + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
+}
+
+/**
+ * **אֶבֶן מַשְׂכִּית** — a stone made to be looked at, and not to be gone down upon.
+ *
+ * Drawn as stone, because it *is* stone until somebody stands on it, and a trap
+ * a player can see from across the room is furniture. What it gets instead is
+ * one hairline: a fine seam across it where the grain of the hatching should
+ * run and doesn't, and no moss, because nothing has ever grown on it.
+ *
+ * That is the fair-trap standard and it is worth being exact about. The seam is
+ * legible to a player who has already been dropped once and is now *looking*,
+ * and invisible to one who is running — which is the difference between a trap
+ * that teaches you to read the floor and a trap that teaches you to distrust
+ * the game. Being un-mossed is the honest half of the tell: the moss is
+ * everywhere else and its absence is a shape.
+ */
+function drawMaskit(
+  ctx: CanvasRenderingContext2D,
+  world: World,
+  tx: number,
+  ty: number,
+  x: number,
+  y: number,
+  palette: Palette,
+): void {
+  ctx.fillStyle = palette.stone;
+  ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, TILE_SIZE, TILE_SIZE);
+  ctx.clip();
+  ctx.strokeStyle = alpha(palette.light ? palette.stoneEdge : palette.gold, palette.light ? 0.55 : 0.16);
+  ctx.lineWidth = 1;
+  for (let i = -TILE_SIZE; i < TILE_SIZE; i += HATCH_SPACING) {
+    ctx.beginPath();
+    ctx.moveTo(x + i, y + TILE_SIZE);
+    ctx.lineTo(x + i + TILE_SIZE, y);
+    ctx.stroke();
+  }
+  // The seam. One line where the hatch should be, and the only thing on the
+  // whole tile that is not what stone looks like.
+  ctx.strokeStyle = alpha(palette.light ? palette.stoneEdge : palette.bgDeep, 0.75);
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(x + 3, y + 6.5);
+  ctx.quadraticCurveTo(x + TILE_SIZE / 2, y + 9, x + TILE_SIZE - 3, y + 5.5);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.strokeStyle = palette.gold;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x, y + 0.75);
+  ctx.lineTo(x + TILE_SIZE, y + 0.75);
+  ctx.stroke();
+
+  ctx.strokeStyle = alpha(palette.stoneEdge, 0.85);
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, y + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
+  void world;
+  void tx;
+  void ty;
 }
 
 function drawPlacedStone(ctx: CanvasRenderingContext2D, x: number, y: number, palette: Palette): void {

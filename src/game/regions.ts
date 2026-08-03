@@ -102,6 +102,21 @@ export interface Region {
    * number you can read off the page.
    */
   klipot: { kinds: HuskKind[]; count: number };
+  /**
+   * How many pieces of this rung's floor are **אֶבֶן מַשְׂכִּית** — figured stones,
+   * which look like ground and are not (see `Tile.Maskit`).
+   *
+   * None in the kingdom. Malchut is where the walk, the leap and the mark are
+   * taught, and a floor that gives way under a Scribe who has just been told
+   * which key walks is not a trap, it is a lie about the controls.
+   *
+   * The count is small on purpose everywhere. A trap that is common stops being
+   * a trap and becomes terrain — a Scribe who meets four in a rung starts
+   * treading on every tile the way one treads on a frozen pond, and the rung
+   * takes four times as long to cross for no more thought. One or two is a
+   * thing that happens to you; five is a rule you learn to play around.
+   */
+  maskit: number;
   /** The three supernals stand above the Abyss and hold no House. */
   hasHouse: boolean;
   /**
@@ -124,6 +139,7 @@ export const regions: Region[] = [
     length: 6,
     demand: { min: 1, max: 2 },
     klipot: { kinds: ["cain"], count: 2 },
+    maskit: 0,
     hasHouse: true,
     // The one rung with no shrine, for two reasons that agree. Tav is *found*
     // here, so a shrine laid before its alcove is furniture — and now that the
@@ -146,6 +162,7 @@ export const regions: Region[] = [
     length: 6,
     demand: { min: 1, max: 2 },
     klipot: { kinds: ["cain", "delilah"], count: 3 },
+    maskit: 1,
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -161,6 +178,7 @@ export const regions: Region[] = [
     length: 6,
     demand: { min: 1, max: 3 },
     klipot: { kinds: ["cain", "brothers", "calf"], count: 4 },
+    maskit: 1,
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -176,6 +194,7 @@ export const regions: Region[] = [
     length: 6,
     demand: { min: 1, max: 3 },
     klipot: { kinds: ["brothers", "esav", "delilah", "reem"], count: 5 },
+    maskit: 1,
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -191,6 +210,7 @@ export const regions: Region[] = [
     length: 7,
     demand: { min: 1, max: 3 },
     klipot: { kinds: ["cain", "amalek", "izevel", "saraf"], count: 6 },
+    maskit: 1,
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -205,7 +225,8 @@ export const regions: Region[] = [
     letters: ["zayin", "tet"],
     length: 7,
     demand: { min: 2, max: 3 },
-    klipot: { kinds: ["cain", "amalek", "korach", "arbeh"], count: 6 },
+    klipot: { kinds: ["cain", "amalek", "korach", "arbeh"], count: 5 },
+    maskit: 1,
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -221,6 +242,7 @@ export const regions: Region[] = [
     length: 7,
     demand: { min: 2, max: 3 },
     klipot: { kinds: ["esav", "korach", "izevel", "tannin"], count: 7 },
+    maskit: 1,
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -236,6 +258,7 @@ export const regions: Region[] = [
     length: 8,
     demand: { min: 2, max: 3, bias: "hard" },
     klipot: { kinds: ["korach", "izevel", "atalya", "rahav"], count: 6 },
+    maskit: 2,
     hasHouse: false,
     hasShrine: false,
     teaching:
@@ -251,6 +274,7 @@ export const regions: Region[] = [
     length: 8,
     demand: { min: 2, max: 3, bias: "hard" },
     klipot: { kinds: ["atalya", "izevel", "nachash", "og"], count: 9 },
+    maskit: 2,
     hasHouse: false,
     hasShrine: false,
     teaching:
@@ -266,6 +290,7 @@ export const regions: Region[] = [
     length: 9,
     demand: { min: 2, max: 3, bias: "hard" },
     klipot: { kinds: ["calf", "atalya", "nachash", "delilah", "nefilim"], count: 10 },
+    maskit: 2,
     hasHouse: false,
     hasShrine: false,
     teaching:
