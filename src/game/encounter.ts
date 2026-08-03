@@ -184,3 +184,35 @@ export const ruleByNumber: Record<number, EncounterRule> = Object.fromEntries(
 export function rulesFor(encounter: Encounter | undefined): EncounterRule | undefined {
   return encounter ? ruleByNumber[encounter.number] : undefined;
 }
+
+/**
+ * **Past the seventh, you choose the day.**
+ *
+ * The Seven Encounters were the whole of this game's long arc, and they end.
+ * The eighth climb read "Beyond the seven" on the threshold and was played on
+ * the game's own numbers with nothing acting on it — which is a progression
+ * system that stops, and stops early: seven sealed climbs is a fortnight for
+ * anybody who is enjoying themselves.
+ *
+ * So the seven become **seven earned play-modifiers**. In order they are the
+ * unfolding order and are not a choice; after them, a Scribe picks which rule
+ * to climb under, or picks none and climbs the game bare. Nothing new is
+ * invented for it — the rules already exist, are already proved distinct, and
+ * already move real numbers.
+ *
+ * `encounterNumber` wins where it is set, because a climb inside the seven is
+ * not choosing anything; `ruleNumber` is read only past them. A record with
+ * neither is a bare climb, and so is every record written before this existed.
+ */
+export function ruleOf(
+  ascent: { encounterNumber?: number; ruleNumber?: number } | null | undefined,
+): EncounterRule | undefined {
+  if (!ascent) return undefined;
+  if (ascent.encounterNumber !== undefined) return ruleByNumber[ascent.encounterNumber];
+  return ascent.ruleNumber !== undefined ? ruleByNumber[ascent.ruleNumber] : undefined;
+}
+
+/** Whether the seven are behind this Scribe, and the choice is theirs. */
+export function beyondTheSeven(sealedBefore: number): boolean {
+  return encounterFor(sealedBefore) === undefined;
+}

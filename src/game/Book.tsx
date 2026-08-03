@@ -9,7 +9,7 @@ import { guardianOf, TIERS, tierOf } from "./guardians";
 import { HUSKS } from "./combat";
 import { PLEA_NAMED } from "./story";
 import { pathById, pointOf, TREE_LINES, TREE_VIEW } from "./tree";
-import { CARDS_IN_ALL, housesMet, lexicon, pagesOf, tally, type BookPage } from "./book";
+import { CARDS_IN_ALL, housesMet, lexicon, marks, pagesOf, tally, type BookPage } from "./book";
 import styles from "./Book.module.css";
 
 /** "1 path", not "1 paths" — a record of a life should read like prose. */
@@ -38,6 +38,8 @@ export function Book({ ascents, onClose }: { ascents: readonly AscentRecord[]; o
   const roots = useMemo(() => lexicon(ascents), [ascents]);
   const totals = useMemo(() => tally(ascents), [ascents]);
   const freed = useMemo(() => timesFreed(ascents), [ascents]);
+  const allMarks = useMemo(() => marks(ascents), [ascents]);
+  const won = allMarks.filter((m) => m.earned);
 
   return (
     <div className={styles.overlay} role="dialog" aria-modal="true" aria-label="The Book of Ascents">
@@ -104,6 +106,31 @@ export function Book({ ascents, onClose }: { ascents: readonly AscentRecord[]; o
             </ul>
           </section>
         )}
+
+        <section>
+          <DecoratedRule />
+          {/* Few on purpose, and not a checklist: the arc past the seven is the
+              rules and the tiers, and these are the marks along it. Every one
+              is a fold over records that already exist, so a Scribe who did the
+              thing years ago has the mark the moment it ships. */}
+          <h3 className={styles.section}>
+            What you have proved — {won.length} of {allMarks.length}
+          </h3>
+          <ul className={styles.houses}>
+            {allMarks.map((mark) => (
+              <li key={mark.id} className={styles.house}>
+                <span className={mark.earned ? styles.houseFigure : styles.houseWhere}>
+                  {mark.title}
+                </span>
+                <span />
+                <span className={styles.houseCount}>{mark.earned ? "won" : "not yet"}</span>
+                <ul className={styles.cards}>
+                  <li>{mark.earned ? mark.won : mark.how}</li>
+                </ul>
+              </li>
+            ))}
+          </ul>
+        </section>
 
         {Object.keys(freed).length > 0 && (
           <section>

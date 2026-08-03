@@ -107,6 +107,17 @@ export interface AscentRecord {
    */
   encounterNumber?: number;
   /**
+   * **The rule this climb was chosen to be played under**, past the seven.
+   *
+   * The Encounters are the unfolding order and are not a choice while a Scribe
+   * is inside them — `encounterNumber` wins wherever it is set. After the
+   * seventh seal the seven become seven earned play-modifiers and this is
+   * which one was picked; absent means the climb was made bare, which is also
+   * a choice and is what every record written before this existed reads as.
+   * See `ruleOf`.
+   */
+  ruleNumber?: number;
+  /**
    * Roots formed at the Word-Gates, in the order they were inscribed. The
    * ascent's own small vocabulary, listed at the crown.
    */

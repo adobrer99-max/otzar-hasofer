@@ -2,7 +2,16 @@ import { describe, expect, it } from "vitest";
 import { dorotCardsById, dorotHousesById, housesBySefirah } from "../data/dorot";
 import { timesFreed, type AscentRecord } from "../storage/ascentRepo";
 import { regions } from "./regions";
-import { CARDS_IN_ALL, housesMet, lastSealed, lexicon, pagesOf, tally, timesStood } from "./book";
+import {
+  CARDS_IN_ALL,
+  housesMet,
+  lastSealed,
+  lexicon,
+  marks,
+  pagesOf,
+  tally,
+  timesStood,
+} from "./book";
 import { endingOf } from "./story";
 
 /**
@@ -274,5 +283,72 @@ describe("how often each guardian has been broken", () => {
 
   it("is empty for a Scribe who has broken nothing", () => {
     expect(timesFreed([climb(), climb()])).toEqual({});
+  });
+});
+
+/**
+ * **The marks — what a Scribe has proved, as against what they have done.**
+ *
+ * Folds over records that already exist: no flags, no unlock table, no schema.
+ * Which means a Scribe who did the thing three years ago and never heard about
+ * it has the mark the moment it ships — and it also means a mark can never
+ * drift out of step with the history it describes.
+ */
+describe("the marks of mastery", () => {
+  const ids = (list: ReturnType<typeof marks>) => list.filter((m) => m.earned).map((m) => m.id);
+
+  it("gives none of them to a Scribe who has done nothing", () => {
+    expect(ids(marks([]))).toEqual([]);
+    expect(marks([]).length).toBeGreaterThan(3);
+  });
+
+  it("says how each is come by, whether or not it has been", () => {
+    for (const mark of marks([])) {
+      expect(mark.title.length, mark.id).toBeGreaterThan(3);
+      expect(mark.how.length, `${mark.id} does not say how`).toBeGreaterThan(20);
+      expect(mark.won.length, `${mark.id} does not say what was done`).toBeGreaterThan(20);
+    }
+  });
+
+  it("is won by the whole case, and only by the whole case", () => {
+    const sealed = (plea: "heard" | "whole") =>
+      marks([climb({ sealedAt: "2026-01-01T00:00:00.000Z", endingPlea: plea, witnessSefirot: ["malchut"] })]);
+    expect(ids(sealed("heard"))).not.toContain("whole");
+    expect(ids(sealed("whole"))).toContain("whole");
+  });
+
+  it("is won by a lit Tree that never went out, and not by one that did", () => {
+    const climbWith = (falls: number) =>
+      climb({ sealedAt: "2026-01-01T00:00:00.000Z", sefirotLit: ALL_SEFIROT, falls });
+    expect(ids(marks([climbWith(0)]))).toContain("unfallen");
+    expect(ids(marks([climbWith(1)]))).not.toContain("unfallen");
+  });
+
+  it("is won by taking a guardian to its last tier, which takes three climbs", () => {
+    const broke = (n: number) =>
+      marks(Array.from({ length: n }, () => climb({ guardiansBroken: ["keter"] })));
+    expect(ids(broke(2))).not.toContain("deep");
+    expect(ids(broke(3))).toContain("deep");
+  });
+
+  /**
+   * The Houses one is the long tail of the arc: a matriarchal House opens
+   * fully at the seventh standing, so this mark and `cardsOpen` reach their
+   * ceiling on the same climb. If one of those numbers ever moves, the other
+   * has to move with it.
+   */
+  it("is won when a House has stood seven times, and has no episodes left", () => {
+    const stood = (n: number) =>
+      marks(
+        Array.from({ length: n }, (_, i) =>
+          climb({
+            sealedAt: `2026-01-${String(i + 1).padStart(2, "0")}T00:00:00.000Z`,
+            endingPlea: "heard",
+            witnessSefirot: ["malchut"],
+          }),
+        ),
+      );
+    expect(ids(stood(6))).not.toContain("remembered");
+    expect(ids(stood(7))).toContain("remembered");
   });
 });

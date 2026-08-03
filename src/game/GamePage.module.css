@@ -95,6 +95,53 @@
   font-style: italic;
 }
 
+/* Past the seventh seal, the seven become seven things to choose between. */
+.dayChoice {
+  margin-top: var(--space-3);
+}
+
+.dayKicker {
+  margin: 0 0 var(--space-2);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-ink);
+}
+
+.days {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.day,
+.dayOn {
+  padding: 3px var(--space-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  background: none;
+  font: inherit;
+  font-size: 0.78rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.day:hover,
+.day:focus-visible {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.dayOn {
+  border-color: var(--accent-bright);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--text);
+}
+
 /* ---- standing on the Tree, behind the map ------------------------------- */
 
 .standing {

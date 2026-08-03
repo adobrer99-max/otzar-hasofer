@@ -448,6 +448,84 @@ const SCRIPTS = [
     seconds: 60,
   },
   {
+    name: "beyond",
+    about: "Past the seventh seal — the seven become seven days to choose between.",
+    /**
+     * **The end of the arc, which used to be the end of everything.** The Seven
+     * Encounters were this game's whole long progression and they run out:
+     * the eighth climb read "Beyond the seven" and was played on the game's own
+     * numbers with nothing acting on it. Seven sealed climbs is a fortnight for
+     * anybody enjoying themselves.
+     *
+     * Seven sealed records are written straight in, because reaching this
+     * honestly is seven whole climbs. What it photographs is the choice, and
+     * that choosing one actually writes it onto the next record — the rule
+     * being *offered* and the rule being *played* are two different claims and
+     * only the second one matters.
+     */
+    warp: {},
+    noPlay: true,
+    enter: async (page) => {
+      await page.evaluate(async () => {
+        const req = indexedDB.open("otzar-hasofer");
+        const db = await new Promise((res, rej) => {
+          req.onsuccess = () => res(req.result);
+          req.onerror = () => rej(req.error);
+        });
+        const tx = db.transaction("ascents", "readwrite");
+        for (let i = 1; i <= 7; i += 1) {
+          const when = `2026-0${i}-01T00:00:00.000Z`;
+          tx.objectStore("ascents").put({
+            id: `beyond-${i}`, seed: i, seedLabel: `climb ${i}`,
+            createdAt: when, updatedAt: when, sealedAt: when,
+            regionIndex: 10, at: "keter", pathsWalked: ["malchut-yesod"],
+            lettersHeld: ["peh"], or: 0, regionsCleared: [], housesMet: [],
+            guardiansBroken: ["keter"], encounterNumber: i,
+            endingPlea: "alone", witnessSefirot: [],
+          });
+        }
+        await new Promise((res) => { tx.oncomplete = res; });
+      });
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(900);
+      const front = (await page.textContent("body")) ?? "";
+      if (!/Beyond the seven/.test(front)) throw new Error("the seven are not behind this Scribe");
+      if (!/Choose the day you climb under/.test(front)) {
+        throw new Error(`no choice was offered: ${front.replace(/\s+/g, " ").slice(0, 300)}`);
+      }
+      // The Fourth is the fourth lamp, which is the easiest to see acting.
+      const fourth = page.getByRole("button", { name: /^Luminaries/ });
+      if (!(await fourth.count())) throw new Error("the Fourth cannot be chosen");
+      await fourth.first().click();
+      await page.waitForTimeout(300);
+      const said = (await page.textContent("body")) ?? "";
+      if (!/A fourth lamp burns/.test(said)) throw new Error("choosing said nothing");
+      await page.screenshot({ path: join(outDir, "beyond-choice.png") });
+      // **And it is played, not merely offered.** Begin, then read the record.
+      await page.getByRole("button", { name: /^Begin/ }).first().click();
+      await page.waitForTimeout(500);
+      await pastThePrologue(page);
+      await page.waitForTimeout(600);
+      const chosen = await page.evaluate(async () => {
+        const req = indexedDB.open("otzar-hasofer");
+        const db = await new Promise((res) => { req.onsuccess = () => res(req.result); });
+        // `getAll()` is a request, not a promise — awaiting it hands back the
+        // request object, whose `.filter` is exactly as undefined as it sounds.
+        const request = db.transaction("ascents").objectStore("ascents").getAll();
+        const all = await new Promise((res, rej) => {
+          request.onsuccess = () => res(request.result);
+          request.onerror = () => rej(request.error);
+        });
+        return all.filter((a) => !a.sealedAt && !a.abandonedAt).map((a) => a.ruleNumber);
+      });
+      if (!chosen.includes(4)) {
+        throw new Error(`the chosen rule never reached the record: ${JSON.stringify(chosen)}`);
+      }
+    },
+    until: () => true,
+    seconds: 30,
+  },
+  {
     name: "going-out",
     about: "One lamp, and a Scribe who does not fight back. The kingdom comes up.",
     warp: { rung: 7, letters: "as-of-rung", lamps: 1, seed: 13 },

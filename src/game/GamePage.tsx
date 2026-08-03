@@ -41,7 +41,17 @@ import {
 } from "./tutorial";
 import { GameCanvas, type HudSample } from "./GameCanvas";
 import { regionAt, regionOfSefirah, regions, TOTAL_REGIONS } from "./regions";
-import { encounterFor, encounterTitle, isIllumined, rulesFor, sealedCount } from "./encounter";
+import {
+  beyondTheSeven,
+  encounterFor,
+  encounterTitle,
+  ENCOUNTER_RULES,
+  isIllumined,
+  ruleByNumber,
+  ruleOf,
+  sealedCount,
+} from "./encounter";
+import { getEncounterForReadingIndex } from "../data/encounters";
 import {
   hintsFor,
   HINT_COST,
@@ -211,6 +221,15 @@ export function GamePage() {
   /** How many climbs were sealed before this one — which Encounter this is. */
   const [sealedBefore, setSealedBefore] = useState(0);
   /**
+   * **Which of the seven the next climb is set to, past the seventh seal.**
+   *
+   * Held on the page rather than in storage: it is a choice about a climb that
+   * does not exist yet, and the moment one does the choice is on its record
+   * (`ruleNumber`) where it belongs. Nothing to migrate, and no way for a
+   * stored preference to disagree with the climb actually being played.
+   */
+  const [chosenRule, setChosenRule] = useState<number | undefined>(undefined);
+  /**
    * **Every climb ever, held rather than folded once and dropped.**
    *
    * This list was already being read at load for `sealedCount` and
@@ -340,7 +359,7 @@ export function GamePage() {
     // And whatever the Encounter this climb belongs to holds open for the whole
     // of it — the Third's second stone is a grace like any other, so it arrives
     // by the same door rather than through a special case.
-    for (const g of rulesFor(encounter)?.grants ?? []) if (!lent.includes(g)) lent.push(g);
+    for (const g of ruleOf(ascent)?.grants ?? []) if (!lent.includes(g)) lent.push(g);
     return lent;
   }, [letters, ascent?.boons, time.graceOfTheDay, encounter]);
 
@@ -425,7 +444,7 @@ export function GamePage() {
    */
   const layEncounter = useCallback(
     (world: World, here: readonly SefirahId[]) => {
-      const rule = rulesFor(encounter);
+      const rule = ruleOf(ascent);
       if (!rule) return;
       if (rule.motes && here.some((s) => isIllumined(encounter, s))) {
         world.orPerMote = Math.max(1, Math.round(world.orPerMote * rule.motes));
@@ -478,9 +497,12 @@ export function GamePage() {
         housesMet: [],
         ascendantLetterId: time.ascendantLetterId,
         encounterNumber: encounterFor(sealedBefore)?.number,
+        // Only past the seven, and only if one was picked — inside them the
+        // unfolding order is not a choice, and `ruleOf` would ignore it anyway.
+        ruleNumber: beyondTheSeven(sealedBefore) ? chosenRule : undefined,
       };
     },
-    [time, sealedBefore],
+    [time, sealedBefore, chosenRule],
   );
 
   /**
@@ -783,7 +805,7 @@ export function GamePage() {
       // they offer is given. Checked here rather than by rewriting the offer,
       // so the plate still says what the bargain *would* be — a gift you can
       // see the price of is a different thing from a free sample.
-      const free = Boolean(rulesFor(encounter)?.guestsFree);
+      const free = Boolean(ruleOf(ascent)?.guestsFree);
       if (offer.price > 0 && !free) {
         if (world.or < offer.price) return;
         world.or -= offer.price;
@@ -942,7 +964,7 @@ export function GamePage() {
         ascent.lightOfTheDay ?? time.lightOfTheDay,
         teaching,
         (ascent.pathsWalked ?? []).includes(path.id),
-        rulesFor(encounter)?.klipot ?? 1,
+        ruleOf(ascent)?.klipot ?? 1,
         ascent.items ?? [],
         // **The Houses remember.** How often this rung's House has stood for
         // the Scribe at the crown decides how far into its episodes the rung
@@ -1265,6 +1287,8 @@ export function GamePage() {
           audio={audio}
           hasBook={history.length > 0}
           onBook={() => setBookOpen(true)}
+          chosenRule={chosenRule}
+          onChooseRule={setChosenRule}
           onBegin={beginAscent}
         />
       )}
@@ -1436,7 +1460,7 @@ export function GamePage() {
           {/* The Tree is where a climb is planned, so it is where the rule this
               climb is played under belongs — a fourth lamp is worth knowing
               about before choosing which way to spend it. */}
-          <TheRule encounter={encounter} className={styles.overlayRule} />
+          <TheRule rule={ruleOf(ascent)} className={styles.overlayRule} />
           {/* No button. The key that opened it closes it, and saying so once
               here is how that gets learned. */}
           <p className={styles.overlayFoot}>
@@ -1566,6 +1590,8 @@ function Threshold({
   audio,
   hasBook,
   onBook,
+  chosenRule,
+  onChooseRule,
   onBegin,
 }: {
   /** The most recent sealed climb, if there is one — see `book.ts`. */
@@ -1579,6 +1605,9 @@ function Threshold({
   /** Whether anything has ever been written in it. */
   hasBook: boolean;
   onBook: () => void;
+  /** Which of the seven rules the next climb is set to, past the seventh seal. */
+  chosenRule: number | undefined;
+  onChooseRule: (number: number | undefined) => void;
   onBegin: () => void;
 }) {
   return (
@@ -1645,7 +1674,10 @@ function Threshold({
         <p className={styles.startDay}>
           {time.seedLabel} · {encounter ? encounterTitle(encounter) : "Beyond the seven"}
         </p>
-        <TheRule encounter={encounter} />
+        {/* Inside the seven the rule is stated; past them it is chosen, and
+            the chooser states it. */}
+        {encounter && <TheRule rule={ruleOf({ encounterNumber: encounter.number })} />}
+        {!encounter && <TheDay chosen={chosenRule} onChoose={onChooseRule} />}
       </div>
     </section>
   );
@@ -1665,14 +1697,75 @@ function Threshold({
  * one begins, the Tree while one is being planned, and the plate that seals it
  * — and nowhere else, because a rule repeated on every rung stops being read.
  */
+/**
+ * **Past the seventh, you choose the day.**
+ *
+ * The Seven Encounters were the whole of this game's long arc and they end:
+ * the eighth climb read "Beyond the seven" and was played on the game's own
+ * numbers with nothing acting on it. Seven sealed climbs is a fortnight for
+ * anybody enjoying themselves, and after that the progression was over.
+ *
+ * The seven become seven earned play-modifiers. Nothing is invented for it —
+ * these are the same rules, already proved distinct, already moving real
+ * numbers — and **none** stays on the list, because climbing the game bare is
+ * a choice a person who has finished it may well want, and a menu with no way
+ * out of it is not a choice.
+ */
+function TheDay({
+  chosen,
+  onChoose,
+}: {
+  chosen: number | undefined;
+  onChoose: (number: number | undefined) => void;
+}) {
+  return (
+    <div className={styles.dayChoice}>
+      <p className={styles.dayKicker}>The seven are behind you. Choose the day you climb under.</p>
+      <ul className={styles.days}>
+        <li>
+          <button
+            type="button"
+            aria-pressed={chosen === undefined}
+            className={chosen === undefined ? styles.dayOn : styles.day}
+            onClick={() => onChoose(undefined)}
+          >
+            None
+          </button>
+        </li>
+        {ENCOUNTER_RULES.map((rule) => {
+          const encounter = getEncounterForReadingIndex(rule.number - 1);
+          return (
+            <li key={rule.number}>
+              <button
+                type="button"
+                aria-pressed={chosen === rule.number}
+                className={chosen === rule.number ? styles.dayOn : styles.day}
+                title={rule.rule}
+                onClick={() => onChoose(rule.number)}
+              >
+                {encounter?.aspect.split(" — ")[0] ?? `The ${rule.number}`}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <p className={styles.startRule}>
+        {chosen === undefined
+          ? "This climb: nothing is acting on it. The game as it was made."
+          : `This climb: ${ruleByNumber[chosen]?.rule}`}
+      </p>
+    </div>
+  );
+}
+
 function TheRule({
-  encounter,
+  rule,
   className,
 }: {
-  encounter: ReturnType<typeof encounterFor>;
+  /** The rule this climb is actually under — see `ruleOf`. */
+  rule: ReturnType<typeof ruleOf>;
   className?: string;
 }) {
-  const rule = rulesFor(encounter);
   if (!rule) return null;
   // "This climb" rather than "today": the Encounter is the *count of sealed
   // ascents*, not the calendar. Two climbs on one day can sit under different
@@ -3101,7 +3194,7 @@ function SealedPlate({
           <DecoratedRule />
           <p className={styles.plateKicker}>{encounterTitle(encounter)}</p>
           {/* What it did to the climb that just ended, beside what it asks. */}
-          <TheRule encounter={encounter} className={styles.plateDerivation} />
+          <TheRule rule={ruleOf(ascent)} className={styles.plateDerivation} />
           <p className={styles.plateQuestion}>{encounter.question}</p>
         </>
       )}

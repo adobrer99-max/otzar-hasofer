@@ -1,5 +1,5 @@
 import { dorotCardsById, dorotHousesById } from "../data/dorot";
-import type { AscentRecord, FormedWord } from "../storage/ascentRepo";
+import { timesFreed, type AscentRecord, type FormedWord } from "../storage/ascentRepo";
 import type { SefirahId } from "../types/letter";
 import { sealKindOf, type SealKind } from "./sealing";
 import { endingOf } from "./story";
@@ -224,6 +224,82 @@ export function timesStood(ascents: readonly AscentRecord[]): Record<string, num
     for (const sefirah of page.witnesses) stood[sefirah] = (stood[sefirah] ?? 0) + 1;
   }
   return stood;
+}
+
+// ---------------------------------------------------------------------------
+// the marks
+// ---------------------------------------------------------------------------
+
+/**
+ * **What a Scribe has proved, as against what they have done.**
+ *
+ * The tally counts; these are the handful of things worth *saying*. Every one
+ * is a fold over records that already exist — no flags, no unlock table, no
+ * schema — so a Scribe who did the thing three years ago and never heard about
+ * it has the mark the moment this ships.
+ *
+ * Deliberately few, and deliberately not a checklist to be completed: the
+ * arc past the seven is the rules and the tiers, and these are the marks along
+ * it. A list long enough to feel like homework would be a different game.
+ */
+export interface Mark {
+  id: string;
+  title: string;
+  /** What was done, in one line. Written in the past, like everything here. */
+  won: string;
+  /** How it is come by, for a Scribe who has not. */
+  how: string;
+  earned: boolean;
+}
+
+export function marks(ascents: readonly AscentRecord[]): Mark[] {
+  const pages = pagesOf(ascents);
+  const stood = timesStood(ascents);
+  const roots = lexicon(ascents);
+  return [
+    {
+      id: "whole",
+      title: "The whole case",
+      won: "Every one of the seven Houses stood for you at the crown.",
+      how: "Carry the Mouth, and speak with a figure on all seven rungs below the Abyss.",
+      earned: pages.some((p) => p.plea === "whole"),
+    },
+    {
+      id: "alphabet",
+      title: "The alphabet",
+      won: "You carried all twenty-two letters to an ending.",
+      how: "Every path of the Tree pays a letter. Twenty-two of them exist.",
+      earned: pages.some((p) => p.lettersHeld.length >= 22),
+    },
+    {
+      id: "unfallen",
+      title: "Unfallen",
+      won: "You lit the whole Tree without your light ever going out.",
+      how: "Kindle all ten in a climb where no lamp is ever the last one.",
+      earned: pages.some((p) => p.ending === "kindled" && p.falls === 0),
+    },
+    {
+      id: "deep",
+      title: "Nothing left to give",
+      won: "You took a guardian to the last of its tiers.",
+      how: "Break the same one in three climbs.",
+      earned: Object.values(timesFreed(ascents)).some((n) => n >= 3),
+    },
+    {
+      id: "remembered",
+      title: "Remembered",
+      won: "One House has stood for you seven times, and has no episodes left.",
+      how: "Come back to the same figure, carrying the Mouth, seven times over.",
+      earned: Object.values(stood).some((n) => n >= 7),
+    },
+    {
+      id: "lexicon",
+      title: "A vocabulary",
+      won: "Fifty roots have been put together at the gates.",
+      how: "Every gate answered adds one, and a true word that was not asked for counts too.",
+      earned: roots.length >= 50,
+    },
+  ];
 }
 
 // ---------------------------------------------------------------------------
