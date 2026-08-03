@@ -85,7 +85,11 @@ const pastThePrologue = async (page) => {
 };
 
 const sealFromTheMap = async (page) => {
-  const seal = page.getByRole("button", { name: /Seal the ascent/ }).first();
+  // Either ending's button — they are deliberately different words for
+  // deliberately different acts, and this walks whichever the map is offering.
+  const seal = page
+    .getByRole("button", { name: /Seal the ascent|Present yourself at the crown/ })
+    .first();
   await seal.waitFor({ state: "visible", timeout: 10000 }).catch(() => {});
   if (await seal.count()) await seal.click();
 };
@@ -184,6 +188,27 @@ const SCRIPTS = [
     until: (p) => p.housesMet > 0 || p.finished,
     seconds: 180,
     driver: { seekHouse: true },
+  },
+  {
+    name: "crown-presented",
+    about: "The other ending — a crown nothing is holding, and a Tree still mostly dark.",
+    /**
+     * **The branch that shipped unreachable.** `SealedPlate` has carried a
+     * whole "The crown is reached" face since the linear road was retired, and
+     * nothing in the game could raise it: the map offered sealing only to a
+     * Scribe with all ten Sefirot lit, so `sealedAt`'s own promise of "the
+     * crown, *or* all ten kindled" was half a lie.
+     *
+     * `freed` without `lit` is exactly that standing: every guardian broken —
+     * which at Keter means Behemot — and not one Sefirah bought. What this
+     * photographs is a real second ending rather than a shortcut: the same
+     * plea, graded the same four ways, on a climb that went up rather than
+     * across.
+     */
+    warp: { rung: 10, letters: "all", lamps: 3, witnesses: 4, seed: 5, freed: 1 },
+    enter: sealFromTheMap,
+    until: (p) => p.plate === "sealed",
+    seconds: 90,
   },
   {
     name: "crown-whole",

@@ -18,6 +18,7 @@ import {
 import { keliOnPath } from "./world/build";
 import { describeEffect } from "./items";
 import { guardianOf } from "./guardians";
+import type { SealKind } from "./sealing";
 import { HUSKS } from "./combat";
 import styles from "./GamePage.module.css";
 
@@ -77,6 +78,7 @@ export function TreeMap({
   onKindle,
   onFace,
   onSeal,
+  sealKind,
 }: {
   ascent: AscentRecord;
   at: SefirahId;
@@ -86,8 +88,14 @@ export function TreeMap({
   onKindle: () => void;
   /** Go into the room where what holds this Sefirah is standing. */
   onFace: () => void;
-  /** Offered only once every Sefirah is kindled — see `GamePage`. */
+  /** Offered when an ending is within reach — see `sealing.ts`. */
   onSeal?: () => void;
+  /**
+   * Which ending it is. The two are not the same act and must not wear the
+   * same words: one is a Tree standing lit, the other is a Scribe standing on
+   * a crown nothing is holding, with a case to make and no guarantee of it.
+   */
+  sealKind?: SealKind;
 }) {
   const walked = ascent.pathsWalked ?? [];
   const lit = ascent.sefirotLit ?? [];
@@ -377,7 +385,9 @@ export function TreeMap({
             )}
             {onSeal && (
               <button type="button" className={styles.sealButton} onClick={onSeal}>
-                Seal the ascent — all ten are kindled
+                {sealKind === "crown"
+                  ? "Present yourself at the crown"
+                  : "Seal the ascent — all ten are kindled"}
               </button>
             )}
           </div>

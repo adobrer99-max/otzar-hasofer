@@ -58,6 +58,7 @@ import { readAscentTime } from "./sacredAscent";
 import { fragmentAt, gather, SCROLL_LETTER, SCROLL_TOTAL, SCROLL_VERSE } from "./scroll";
 import { GOING_OUT, HUSKS, isBeast, LAMPS } from "./combat";
 import { afterFalling, wakeAt } from "./fall";
+import { sealKindOf, sealOffered, type SealKind } from "./sealing";
 import { describeEffect, keliById, powersFrom, synergiesIn } from "./items";
 import {
   ABYSS_WORD,
@@ -93,16 +94,17 @@ import styles from "./GamePage.module.css";
 
 /** A Sefirah's region, by name — the ten are a small table, so a scan is fine. */
 /**
- * Whether every Sefirah has been kindled, which is what seals a climb.
- *
- * The linear climb ended by arriving: reach Keter and the crowning plate comes
- * up. On the Tree arriving is nothing — the crown is one step from Chochmah and
- * a Scribe can be standing on it inside four paths. So the ending is the
- * *spending*: three hundred light laid down across the ten, which is a climb
- * that has been almost everywhere. Both roads reach the same plate.
+ * Which ending, if either, this standing is offered — the rule is in
+ * `sealing.ts`, pure and tested, because *"the crown, or all ten kindled"* is
+ * a claim `sealedAt` has made for a long time and only half of which the game
+ * could ever act on.
  */
-function allKindled(ascent: AscentRecord): boolean {
-  return new Set(ascent.sefirotLit ?? []).size >= TOTAL_REGIONS;
+function endingOffered(ascent: AscentRecord): SealKind | undefined {
+  return sealOffered({
+    at: standingAt(ascent),
+    sefirotLit: ascent.sefirotLit ?? [],
+    guardiansBroken: ascent.guardiansBroken ?? [],
+  });
 }
 
 type Plate =
@@ -1370,7 +1372,8 @@ export function GamePage() {
               onWalk={chooseWay}
               onKindle={kindleHere}
               onFace={faceGuardian}
-              onSeal={allKindled(ascent) ? () => setPlate({ kind: "sealed" }) : undefined}
+              onSeal={endingOffered(ascent) ? () => setPlate({ kind: "sealed" }) : undefined}
+              sealKind={endingOffered(ascent)}
             />
           </div>
           {/* **The map teaches itself.** The porch taught the body and then
@@ -2895,18 +2898,25 @@ function SealedPlate({
   const witnesses = witnessesOf(ascent.housesMet);
   const plea = pleaFor({ hasMouth: ascent.lettersHeld.includes(SCROLL_LETTER), witnesses });
   /**
-   * Two roads to the same plate, and they end for different reasons.
+   * **Two endings, and this branch was unreachable until P3.**
    *
-   * The line ended by **arriving**: ten rungs in order, and Keter at the top of
-   * them. The Tree ends by **spending** — the crown is one step from Chochmah
-   * and a Scribe can be standing on it inside four paths, so arriving there
-   * proves nothing. What proves something is three hundred light laid down
-   * across all ten Sefirot, which is a climb that has been almost everywhere.
+   * The copy under it was written for the linear road, where arriving at rung
+   * ten *was* the climb, and it said so: "the crown is reached either way —
+   * that was never in question". On the Tree it is very much in question. The
+   * shortest way to Keter is three paths, the last of them over the Abyss —
+   * walked unveiled and answered at a Word-Gate — and then Behemot, which is
+   * letter-locked. What it is *not* is three hundred
+   * light laid across all ten, and the measured economy guarantees a dash
+   * cannot buy that — so the two remain genuinely different climbs, and the
+   * plate says which one this was.
    */
-  const byKindling = new Set(ascent.sefirotLit ?? []).size >= TOTAL_REGIONS;
+  const byKindling = sealKindOf(ascent) === "kindled";
+  const walked = (ascent.pathsWalked ?? []).length;
   return (
     <>
-      <p className={styles.plateKicker}>{byKindling ? "The Tree stands lit" : "Keter"}</p>
+      <p className={styles.plateKicker}>
+        {byKindling ? "The Tree stands lit" : "You present yourself"}
+      </p>
       <h2 className={styles.plateTitle}>
         {byKindling ? "All ten are kindled" : "The crown is reached"}
       </h2>
@@ -2915,14 +2925,16 @@ function SealedPlate({
       </p>
       <p className={styles.plateUse}>
         {byKindling
-          ? `Every Sefirah on the Tree is burning, and you paid for all of it out of what you gathered walking ${(ascent.pathsWalked ?? []).length} paths. ${
+          ? `Every Sefirah on the Tree is burning, and you paid for all of it out of what you gathered walking ${walked} paths. ${
               all
                 ? "All twenty-two letters are in your hand as well."
                 : `You did it carrying ${found} of the twenty-two letters — the rest are still lying on the paths you did not take.`
             }`
-          : all
-            ? "All twenty-two letters are in your hand. The alphabet is complete, and the Tree was climbed on nothing else."
-            : `You arrive carrying ${found} of the twenty-two letters. The crown is reached either way — that was never in question — but the letters left in the regions below are still there.`}
+          : `You came back up ${walked === 1 ? "one path" : `${walked} paths`}, over the gulf, and took the crown out of what was holding it. ${
+              all
+                ? "All twenty-two letters are in your hand: the alphabet is complete, and the Tree was climbed on nothing else."
+                : `You are carrying ${found} of the twenty-two letters, and the Tree below you is mostly dark — but you are standing here, which is what you came to do.`
+            }`}
       </p>
       <ul className={styles.sealedLetters} aria-label="The letters carried to the crown">
         {ascent.lettersHeld.map((id) => (
