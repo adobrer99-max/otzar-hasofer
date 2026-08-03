@@ -1212,6 +1212,7 @@ export function GamePage() {
           time={time}
           encounter={encounter}
           taught={allLearned(taught)}
+          audio={audio}
           onBegin={beginAscent}
         />
       )}
@@ -1425,6 +1426,20 @@ export function GamePage() {
           <button type="button" className={styles.cornerButton} onClick={() => setPaused((p) => !p)}>
             <kbd>Esc</kbd> the ways of the body
           </button>
+          {/* **The score, reachable in one press from anywhere.** It was a
+              checkbox inside a menu most players never open, which for a game
+              with a written nigun per Sefirah is most of the work thrown away
+              on most of the sessions. */}
+          <span aria-hidden="true"> · </span>
+          <button
+            type="button"
+            className={styles.cornerButton}
+            aria-pressed={audio.on}
+            onClick={() => audio.toggle()}
+          >
+            <span aria-hidden="true">{audio.on ? "♪" : "♪̸"}</span>{" "}
+            {audio.on ? "sound on" : "sound off"}
+          </button>
         </span>
       </div>
     </div>
@@ -1480,6 +1495,7 @@ function Threshold({
   time,
   encounter,
   taught,
+  audio,
   onBegin,
 }: {
   ascent: AscentRecord | null;
@@ -1487,6 +1503,8 @@ function Threshold({
   encounter: ReturnType<typeof encounterFor>;
   /** Whether this Scribe has been through the opening lessons before. */
   taught: boolean;
+  /** So the score can be offered once, to whoever has never answered. */
+  audio: ReturnType<typeof useGameAudio>;
   onBegin: () => void;
 }) {
   const sealed = ascent?.sealedAt;
@@ -1520,6 +1538,21 @@ function Threshold({
           <p className={styles.startLast}>
             Your last ascent reached the crown with {ascent.lettersHeld.length} of the twenty-two
             letters and {ascent.or} light.
+          </p>
+        )}
+
+        {/* **Asked once, and only of someone who has never said.** The score
+            is written per Sefirah and per festival and has always been off by
+            default, behind a checkbox in a menu — so the likeliest way to play
+            this game has been to never learn it has music. Turning it on here
+            is also the only place the browser will let a context be born:
+            inside a click. */}
+        {!audio.answered && (
+          <p className={styles.startSound}>
+            There is a nigun for every Sefirah, and it is silent until you ask.{" "}
+            <button type="button" className={styles.linkButton} onClick={() => audio.toggle()}>
+              Play with sound
+            </button>
           </p>
         )}
 

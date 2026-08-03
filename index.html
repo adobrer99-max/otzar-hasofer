@@ -3,7 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- `viewport-fit=cover` so the game can run to the edges of a notched
+         phone. It is only half the change: without the safe-area insets that
+         go with it (see `GameCanvas.module.css` and `GamePage.module.css`) the
+         touch pad sits under the home indicator, which is the gesture bar —
+         every jump becomes a coin flip between leaping and leaving the app. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#14171c" />
     <meta name="description" content="Otzar Ha'Sofer — the Treasury: a digital companion and reference guide for the Scribe's reading, including the Herald generator." />
     <title>Otzar Ha'Sofer — The Treasury</title>

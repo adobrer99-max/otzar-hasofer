@@ -79,6 +79,13 @@
   letter-spacing: 0.04em;
 }
 
+/* The one-time offer of the score. */
+.startSound {
+  margin: var(--space-3) 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
 /* What the Encounter changes. Copper rather than muted, because unlike the
    date beside it this is a thing that is *acting on* the climb. */
 .startRule {
@@ -233,7 +240,8 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  padding: 6px var(--space-3);
+  /* Under the notch and the gesture bar otherwise — see `index.html`. */
+  padding: 6px calc(var(--space-3) + env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) calc(var(--space-3) + env(safe-area-inset-left, 0px));
   font-size: 0.74rem;
   color: var(--muted);
   pointer-events: none;
@@ -398,7 +406,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-3);
-  padding: 8px var(--space-3);
+  padding: calc(8px + env(safe-area-inset-top, 0px)) calc(var(--space-3) + env(safe-area-inset-right, 0px)) 8px calc(var(--space-3) + env(safe-area-inset-left, 0px));
   pointer-events: none;
   background: linear-gradient(
     to bottom,

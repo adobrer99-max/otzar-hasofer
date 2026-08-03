@@ -318,7 +318,33 @@ export function GameCanvas({
         title={control.does}
         onPointerDown={(e) => {
           e.preventDefault();
+          /**
+           * **Let go of the pointer, so a thumb can slide.**
+           *
+           * A touch pointer is *implicitly captured* by the element it starts
+           * on, which means a thumb dragged from Left onto Right keeps firing
+           * at Left and the Scribe walks the wrong way — the pad behaves as
+           * seven separate buttons rather than one surface, and moving from
+           * walking to leaping means lifting off and landing again. Releasing
+           * the capture hands the events back to whatever is actually under
+           * the thumb, and `onPointerEnter` below picks them up.
+           */
+          // Guarded, not optional-chained: the method exists everywhere and
+          // *throws* when there is no active pointer with that id — which a
+          // synthetic event does, and which surfaced immediately as a page
+          // error the first time this was driven from a test.
+          try {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+          } catch {
+            // Nothing was captured. Sliding already works.
+          }
           touch(id, true);
+        }}
+        // Slid onto, with the thumb still down. `buttons` is 1 for a touch
+        // that is in contact and 0 for a pointer merely passing over, so a
+        // mouse hovering the pad presses nothing.
+        onPointerEnter={(e) => {
+          if (e.buttons !== 0) touch(id, true);
         }}
         onPointerUp={() => touch(id, false)}
         onPointerLeave={() => touch(id, false)}

@@ -13,6 +13,7 @@
     "test": "vitest run",
     "data:shorashim": "node scripts/build-shorashim.mjs",
     "build:letterpaths": "node scripts/build-letterpaths.mjs",
+    "build:icons": "node scripts/build-icons.mjs",
     "export:folio": "node scripts/export-folio-print.mjs",
     "playtest": "node tools/playtest.mjs"
   },
