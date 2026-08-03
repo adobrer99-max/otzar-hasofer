@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { abilityByLetter, type Grace, type Verb } from "./abilities";
-import { BEASTS, GREAT, HUSKS, isGreat, markPowers } from "./combat";
-import { boonsFrom, GUARDIAN_LIST, GUARDIANS, guardianOf } from "./guardians";
+import { BEASTS, GREAT, HUSKS, isGreat, markBite, markPowers } from "./combat";
+import { boonsFrom, GUARDIAN_LIST, GUARDIANS, guardianOf, TIERS, tierOf } from "./guardians";
 import { powersFrom, type Effect } from "./items";
 import { regions } from "./regions";
 import { LETTER_ORDER, TREE_PATHS } from "./tree";
@@ -176,6 +176,108 @@ describe("the guardians", () => {
     // A saved climb naming a Sefirah a later version no longer holds is ignored
     // rather than thrown on.
     expect(boonsFrom(["gevurah", "nowhere" as never])).toHaveLength(1);
+  });
+});
+
+/**
+ * **The tiers — the reason to walk a way a second time.**
+ *
+ * The boons were ten booleans, every one reachable inside a single thorough
+ * climb. After that, breaking a guardian again changed a Scribe by exactly
+ * nothing: the game's oldest across-runs system ran out well before the Seven
+ * Encounters did, and re-fighting was pure sentiment.
+ */
+describe("what a second and third breaking are worth", () => {
+  const KNOBS = ["bite", "reach", "cooldown", "speed", "lamps", "iframes", "light"] as const;
+  const BEHAVIOURS = ["pierces", "bounces", "homing", "splits", "arcs"] as const;
+
+  it("counts from zero to a hard ceiling, and never past it", () => {
+    expect(tierOf(0)).toBe(0);
+    expect(tierOf(1)).toBe(1);
+    expect(tierOf(TIERS)).toBe(TIERS);
+    expect(tierOf(TIERS + 40)).toBe(TIERS);
+    expect(tierOf(-3)).toBe(0);
+  });
+
+  it("gives the boon once and the deepening for every breaking after it", () => {
+    expect(boonsFrom({ gevurah: 1 })).toEqual([GUARDIANS.gevurah.boon]);
+    expect(boonsFrom({ gevurah: 2 })).toEqual([
+      GUARDIANS.gevurah.boon,
+      GUARDIANS.gevurah.deepens,
+    ]);
+    expect(boonsFrom({ gevurah: 3 })).toEqual([
+      GUARDIANS.gevurah.boon,
+      GUARDIANS.gevurah.deepens,
+      GUARDIANS.gevurah.deepens,
+    ]);
+    // And the fourth is worth nothing, which is the cap being hard rather
+    // than a curve that flattens.
+    expect(boonsFrom({ gevurah: 9 })).toEqual(boonsFrom({ gevurah: TIERS }));
+  });
+
+  it("gives nothing at all for a guardian never broken", () => {
+    expect(boonsFrom({ gevurah: 0 })).toEqual([]);
+    expect(boonsFrom({})).toEqual([]);
+  });
+
+  /**
+   * **The one that matters.** A deepening that moved no number would be
+   * indistinguishable from no deepening at all — the same trap
+   * `encounter.test.ts` catches for the Seven Encounters' rules, and the same
+   * reason this is a table rather than a repetition of `boon`: repeating
+   * would silently give the three great ones nothing, since a behaviour is
+   * had or not had and ORs with itself.
+   */
+  it("gives no guardian a deepening that changes nothing", () => {
+    const inert = GUARDIAN_LIST.filter((g) => {
+      const moves = KNOBS.some((k) => g.deepens[k] !== undefined && g.deepens[k] !== 1);
+      return !moves;
+    });
+    expect(inert.map((g) => g.sefirah), "these deepen by nothing").toEqual([]);
+  });
+
+  it("deepens in a number rather than a behaviour, even where the boon is one", () => {
+    for (const guardian of GUARDIAN_LIST) {
+      for (const flag of BEHAVIOURS) {
+        expect(
+          guardian.deepens[flag],
+          `${guardian.sefirah} tries to give ${flag} again, which ORs to nothing`,
+        ).toBeUndefined();
+      }
+    }
+  });
+
+  it("says what every tier is, in the voice of the thing", () => {
+    for (const guardian of GUARDIAN_LIST) {
+      expect(guardian.deepLine.length, `${guardian.sefirah}`).toBeGreaterThan(24);
+      expect(guardian.deepLine, `${guardian.sefirah} repeats itself`).not.toBe(guardian.boonLine);
+    }
+  });
+
+  /**
+   * A third breaking must be better than a first and worse than a fourth would
+   * have been if there were one — run through the real fold rather than
+   * eyeballed, because the fold multiplies rates and *adds* quantities and the
+   * two behave differently under repetition.
+   */
+  it("makes a Scribe measurably stronger for coming back, and then stops", () => {
+    const at = (n: number) => markPowers([], [], [], boonsFrom({ tiferet: n })).bite ?? 0;
+    expect(at(2)).toBeGreaterThan(at(1));
+    expect(at(3)).toBeGreaterThan(at(2));
+    expect(at(9)).toBe(at(3));
+    // **The power, not the shells.** `markBite` rounds, so Tiferet's tiers on
+    // their own move the mark from 1.15 shells to 1.24 and still take one off
+    // a husk — a tier is a thumb on the scale that pays when something else is
+    // carried beside it, exactly as the vessels' own small multipliers do.
+    // Anyone reading this expecting a third breaking to add a shell by itself
+    // should read that line in `combat.ts` first.
+    expect(markBite(markPowers([], [], [], boonsFrom({ tiferet: 3 })))).toBe(1);
+  });
+
+  it("keeps the behaviour of a great one at the first breaking, tier or no tier", () => {
+    for (const times of [1, 2, 3, 9]) {
+      expect(markPowers([], [], [], boonsFrom({ keter: times })).bounces).toBe(true);
+    }
   });
 });
 

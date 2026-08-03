@@ -1,10 +1,12 @@
 import { useMemo } from "react";
 import { dorotCardsById } from "../data/dorot";
-import type { AscentRecord } from "../storage/ascentRepo";
+import { timesFreed, type AscentRecord } from "../storage/ascentRepo";
 import { DecoratedRule } from "../components/ui";
 import { encounterTitle } from "./encounter";
 import { getEncounterForReadingIndex } from "../data/encounters";
-import { regionOfSefirah } from "./regions";
+import { regionOfSefirah, regions } from "./regions";
+import { guardianOf, TIERS, tierOf } from "./guardians";
+import { HUSKS } from "./combat";
 import { PLEA_NAMED } from "./story";
 import { pathById, pointOf, TREE_LINES, TREE_VIEW } from "./tree";
 import { CARDS_IN_ALL, housesMet, lexicon, pagesOf, tally, type BookPage } from "./book";
@@ -35,6 +37,7 @@ export function Book({ ascents, onClose }: { ascents: readonly AscentRecord[]; o
   const houses = useMemo(() => housesMet(ascents), [ascents]);
   const roots = useMemo(() => lexicon(ascents), [ascents]);
   const totals = useMemo(() => tally(ascents), [ascents]);
+  const freed = useMemo(() => timesFreed(ascents), [ascents]);
 
   return (
     <div className={styles.overlay} role="dialog" aria-modal="true" aria-label="The Book of Ascents">
@@ -98,6 +101,43 @@ export function Book({ ascents, onClose }: { ascents: readonly AscentRecord[]; o
                   </ul>
                 </li>
               ))}
+            </ul>
+          </section>
+        )}
+
+        {Object.keys(freed).length > 0 && (
+          <section>
+            <DecoratedRule />
+            {/* **What a Scribe has become**, as against what any one climb did.
+                The tiers are the only thing in this game that grows across
+                climbs and can still be added to, so the Book is where a person
+                looks to find out which way is worth walking again. */}
+            <h3 className={styles.section}>What you have broken</h3>
+            <ul className={styles.houses}>
+              {regions
+                .filter((r) => freed[r.sefirah])
+                .sort((a, b) => (freed[b.sefirah] ?? 0) - (freed[a.sefirah] ?? 0))
+                .map((region) => {
+                  const times = freed[region.sefirah] ?? 0;
+                  const tier = tierOf(times);
+                  const guardian = guardianOf(region.sefirah);
+                  return (
+                    <li key={region.sefirah} className={styles.house}>
+                      <span className={styles.houseFigure}>{HUSKS[guardian.kind].name}</span>
+                      <span className={styles.houseWhere}>{region.name}</span>
+                      <span className={styles.houseCount}>
+                        {tier >= TIERS ? "whole" : `tier ${tier} of ${TIERS}`}
+                      </span>
+                      <ul className={styles.cards}>
+                        <li>
+                          {tier >= TIERS
+                            ? "It has nothing left to give."
+                            : `Broken in ${many(times, "climb")} — walk that way again and it deepens.`}
+                        </li>
+                      </ul>
+                    </li>
+                  );
+                })}
             </ul>
           </section>
         )}

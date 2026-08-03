@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { dorotCardsById, dorotHousesById, housesBySefirah } from "../data/dorot";
-import type { AscentRecord } from "../storage/ascentRepo";
+import { timesFreed, type AscentRecord } from "../storage/ascentRepo";
 import { regions } from "./regions";
 import { CARDS_IN_ALL, housesMet, lastSealed, lexicon, pagesOf, tally, timesStood } from "./book";
 import { endingOf } from "./story";
@@ -240,5 +240,39 @@ describe("how often each House has stood", () => {
 
   it("counts nothing from a climb that is not sealed", () => {
     expect(timesStood([climb({ witnessSefirot: ["malchut"], endingPlea: "heard" })])).toEqual({});
+  });
+});
+
+/**
+ * **How often each guardian has been broken**, which is the counting
+ * the old `guardiansFreed` threw away — and throwing it away was the whole
+ * shape of the problem the tiers fix: ten booleans, all ten reachable inside
+ * one thorough climb, and every climb after that changing a Scribe by nothing.
+ */
+describe("how often each guardian has been broken", () => {
+  it("counts the climbs it was broken in, not the breakings", () => {
+    // A climb holds each Sefirah once — a guardian broken stays broken for
+    // that climb — so the honest unit is the return trip.
+    const times = timesFreed([
+      climb({ guardiansBroken: ["malchut", "yesod", "malchut"] }),
+      climb({ guardiansBroken: ["malchut"] }),
+    ]);
+    expect(times.malchut).toBe(2);
+    expect(times.yesod).toBe(1);
+  });
+
+  it("counts an unsealed climb too, because the guardian is broken either way", () => {
+    // Unlike the Encounters, which advance only on finishing: the guardians
+    // accrue from *doing*, and going out does not put a shell back together.
+    expect(timesFreed([climb({ guardiansBroken: ["keter"] })]).keter).toBe(1);
+  });
+
+  it("keys exactly the set of what has ever been broken", () => {
+    const ascents = [climb({ guardiansBroken: ["hod", "binah"] }), climb({ guardiansBroken: ["hod"] })];
+    expect(Object.keys(timesFreed(ascents)).sort()).toEqual(["binah", "hod"]);
+  });
+
+  it("is empty for a Scribe who has broken nothing", () => {
+    expect(timesFreed([climb(), climb()])).toEqual({});
   });
 });

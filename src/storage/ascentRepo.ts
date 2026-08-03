@@ -242,18 +242,32 @@ export function kindleCost(regionIndex: number): number {
 }
 
 /**
- * Every Sefirah this Scribe has ever freed, across all their climbs.
+ * **How many times each Sefirah has been freed**, across all this Scribe's
+ * climbs.
  *
  * The shape `sealedCount` has, and for the same reason: what a climb *is* is a
  * record, and what a Scribe has *become* is a fold over all of them. The boons
  * are drawn from this — see `guardians.ts`, where the division between the two
  * across-runs systems is stated: the Seven Encounters change the world, and
  * the guardians change the Scribe.
+ *
+ * **It counts rather than collecting**, and that replaced a `guardiansFreed`
+ * that returned a bare set. The set was the whole shape of the problem: ten
+ * booleans, all ten reachable inside one thorough climb, and every climb after
+ * that changing a Scribe not at all. Breaking a guardian a second time was
+ * worth exactly nothing, so there was never a reason to walk that way again.
+ * The tiers read this number; the keys are still exactly the old set.
+ *
+ * A climb's own `guardiansBroken` holds each Sefirah once (a guardian broken
+ * is broken for the rest of that climb), so this counts *climbs in which it
+ * was broken*, which is the honest unit: the return trip, not the repetition.
  */
-export function guardiansFreed(ascents: readonly AscentRecord[]): SefirahId[] {
-  const freed = new Set<SefirahId>();
-  for (const a of ascents) for (const s of a.guardiansBroken ?? []) freed.add(s);
-  return [...freed];
+export function timesFreed(ascents: readonly AscentRecord[]): Record<string, number> {
+  const times: Record<string, number> = {};
+  for (const a of ascents) {
+    for (const s of new Set(a.guardiansBroken ?? [])) times[s] = (times[s] ?? 0) + 1;
+  }
+  return times;
 }
 
 /**

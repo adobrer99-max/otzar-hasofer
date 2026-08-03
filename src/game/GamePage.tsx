@@ -73,8 +73,8 @@ import {
   WITNESSES_POSSIBLE,
 } from "./story";
 import { buildArena, buildPath, regionOfPath, verbsOf } from "./world/build";
-import { boonsFrom, guardianOf } from "./guardians";
-import { guardiansFreed } from "../storage/ascentRepo";
+import { boonsFrom, guardianOf, TIERS } from "./guardians";
+import { timesFreed } from "../storage/ascentRepo";
 import { TreeMap } from "./TreeMap";
 import { Book } from "./Book";
 import { lastSealed, timesStood } from "./book";
@@ -134,7 +134,12 @@ type Plate =
        */
       vow?: { kept: boolean; figure: string; grantsLabel: string; terms: string };
     }
-  | { kind: "guardian-done"; sefirah: SefirahId }
+  | {
+      kind: "guardian-done";
+      sefirah: SefirahId;
+      /** Which breaking of this guardian it is, across every climb. */
+      tier: number;
+    }
   /**
    * Raised *before* a crossing is walked, not after one is finished — which is
    * the whole reason it now fires. See `crossesAbyss`.
@@ -165,7 +170,6 @@ export function GamePage() {
   /** The Sefirah whose guardian is being faced, while the arena is open. */
   const [facing, setFacing] = useState<SefirahId | null>(null);
   /** Every Sefirah freed across every climb — what the boons are drawn from. */
-  const [freedEver, setFreedEver] = useState<SefirahId[]>([]);
   const [plate, setPlate] = useState<Plate | null>(null);
   /**
    * **The Tree, on Tab.** It used to be a whole screen you were returned to
@@ -210,13 +214,23 @@ export function GamePage() {
    * **Every climb ever, held rather than folded once and dropped.**
    *
    * This list was already being read at load for `sealedCount` and
-   * `guardiansFreed`, and then discarded — which is exactly why nothing in the
+   * `timesFreed`, and then discarded — which is exactly why nothing in the
    * game could ever look backwards. The Book is folds over it (`book.ts`), and
    * so is what the threshold now remembers about the last ending.
    */
   const [history, setHistory] = useState<AscentRecord[]>([]);
   /** How often each Sefirah's House has stood at the crown, across every climb. */
   const stoodFor = useMemo(() => timesStood(history), [history]);
+  /**
+   * **How many climbs each Sefirah has been freed in** — counts rather than a
+   * set, because the boons are tiered off the count now (`guardians.ts`). A
+   * set was ten booleans a single thorough climb could max, after which every
+   * further climb changed the Scribe by nothing.
+   *
+   * Derived from `history` rather than held separately, so it cannot go stale
+   * the moment a climb seals — which is exactly when it changes.
+   */
+  const freedEver = useMemo(() => timesFreed(history), [history]);
   const [bookOpen, setBookOpen] = useState(false);
 
   // Read inside a setState updater, where reading `time` directly would make
@@ -283,10 +297,6 @@ export function GamePage() {
         // A climb still in progress must not count itself.
         setSealedBefore(sealedCount(all.filter((a) => a.id !== found?.id)));
         setHistory(all);
-        // **What a Scribe has become**, as against what this climb holds: every
-        // Sefirah they have ever freed, including in climbs long since sealed.
-        // Read once, here, so nothing downstream has to know about storage.
-        setFreedEver(guardiansFreed(all));
         setLoading(false);
       })
       .catch(() => {
@@ -341,7 +351,14 @@ export function GamePage() {
    * rather than one being trusted.
    */
   const boons = useMemo(
-    () => boonsFrom([...new Set([...freedEver, ...(ascent?.guardiansBroken ?? [])])]),
+    () => {
+      // What this climb has broken counts too, and counts *now* — its record is
+      // in `history` only after it seals, and a guardian broken an hour ago
+      // should already be paying.
+      const times = { ...freedEver };
+      for (const s of new Set(ascent?.guardiansBroken ?? [])) times[s] = (times[s] ?? 0) + 1;
+      return boonsFrom(times);
+    },
     [freedEver, ascent?.guardiansBroken],
   );
 
@@ -818,7 +835,10 @@ export function GamePage() {
         void saveAscent(next).catch(() => undefined);
         return next;
       });
-      setPlate({ kind: "guardian-done", sefirah: freed });
+      // Which breaking this is, counting every sealed climb plus this one —
+      // the record for *this* climb has not been written back to `history`
+      // yet, and it is the one that just happened.
+      setPlate({ kind: "guardian-done", sefirah: freed, tier: (freedEver[freed] ?? 0) + 1 });
       return;
     }
     // A vow taken at a House is judged here, on the way out, against how the
@@ -901,7 +921,7 @@ export function GamePage() {
             // fallback for a world the page did not start.
             { kind: "path-done", path: TREE_PATHS[0] },
     );
-  }, [ascent?.regionIndex, world, vow, audio, walking, facing, giveBoon]);
+  }, [ascent?.regionIndex, world, vow, audio, walking, facing, giveBoon, freedEver]);
 
   /**
    * Step onto a path from the overworld — which is what a rung is now.
@@ -2145,7 +2165,7 @@ function PlateOverlay({
           <PathDonePlate ascent={ascent} path={plate.path} vow={plate.vow} onBack={onBack} />
         )}
         {plate.kind === "guardian-done" && (
-          <GuardianDonePlate sefirah={plate.sefirah} onBack={onBack} />
+          <GuardianDonePlate sefirah={plate.sefirah} tier={plate.tier} onBack={onBack} />
         )}
         {plate.kind === "letter" && <LetterPlate letterId={plate.letterId} onClose={onClose} />}
         {plate.kind === "fragment" && (
@@ -2810,9 +2830,15 @@ function PathDonePlate({
  */
 function GuardianDonePlate({
   sefirah,
+  tier,
   onBack,
 }: {
   sefirah: SefirahId;
+  /**
+   * Which breaking of this one it is, counting every climb — see `tierOf`.
+   * One is the first, `TIERS` is the last that is worth anything.
+   */
+  tier: number;
   onBack: () => void;
 }) {
   const guardian = guardianOf(sefirah);
@@ -2827,7 +2853,26 @@ function GuardianDonePlate({
       </p>
       <p className={styles.plateUse}>{spec.reading}</p>
       <p className={styles.plateDerivation}>{spec.source}</p>
-      <p className={styles.offerGrants}>{guardian.boonLine}</p>
+      {/* **What this breaking gave, which is not always the same thing.** The
+          first says what the creature is worth; a return trip says what coming
+          back is worth; past the third it says plainly that there is nothing
+          more here, because a Scribe grinding a guardian that has stopped
+          paying should be told rather than left to find out. */}
+      <p className={styles.offerGrants}>
+        {tier <= 1 ? guardian.boonLine : guardian.deepLine}
+      </p>
+      {tier > 1 && tier <= TIERS && (
+        <p className={styles.plateDerivation}>
+          The {tier === 2 ? "second" : "third"} time you have broken it, of {TIERS} that are worth
+          anything.
+        </p>
+      )}
+      {tier > TIERS && (
+        <p className={styles.plateDerivation}>
+          You have taken everything this one had to give. It is still in your way, and it is no
+          longer worth anything.
+        </p>
+      )}
       <p className={styles.plateDerivation}>
         {place.name} can be kindled now, and this holds in every climb after this one.
       </p>

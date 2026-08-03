@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { abilityByLetter } from "../abilities";
 import { LAMPS, markBite, markPowers } from "../combat";
 import { KELIM } from "../items";
-import { boonsFrom } from "../guardians";
+import { boonsFrom, TIERS } from "../guardians";
 import { lettersOnEntering, regions, TOTAL_REGIONS } from "../regions";
 import { buildRegion, rowsFor, tileAt, verbsOf } from "./build";
 import { step, type StepContext } from "./step";
@@ -516,6 +516,66 @@ describe("what a vessel costs a Scribe who fights", () => {
     expect(
       mean(withAll.map((r) => r.lampsLeft)),
       "a Scribe with every boon crosses the trough untouched",
+    ).toBeLessThan(LAMPS);
+  }, 300000);
+
+  /**
+   * **And what the ceiling of the tiers comes to**, which is the number the
+   * old measurement above no longer reaches: "all ten broken" is tier one
+   * everywhere, and a Scribe who has come back to every guardian three times
+   * carries a great deal more. Measured on the same rungs and seeds when the
+   * tiers were written:
+   *
+   * ```
+   * all ten, tier 1    out 1/25   broken 4.20   lamps left 2.08
+   * all ten, tier 3    out 0/25   broken 4.36   lamps left 2.20
+   * ```
+   *
+   * (Bare-handed, from the measurement above: out 6/25, broken 3.44, lamps
+   * 1.68.) The shape is the one a cap is for — plainly stronger than tier one
+   * and a smaller step than the first breaking was, still losing most of a
+   * body per rung. What must never pass silently is a
+   * fully tiered Scribe who cannot be touched — that is a game that has ended
+   * without saying so, and it is the exact failure the boons were capped
+   * against in the first place.
+   */
+  it("keeps a Scribe at the top of every tier inside a fight", () => {
+    const everyTier = Object.fromEntries(regions.map((r) => [r.sefirah, TIERS]));
+    const topped: Fight[] = [];
+    for (let region = 4; region <= 8; region += 1) {
+      for (const seed of HAND_SEEDS) {
+        topped.push(
+          fighter(
+            buildRegion(region, seed),
+            { ...contextFor(region), boons: boonsFrom(everyTier) },
+            budgetFor(region),
+          ),
+        );
+      }
+    }
+    const tierOne = boonsFrom(regions.map((r) => r.sefirah));
+    const atOne: Fight[] = [];
+    for (let region = 4; region <= 8; region += 1) {
+      for (const seed of HAND_SEEDS) {
+        atOne.push(
+          fighter(buildRegion(region, seed), { ...contextFor(region), boons: tierOne }, budgetFor(region)),
+        );
+      }
+    }
+    const rows = [
+      `tier 1: out ${atOne.filter((r) => r.out).length}/${atOne.length} broken ${mean(atOne.map((r) => r.broken)).toFixed(2)} lamps ${mean(atOne.map((r) => r.lampsLeft)).toFixed(2)}`,
+      `tier ${TIERS}: out ${topped.filter((r) => r.out).length}/${topped.length} broken ${mean(topped.map((r) => r.broken)).toFixed(2)} lamps ${mean(topped.map((r) => r.lampsLeft)).toFixed(2)}`,
+    ];
+    console.log(rows.join("\n"));
+    // Stronger than the first breaking...
+    expect(
+      mean(topped.map((r) => r.broken)),
+      `coming back three times is worth nothing:\n${rows.join("\n")}`,
+    ).toBeGreaterThan(mean(atOne.map((r) => r.broken)));
+    // ...and still not invulnerable, which is the whole reason for the cap.
+    expect(
+      mean(topped.map((r) => r.lampsLeft)),
+      `a fully tiered Scribe crosses the trough untouched:\n${rows.join("\n")}`,
     ).toBeLessThan(LAMPS);
   }, 300000);
 

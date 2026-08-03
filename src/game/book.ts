@@ -20,7 +20,7 @@ import type { PleaKind } from "./story";
  * own. Every function here takes the list `listAscents()` already returns and
  * derives a reading from it; there is no new store, no new schema field, and
  * nothing to migrate or keep in step. That is the same shape `sealedCount` and
- * `guardiansFreed` already have, and for the same reason: a climb is a record,
+ * `timesFreed` already have, and for the same reason: a climb is a record,
  * and what a Scribe has *become* is a fold over all of them.
  *
  * It is also why the Book can show climbs sealed long before it existed. A

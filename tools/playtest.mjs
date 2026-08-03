@@ -555,6 +555,11 @@ const SCRIPTS = [
         "You arrived without a mouth",
         "one climb was put down",
         "The Lexicon",
+        // What a Scribe has *become*, which is the only thing here that can
+        // still be added to: the lit climb broke all ten, and the crown climb
+        // broke all ten again, so those are at tier two.
+        "What you have broken",
+        "tier 2 of 3",
       ]) {
         if (!text.includes(wanted.toLowerCase())) {
           throw new Error(
