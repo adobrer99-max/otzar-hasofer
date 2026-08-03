@@ -33,7 +33,7 @@ import {
   type LessonKey,
 } from "./tutorial";
 import { GameCanvas, type HudSample } from "./GameCanvas";
-import { regionAt, regions, TOTAL_REGIONS } from "./regions";
+import { regionAt, regionOfSefirah, regions, TOTAL_REGIONS } from "./regions";
 import { encounterFor, encounterTitle, isIllumined, rulesFor, sealedCount } from "./encounter";
 import { judge, lightFor, opens, type WordGateTarget, type WordGateVerdict } from "./wordGate";
 import { offerFor, vowKept, type UshpizinOffer } from "./ushpizinOffers";
@@ -42,6 +42,7 @@ import { useGameAudio } from "./audio/useGameAudio";
 import { readAscentTime } from "./sacredAscent";
 import { fragmentAt, SCROLL_LETTER, SCROLL_TOTAL, SCROLL_VERSE } from "./scroll";
 import { GOING_OUT, HUSKS, isBeast, LAMPS } from "./combat";
+import { afterFalling, wakeAt } from "./fall";
 import { describeEffect, keliById, powersFrom, synergiesIn } from "./items";
 import {
   ABYSS_WORD,
@@ -84,12 +85,6 @@ import styles from "./GamePage.module.css";
  */
 function allKindled(ascent: AscentRecord): boolean {
   return new Set(ascent.sefirotLit ?? []).size >= TOTAL_REGIONS;
-}
-
-function regionOfSefirah(sefirah: SefirahId) {
-  const found = regions.find((r) => r.sefirah === sefirah);
-  if (!found) throw new Error(`No region stands at ${sefirah}`);
-  return found;
 }
 
 type Plate =
@@ -913,6 +908,37 @@ export function GamePage() {
     setPlate(null);
   }, []);
 
+  /**
+   * **The last lamp goes out, and the Scribe wakes.**
+   *
+   * Not `sealAscent`, which is what this used to be and is the debt this pays:
+   * the plate said "the kingdom is where you wake, and the way up is where it
+   * was" and its button closed the record. The rules are in `fall.ts`, pure and
+   * tested there; all this does is write them down and put the Scribe back on
+   * the map.
+   *
+   * `walking` is cleared along with the world, because the path was not walked
+   * — it is not in `pathsWalked`, so it is not spent, and its letter was not
+   * paid. Whatever light it had gathered was in `world.or` and is folded into
+   * the record only by `onNext`, so it goes out with the rest.
+   */
+  const fall = useCallback(() => {
+    setAscent((prev) => {
+      if (!prev) return prev;
+      const next: AscentRecord = {
+        ...prev,
+        ...afterFalling(prev),
+        updatedAt: new Date().toISOString(),
+      };
+      void saveAscent(next).catch(() => undefined);
+      return next;
+    });
+    setWorld(null);
+    setWalking(null);
+    setFacing(null);
+    setPlate(null);
+  }, []);
+
   // Dismiss a plate with the keyboard, so a run never needs the mouse.
   useEffect(() => {
     if (!plate) return;
@@ -940,12 +966,14 @@ export function GamePage() {
       ) {
         setPlate(null);
       }
-      // Going out ends the climb exactly as the crown does — the plate's own
-      // button calls `onSeal`, and only the keyboard was wrong. Enter used to
-      // fall through to `climbOn`, which carried a Scribe whose last lamp had
-      // just gone out up to the next rung with three fresh ones. Caught by a
-      // harness run that went out in Netzach and finished in Tiferet.
-      else if (plate.kind === "sealed" || plate.kind === "out") sealAscent();
+      // **Whatever this does, it must not be `climbOn`.** Enter used to fall
+      // through to it, which carried a Scribe whose last lamp had just gone out
+      // up to the next rung with three fresh ones — caught by a harness run
+      // that went out in Netzach and finished in Tiferet. The warning outlives
+      // the thing it was written about: going out no longer ends the climb, but
+      // it must still not be a way of getting on with it for free.
+      else if (plate.kind === "sealed") sealAscent();
+      else if (plate.kind === "out") fall();
       // The end of a path goes back to the map, never on to a next rung — there
       // is no next rung on the Tree until the Scribe chooses one.
       else if (plate.kind === "path-done" || plate.kind === "guardian-done") backToTree();
@@ -953,7 +981,7 @@ export function GamePage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [plate, climbOn, sealAscent, backToTree]);
+  }, [plate, climbOn, sealAscent, fall, backToTree]);
 
   // Persist letters as they are found, without writing on every frame.
   const lastSaved = useRef("");
@@ -993,7 +1021,7 @@ export function GamePage() {
           kicker="The Practice"
           title="Ma'alot — The Ascent of the Tree"
           hebrew="מַעֲלוֹת"
-          lede="You were the scribe of the crown, and you were cast down to the kingdom without being told what for. Climb back on the twenty-two letters — each one a power drawn from its own ancient sense, Vav the hook, Mem the water, Chet the fence — and speak with the figures keeping the Houses on the way, because they were told what you were not. You will need a mouth to plead with, and the Mouth is in pieces. A fall or a thorn only veils you and you wake at your mark — but the klipot, the husks that hold the trapped light, take a lamp, and when the last lamp goes out you go out with it, and the kingdom comes up to meet you again."
+          lede="You were the scribe of the crown, and you were cast down to the kingdom without being told what for. Climb back on the twenty-two letters — each one a power drawn from its own ancient sense, Vav the hook, Mem the water, Chet the fence — and speak with the figures keeping the Houses on the way, because they were told what you were not. You will need a mouth to plead with, and the Mouth is in pieces. A fall or a thorn only veils you and you wake at your mark — but the klipot, the husks that hold the trapped light, take a lamp, and when the last lamp goes out you go out with it — and the light still in your hand goes out too. You wake at the highest Sefirah you had already spent light to kindle, which is why what you have gathered is worth less than what you have laid down."
         />
       )}
 
@@ -1198,6 +1226,7 @@ export function GamePage() {
           onNext={climbOn}
           onWalk={walkPath}
           onSeal={sealAscent}
+          onFall={fall}
           onBack={backToTree}
           onInscribe={inscribe}
           onAccept={acceptOffer}
@@ -1608,6 +1637,7 @@ function PlateOverlay({
   onNext,
   onWalk,
   onSeal,
+  onFall,
   onBack,
   onInscribe,
   onAccept,
@@ -1622,6 +1652,8 @@ function PlateOverlay({
   /** Step onto the path the Abyss plate is standing at the near edge of. */
   onWalk: (path: TreePath) => void;
   onSeal: () => void;
+  /** The last lamp is out: wake, and go on climbing. Never the same as `onSeal`. */
+  onFall: () => void;
   /** Back to the overworld, at the end of a path. */
   onBack: () => void;
   onInscribe: (letterIds: [string, string, string]) => void;
@@ -1686,7 +1718,9 @@ function PlateOverlay({
         {plate.kind === "abyss" && (
           <AbyssPlate path={plate.path} onCross={() => onWalk(plate.path)} onBack={onClose} />
         )}
-        {plate.kind === "out" && ascent && <OutPlate ascent={ascent} onSeal={onSeal} />}
+        {plate.kind === "out" && ascent && (
+          <OutPlate ascent={ascent} gathered={world?.or ?? 0} onWake={onFall} />
+        )}
         {plate.kind === "sealed" && ascent && (
           <SealedPlate ascent={ascent} encounter={encounter} onSeal={onSeal} />
         )}
@@ -2213,14 +2247,36 @@ function RegionDonePlate({
 }
 
 /**
- * The light goes out, and the run ends the way it began.
+ * The light goes out, and the Scribe wakes.
  *
- * Not a death screen. An angel made of light whose light goes out is cast back
- * down to the kingdom — which is exactly what happened to him once already,
- * before the first rung. So the fall is the failure state, and it is also the
- * premise, and the record keeps every letter he found on the way.
+ * Not a death screen, and — since `fall.ts` — no longer a delete button wearing
+ * one's clothes. An angel made of light whose light goes out is cast back down,
+ * which is exactly what happened to him once already, before the first rung. So
+ * the fall is the failure state and it is also the premise, and the only thing
+ * it takes is the light he was carrying.
+ *
+ * The plate says what it took and where he is, in that order, because those are
+ * the two things a Scribe wants to know and the second is the one this plate
+ * spent months promising and not delivering.
  */
-function OutPlate({ ascent, onSeal }: { ascent: AscentRecord; onSeal: () => void }) {
+function OutPlate({
+  ascent,
+  gathered,
+  onWake,
+}: {
+  ascent: AscentRecord;
+  /**
+   * What *this rung* had gathered, which is not in the record and never will
+   * be: `world.or` is folded into the ascent only by `onNext`, at the exit. The
+   * plate has to say it out loud or it would name a smaller loss than the one
+   * the Scribe actually just took.
+   */
+  gathered: number;
+  onWake: () => void;
+}) {
+  const woke = regionOfSefirah(wakeAt(ascent));
+  const kindled = woke.sefirah !== "malchut";
+  const lost = ascent.or + gathered;
   return (
     <>
       <p className={styles.plateKicker}>The lamps are spent</p>
@@ -2230,13 +2286,24 @@ function OutPlate({ ascent, onSeal }: { ascent: AscentRecord; onSeal: () => void
       </p>
       <p className={styles.plateUse}>{GOING_OUT}</p>
       <p className={styles.plateDerivation}>
-        It has happened to you once before, and you did not remember that either. What you found is
-        kept — {ascent.lettersHeld.length} of the twenty-two, and{" "}
-        {regionAt(ascent.regionIndex).name} is as far as you came. The kingdom is where you wake,
-        and the way up is where it was.
+        It has happened to you once before, and you did not remember that either. The letters are
+        still yours — {ascent.lettersHeld.length} of the twenty-two — and so is every Sefirah you
+        lit.{" "}
+        {lost > 0
+          ? `The ${lost} light in your hand is not${
+              gathered > 0 && ascent.or > 0
+                ? ` — ${ascent.or} carried here and ${gathered} gathered on this rung`
+                : ""
+            }: you were made of it, and it went out with you.`
+          : "You were carrying no light, so the fall took nothing but the ground."}
       </p>
-      <Button variant="primary" onClick={onSeal} autoFocus>
-        Fall, and begin again
+      <p className={styles.plateQuestion}>
+        {kindled
+          ? `You wake at ${woke.name}, because you paid for it and it is still burning. The way up is where it was.`
+          : "You wake in the kingdom, because there is no lamp of yours burning higher up. The way up is where it was."}
+      </p>
+      <Button variant="primary" onClick={onWake} autoFocus>
+        Fall, and wake
       </Button>
     </>
   );
@@ -2356,6 +2423,18 @@ function SealedPlate({
       {(ascent.sefirotLit ?? []).length > 0 && (
         <p className={styles.plateDerivation}>
           Sefirot kindled: {(ascent.sefirotLit ?? []).map((id) => regions.find((r) => r.sefirah === id)?.name).filter(Boolean).join(" · ")}
+        </p>
+      )}
+
+      {/* **The falls, named.** A climb that went out four times and lit the Tree
+          anyway is a different climb from one that never went out, and until the
+          fall stopped ending a climb there was no such thing as the first kind.
+          Counted rather than dwelt on: one line, and no scolding. */}
+      {(ascent.falls ?? 0) > 0 && (
+        <p className={styles.plateDerivation}>
+          {ascent.falls === 1
+            ? "Your light went out once on the way, and you got up."
+            : `Your light went out ${ascent.falls} times on the way, and you got up every time.`}
         </p>
       )}
 

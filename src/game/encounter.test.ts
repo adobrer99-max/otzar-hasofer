@@ -191,6 +191,19 @@ describe("which Encounter a climb belongs to", () => {
     expect(sealedCount([])).toBe(0);
   });
 
+  /**
+   * **And a climb that went out is not one of them.** It used to be: going out
+   * set `sealedAt` the same way crowning did, so the seven could be walked
+   * through by dying seven times in the kingdom. Stated here as well as in
+   * `fall.test.ts` because this is the file that owns what an Encounter counts.
+   */
+  it("is not advanced by going out, however many times", () => {
+    const fell = { falls: 4, sealedAt: undefined } as never;
+    const crowned = { falls: 4, sealedAt: "2026-01-01" } as never;
+    expect(sealedCount([fell, fell, fell])).toBe(0);
+    expect(sealedCount([fell, crowned, fell])).toBe(1);
+  });
+
   it("names each Encounter by its Day", () => {
     expect(encounterTitle(encounters[0])).toBe("The First Encounter — Light");
     expect(encounterTitle(encounters[6])).toContain("Shabbat");

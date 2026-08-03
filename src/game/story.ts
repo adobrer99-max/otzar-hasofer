@@ -43,6 +43,7 @@ export const PROLOGUE = {
     "You do not remember the fall. You remember the desk, and then the kingdom — the world exactly as it is, at the very bottom of the Tree, with the twenty-two letters gone out of your hands and scattered up the way you came.",
     "No charge was read to you. You are climbing back to ask what it was, and to answer it.",
     "The way up is not empty. The klipot are on it — husks with light shut inside them, which is where the light on these rungs has always come from. Break them and take back what they were holding. And keep your own lamps burning: when the last goes out, so do you, and the kingdom comes up to meet you exactly as it did the first time.",
+    "You get up again — that part was never in doubt, and it is the whole of what happened the first time. But the light still in your hand goes out with you, because it is what you are made of. Light you have already poured into a Sefirah stays burning, and you wake at the highest one of them. So the question every rung asks is not how much you have gathered. It is how much of it you are still carrying.",
   ],
   /** What the Scribe is told to do about it, in one line, on the threshold. */
   charge:

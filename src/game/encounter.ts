@@ -20,7 +20,17 @@ import type { Grace } from "./abilities";
  * kept here rather than reinvented.
  */
 
-/** How many ascents have been carried all the way to the crown and sealed. */
+/**
+ * How many ascents have been carried all the way to the crown and sealed.
+ *
+ * **A climb that went out is not one of them**, and that is the surprising
+ * part, because for most of this game's life it was: going out set `sealedAt`
+ * the same way crowning did, so the seven could be walked through by dying
+ * seven times in the kingdom. The fall no longer ends a climb at all — see
+ * `game/fall.ts` — which draws the line between the two across-runs systems
+ * where it belongs: the guardians accrue from doing, the Encounters from
+ * finishing.
+ */
 export function sealedCount(ascents: readonly AscentRecord[]): number {
   return ascents.filter((a) => a.sealedAt).length;
 }
