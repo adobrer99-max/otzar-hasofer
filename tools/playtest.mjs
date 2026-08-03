@@ -87,9 +87,29 @@ const SCRIPTS = [
   {
     name: "house",
     about: "A figure of the Dorot standing on a rung, and what they say.",
+    /**
+     * **This script has never once met a figure, and now it is known why.**
+     *
+     * It has shipped green for its whole life because `until` also passes on
+     * `p.finished`, and its reports quietly read "the clock ran out · plates:
+     * fragment" run after run. Chasing a vow through it produced the
+     * measurement: the probe reports where the House stands, and on two
+     * different rungs it came back **174px and 392px above the Scribe's
+     * head**, with the horizontal offset at 26 and −31 — the driver standing
+     * directly underneath it, jumping, and getting nowhere.
+     *
+     * So the figures are up on ledges, off the walking line, reached by a
+     * shaft or a stone. Meeting one is an *optional climb*, which is a fact
+     * about the game worth knowing; and this driver climbs nothing, which is
+     * the same limitation already written down against `up` below. Whoever
+     * teaches it to take a shaft gets the Houses, the vows and the vow HUD in
+     * one go — `seekHouse` is the half of it that already works: the probe
+     * says where the figure is and the driver walks to its column.
+     */
     warp: { rung: 4, letters: "as-of-rung", lamps: 3, seed: 3 },
     until: (p) => p.housesMet > 0 || p.finished,
     seconds: 180,
+    driver: { seekHouse: true },
   },
   {
     name: "crown-whole",
@@ -505,7 +525,21 @@ function decide(p, look, memory, opts) {
   const backingOff =
     memory.leaveGate > 0 || (memory.stuckFor > 90 && memory.stuckFor % 150 < 45);
 
-  const wantJump = !backingOff && (gapAhead || wallAhead || memory.stuckFor > 6);
+  /**
+   * **Steering to the figure of the Houses**, when a script has asked for it.
+   *
+   * Walking right is enough to *pass* a House and not enough to *meet* one: the
+   * `H` marker sits wherever its chunk puts it, which is often a ledge a
+   * walking driver has no reason to climb onto. Measured, not guessed — the
+   * `house` script and three attempts at `vow` all crossed the marker's column
+   * and raised no plate. So the probe reports where it is (`p.house`) and this
+   * turns around for it and jumps at it.
+   */
+  const seek = opts?.seekHouse ? p.house : undefined;
+  const houseBehind = Boolean(seek && seek.dx < -16);
+  const houseAbove = Boolean(seek && Math.abs(seek.dx) < 110 && seek.dy < -20);
+
+  const wantJump = !backingOff && (gapAhead || wallAhead || houseAbove || memory.stuckFor > 6);
 
   // **Jump is an edge, not a state.** `GameCanvas` reads `jump` from the keys
   // *pressed since the last frame* and `jumpHeld` from the keys still down —
@@ -522,8 +556,8 @@ function decide(p, look, memory, opts) {
 
   return {
     // Held.
-    right: !backingOff,
-    left: backingOff,
+    right: !backingOff && !houseBehind,
+    left: backingOff || houseBehind,
     jump: memory.jumpFor > 0,
     // **Up, on a vine and in water** — and it was hardcoded false, which meant
     // this harness could not climb a vine or rise through water at all.

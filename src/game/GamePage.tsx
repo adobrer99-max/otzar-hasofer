@@ -166,6 +166,9 @@ export function GamePage() {
     used: [],
     lamps: LAMPS,
     out: false,
+    orGathered: 0,
+    veilings: 0,
+    marksSet: 0,
   });
   /** Which lessons this Scribe has already been taught — per Scribe, not per run. */
   const [taught, setTaught] = useState<LessonKey[]>(() => readTaught());
@@ -1235,6 +1238,8 @@ export function GamePage() {
             </div>
             <LetterBelt held={ascent.lettersHeld} ascendant={ascent.ascendantLetterId} />
             <VesselBelt held={ascent.items ?? []} />
+            {/* A word given, and whether it is still good. */}
+            {vow && <VowMark offer={vow.offer} at={vow.at} now={hud} />}
           </div>
 
           <GameCanvas
@@ -1629,6 +1634,46 @@ function PauseMenu({
  * The vessels, beside the letters and deliberately not among them. One belt
  * says what the Scribe *is*; the other says what he is carrying.
  */
+/**
+ * **A vow, while it is still being kept.**
+ *
+ * The three vow guests were the only bargain in this game with nothing to
+ * watch: a Scribe swore at the House, the plate closed over it, and for the
+ * length of a whole rung the game said nothing — then announced a verdict at
+ * the exit about a promise they had no running account of. Two of the three
+ * are especially cruel that way, because a veiling and a mark are things that
+ * happen *to* you in the middle of a fight, and by the time the exit says the
+ * word was broken there was never a moment where it could have been saved.
+ *
+ * The reading is honest because these vows are **monotone**: light taken,
+ * veilings and marks only ever go up, so a vow that is broken can never come
+ * back — see `ushpizin.test.ts`. What is shown here is therefore the verdict
+ * itself, arrived at early, not a guess at one. And it is the same call the
+ * exit makes: `vowKept` over the difference since the swearing.
+ */
+function VowMark({
+  offer,
+  at,
+  now,
+}: {
+  offer: UshpizinOffer;
+  at: { orGathered: number; veilings: number; marksSet: number };
+  now: HudSample;
+}) {
+  const kept = vowKept(offer.vow!, {
+    orGathered: now.orGathered - at.orGathered,
+    veilings: now.veilings - at.veilings,
+    marksSet: now.marksSet - at.marksSet,
+  });
+  return (
+    <p className={kept ? styles.vowMark : styles.vowMarkBroken}>
+      <span aria-hidden="true">{kept ? "❧" : "✕"}</span> Your word to {offer.figure}:{" "}
+      {offer.terms.replace(/^Vow:\s*/, "")}
+      {!kept && " — broken"}
+    </p>
+  );
+}
+
 function VesselBelt({ held }: { held: readonly string[] }) {
   if (held.length === 0) return null;
   const lit = new Set(synergiesIn(held).flatMap((s) => [s.keli.id, s.keli.synergy?.with ?? ""]));
@@ -2426,6 +2471,21 @@ function HousePlate({
           </p>
           <p className={styles.offerSaying}>&ldquo;{offer.saying}&rdquo;</p>
           <p className={styles.offerGrants}>{offer.grantsLabel}</p>
+          {/* **What a vow is**, said where it is taken. The three vow guests
+              ask for something that will not be judged for another whole rung,
+              and until now nothing told the Scribe that — not when it is
+              settled, not that the game will keep the account for them, and
+              not that breaking it costs nothing but the boon. A person who
+              does not know the last of those reads "vow" as a trap and
+              declines, which is the opposite of the choice this is meant to
+              be. */}
+          {offer.vow && (
+            <p className={styles.offerVow}>
+              A vow is judged at the way out of this rung, and you will see it standing in the
+              corner until then. Keep it and the grace is given there. Break it and you simply do
+              not get it — nothing is taken from you for having tried.
+            </p>
+          )}
           {/* **A bargain for a body that cannot yet use it.** `GRACE_NEEDS`
               wrote this dependency down and `exposure.test.ts` enforces it
               against the *linear* letter order — which was the whole truth

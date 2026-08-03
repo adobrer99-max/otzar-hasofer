@@ -44,6 +44,20 @@ export interface HudSample {
    * where Up is, and the world would never know.
    */
   used: ControlId[];
+  /**
+   * The three running totals a vow is judged against — light taken, veilings
+   * suffered, marks set, all counted from the start of the rung.
+   *
+   * Here rather than only at the exit because a vow the Scribe cannot *see* is
+   * a vow they cannot keep on purpose: they were told at the House, and then
+   * for the length of a whole rung the game said nothing until it announced
+   * the verdict. The HUD subtracts the totals at the moment of swearing and
+   * asks `vowKept` on the difference, which is the identical question the exit
+   * asks — one rule, read twice.
+   */
+  orGathered: number;
+  veilings: number;
+  marksSet: number;
 }
 
 export interface GameCanvasProps {
@@ -267,6 +281,9 @@ export function GameCanvas({
           x: world.player.x,
           onGround: world.player.onGround,
           used: [...used.current],
+          orGathered: world.orGathered,
+          veilings: world.veilings,
+          marksSet: world.marksSet,
         });
         used.current.clear();
       }
