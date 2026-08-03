@@ -36,7 +36,15 @@ import {
 import { GameCanvas, type HudSample } from "./GameCanvas";
 import { regionAt, regionOfSefirah, regions, TOTAL_REGIONS } from "./regions";
 import { encounterFor, encounterTitle, isIllumined, rulesFor, sealedCount } from "./encounter";
-import { judge, lightFor, opens, type WordGateTarget, type WordGateVerdict } from "./wordGate";
+import {
+  hintsFor,
+  HINT_COST,
+  judge,
+  lightFor,
+  opens,
+  type WordGateTarget,
+  type WordGateVerdict,
+} from "./wordGate";
 import { dormantFor, offerFor, vowKept, type UshpizinOffer } from "./ushpizinOffers";
 import { openWordGate, say } from "./world/step";
 import { useGameAudio } from "./audio/useGameAudio";
@@ -632,10 +640,10 @@ export function GamePage() {
    * often as the Scribe likes.
    */
   const inscribe = useCallback(
-    (letterIds: [string, string, string]) => {
+    (letterIds: [string, string, string], hintsTaken = 0) => {
       if (!world?.wordGate) return;
       const verdict = judge(letterIds, world.wordGate);
-      const light = lightFor(verdict);
+      const light = lightFor(verdict, hintsTaken);
       if (light > 0) {
         world.or += light;
         world.orGathered += light;
@@ -1956,7 +1964,7 @@ function PlateOverlay({
   onTurn: (skip?: boolean) => void;
   /** Back to the overworld, at the end of a path. */
   onBack: () => void;
-  onInscribe: (letterIds: [string, string, string]) => void;
+  onInscribe: (letterIds: [string, string, string], hintsTaken: number) => void;
   onAccept: (offer: UshpizinOffer) => void;
   /** A vessel accepted off its pedestal. Declining is `onClose`. */
   onTakeVessel: (keliId: string) => void;
@@ -2263,10 +2271,16 @@ function WordGatePlate({
 }: {
   target: WordGateTarget;
   held: readonly string[];
-  onInscribe: (letterIds: [string, string, string]) => void;
+  onInscribe: (letterIds: [string, string, string], hintsTaken: number) => void;
   onClose: () => void;
 }) {
   const [sockets, setSockets] = useState<(string | null)[]>([null, null, null]);
+  /** How many rungs of the ladder have been asked for. */
+  const [asked, setAsked] = useState(0);
+  const ladder = useMemo(
+    () => hintsFor(target, (id) => lettersById[id]?.name ?? id),
+    [target],
+  );
   const place = (letterId: string) => {
     setSockets((prev) => {
       const next = [...prev];
@@ -2277,6 +2291,7 @@ function WordGatePlate({
     });
   };
   const filled = sockets.filter(Boolean).length === 3;
+  const next = ladder[asked];
 
   return (
     <>
@@ -2291,12 +2306,20 @@ function WordGatePlate({
           <button
             key={i}
             type="button"
-            className={`${styles.socket} hebrew`}
-            lang="he"
+            className={letterId ? styles.socket : `${styles.socket} ${styles.socketEmpty}`}
             aria-label={letterId ? `Socket ${i + 1}: ${lettersById[letterId]?.name}` : `Socket ${i + 1}, empty`}
             onClick={() => setSockets((prev) => prev.map((v, j) => (j === i ? null : v)))}
           >
-            {letterId ? lettersById[letterId]?.glyph : ""}
+            <span className="hebrew" lang="he">
+              {letterId ? lettersById[letterId]?.glyph : ""}
+            </span>
+            {/* **The sound, under the shape.** Without it the sockets read back
+                as three drawings, and a person who does not read Hebrew cannot
+                even check their own work — they placed a shape, and the plate
+                shows them the shape again. */}
+            <span className={styles.socketSound}>
+              {letterId ? lettersById[letterId]?.transliteration : ""}
+            </span>
           </button>
         ))}
       </div>
@@ -2306,8 +2329,7 @@ function WordGatePlate({
           <li key={id}>
             <button
               type="button"
-              className={`${styles.paletteLetter} hebrew`}
-              lang="he"
+              className={styles.paletteLetter}
               title={lettersById[id]?.name}
               // Named as well as drawn. A glyph is the whole label otherwise,
               // which leaves a screen reader saying "פ" and the harness with
@@ -2317,22 +2339,57 @@ function WordGatePlate({
               data-letter={id}
               onClick={() => place(id)}
             >
-              {lettersById[id]?.glyph}
+              <span className="hebrew" lang="he">
+                {lettersById[id]?.glyph}
+              </span>
+              <span className={styles.paletteSound}>{lettersById[id]?.transliteration}</span>
             </button>
           </li>
         ))}
       </ul>
 
+      {/* **The ladder.** Everything already asked for stays on the plate — a
+          hint that scrolls away has to be remembered, and remembering is the
+          thing this is for. */}
+      {asked > 0 && (
+        <ul className={styles.hints}>
+          {ladder.slice(0, asked).map((hint) => (
+            <li key={hint.rung}>
+              <span className={styles.hintKicker}>{hint.kicker}</span> {hint.text}
+            </li>
+          ))}
+        </ul>
+      )}
+
       <div className={styles.plateActions}>
         <Button
           variant="primary"
           disabled={!filled}
-          onClick={() => filled && onInscribe(sockets as [string, string, string])}
+          onClick={() => filled && onInscribe(sockets as [string, string, string], asked)}
         >
           Inscribe
         </Button>
         <Button onClick={onClose}>Step back</Button>
       </div>
+
+      {next && (
+        <p className={styles.hintAsk}>
+          <button
+            type="button"
+            className={styles.linkButton}
+            onClick={() => {
+              setAsked((n) => n + 1);
+              // The last rung is the answer, so it sets the sockets rather than
+              // asking a person to copy three shapes by eye — which is the same
+              // wall one rung further down.
+              if (next.answer) setSockets([...next.answer]);
+            }}
+          >
+            {next.answer ? "Tell me the word" : "Ask for a hint"}
+          </button>{" "}
+          · costs {HINT_COST} of the light this root pays, and nothing else
+        </p>
+      )}
     </>
   );
 }

@@ -1,7 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { lettersOnEntering, TOTAL_REGIONS } from "./regions";
 import { makeRng } from "./rng";
-import { chooseTarget, clueFrom, judge, lightFor, opens, solvableRoots, toTarget } from "./wordGate";
+import {
+  chooseTarget,
+  clueFrom,
+  hintsFor,
+  HINT_COST,
+  HINT_LOW,
+  judge,
+  lightFor,
+  opens,
+  solvableRoots,
+  toTarget,
+} from "./wordGate";
+import { lettersById } from "../data/letters";
 
 /**
  * The Word-Gate's one load-bearing claim is that a gate is never placed
@@ -125,5 +137,77 @@ describe("judging an inscription", () => {
     const verdict = judge(["tzadi", "tzadi", "tzadi"], target);
     expect(opens(verdict)).toBe(false);
     expect(lightFor(verdict)).toBe(0);
+  });
+});
+
+/**
+ * **The ladder — the gate opened to someone who reads no Hebrew.**
+ *
+ * The gate asks for a three-letter Semitic root and offers three empty
+ * sockets and twenty-two shapes. To a reader that is a puzzle; to everyone
+ * else it is a lock with no key, and on an Abyss crossing there is no walking
+ * away from it, because there the gate *is* the way out. These hold the three
+ * properties that make the ladder a teaching rather than a cheat: it always
+ * ends at the answer, it always costs something, and what it costs is never
+ * anything but the root's own light.
+ */
+describe("the hint ladder", () => {
+  const name = (id: string) => lettersById[id]?.name ?? id;
+  const someTarget = () => toTarget(solvableRoots(lettersOnEntering(6))[0]);
+
+  it("always ends at the word itself, whatever the root", () => {
+    // Every gate the game can build, not one of them: a ladder that stopped
+    // short on some root would strand exactly the climb that needed it.
+    for (let region = 3; region <= TOTAL_REGIONS; region += 1) {
+      for (const entry of solvableRoots(lettersOnEntering(region)).slice(0, 40)) {
+        const target = toTarget(entry);
+        const ladder = hintsFor(target, name);
+        expect(ladder.length, `${target.transliteration} has no ladder`).toBeGreaterThanOrEqual(2);
+        const last = ladder[ladder.length - 1];
+        expect(last.answer, `${target.transliteration} never gives its answer`).toEqual(
+          target.letterIds,
+        );
+        // Numbered in order from one, so the plate can count what was asked.
+        expect(ladder.map((h) => h.rung)).toEqual(ladder.map((_, i) => i + 1));
+        // And no rung is blank — a hint that says nothing is worse than none.
+        for (const hint of ladder) expect(hint.text.length).toBeGreaterThan(3);
+      }
+    }
+  });
+
+  it("names the first letter before it names all three", () => {
+    const target = someTarget();
+    const ladder = hintsFor(target, name);
+    const first = ladder.findIndex((h) => h.text.includes(name(target.letterIds[0])));
+    expect(first).toBeGreaterThanOrEqual(0);
+    expect(first).toBeLessThan(ladder.length - 1);
+  });
+
+  it("charges each rung against the root, down to a floor that is still worth having", () => {
+    const target = someTarget();
+    const cold = lightFor(judge(target.letterIds, target));
+    expect(lightFor(judge(target.letterIds, target), 1)).toBe(cold - HINT_COST);
+    expect(lightFor(judge(target.letterIds, target), 99)).toBe(HINT_LOW);
+    expect(HINT_LOW).toBeGreaterThan(0);
+  });
+
+  /**
+   * The promise the plate makes in its own words — *"nothing is lost by being
+   * wrong"* — and asking is not even wrong. A hint may only ever reduce what
+   * the *named* root pays: a wrong-but-true word and a hidden root are what
+   * they always were, because the ladder points at the target and cannot have
+   * been what found something else.
+   */
+  it("never touches anything but the light the named root pays", () => {
+    const target = someTarget();
+    const other = solvableRoots(lettersOnEntering(6)).find(
+      (e) => e.letters.join("-") !== target.letterIds.join("-"),
+    )!;
+    for (const hints of [0, 1, 2, 3, 9]) {
+      expect(lightFor(judge(other.letters, target), hints)).toBe(
+        lightFor(judge(other.letters, target)),
+      );
+      expect(lightFor(judge(["tzadi", "tzadi", "tzadi"], target), hints)).toBe(0);
+    }
   });
 });

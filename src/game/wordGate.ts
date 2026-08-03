@@ -34,6 +34,14 @@ export interface WordGateTarget {
   transliteration: string;
   /** The clue: a short meaning, trimmed out of the lexicon's gloss. */
   clue: string;
+  /**
+   * The lexicon's whole gloss, of which `clue` is the first clause.
+   *
+   * Kept so the hint ladder has somewhere to go: the clue is deliberately cut
+   * to something holdable in the head while hunting letters, and the sentence
+   * it was cut out of is genuinely more to go on.
+   */
+  gloss: string;
   citation: string;
 }
 
@@ -132,8 +140,83 @@ export function toTarget(entry: ShoreshEntry): WordGateTarget {
     hebrew: spellWord(entry.letters),
     transliteration: entry.transliteration,
     clue: clueFrom(entry.gloss),
+    gloss: entry.gloss.trim(),
     citation: entry.citation,
   };
+}
+
+// ---------------------------------------------------------------------------
+// the hint ladder
+// ---------------------------------------------------------------------------
+
+/**
+ * **The gate, opened to someone who reads no Hebrew.**
+ *
+ * This is the sharpest cliff in the game for a stranger. The gate asks for a
+ * three-letter Semitic root off a clue like *"to bind"*, and every affordance
+ * around it is a glyph: three empty sockets, and a palette of twenty-two
+ * shapes. A player who reads the alphabet has a puzzle. A player who does not
+ * has a lock with no key, and the only honest options were to guess through
+ * `held³` triples or to walk away — and on an Abyss crossing walking away is
+ * not one of the options, because there the gate *is* the way out.
+ *
+ * So: a ladder, asked for one rung at a time, ending at the answer itself.
+ * Three properties make it right rather than a cheat code:
+ *
+ * - **It is asked for.** Nobody is shown a hint they did not want.
+ * - **It costs the word, not the body.** The gate's own promise is that
+ *   nothing is lost by being wrong, and that stays true — a hint takes light
+ *   off what the *root* pays and nothing else. See `lightFor`.
+ * - **Its last rung is the answer**, which is deliberately the same mechanism
+ *   as a bypass rather than a second one. A crossing therefore cannot dead-end
+ *   a climb: the way out is always spellable, for less light.
+ */
+export interface WordGateHint {
+  /** 1-based, in the order they are given. */
+  rung: number;
+  kicker: string;
+  text: string;
+  /**
+   * The three letters, once the ladder has reached the answer — so the plate
+   * can offer to set them rather than making a person copy shapes by eye,
+   * which is the same barrier one rung lower down.
+   */
+  answer?: [string, string, string];
+}
+
+/** What each rung takes off the root's light. */
+export const HINT_COST = 3;
+
+/**
+ * The ladder for a gate, in order. Pure and total: the same gate always gives
+ * the same hints, and the last one always ends the puzzle.
+ *
+ * `nameOf` is passed in rather than imported so this module stays free of the
+ * letter table — it is the lexicon's neighbour, not the alphabet's.
+ */
+export function hintsFor(
+  target: WordGateTarget,
+  nameOf: (letterId: string) => string,
+): WordGateHint[] {
+  const rungs: WordGateHint[] = [];
+  // The whole gloss, when there is more of it than the clue already showed.
+  if (target.gloss.length > target.clue.length + 4) {
+    rungs.push({ rung: 0, kicker: "The lexicon's whole word on it", text: target.gloss });
+  }
+  rungs.push({
+    rung: 0,
+    kicker: "The first letter",
+    text: `It begins with ${nameOf(target.letterIds[0])}.`,
+  });
+  rungs.push({
+    rung: 0,
+    kicker: "The word itself",
+    text: `${target.transliteration} — ${nameOf(target.letterIds[0])}, ${nameOf(
+      target.letterIds[1],
+    )}, ${nameOf(target.letterIds[2])}.`,
+    answer: target.letterIds,
+  });
+  return rungs.map((hint, i) => ({ ...hint, rung: i + 1 }));
 }
 
 /**
@@ -193,17 +276,33 @@ export function judge(
   return { kind: "hidden" };
 }
 
-/** Light awarded for an inscription — the target pays best, truth pays too. */
-export function lightFor(verdict: WordGateVerdict): number {
+/**
+ * Light awarded for an inscription — the target pays best, truth pays too.
+ *
+ * **A hint is paid for out of the root, and never out of the Scribe.** Each
+ * rung of the ladder takes `HINT_COST` off what the named root gives, down to
+ * a floor that is still worth having: a gate answered with the whole word
+ * handed over pays less than a gate answered cold, and more than nothing,
+ * because it was still crossed. Nothing else in the game changes — no lamp, no
+ * veiling, no gathered light already in hand. The gate's own promise is that
+ * nothing is lost by being wrong, and asking is not even wrong.
+ *
+ * A root that was *not* the one asked for is unaffected: the ladder points at
+ * the target, so it cannot have been what found something else.
+ */
+export function lightFor(verdict: WordGateVerdict, hintsTaken = 0): number {
   switch (verdict.kind) {
     case "target":
-      return 12;
+      return Math.max(HINT_LOW, 12 - HINT_COST * Math.max(0, hintsTaken));
     case "other-root":
       return 5;
     default:
       return 0;
   }
 }
+
+/** What a gate still pays when the whole ladder was climbed. */
+export const HINT_LOW = 3;
 
 /** Does this verdict open the chamber? */
 export function opens(verdict: WordGateVerdict): boolean {

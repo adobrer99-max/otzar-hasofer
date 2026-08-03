@@ -1023,10 +1023,14 @@
 }
 
 .socket {
-  width: 3.4rem;
-  height: 3.4rem;
-  display: grid;
-  place-items: center;
+  width: 3.6rem;
+  min-height: 3.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  padding: var(--space-1) 0;
   font-size: 2rem;
   line-height: 1;
   color: var(--accent-bright);
@@ -1036,9 +1040,27 @@
   cursor: pointer;
 }
 
-.socket:empty {
+/* An empty socket is a dashed outline. This used to be `:empty`, which stopped
+   being true the moment a socket carried a glyph *and* its sound. */
+.socketEmpty {
   border-style: dashed;
   border-color: var(--border-hairline);
+}
+
+/* How a letter sounds, under how it is drawn — the whole of what makes this
+   screen usable by someone who does not read the alphabet. */
+.socketSound,
+.paletteSound {
+  font-size: 0.6rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  text-transform: lowercase;
+}
+
+.socketSound {
+  font-size: 0.68rem;
+  min-height: 0.7rem;
 }
 
 .palette {
@@ -1052,11 +1074,18 @@
 }
 
 .paletteLetter {
-  width: 2.1rem;
-  height: 2.1rem;
-  display: grid;
-  place-items: center;
+  /* Wide enough for the longest name the sounds run to — "samekh" — because a
+     transliteration clipped by its own button teaches nothing. */
+  min-width: 2.9rem;
+  min-height: 2.6rem;
+  padding: 0 0.15rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.05rem;
   font-size: 1.25rem;
+  line-height: 1;
   color: var(--accent);
   background: var(--bg-raised);
   border: 1px solid var(--border-hairline);
@@ -1064,9 +1093,42 @@
   cursor: pointer;
 }
 
-.paletteLetter:hover {
+.paletteLetter:hover,
+.paletteLetter:focus-visible {
   border-color: var(--accent);
   color: var(--accent-bright);
+}
+
+/* The ladder, and the one line that offers the next rung of it. */
+.hints {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  list-style: none;
+  text-align: left;
+  border-left: 2px solid var(--color-copper, var(--accent));
+  background: var(--bg-sunken);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: var(--line-height);
+}
+
+.hints li + li {
+  margin-top: var(--space-2);
+}
+
+.hintKicker {
+  display: block;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.hintAsk {
+  margin: var(--space-3) 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
 }
 
 .plateActions {

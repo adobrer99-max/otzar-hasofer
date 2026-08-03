@@ -237,9 +237,41 @@ const SCRIPTS = [
     warp: { rung: 6, letters: "all", lamps: 3, seed: 5, freed: 1 },
     until: (p) => p.plate === "word-result" || p.finished,
     seconds: 180,
+    driver: { intoGates: true },
     onPlate: async (page, plate) => {
       if (plate !== "word-gate") return false;
       return await answerGate(page);
+    },
+  },
+  {
+    name: "hint",
+    about: "The same gate, answered by someone who reads nothing — the ladder to the end.",
+    // The counterpart to `gate`, and the one that proves the "for anyone"
+    // claim rather than the machinery: `gate` answers cold, off the root read
+    // out of the probe, which is a thing only the harness can do. This one
+    // touches nothing but what a person sees — it presses "Ask for a hint"
+    // until the plate hands over the word, and inscribes what it was given.
+    // If this passes, the gate has no reading requirement left in it.
+    warp: { rung: 6, letters: "all", lamps: 3, seed: 5, freed: 1 },
+    until: (p) => p.plate === "word-result" || p.finished,
+    seconds: 180,
+    driver: { intoGates: true },
+    onPlate: async (page, plate) => {
+      if (plate !== "word-gate") return false;
+      for (let rung = 0; rung < 6; rung += 1) {
+        const ask = page.getByRole("button", { name: /Ask for a hint|Tell me the word/ });
+        if (!(await ask.count())) break;
+        await ask.first().click();
+        await page.waitForTimeout(200);
+      }
+      // The plate is photographed when it *appears*, which is before any of
+      // this — so the ladder itself would never be seen without a second shot.
+      await page.screenshot({ path: join(outDir, "hint-ladder.png") });
+      const inscribe = page.getByRole("button", { name: "Inscribe" });
+      if (await inscribe.isDisabled().catch(() => true)) return false;
+      await inscribe.click();
+      await page.waitForTimeout(400);
+      return true;
     },
   },
   {
@@ -519,7 +551,11 @@ function decide(p, look, memory, opts) {
   // linear warp, which has no crossings in it. Whoever teaches this harness to
   // walk a Tree path has to teach it to spell first; until then a crossing is
   // unfinishable by the tool by construction, not by accident.
-  if (gateAhead) memory.leaveGate = 60;
+  // **Unless the script is here for the gate.** Walking away from gates is
+  // right for every script that cannot spell — and exactly wrong for the one
+  // that can, which spent three runs being steered out of the chamber it came
+  // to answer. `gate` reached 29% and no plate at all on one of them.
+  if (gateAhead && !opts?.intoGates) memory.leaveGate = 60;
   else if (memory.leaveGate > 0) memory.leaveGate -= 1;
 
   const backingOff =
