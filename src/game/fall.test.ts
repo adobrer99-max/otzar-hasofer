@@ -26,7 +26,6 @@ const climb = (over: Partial<AscentRecord>): AscentRecord => ({
   or: 0,
   regionsCleared: [],
   housesMet: [],
-  sacredNotes: [],
   ...over,
 });
 

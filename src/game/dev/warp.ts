@@ -157,7 +157,6 @@ export function warpRecord(
     // threshold reads as though the climb had not happened.
     regionsCleared: Array.from({ length: rung - 1 }, (_, i) => i + 1),
     housesMet: witnessCards(options.witnesses),
-    sacredNotes: base.notes,
     ascendantLetterId: base.ascendantLetterId,
     encounterNumber: base.encounterNumber,
   };

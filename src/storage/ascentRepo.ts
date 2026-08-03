@@ -1,4 +1,6 @@
 import type { Grace } from "../game/abilities";
+// Type-only, so there is no runtime cycle: `story.ts` reads nothing from here.
+import type { PleaKind } from "../game/story";
 import type { SefirahId } from "../types/letter";
 import { getDb } from "./db";
 
@@ -47,6 +49,23 @@ export interface AscentRecord {
    * however often it is walked.
    */
   pathsWalked?: string[];
+  /**
+   * Which climb of its day this is. `0` — absent on older records — is the
+   * day's shared ascent, the Tree every Scribe who begins that day climbs.
+   * Each further Begin on the same day counts up, and the seed is
+   * `hash(seedLabel#variant)` (`game/sacredAscent.ts`), so a re-begun climb is
+   * a fresh shuffle with the day's character rather than the same map with the
+   * light put back — which is what closed the abandon-and-restart exploit.
+   */
+  variant?: number;
+  /**
+   * The day's light multiplier, frozen at Begin beside the seed. A climb keeps
+   * its day: begun on Hanukkah, its rungs are strewn like Hanukkah however
+   * long the climb takes, and the calendar rolling over mid-session cannot
+   * change ground already promised. Absent on older records, which fall back
+   * to the live day's value.
+   */
+  lightOfTheDay?: number;
   /** Letter ids found so far, in the order they were taken. */
   lettersHeld: string[];
   /**
@@ -117,8 +136,6 @@ export interface AscentRecord {
    * inside one.
    */
   boons?: Grace[];
-  /** Sacred Time's notes for the day this ascent belongs to. */
-  sacredNotes: string[];
   ascendantLetterId?: string;
   /**
    * How many times the last lamp went out on this climb.
@@ -142,6 +159,32 @@ export interface AscentRecord {
    * finishing.**
    */
   sealedAt?: string;
+  /**
+   * Which of the four endings this climb reached — mute, alone, heard, whole —
+   * frozen by `sealAscent` at the moment of sealing, with the Sefirot whose
+   * figures stood for the Scribe beside it.
+   *
+   * Until now the plea was computed on the crown plate and thrown away, so no
+   * record could ever say how its climb ended. Frozen rather than derived,
+   * because `pleaFor` and the Dorot tables are authored data that will drift —
+   * and an ending the Scribe was shown must not change under them. A record
+   * sealed before these fields existed derives its ending with
+   * `endingOf(lettersHeld, housesMet)` (`game/story.ts`), which is the same
+   * function `sealAscent` freezes from.
+   */
+  endingPlea?: PleaKind;
+  witnessSefirot?: SefirahId[];
+  /**
+   * Set when the Scribe begins again from Malchut with this climb still
+   * unsealed — the climb was put down, not carried to an ending.
+   *
+   * Without it, "Begin again" only *shadowed* the old record: `currentAscent`
+   * takes the most recently touched unsealed climb, so the moment the new one
+   * sealed, the abandoned record — months old, mid-Tree, on a stale seed —
+   * quietly became current again. An abandoned climb is finished the way a
+   * drawer is closed: kept, countable, and never picked back up by accident.
+   */
+  abandonedAt?: string;
 }
 
 /** A root the Scribe put together at a Word-Gate. */
@@ -238,10 +281,13 @@ export async function listAscents(): Promise<AscentRecord[]> {
   return all.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
-/** The climb still in progress, if there is one. */
+/**
+ * The climb still in progress, if there is one — unsealed *and* not put down.
+ * An abandoned record is history, not a climb; see `abandonedAt`.
+ */
 export async function currentAscent(): Promise<AscentRecord | undefined> {
   const all = await listAscents();
-  return all.find((a) => !a.sealedAt);
+  return all.find((a) => !a.sealedAt && !a.abandonedAt);
 }
 
 export async function deleteAscent(id: string): Promise<void> {

@@ -197,6 +197,31 @@ export interface Plea {
  * unable to say anything, having spent ten rungs on a case he cannot make. Nothing is lost but the chance, and the
  * scroll is lying in Malchut and Yesod on the next ascent.
  */
+/**
+ * The ending a climb earned, from the two facts the record already keeps.
+ *
+ * Pure over persisted fields, which is what makes it two things at once: the
+ * derivation for every climb sealed before endings were frozen, and the value
+ * `sealAscent` writes down at the moment of sealing. **Frozen at seal on
+ * purpose**: `pleaFor`'s thresholds and the Houses' card tables are authored
+ * data and will drift as the game grows, and an ending that was shown to the
+ * Scribe must not quietly change under them later. What was said at the crown
+ * is what the record says forever.
+ *
+ * Takes the two arrays rather than the record, so this file keeps depending on
+ * nothing but the Dorot data.
+ */
+export function endingOf(
+  lettersHeld: readonly string[],
+  housesMet: readonly string[],
+): { plea: PleaKind; witnessSefirot: SefirahId[] } {
+  const witnesses = witnessesOf(housesMet);
+  return {
+    plea: pleaFor({ hasMouth: lettersHeld.includes("peh"), witnesses }).kind,
+    witnessSefirot: witnesses.map((w) => w.sefirah),
+  };
+}
+
 export function pleaFor(opts: { hasMouth: boolean; witnesses: readonly Witness[] }): Plea {
   const { hasMouth, witnesses } = opts;
 

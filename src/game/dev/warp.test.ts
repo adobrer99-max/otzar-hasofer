@@ -107,7 +107,6 @@ describe("the record it builds", () => {
     expect(record.id).toBe(base.id);
     expect(record.seed).toBe(base.seed);
     expect(record.seedLabel).toBe(base.seedLabel);
-    expect(record.sacredNotes).toEqual(base.notes);
     expect(record.ascendantLetterId).toBe(base.ascendantLetterId);
     expect(record.encounterNumber).toBe(base.encounterNumber);
     expect(record.or).toBe(0);

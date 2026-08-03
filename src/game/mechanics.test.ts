@@ -11,7 +11,7 @@ import { abilities } from "./abilities";
 const ascent = (over: Partial<AscentRecord>): AscentRecord => ({
   id: "a", seed: 1, seedLabel: "x", createdAt: "", updatedAt: "",
   regionIndex: 1, lettersHeld: [], or: 0, regionsCleared: [], housesMet: [],
-  sacredNotes: [], ...over,
+  ...over,
 });
 
 describe("the Seven Encounters across ascents", () => {
@@ -64,6 +64,28 @@ describe("the day's gesture", () => {
       const lent = readAscentTime(date).graceOfTheDay;
       if (lent) expect(graceNames.has(lent), `${date.toDateString()} lent ${lent}`).toBe(true);
     }
+  });
+
+  /**
+   * **The first climb of a day is the day's own; every one after is a fresh
+   * shuffle.** The variant was documented since the seed existed and never
+   * passed, so every climb on a given day was byte-identical — which made
+   * abandoning and re-beginning a full light reset on a known map. The seed
+   * must move with the variant, and nothing else about the day may.
+   */
+  it("shuffles further climbs of a day without changing the day", () => {
+    const date = new Date(2026, 0, 15);
+    const daily = readAscentTime(date, "galut", 0);
+    const second = readAscentTime(date, "galut", 1);
+    const third = readAscentTime(date, "galut", 2);
+    expect(new Set([daily.seed, second.seed, third.seed]).size).toBe(3);
+    for (const again of [second, third]) {
+      expect(again.seedLabel).toBe(daily.seedLabel);
+      expect(again.lightOfTheDay).toBe(daily.lightOfTheDay);
+      expect(again.graceOfTheDay).toBe(daily.graceOfTheDay);
+    }
+    // And deterministic: the same day's same variant is the same Tree.
+    expect(readAscentTime(new Date(2026, 0, 15), "galut", 1).seed).toBe(second.seed);
   });
 
   it("has a mapping for every gesture the calendar actually names", () => {

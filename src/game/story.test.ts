@@ -3,6 +3,7 @@ import { dorotCardsById, dorotHousesById, housesBySefirah } from "../data/dorot"
 import { regions } from "./regions";
 import { SCROLL_LETTER } from "./scroll";
 import {
+  endingOf,
   ABYSS_WORD,
   pleaFor,
   PROLOGUE,
@@ -131,5 +132,42 @@ describe("the plea at the crown", () => {
 
   it("is the Mouth that is required, and it is the letter the scroll becomes", () => {
     expect(SCROLL_LETTER).toBe("peh");
+  });
+});
+
+/**
+ * **The ending, frozen where it is earned.** `endingOf` is what `sealAscent`
+ * writes onto the record, and the derivation for every climb sealed before the
+ * fields existed — so it must agree with `pleaFor` exactly, or history and the
+ * plate would tell two stories.
+ */
+describe("the ending a record keeps", () => {
+  const card = Object.values(dorotCardsById)[0];
+
+  it("derives all four kinds from the two persisted fields", () => {
+    expect(endingOf([], []).plea).toBe("mute");
+    expect(endingOf(["peh"], []).plea).toBe("alone");
+    expect(endingOf(["peh"], [card.id]).plea).toBe("heard");
+    const oneCardPerSefirah = Object.values(TESTIMONY).map(
+      (t) => Object.values(dorotCardsById).find((c) => dorotHousesById[c.houseId]?.sefirah === t.sefirah)!.id,
+    );
+    expect(endingOf(["peh"], oneCardPerSefirah).plea).toBe("whole");
+  });
+
+  it("agrees with the plate, whatever was held and met", () => {
+    for (const held of [[], ["peh"], ["aleph"], ["aleph", "peh"]]) {
+      for (const met of [[], [card.id]]) {
+        const frozen = endingOf(held, met);
+        const shown = pleaFor({ hasMouth: held.includes(SCROLL_LETTER), witnesses: witnessesOf(met) });
+        expect(frozen.plea).toBe(shown.kind);
+      }
+    }
+  });
+
+  it("names the witnesses once per Sefirah, as the plea counts them", () => {
+    const house = housesBySefirah("malchut")[0];
+    const cards = Object.values(dorotCardsById).filter((c) => c.houseId === house.id);
+    const { witnessSefirot } = endingOf(["peh"], cards.map((c) => c.id));
+    expect(witnessSefirot).toEqual(["malchut"]);
   });
 });

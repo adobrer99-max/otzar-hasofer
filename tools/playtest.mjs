@@ -153,7 +153,6 @@ const SCRIPTS = [
           or: 220,
           regionsCleared: [1, 2, 3, 4, 5],
           housesMet: [],
-          sacredNotes: [],
           sefirotLit: ["malchut", "yesod", "hod", "netzach"],
         });
         await new Promise((res) => { tx.oncomplete = res; });
@@ -169,6 +168,79 @@ const SCRIPTS = [
     },
     until: (p) => p.plate === "path-done",
     seconds: 150,
+  },
+  {
+    name: "abyss",
+    about: "The Abyss plate answers to the keyboard — and Enter crosses, never climbs.",
+    warp: {},
+    // This script exists because Enter on this plate used to fall through the
+    // plate handler's enumeration to `climbOn` — the pre-Tree linear road —
+    // which at region ten sealed the climb without a single kindling. The
+    // record is the witness: the linear road writes `regionIndex + 1` at once,
+    // and a crossing writes nothing until its far end is reached.
+    enter: async (page) => {
+      await page.evaluate(async () => {
+        const req = indexedDB.open("otzar-hasofer");
+        const db = await new Promise((res, rej) => {
+          req.onsuccess = () => res(req.result);
+          req.onerror = () => rej(req.error);
+        });
+        const now = new Date().toISOString();
+        const tx = db.transaction("ascents", "readwrite");
+        tx.objectStore("ascents").put({
+          id: "playtest-abyss",
+          seed: 7,
+          seedLabel: "playtest",
+          createdAt: now,
+          updatedAt: now,
+          regionIndex: 5,
+          at: "tiferet",
+          pathsWalked: ["malchut-yesod", "yesod-hod", "gevurah-hod", "gevurah-tiferet"],
+          lettersHeld: ["aleph", "bet", "gimel", "dalet", "heh", "vav", "zayin"],
+          or: 60,
+          regionsCleared: [1, 2, 3, 4, 5],
+          housesMet: [],
+        });
+        await new Promise((res) => { tx.oncomplete = res; });
+      });
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(900);
+      const regionIndexOf = () =>
+        page.evaluate(async () => {
+          const req = indexedDB.open("otzar-hasofer");
+          const db = await new Promise((res, rej) => {
+            req.onsuccess = () => res(req.result);
+            req.onerror = () => rej(req.error);
+          });
+          return await new Promise((res) => {
+            const r = db.transaction("ascents", "readonly").objectStore("ascents").get("playtest-abyss");
+            r.onsuccess = () => res(r.result?.regionIndex);
+          });
+        });
+      // Raise the plate, and decline it with Escape: nothing may move.
+      await page.getByRole("button", { name: /Keter/ }).first().click();
+      await page.waitForTimeout(400);
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(400);
+      if ((await regionIndexOf()) !== 5) {
+        throw new Error("Escape on the Abyss plate walked the linear road — the record moved");
+      }
+      // Raise it again and accept with Enter: the focused button is "Cross",
+      // so a world loads — the crossing, whose record is untouched until the
+      // far end. The linear road would have written regionIndex 6 by now.
+      await page.getByRole("button", { name: /Keter/ }).first().click();
+      await page.waitForTimeout(400);
+      await page.keyboard.press("Enter");
+      await page.waitForTimeout(700);
+      if ((await regionIndexOf()) !== 5) {
+        throw new Error("Enter on the Abyss plate walked the linear road — the record moved");
+      }
+    },
+    // The crossing is entered; walking any of it is proof enough here. Its far
+    // end is behind a Word-Gate no driver can answer yet — see the note below
+    // this table — so finishing is not asked for.
+    until: (p) => p.progress > 0.05,
+    seconds: 60,
   },
   {
     name: "going-out",

@@ -90,7 +90,7 @@ describe("what a guest gives, and how long it lasts", () => {
   const climb = (over: Partial<AscentRecord> = {}): AscentRecord => ({
     id: "a", seed: 1, seedLabel: "x", createdAt: "", updatedAt: "",
     regionIndex: 1, lettersHeld: [], or: 0, regionsCleared: [],
-    housesMet: [], sacredNotes: [], ...over,
+    housesMet: [], ...over,
   });
 
   it("survives the rung it was given on", () => {
