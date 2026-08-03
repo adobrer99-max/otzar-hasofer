@@ -175,6 +175,22 @@
   color: var(--muted);
 }
 
+/* What the Tree is teaching, at its foot — one line, never more, and gone for
+   good once the deed it names has been done once. */
+.overlayLesson {
+  flex: none;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  max-width: var(--measure);
+  border-left: 2px solid var(--accent);
+  background: var(--bg-sunken);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  font-size: 0.88rem;
+  line-height: var(--line-height);
+  text-align: left;
+}
+
 /* The Encounter's rule, at the foot of the Tree it is acting on. */
 .overlayRule {
   flex: none;

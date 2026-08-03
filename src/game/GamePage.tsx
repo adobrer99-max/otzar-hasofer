@@ -27,11 +27,17 @@ import {
   ALL_LESSON_KEYS,
   nextLesson,
   readTaught,
+  readTaughtTree,
   readTold,
   retire,
+  retireTree,
+  treeLesson,
   writeTaught,
+  writeTaughtTree,
   writeTold,
   type LessonKey,
+  type TreeDeed,
+  type TreeLessonKey,
 } from "./tutorial";
 import { GameCanvas, type HudSample } from "./GameCanvas";
 import { regionAt, regionOfSefirah, regions, TOTAL_REGIONS } from "./regions";
@@ -180,6 +186,15 @@ export function GamePage() {
   });
   /** Which lessons this Scribe has already been taught — per Scribe, not per run. */
   const [taught, setTaught] = useState<LessonKey[]>(() => readTaught());
+  /** And the map's own three, which no keypress can retire — only the deed. */
+  const [taughtTree, setTaughtTree] = useState<TreeLessonKey[]>(() => readTaughtTree());
+  const learnTree = useCallback((deed: TreeDeed) => {
+    setTaughtTree((prev) => {
+      const next = retireTree(prev, deed);
+      if (next.length !== prev.length) writeTaughtTree(next);
+      return next;
+    });
+  }, []);
   /** A vow taken at a House, and the counters it will be judged against. */
   const [vow, setVow] = useState<
     { offer: UshpizinOffer; at: { orGathered: number; veilings: number; marksSet: number } } | null
@@ -268,6 +283,22 @@ export function GamePage() {
   lettersCountRef.current = letters.length;
   const verbs: Verb[] = useMemo(() => verbsOf(letters), [letters]);
   /** The one thing worth saying to a Scribe still finding the keys. */
+  /**
+   * What the Tree should be saying, for a Scribe who has just arrived on it.
+   * Answers the question the map is putting in front of them right now rather
+   * than working through a queue — see `treeLesson`.
+   */
+  const lessonOfTree = useMemo(() => {
+    if (!ascent) return undefined;
+    const at = standingAt(ascent);
+    return treeLesson({
+      learned: taughtTree,
+      walked: (ascent.pathsWalked ?? []).length,
+      freed: (ascent.guardiansBroken ?? []).includes(at),
+      lit: (ascent.sefirotLit ?? []).includes(at),
+    });
+  }, [ascent, taughtTree]);
+
   const lesson = useMemo(
     () => nextLesson({ learned: taught, lettersHeld: letters.length }),
     [taught, letters.length],
@@ -900,10 +931,13 @@ export function GamePage() {
    */
   const chooseWay = useCallback(
     (path: TreePath) => {
+      // Choosing is the deed, not arriving: the lesson was "choose one", and a
+      // Scribe standing at the near edge of a crossing has plainly done it.
+      learnTree("way");
       if (crossesAbyss(path)) setPlate({ kind: "abyss", path });
       else walkPath(path);
     },
-    [walkPath],
+    [walkPath, learnTree],
   );
 
   /** Back to the map, from the plate at the end of a path. */
@@ -926,6 +960,7 @@ export function GamePage() {
     if (!ascent) return;
     const at = standingAt(ascent);
     if ((ascent.guardiansBroken ?? []).includes(at)) return;
+    learnTree("guardian");
     const room = buildArena(at, ascent.seed);
     const carried = powersFrom(ascent.items ?? [], boons);
     room.player.lamps += carried.lamps;
@@ -934,7 +969,7 @@ export function GamePage() {
     setWorld(room);
     setVow(null);
     setPlate(null);
-  }, [ascent]);
+  }, [ascent, learnTree]);
 
   /**
    * Kindle where you stand. The same spend the between-rungs plate offered on
@@ -959,10 +994,10 @@ export function GamePage() {
         updatedAt: new Date().toISOString(),
       };
       void saveAscent(next).catch(() => undefined);
+      learnTree("kindle");
       return next;
     });
-  }, []);
-
+  }, [learnTree]);
 
   const sealAscent = useCallback(() => {
     setAscent((prev) => {
@@ -1328,6 +1363,13 @@ export function GamePage() {
               onSeal={allKindled(ascent) ? () => setPlate({ kind: "sealed" }) : undefined}
             />
           </div>
+          {/* **The map teaches itself.** The porch taught the body and then
+              the Tree rose with nothing said about it: the one line here read
+              "Choose a way out", which is the first of the three things a
+              Scribe has to learn on this surface and never the other two.
+              Shown only where the map is live — mid-rung the Tree is a
+              picture, and a picture should not give instructions. */}
+          {!world && lessonOfTree && <p className={styles.overlayLesson}>{lessonOfTree.text}</p>}
           {/* The Tree is where a climb is planned, so it is where the rule this
               climb is played under belongs — a fourth lamp is worth knowing
               about before choosing which way to spend it. */}

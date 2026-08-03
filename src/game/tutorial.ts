@@ -78,6 +78,95 @@ export const LESSONS: Lesson[] = [
 
 export const ALL_LESSON_KEYS: LessonKey[] = LESSONS.map((l) => l.key);
 
+// --- the Tree ---------------------------------------------------------------
+
+/**
+ * **The lessons of the map, which is a second game with nothing taught in it.**
+ *
+ * The porch teaches the body: which key walks, which key writes. Then the Tree
+ * rises, and everything a Scribe does *between* rungs — choosing a way, paying
+ * for a Sefirah, deciding to face what holds one — was learned by clicking
+ * things to find out. The one line at the foot of the overlay said "Choose a
+ * way out", which is the first of the three and never the other two: nothing
+ * anywhere said that light poured into a Sefirah is the climb, or that the
+ * reason there is no Kindle button is that something is holding the place.
+ *
+ * These are **not a sequence**, and that is the difference from the lessons
+ * above. A porch lesson waits its turn because the hands learn in an order. A
+ * Tree lesson answers the question the map is putting in front of you right
+ * now: standing on a held Sefirah, the guardian is the lesson; standing on a
+ * freed and unlit one with light in hand, kindling is. So this is a *choice*
+ * over the state rather than a queue, and each is retired by doing the thing
+ * once — never by a timer, and never twice.
+ */
+export type TreeLessonKey = "way" | "guardian" | "kindle";
+
+/** What retires a Tree lesson: the deed itself, done once. */
+export type TreeDeed = TreeLessonKey;
+
+export interface TreeLesson {
+  key: TreeLessonKey;
+  text: string;
+}
+
+export const TREE_LESSONS: Record<TreeLessonKey, TreeLesson> = {
+  way: {
+    key: "way",
+    text: "This is the Tree, and you are on it. Every line out of where you stand is a way you can walk, and the letter on it is what that way pays. Choose one.",
+    // Tab is named at the foot of the overlay already, so it is not repeated.
+  },
+  guardian: {
+    key: "guardian",
+    text: "Something is holding this Sefirah, which is why there is nothing here to kindle. Face it, and the place is yours to light — in this climb and in every one after it.",
+  },
+  kindle: {
+    key: "kindle",
+    text: "Light is not a score. Pour it into the Sefirah you are standing on and it stays burning even if you go out — and ten kindled is the whole of the climb.",
+  },
+};
+
+export const ALL_TREE_LESSON_KEYS: TreeLessonKey[] = Object.keys(TREE_LESSONS) as TreeLessonKey[];
+
+export interface TreeState {
+  learned: readonly TreeLessonKey[];
+  /** How many paths this Scribe has walked — zero means they have never left. */
+  walked: number;
+  /** Whether what holds the Sefirah underfoot has been broken. */
+  freed: boolean;
+  /** Whether the Sefirah underfoot is already burning. */
+  lit: boolean;
+}
+
+/**
+ * The line the map should be saying, or nothing at all. Pure over the state,
+ * so the same standing always teaches the same thing.
+ */
+export function treeLesson(state: TreeState): TreeLesson | undefined {
+  const wants = (key: TreeLessonKey) => !state.learned.includes(key);
+  /**
+   * Walking counts as learning it, whatever the drawer says. A record can
+   * arrive with paths behind it and nothing taught — the dev warp writes
+   * exactly that, and so does a Scribe who cleared their storage mid-climb —
+   * and telling somebody eight rungs up to choose a way is the kind of
+   * teaching that reads as a bug.
+   */
+  const knowsWays = state.learned.includes("way") || state.walked > 0;
+  // First, and only ever first: a Scribe who has never left does not yet have
+  // a question about kindling.
+  if (!knowsWays) return TREE_LESSONS.way;
+  if (!state.freed && wants("guardian")) return TREE_LESSONS.guardian;
+  if (state.freed && !state.lit && wants("kindle")) return TREE_LESSONS.kindle;
+  return undefined;
+}
+
+/** What is learned once a deed is done. Idempotent, and it never un-learns. */
+export function retireTree(
+  learned: readonly TreeLessonKey[],
+  deed: TreeDeed,
+): TreeLessonKey[] {
+  return learned.includes(deed) ? [...learned] : [...learned, deed];
+}
+
 export interface TeachingState {
   learned: readonly LessonKey[];
   /** How many letters the Scribe holds — what retires the wordless lessons. */
@@ -149,8 +238,42 @@ export function forgetTaught(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(TOLD_KEY);
+    localStorage.removeItem(TREE_KEY);
   } catch {
     // Nothing to undo.
+  }
+}
+
+/**
+ * The Tree's own lessons, kept apart from the porch's.
+ *
+ * A separate entry rather than more keys in the same array, because
+ * `allLearned` means "this Scribe knows the controls" and is read by the
+ * threshold and by the rung generator — folding the map's lessons into it
+ * would make a Scribe who has walked the porch but never seen the Tree count
+ * as untaught ground, and quietly change what the generator lays.
+ */
+const TREE_KEY = "otzar-game-taught-tree";
+
+export function readTaughtTree(): TreeLessonKey[] {
+  try {
+    const raw = localStorage.getItem(TREE_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((k): k is TreeLessonKey =>
+      ALL_TREE_LESSON_KEYS.includes(k as TreeLessonKey),
+    );
+  } catch {
+    return [];
+  }
+}
+
+export function writeTaughtTree(learned: readonly TreeLessonKey[]): void {
+  try {
+    localStorage.setItem(TREE_KEY, JSON.stringify(learned));
+  } catch {
+    // Taught again next time. No worse.
   }
 }
 
