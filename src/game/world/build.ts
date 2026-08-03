@@ -1398,6 +1398,10 @@ export function regionOfPath(
     hasShrine: over ? false : lower.hasShrine,
     overTheAbyss: over,
     fragments: lower.fragments,
+    // Whose niches these are, and *which* pieces they hold — the two must come
+    // from the same end of the path. `index` above is the upper end's and is
+    // about how big the ground is; it has no business naming a fragment.
+    fragmentsFrom: fragmentsBefore(lower.index),
   };
 }
 
@@ -1466,7 +1470,7 @@ export function buildPath(
     rng,
     region.hasHouse,
     lightOfTheDay * (spent ? SPENT_LIGHT : 1),
-    fragmentsBefore(region.index),
+    region.fragmentsFrom ?? fragmentsBefore(region.index),
     wordGateTarget,
     region.klipot,
     region.maskit,
