@@ -62,7 +62,26 @@ export interface Player extends Body {
   clinging: -1 | 0 | 1;
   climbing: boolean;
   inWater: boolean;
+  /**
+   * Down is held and the Scribe is on their feet: the body is short, the walk
+   * is slow, and things thrown at head height go over.
+   *
+   * **Anybody can do this**, which for a long time was not true — ducking was
+   * gated on Tet's Coil, so a Scribe without it held down and nothing whatever
+   * happened. That made a body verb into a letter, which is the one thing this
+   * game's alphabet is not for: the letters say what a body can *reach*, not
+   * whether it has knees.
+   */
   crouching: boolean;
+  /**
+   * Crouched **and** carrying the Coil, which is a different thing.
+   *
+   * This is what a low passage tests. Tet buys folding yourself small enough
+   * to get through `Tile.LowGap`, and nothing else in the game reads it — so
+   * every screen that declares `crawl` still asks for exactly what it always
+   * asked for, and the no-soft-lock guarantee is untouched.
+   */
+  crawling: boolean;
   /** Ticks of the veiling — the Scribe is insubstantial and returning. */
   veiled: number;
   /** The anchor currently held by the Hook, in tile coordinates. */
@@ -110,6 +129,18 @@ export interface Mark extends Body {
   draws: boolean;
   /** Whether it bends after the Scribe in flight — Jezebel's, and only hers. */
   seeks?: boolean;
+  /**
+   * Ticks of bending after the nearest shell left — the Scribe's side of
+   * `seeks`, lent by a vessel rather than owned by a klipah. Counted rather
+   * than thresholded on `life`, because his marks are short-lived.
+   */
+  hunts?: number;
+  /** Bounces left off stone. Zero, and stone stops it as it always did. */
+  turns?: number;
+  /** Breaking a shell throws two shards out of it. Shards never carry it. */
+  splits?: boolean;
+  /** It has weight, and falls as it flies. */
+  arcs?: boolean;
   /** The letter written, for the renderer. */
   glyph: string;
 }
@@ -162,6 +193,17 @@ export interface Room {
 export interface World {
   regionIndex: number;
   sefirah: SefirahId;
+  /**
+   * Set when this world is a guardian's room rather than a rung.
+   *
+   * Two things read it. `stepRooms` shuts an arena on *any* unbroken body in
+   * it, where a rung only shuts on the ones that will come to you — a door held
+   * by something that may not be coming is the one thing sealing must never be
+   * on a rung, and in a room holding one creature and nothing else it is not a
+   * risk, it is the fight. And `GamePage` reads it to know that reaching the
+   * way out means a Sefirah has been freed.
+   */
+  arena?: SefirahId;
   /** Column-major-free: `tiles[y * width + x]`. */
   tiles: Uint8Array;
   width: number;
@@ -192,6 +234,21 @@ export interface World {
   wakeAt?: Vec;
   /** Tile coordinates the Eye has opened, so a reveal persists. */
   revealed: boolean;
+  /**
+   * Floor that has given way and will close again — see `Tile.Maskit`.
+   *
+   * **The whole reason the trap is allowed to exist.** `route.test.ts` earns
+   * the no-soft-lock guarantee over six hundred sampled paths against the
+   * *painted* grid, and a tile that vanished for good would be a trap that can
+   * invalidate that proof at runtime, where no test can see it. Measured before
+   * this list existed: a competent probe stalled at seventy-two per cent of
+   * Chochmah, because it had dropped a tile and the leap it needed no longer
+   * cleared from where it now stood.
+   *
+   * So the stone opens, the Scribe falls, something comes out, and it closes.
+   * The rung is exactly the rung the graph proved, half a second later.
+   */
+  mending: { x: number; y: number; at: number }[];
   /** The single stone Bet has set, plus the second the Palm allows. */
   placed: Vec[];
   /**
@@ -240,6 +297,16 @@ export interface World {
   orGathered: number;
   veilings: number;
   marksSet: number;
+  /**
+   * Which kinds this rung draws its klipot from.
+   *
+   * Kept on the world because something can still be *stood up* after the rung
+   * is built: a figured stone gives way and what was under it comes out of the
+   * rung's own pool rather than out of a table the step would otherwise have to
+   * go looking for by region index — which on the Tree is the capped rung and
+   * not where the Scribe actually is.
+   */
+  klipot: readonly HuskKind[];
   /** The klipot standing in this region, and everything in flight. */
   husks: Husk[];
   marks: Mark[];

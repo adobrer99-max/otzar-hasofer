@@ -72,7 +72,7 @@ export const CONTROLS: Control[] = [
     pad: "↓",
     cluster: "move",
     name: "Lower",
-    does: "Drop through a ledge you are standing on. Descend a vine, or sink in water.",
+    does: "Duck, which shortens you and slows you and lets what is thrown at head height go over. On a ledge it drops you through instead. Descends a vine, or sinks in water.",
   },
   {
     id: "jump",

@@ -1,5 +1,5 @@
 import type { Grace, Verb } from "./abilities";
-import { powersFrom } from "./items";
+import { powersFrom, type Effect } from "./items";
 
 /**
  * The klipot, and what a scribe does about them.
@@ -32,6 +32,20 @@ import { powersFrom } from "./items";
  * behaviour **is** the reading, and if you can tell which one it is by how it
  * comes at you, the writing has done its work.
  *
+ * ## And why some of them are not people
+ *
+ * The ten are all human failures, which is right for the foot of the Tree and
+ * wrong for the top of it: a Scribe climbing past the Abyss is not still being
+ * asked about sibling rivalry. Above them stands a second tier — the
+ * **creatures**, which Tanach names as freely as it names the people and which
+ * are not failures at all. A tannin is not doing anything wrong by being a
+ * tannin. They are simply what is there, older than the argument, and they do
+ * not care who you are.
+ *
+ * Read the two tiers against each other and the difference is the point: a
+ * klipah is a shell around a failure and can be talked about; a creature is a
+ * shell around the world's own strength and can only be met.
+ *
  * ## Roles
  *
  * The chunk library is authored once and drawn on by every rung, so a screen
@@ -54,7 +68,52 @@ export type HuskKind =
   | "izevel"
   | "delilah"
   | "atalya"
-  | "nachash";
+  | "nachash"
+  // The creatures. Not failures — the world's own strength, and older than
+  // anybody who could be blamed for anything.
+  | "tannin"
+  | "reem"
+  | "saraf"
+  | "rahav"
+  | "og"
+  | "nefilim"
+  | "arbeh"
+  // And the three that were made on the fifth day and set aside — Bava Batra
+  // 74b. One holds each Sefirah above the Abyss, and none of them can be
+  // broken at all except by the one letter that answers it.
+  | "livyatan"
+  | "behemot"
+  | "ziz";
+
+/**
+ * The seven creatures, as against the ten klipot.
+ *
+ * Kept as a list rather than a flag on the spec so that "is this a beast?" has
+ * exactly one answer and the bestiary plate can be split in two without
+ * anything having to agree with anything else about it.
+ */
+export const BEASTS: readonly HuskKind[] = [
+  "tannin",
+  "reem",
+  "saraf",
+  "rahav",
+  "og",
+  "nefilim",
+  "arbeh",
+];
+
+/**
+ * The three great ones, which stand nowhere on a rung.
+ *
+ * Kept apart from `BEASTS` because they are not scattered — nothing lays them,
+ * a Sefirah *holds* them, and they are met one at a time in a room of their
+ * own. See `guardians.ts`.
+ */
+export const GREAT: readonly HuskKind[] = ["livyatan", "behemot", "ziz"];
+
+export const isGreat = (kind: HuskKind): boolean => GREAT.includes(kind);
+export const isBeast = (kind: HuskKind): boolean =>
+  BEASTS.includes(kind) || GREAT.includes(kind);
 
 /**
  * What a screen can ask for, as against what a rung supplies.
@@ -254,6 +313,173 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     notices: Infinity,
     flies: true,
   },
+
+  // -------------------------------------------------------------------------
+  // the creatures
+  // -------------------------------------------------------------------------
+
+  tannin: {
+    kind: "tannin",
+    name: "The Tannin",
+    hebrew: "תַּנִּין",
+    source: "Bereshit 1:21 — וַיִּבְרָא אֱלֹהִים אֶת־הַתַּנִּינִם הַגְּדֹלִים",
+    is: "It stays in the water, where nothing can touch it, and comes out of it at you.",
+    reading: "The great sea-creatures are the first thing the account of creation bothers to say was made — and they were made, which is the whole of what they are.",
+    role: "floater",
+    shells: 3,
+    speed: 88,
+    light: 4,
+    size: { w: 20, h: 20 },
+    notices: 220,
+  },
+  reem: {
+    kind: "reem",
+    name: "The Re'em",
+    hebrew: "רְאֵם",
+    source: "Bamidbar 23:22 — כְּתוֹעֲפֹת רְאֵם לוֹ, the horns of the wild ox",
+    is: "It runs one line and will not turn. Stand aside and it goes into the wall.",
+    reading: "Not malice. It has never once been asked to reconsider, and it would not know how.",
+    role: "charger",
+    shells: 3,
+    speed: 196,
+    light: 5,
+    size: { w: 24, h: 20 },
+    notices: 280,
+  },
+  saraf: {
+    kind: "saraf",
+    name: "The Saraf",
+    hebrew: "שָׂרָף",
+    source: "Bamidbar 21:6 — הַנְּחָשִׁים הַשְּׂרָפִים, the burning serpents",
+    is: "The ground it has crossed goes on burning after it.",
+    reading: "The bite is not what kills. What kills is the ground you have to go back over.",
+    role: "pacer",
+    shells: 2,
+    speed: 76,
+    light: 3,
+    size: { w: 18, h: 16 },
+    notices: 240,
+    throws: 22,
+  },
+  rahav: {
+    kind: "rahav",
+    name: "Rahav",
+    hebrew: "רַהַב",
+    source: "Yeshayahu 51:9 — הֲלוֹא אַתְּ־הִיא הַמַּחְצֶבֶת רַהַב",
+    is: "Every shell you take off it makes it bigger and faster.",
+    reading: "Pride does not diminish when it is opposed. It is the one thing that grows on being struck.",
+    role: "charger",
+    shells: 4,
+    speed: 62,
+    light: 5,
+    size: { w: 18, h: 20 },
+    notices: 300,
+  },
+  og: {
+    kind: "og",
+    name: "Og of Bashan",
+    hebrew: "עוֹג",
+    source: "Devarim 3:11 — his bedstead of iron, nine cubits its length",
+    is: "Slow, and enormous, and its step brings the ceiling down where you stand.",
+    reading: "The last of the giants, and what is dangerous about him is not that he is quick.",
+    role: "pacer",
+    shells: 5,
+    speed: 34,
+    light: 6,
+    size: { w: 26, h: 28 },
+    notices: Infinity,
+    // **Measured.** At 140 with a reach of eighteen tiles he was a barrage
+    // rather than a giant: Chochmah stands nine bodies, several of them his,
+    // and the ceiling came down somewhere every two seconds. Five runs in ten
+    // went out there against two before he arrived. He is slow — the sentence
+    // is that you cannot outrun what he brings down, not that he does it
+    // constantly from across the room.
+    throws: 260,
+  },
+  nefilim: {
+    kind: "nefilim",
+    name: "The Nefilim",
+    hebrew: "נְפִילִים",
+    source: "Bereshit 6:4 — הַנְּפִלִים הָיוּ בָאָרֶץ, and the name means they fell",
+    is: "It hangs where it is and does nothing until you are underneath it.",
+    reading: "They are named for the one thing they did. Everything else about them is waiting.",
+    role: "floater",
+    shells: 2,
+    speed: 0,
+    light: 4,
+    size: { w: 20, h: 22 },
+    notices: 150,
+  },
+  arbeh: {
+    kind: "arbeh",
+    name: "The Arbeh",
+    hebrew: "אַרְבֶּה",
+    source: "Shemot 10:14 — before them there were no such locusts, neither after them",
+    is: "One of them is nothing. There are never one of them.",
+    reading: "The eighth plague is the only one that is a number rather than a thing.",
+    role: "floater",
+    shells: 1,
+    speed: 68,
+    light: 2,
+    size: { w: 12, h: 12 },
+    notices: 320,
+    flies: true,
+  },
+
+  // -------------------------------------------------------------------------
+  // the three great ones
+  // -------------------------------------------------------------------------
+  //
+  // Bava Batra 74b: made on the fifth day, set aside, and kept. They are the
+  // only things in this game a Scribe cannot simply out-write — each is opened
+  // by one letter and by nothing else, and until it is opened the shells do not
+  // come off however many marks are thrown at it. `opened()` in `step.ts` is
+  // where each rule actually lives; these are the numbers.
+
+  livyatan: {
+    kind: "livyatan",
+    name: "Leviathan",
+    hebrew: "לִוְיָתָן",
+    source: "Iyov 41:1 — תִּמְשֹׁךְ לִוְיָתָן בְּחַכָּה, canst thou draw out leviathan with an hook?",
+    is: "Nothing touches it in the water. The question the book asks is whether you can get it out.",
+    reading: "The verse is not a riddle and it is not rhetorical either. It is a list of what you cannot do, and the Hook is the first item on it.",
+    role: "floater",
+    shells: 6,
+    speed: 78,
+    light: 10,
+    size: { w: 34, h: 26 },
+    notices: Infinity,
+  },
+  behemot: {
+    kind: "behemot",
+    name: "Behemoth",
+    hebrew: "בְּהֵמוֹת",
+    source: "Iyov 40:19 — הָעֹשׂוֹ יַגֵּשׁ חַרְבּוֹ, he that made him can make his sword approach",
+    is: "Nothing stops it while it is moving, and nothing marks it either.",
+    reading: "Only the one who made it can bring a blade near it — so the answer is not a blade. It is something set in the way.",
+    role: "charger",
+    shells: 7,
+    speed: 214,
+    light: 12,
+    size: { w: 34, h: 30 },
+    notices: Infinity,
+  },
+  ziz: {
+    kind: "ziz",
+    name: "The Ziz",
+    hebrew: "זִיז",
+    source: "Tehillim 50:11 — וְזִיז שָׂדַי עִמָּדִי, and the ziz of the field is mine",
+    is: "It never comes down. Whether you reach it is a question about how far you can throw.",
+    reading: "The verse says only that it is His. Everything else about it is midrash, and all of the midrash agrees that it is enormous and that it is above you.",
+    role: "floater",
+    shells: 6,
+    speed: 104,
+    light: 10,
+    size: { w: 30, h: 24 },
+    notices: Infinity,
+    throws: 150,
+    flies: true,
+  },
 };
 
 /**
@@ -306,6 +532,29 @@ export const MARK_LIFE = 34;
 export const MARK_COOLDOWN = 15;
 export const MARK_SIZE = 10;
 
+/**
+ * What a vessel can lend a mark, in numbers.
+ *
+ * Two turns rather than unlimited: a mark that bounced forever would clear a
+ * sealed room on its own, and a sealed room is where the fight is. Two is
+ * enough to throw around a corner, which is the idea.
+ */
+export const MARK_TURNS = 2;
+/**
+ * How many ticks a hunting mark may bend for. Jezebel's bends for the first
+ * third of a long flight and is then committed; his lives a third as long, so
+ * the same idea has to be counted rather than read off `life`.
+ */
+export const MARK_HUNT = 10;
+/** How hard a bend pulls. Hers, unchanged — it was measured, and it holds. */
+export const BEND_TOWARD = 200;
+export const BEND_RATE = 0.03;
+/** The weight an arcing mark carries — a fraction of the body's own gravity. */
+export const MARK_FALL = 0.55;
+/** A shard is short and quick, so a split covers ground rather than repeating the throw. */
+export const SHARD_SPEED = 320;
+export const SHARD_LIFE = 16;
+
 /** What the letters do to the mark. The beginning of the synergies. */
 export interface MarkPowers {
   /** Zayin, the Edge: it passes through the first husk and carries on. */
@@ -320,16 +569,29 @@ export interface MarkPowers {
   bite?: number;
   speed?: number;
   cooldown?: number;
+  /** Stone turns it rather than stopping it. */
+  bounces?: boolean;
+  /** It bends after the nearest shell, once, early. */
+  homing?: boolean;
+  /** Breaking a shell throws two shards out of it. */
+  splits?: boolean;
+  /** It has weight, and falls as it flies. */
+  arcs?: boolean;
 }
 
 export function markPowers(
   verbs: readonly Verb[],
   graces: readonly Grace[],
   items: readonly string[] = [],
+  boons: readonly Effect[] = [],
 ): MarkPowers {
-  // The letters decide what a mark *is*; the vessels decide how much of it
-  // there is. Which is the whole distinction the two systems are built on.
-  const carried = powersFrom(items);
+  // The letters are the progression and the vessels are the furnishing, and
+  // the line between them is the **verb list** — nothing here may hand out a
+  // thirteenth verb. It is not a line between kind and quantity: `pierces` was
+  // always on both sides of that one, and four more behaviours join it below.
+  // A vessel that only scaled a number could never be a reason to walk one
+  // path rather than another, which is the whole of what the Tree is for.
+  const carried = powersFrom(items, boons);
   return {
     pierces: verbs.includes("cut") || carried.pierces,
     burns: verbs.includes("flame"),
@@ -338,6 +600,10 @@ export function markPowers(
     bite: carried.bite,
     speed: carried.speed,
     cooldown: carried.cooldown,
+    bounces: carried.bounces,
+    homing: carried.homing,
+    splits: carried.splits,
+    arcs: carried.arcs,
   };
 }
 

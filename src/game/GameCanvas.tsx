@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { Grace, Verb } from "./abilities";
+import type { Effect } from "./items";
 import { controlById, KEY_MAP, PAD_LAYOUT, type ControlId } from "./controls";
 import { drawWorld, trackCamera, type Camera } from "./render/draw";
 import { readPalette, type Palette } from "./render/palette";
@@ -55,6 +56,13 @@ export interface GameCanvasProps {
   markGlyph: string;
   /** The vessels carried — see `items.ts`. They change numbers, never verbs. */
   items: readonly string[];
+  /**
+   * What the Scribe has become, from the guardians they have ever broken. The
+   * same shape a vessel's effect has, and folded by the same `fold` — see
+   * `guardians.ts`. Carried separately because it is not carried at all: it
+   * cannot be dropped, spent or declined.
+   */
+  boons: readonly Effect[];
   /** Suspends the loop for a plate, a pause, or an end-of-region panel. */
   paused: boolean;
   onLetter: (letterId: string) => void;
@@ -72,6 +80,7 @@ export function GameCanvas({
   world,
   verbs,
   graces,
+  boons,
   markGlyph,
   items,
   paused,
@@ -101,6 +110,7 @@ export function GameCanvas({
     verbs,
     graces,
     items,
+    boons,
     markGlyph,
     onLetter: (id) => callbacks.current.onLetter(id),
     onFragment: (i) => callbacks.current.onFragment(i),

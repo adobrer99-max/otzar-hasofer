@@ -33,7 +33,7 @@ import {
   type LessonKey,
 } from "./tutorial";
 import { GameCanvas, type HudSample } from "./GameCanvas";
-import { ABYSS_AFTER_REGION, regionAt, regions, TOTAL_REGIONS } from "./regions";
+import { regionAt, regions, TOTAL_REGIONS } from "./regions";
 import { encounterFor, encounterTitle, isIllumined, rulesFor, sealedCount } from "./encounter";
 import { judge, lightFor, opens, type WordGateTarget, type WordGateVerdict } from "./wordGate";
 import { offerFor, vowKept, type UshpizinOffer } from "./ushpizinOffers";
@@ -41,8 +41,8 @@ import { openWordGate } from "./world/step";
 import { useGameAudio } from "./audio/useGameAudio";
 import { readAscentTime } from "./sacredAscent";
 import { fragmentAt, SCROLL_LETTER, SCROLL_TOTAL, SCROLL_VERSE } from "./scroll";
-import { GOING_OUT, HUSKS, LAMPS } from "./combat";
-import { keliById, powersFrom, synergiesIn } from "./items";
+import { GOING_OUT, HUSKS, isBeast, LAMPS } from "./combat";
+import { describeEffect, keliById, powersFrom, synergiesIn } from "./items";
 import {
   ABYSS_WORD,
   pleaFor,
@@ -51,9 +51,11 @@ import {
   witnessesOf,
   WITNESSES_POSSIBLE,
 } from "./story";
-import { buildPath, buildRegion, verbsOf } from "./world/build";
+import { buildArena, buildPath, buildRegion, verbsOf } from "./world/build";
+import { boonsFrom, guardianOf } from "./guardians";
+import { guardiansFreed } from "../storage/ascentRepo";
 import { TreeMap } from "./TreeMap";
-import { afterWalking, TREE_PATHS, type TreePath } from "./tree";
+import { afterWalking, crossesAbyss, nodeOf, TREE_PATHS, type TreePath } from "./tree";
 import { readWarp, warpParams, warpRecord, type WarpOptions } from "./dev/warp";
 import { installProbe, neighbourhood, probeOf } from "./dev/probe";
 import type { World } from "./world/types";
@@ -100,7 +102,12 @@ type Plate =
   | { kind: "word-result"; verdict: WordGateVerdict }
   | { kind: "region-done" }
   | { kind: "path-done"; path: TreePath }
-  | { kind: "abyss" }
+  | { kind: "guardian-done"; sefirah: SefirahId }
+  /**
+   * Raised *before* a crossing is walked, not after one is finished — which is
+   * the whole reason it now fires. See `crossesAbyss`.
+   */
+  | { kind: "abyss"; path: TreePath }
   | { kind: "out" }
   | { kind: "sealed" };
 
@@ -123,6 +130,10 @@ export function GamePage() {
    * has to answer for both, which is the whole of the wiring below.
    */
   const [walking, setWalking] = useState<TreePath | null>(null);
+  /** The Sefirah whose guardian is being faced, while the arena is open. */
+  const [facing, setFacing] = useState<SefirahId | null>(null);
+  /** Every Sefirah freed across every climb — what the boons are drawn from. */
+  const [freedEver, setFreedEver] = useState<SefirahId[]>([]);
   const [plate, setPlate] = useState<Plate | null>(null);
   const [hud, setHud] = useState<HudSample>({
     or: 0,
@@ -186,6 +197,10 @@ export function GamePage() {
         setAscent(found ?? null);
         // A climb still in progress must not count itself.
         setSealedBefore(sealedCount(all.filter((a) => a.id !== found?.id)));
+        // **What a Scribe has become**, as against what this climb holds: every
+        // Sefirah they have ever freed, including in climbs long since sealed.
+        // Read once, here, so nothing downstream has to know about storage.
+        setFreedEver(guardiansFreed(all));
         setLoading(false);
       })
       .catch(() => {
@@ -216,6 +231,17 @@ export function GamePage() {
     for (const g of rulesFor(encounter)?.grants ?? []) if (!lent.includes(g)) lent.push(g);
     return lent;
   }, [letters, granted, time.graceOfTheDay, encounter]);
+
+  /**
+   * The boons a Scribe carries into everything, from every guardian they have
+   * ever broken — including the ones broken an hour ago in this same climb,
+   * which is why the mounted list and the current record are folded together
+   * rather than one being trusted.
+   */
+  const boons = useMemo(
+    () => boonsFrom([...new Set([...freedEver, ...(ascent?.guardiansBroken ?? [])])]),
+    [freedEver, ascent?.guardiansBroken],
+  );
 
   const audio = useGameAudio(
     worldRef,
@@ -307,7 +333,11 @@ export function GamePage() {
       // What the vessels come to, applied to the region as it is built: the
       // lamps a Scribe is made of and what a mote is worth are properties of
       // the world rather than of a tick, so this is where they belong.
-      const carried = powersFrom(record.items ?? []);
+      // The boons are read off the record rather than the memo, because this is
+      // the one door a *warped* climb comes through and a warp hands over a
+      // record the page has not seen yet. Across climbs they are folded in by
+      // `boons`, which is what every other build site uses.
+      const carried = powersFrom(record.items ?? [], boonsFrom(record.guardiansBroken ?? []));
       next.player.lamps += carried.lamps;
       next.orPerMote = Math.max(1, Math.round(next.orPerMote * carried.light));
       layEncounter(next, [regionAt(record.regionIndex).sefirah]);
@@ -495,19 +525,37 @@ export function GamePage() {
    * the saved run all need no special case for it).
    */
   /**
-   * A vessel lifted off its pedestal. Kept on the ascent exactly as a letter
-   * is, because that is what makes it survive a region change and a reload —
-   * and it needs no other machinery, since everything it does is a number the
-   * step already reads out of the context.
+   * A pedestal reached. Nothing is picked up here — the plate goes up and the
+   * Scribe decides, because a vessel that costs something has to be one that
+   * can be walked past.
    */
   const onVessel = useCallback((keliId: string) => {
     setPlate({ kind: "vessel", keliId });
-    setAscent((prev) =>
-      prev && !(prev.items ?? []).includes(keliId)
-        ? { ...prev, items: [...(prev.items ?? []), keliId], updatedAt: new Date().toISOString() }
-        : prev,
-    );
   }, []);
+
+  /**
+   * A vessel taken. Kept on the ascent exactly as a letter is, because that is
+   * what makes it survive a region change and a reload — and it needs no other
+   * machinery, since everything it does is a number the step already reads out
+   * of the context.
+   *
+   * The entity is marked taken here rather than in the step, which is what
+   * leaves a *declined* vessel standing on its plinth: the pedestal is emptied
+   * by the yes, and by nothing else.
+   */
+  const takeVessel = useCallback(
+    (keliId: string) => {
+      const pedestal = world?.entities.find((e) => e.kind === "vessel" && e.ref === keliId);
+      if (pedestal) pedestal.taken = true;
+      setAscent((prev) =>
+        prev && !(prev.items ?? []).includes(keliId)
+          ? { ...prev, items: [...(prev.items ?? []), keliId], updatedAt: new Date().toISOString() }
+          : prev,
+      );
+      setPlate(null);
+    },
+    [world],
+  );
 
   const onFragment = useCallback((index: number) => {
     setAscent((prev) => {
@@ -622,6 +670,29 @@ export function GamePage() {
 
   const onFinish = useCallback(() => {
     audio.onArrival();
+
+    /**
+     * **A guardian's room ends differently.** The way out is shut until the
+     * shell breaks, so reaching it *is* the break — nothing else has to be
+     * checked, and checking it twice is how the two would drift. The Sefirah
+     * stands freed, in this climb and in every one after it.
+     */
+    if (facing) {
+      const freed = facing;
+      setAscent((prev) => {
+        if (!prev) return prev;
+        const next: AscentRecord = {
+          ...prev,
+          or: prev.or + (world?.or ?? 0),
+          guardiansBroken: [...new Set([...(prev.guardiansBroken ?? []), freed])],
+          updatedAt: new Date().toISOString(),
+        };
+        void saveAscent(next).catch(() => undefined);
+        return next;
+      });
+      setPlate({ kind: "guardian-done", sefirah: freed });
+      return;
+    }
     // A vow taken at a House is judged here, on the way out, against how the
     // rest of the region was actually crossed.
     if (vow && world) {
@@ -680,11 +751,15 @@ export function GamePage() {
         ? { kind: "path-done", path: walking }
         : ascent?.regionIndex === TOTAL_REGIONS
           ? { kind: "sealed" }
-          : ascent?.regionIndex === ABYSS_AFTER_REGION
-            ? { kind: "abyss" }
-            : { kind: "region-done" },
+          : // The Abyss plate used to be raised here, on the linear road's
+            // seventh index, and on the Tree `walking` is always set, so it
+            // never once fired. It is raised on stepping *onto* a crossing
+            // now — see `chooseWay` — which is where it belonged: the plate
+            // says what is on the far side, and saying it afterwards is a
+            // travel guide handed out at the destination.
+            { kind: "region-done" },
     );
-  }, [ascent?.regionIndex, world, vow, audio, walking]);
+  }, [ascent?.regionIndex, world, vow, audio, walking, facing]);
 
   /**
    * Step onto a path from the overworld — which is what a rung is now.
@@ -706,8 +781,9 @@ export function GamePage() {
         teaching,
         (ascent.pathsWalked ?? []).includes(path.id),
         rulesFor(encounter)?.klipot ?? 1,
+        ascent.items ?? [],
       );
-      const carried = powersFrom(ascent.items ?? []);
+      const carried = powersFrom(ascent.items ?? [], boons);
       next.player.lamps += carried.lamps;
       next.orPerMote = Math.max(1, Math.round(next.orPerMote * carried.light));
       // The path's own two ends, not the rung's capped index — see `layEncounter`.
@@ -721,12 +797,54 @@ export function GamePage() {
     [ascent, time.lightOfTheDay, layEncounter, encounter],
   );
 
+  /**
+   * Choosing a way out of where you stand — and the one place the Tree stops
+   * and says something first.
+   *
+   * A crossing is told about before it is walked, because what the plate says
+   * is what is on the *far* side: no House, no figure, no mark, and a gate on
+   * the way out that has to be answered. All of that is a decision to make at
+   * the near edge of the gulf, so it is put there. Every other path is stepped
+   * onto without ceremony, which is what keeps this one meaning anything.
+   */
+  const chooseWay = useCallback(
+    (path: TreePath) => {
+      if (crossesAbyss(path)) setPlate({ kind: "abyss", path });
+      else walkPath(path);
+    },
+    [walkPath],
+  );
+
   /** Back to the map, from the plate at the end of a path. */
   const backToTree = useCallback(() => {
     setWorld(null);
     setWalking(null);
+    setFacing(null);
     setPlate(null);
   }, []);
+
+  /**
+   * Go and face what is holding the Sefirah you are standing on.
+   *
+   * A room rather than a rung: one way in, one creature, one way out that is
+   * shut until the shell breaks. Nothing is gathered in there and nothing is
+   * found — the light a guardian holds comes out of the shell like any other,
+   * and the light is not what it was for.
+   */
+  const faceGuardian = useCallback(() => {
+    if (!ascent) return;
+    const at = standingAt(ascent);
+    if ((ascent.guardiansBroken ?? []).includes(at)) return;
+    const room = buildArena(at, ascent.seed);
+    const carried = powersFrom(ascent.items ?? [], boons);
+    room.player.lamps += carried.lamps;
+    setGranted([]);
+    setWalking(null);
+    setFacing(at);
+    setWorld(room);
+    setVow(null);
+    setPlate(null);
+  }, [ascent]);
 
   /**
    * Kindle where you stand. The same spend the between-rungs plate offered on
@@ -739,6 +857,10 @@ export function GamePage() {
       if (!prev) return prev;
       const at = standingAt(prev);
       const cost = kindleCost(regionOfSefirah(at).index);
+      // **Light is the second gate, not the first.** A Sefirah still held is
+      // not for sale, and the map says what holds it rather than greying a
+      // button out with no reason on it.
+      if (!(prev.guardiansBroken ?? []).includes(at)) return prev;
       if (prev.or < cost || (prev.sefirotLit ?? []).includes(at)) return prev;
       const next: AscentRecord = {
         ...prev,
@@ -796,10 +918,20 @@ export function GamePage() {
     if (!plate) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Enter" && e.key !== "Escape" && e.code !== "Space") return;
+      // A pedestal is the one plate that asks a *question*, so the keyboard
+      // must not answer it. Swallowed here, Enter would have dismissed the
+      // plate — which now means "leave it" — while the Scribe was looking at a
+      // focused "Take it up". Let the buttons have the keys: Enter and Space
+      // press whichever is focused, and Escape is handled below as declining.
+      if (plate.kind === "vessel") {
+        if (e.key !== "Escape") return;
+        e.preventDefault();
+        setPlate(null);
+        return;
+      }
       e.preventDefault();
       if (
         plate.kind === "letter" ||
-        plate.kind === "vessel" ||
         plate.kind === "house" ||
         plate.kind === "fragment" ||
         plate.kind === "scroll-whole" ||
@@ -816,7 +948,7 @@ export function GamePage() {
       else if (plate.kind === "sealed" || plate.kind === "out") sealAscent();
       // The end of a path goes back to the map, never on to a next rung — there
       // is no next rung on the Tree until the Scribe chooses one.
-      else if (plate.kind === "path-done") backToTree();
+      else if (plate.kind === "path-done" || plate.kind === "guardian-done") backToTree();
       else climbOn(false);
     };
     window.addEventListener("keydown", onKey);
@@ -873,8 +1005,9 @@ export function GamePage() {
         <TreeMap
           ascent={ascent}
           at={standingAt(ascent)}
-          onWalk={walkPath}
+          onWalk={chooseWay}
           onKindle={kindleHere}
+          onFace={faceGuardian}
           onSeal={allKindled(ascent) ? () => setPlate({ kind: "sealed" }) : undefined}
         />
       )}
@@ -904,7 +1037,19 @@ export function GamePage() {
                 the slots say how much of the alphabet is in hand, which two
                 places this ground lies between, and the letter it pays. */}
             <div className={styles.hudRegion}>
-              {walking ? (
+              {facing ? (
+                // A guardian's room is neither a rung nor a path. What matters
+                // in it is which creature is standing there and how much of it
+                // is left, and the shells are on the thing itself — so the HUD
+                // says where you are and what holds it, and nothing else.
+                <>
+                  <span className={styles.hudStep}>held by</span>
+                  <span className={styles.hudName}>{HUSKS[guardianOf(facing).kind].name}</span>
+                  <span className={`${styles.hudHeb} hebrew`} lang="he">
+                    {HUSKS[guardianOf(facing).kind].hebrew}
+                  </span>
+                </>
+              ) : walking ? (
                 <>
                   <span className={styles.hudStep}>
                     {ascent.lettersHeld.length} / {TREE_PATHS.length}
@@ -953,6 +1098,7 @@ export function GamePage() {
             graces={graces}
             markGlyph={lettersById[ascent.ascendantLetterId ?? "aleph"]?.glyph ?? "א"}
             items={ascent.items ?? []}
+            boons={boons}
             paused={plate !== null}
             onLetter={onLetter}
             onFragment={onFragment}
@@ -964,13 +1110,21 @@ export function GamePage() {
           />
 
           {/* A real event always beats coaching, and the region's own teaching
-              is what is left when there is nothing to say. */}
+              is what is left when there is nothing to say — except in a
+              guardian's room, where there is no coaching and no teaching, only
+              the thing standing in front of you. The lessons are about which
+              key walks; a Scribe who has come here already knows. */}
           <p
-            className={`${styles.caption} ${hud.message === undefined && lesson ? styles.captionLesson : ""}`}
+            className={`${styles.caption} ${hud.message === undefined && !facing && lesson ? styles.captionLesson : ""}`}
             role="status"
             aria-live="polite"
           >
-            <Press text={hud.message ?? lesson?.text ?? region.teaching} />
+            <Press
+              text={
+                hud.message ??
+                (facing ? HUSKS[guardianOf(facing).kind].is : (lesson?.text ?? region.teaching))
+              }
+            />
           </p>
 
           <div className={styles.controls}>
@@ -1042,10 +1196,12 @@ export function GamePage() {
           world={world}
           encounter={encounter}
           onNext={climbOn}
+          onWalk={walkPath}
           onSeal={sealAscent}
           onBack={backToTree}
           onInscribe={inscribe}
           onAccept={acceptOffer}
+          onTakeVessel={takeVessel}
           onClose={() => setPlate(null)}
         />
       )}
@@ -1421,7 +1577,14 @@ function Keys({ held, regionIndex }: { held: readonly string[]; regionIndex: num
             </span>
             <div>
               <p className={styles.keyName}>
-                {husk.name} <span className={styles.keyKind}>{husk.shells} shells</span>
+                {husk.name}{" "}
+                <span className={styles.keyKind}>
+                  {/* Which tier it belongs to, because the two are not the same
+                      claim: the klipot are human failures Tanach names, and a
+                      creature is not doing anything wrong by existing. Saying
+                      so is the difference between a bestiary and a list. */}
+                  {isBeast(husk.kind) ? "creature" : "klipah"} · {husk.shells} shells
+                </span>
               </p>
               <p className={styles.keyUse}>{husk.is}</p>
               <p className={styles.keySource}>{husk.source}</p>
@@ -1443,10 +1606,12 @@ function PlateOverlay({
   world,
   encounter,
   onNext,
+  onWalk,
   onSeal,
   onBack,
   onInscribe,
   onAccept,
+  onTakeVessel,
   onClose,
 }: {
   plate: Plate;
@@ -1454,11 +1619,15 @@ function PlateOverlay({
   world: World | null;
   encounter: ReturnType<typeof encounterFor>;
   onNext: (kindle?: boolean) => void;
+  /** Step onto the path the Abyss plate is standing at the near edge of. */
+  onWalk: (path: TreePath) => void;
   onSeal: () => void;
   /** Back to the overworld, at the end of a path. */
   onBack: () => void;
   onInscribe: (letterIds: [string, string, string]) => void;
   onAccept: (offer: UshpizinOffer) => void;
+  /** A vessel accepted off its pedestal. Declining is `onClose`. */
+  onTakeVessel: (keliId: string) => void;
   onClose: () => void;
 }) {
   // Every plate autofocuses its button so the game can be played without a
@@ -1477,13 +1646,21 @@ function PlateOverlay({
         {plate.kind === "path-done" && ascent && (
           <PathDonePlate ascent={ascent} path={plate.path} onBack={onBack} />
         )}
+        {plate.kind === "guardian-done" && (
+          <GuardianDonePlate sefirah={plate.sefirah} onBack={onBack} />
+        )}
         {plate.kind === "letter" && <LetterPlate letterId={plate.letterId} onClose={onClose} />}
         {plate.kind === "fragment" && (
           <FragmentPlate index={plate.index} held={plate.held} onClose={onClose} />
         )}
         {plate.kind === "scroll-whole" && <ScrollWholePlate onClose={onClose} />}
         {plate.kind === "vessel" && ascent && (
-          <VesselPlate keliId={plate.keliId} held={ascent.items ?? []} onClose={onClose} />
+          <VesselPlate
+            keliId={plate.keliId}
+            held={ascent.items ?? []}
+            onTake={onTakeVessel}
+            onClose={onClose}
+          />
         )}
         {plate.kind === "house" && ascent && world && (
           <HousePlate
@@ -1506,7 +1683,9 @@ function PlateOverlay({
           <WordResultPlate verdict={plate.verdict} onClose={onClose} />
         )}
         {plate.kind === "region-done" && ascent && <RegionDonePlate ascent={ascent} onNext={onNext} />}
-        {plate.kind === "abyss" && <AbyssPlate onNext={onNext} />}
+        {plate.kind === "abyss" && (
+          <AbyssPlate path={plate.path} onCross={() => onWalk(plate.path)} onBack={onClose} />
+        )}
         {plate.kind === "out" && ascent && <OutPlate ascent={ascent} onSeal={onSeal} />}
         {plate.kind === "sealed" && ascent && (
           <SealedPlate ascent={ascent} encounter={encounter} onSeal={onSeal} />
@@ -1522,34 +1701,56 @@ function PlateOverlay({
  * what it lets you do, and it names any pair it has just completed, because a
  * synergy nobody is told about is a synergy nobody has.
  */
+/**
+ * A vessel offered.
+ *
+ * The synergies are shown for the hand the Scribe *already* holds, which is the
+ * point of showing them at all now that the answer can be no: a vessel that is
+ * ordinary alone and remarkable beside something in the belt should say so
+ * before it is refused. What it does is named from its own numbers rather than
+ * from a line written next to them, so the plate cannot promise what the vessel
+ * stopped doing three retunings ago.
+ */
 function VesselPlate({
   keliId,
   held,
+  onTake,
   onClose,
 }: {
   keliId: string;
   held: readonly string[];
+  onTake: (keliId: string) => void;
   onClose: () => void;
 }) {
   const keli = keliById[keliId];
   if (!keli) return null;
-  const lit = synergiesIn(held).filter((s) => s.keli.id === keliId || s.keli.synergy?.with === keliId);
+  const lit = synergiesIn([...held, keliId]).filter(
+    (s) => s.keli.id === keliId || s.keli.synergy?.with === keliId,
+  );
+  const does = describeEffect(keli.effect);
   return (
     <>
-      <p className={styles.plateKicker}>A vessel is found</p>
+      <p className={styles.plateKicker}>A vessel is offered</p>
       <h2 className={styles.plateTitle}>{keli.name}</h2>
       <p className={`${styles.plateHeb} hebrew`} lang="he">
         {keli.hebrew}
       </p>
       <p className={styles.plateUse}>{keli.found}</p>
+      {does && <p className={styles.vesselDoes}>{does}</p>}
       {lit.map((s) => (
         <p key={s.keli.id} className={styles.offerGrants}>
           {s.line}
         </p>
       ))}
-      <Button variant="primary" onClick={onClose} autoFocus>
-        Take it up
-      </Button>
+      <div className={styles.plateActions}>
+        <Button variant="primary" onClick={() => onTake(keliId)} autoFocus>
+          Take it up
+        </Button>
+        <Button onClick={onClose}>Leave it</Button>
+      </div>
+      <p className={styles.vesselLeft}>
+        Left on its pedestal it stays there, and the map goes on naming it.
+      </p>
     </>
   );
 }
@@ -1926,6 +2127,46 @@ function PathDonePlate({
   );
 }
 
+/**
+ * A Sefirah freed.
+ *
+ * The boon is named here and nowhere else, because this is the only moment it
+ * means anything: it is not a thing the Scribe chose or bought, it is what is
+ * left over from having done something once, and it will be true in every
+ * climb after this one whether or not they ever read this plate again.
+ */
+function GuardianDonePlate({
+  sefirah,
+  onBack,
+}: {
+  sefirah: SefirahId;
+  onBack: () => void;
+}) {
+  const guardian = guardianOf(sefirah);
+  const spec = HUSKS[guardian.kind];
+  const place = regionOfSefirah(sefirah);
+  return (
+    <>
+      <p className={styles.plateKicker}>The Sefirah is freed</p>
+      <h2 className={styles.plateTitle}>{spec.name} is broken</h2>
+      <p className={`${styles.plateHeb} hebrew`} lang="he">
+        {spec.hebrew}
+      </p>
+      <p className={styles.plateUse}>{spec.reading}</p>
+      <p className={styles.plateDerivation}>{spec.source}</p>
+      <p className={styles.offerGrants}>{guardian.boonLine}</p>
+      <p className={styles.plateDerivation}>
+        {place.name} can be kindled now, and this holds in every climb after this one.
+      </p>
+      <div className={styles.plateActions}>
+        <Button variant="primary" onClick={onBack} autoFocus>
+          Stand on the Tree
+        </Button>
+      </div>
+    </>
+  );
+}
+
 function RegionDonePlate({
   ascent,
   onNext,
@@ -2001,7 +2242,19 @@ function OutPlate({ ascent, onSeal }: { ascent: AscentRecord; onSeal: () => void
   );
 }
 
-function AbyssPlate({ onNext }: { onNext: () => void }) {
+function AbyssPlate({
+  path,
+  onCross,
+  onBack,
+}: {
+  path: TreePath;
+  onCross: () => void;
+  onBack: () => void;
+}) {
+  // Which end is which. A crossing is walked in either direction — Keter down
+  // to Tiferet is the same gulf as Tiferet up to Keter — so the plate names the
+  // near shore and the far one rather than assuming a climb.
+  const [low, high] = [...path.ends].sort((a, b) => nodeOf[a].row - nodeOf[b].row);
   return (
     <>
       <p className={styles.plateKicker}>The Abyss</p>
@@ -2010,17 +2263,21 @@ function AbyssPlate({ onNext }: { onNext: () => void }) {
         דעת
       </p>
       <p className={styles.plateUse}>
-        Chesed is behind you and the supernal three are above. Da'at is not a Sefirah and there is
-        no station here — only the gap that the lower seven do not reach across.
+        {regionOfSefirah(low).name} is on this side and {regionOfSefirah(high).name} on the other.
+        Da'at is not a Sefirah and there is no station in between — only the gap the lower seven do
+        not reach across, which is why this is the one way on the Tree you are told about before you
+        take it.
       </p>
       <p className={styles.plateDerivation}>
-        Beyond it there are no more Houses. Binah, Chochmah and Keter are crossed on the letters
-        alone.
+        No House stands over the gulf and there is no mark to set, so a veiling here costs the whole
+        crossing. And the way out is a Word-Gate: you will be asked for a root, and until you write
+        one that is true there is no door.
       </p>
       <p className={styles.plateQuestion}>{ABYSS_WORD}</p>
-      <Button variant="primary" onClick={onNext} autoFocus>
+      <Button variant="primary" onClick={onCross} autoFocus>
         Cross
       </Button>
+      <Button onClick={onBack}>Not this way</Button>
     </>
   );
 }

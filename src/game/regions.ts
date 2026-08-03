@@ -77,6 +77,16 @@ export interface Region {
    * Chochmah's shadow before it is anything else; it goes on standing at the
    * crown because that is where it was always going to be waiting.
    *
+   * **And from Netzach up, the creatures**, on the same principle. The Re'em,
+   * which will not turn, stands at Netzach, which is endurance. The Saraf's
+   * bite is not what kills — the ground you have to go back over is — so it is
+   * Tiferet's, which is truth. The Arbeh is the one plague that is a number
+   * rather than a thing, and Gevurah is judgment falling. The Tannin is the sea
+   * and Chesed is water. Rahav is the sea's *pride*, cut down, and Binah is
+   * where a thing is understood rather than admired. Og is the last of the
+   * giants and Chochmah is the oldest ground there is. And the Nefilim are
+   * named for a fall from the highest place, which is Keter.
+   *
    * The other constraint is mechanical and is not negotiable: **no rung may be
    * all pacers and chargers**, because those are the roles a door waits on, and
    * a rung whose every klipah holds a door seals every room in it. Measured, on
@@ -92,6 +102,21 @@ export interface Region {
    * number you can read off the page.
    */
   klipot: { kinds: HuskKind[]; count: number };
+  /**
+   * How many pieces of this rung's floor are **אֶבֶן מַשְׂכִּית** — figured stones,
+   * which look like ground and are not (see `Tile.Maskit`).
+   *
+   * None in the kingdom. Malchut is where the walk, the leap and the mark are
+   * taught, and a floor that gives way under a Scribe who has just been told
+   * which key walks is not a trap, it is a lie about the controls.
+   *
+   * The count is small on purpose everywhere. A trap that is common stops being
+   * a trap and becomes terrain — a Scribe who meets four in a rung starts
+   * treading on every tile the way one treads on a frozen pond, and the rung
+   * takes four times as long to cross for no more thought. One or two is a
+   * thing that happens to you; five is a rule you learn to play around.
+   */
+  maskit: number;
   /** The three supernals stand above the Abyss and hold no House. */
   hasHouse: boolean;
   /**
@@ -99,6 +124,17 @@ export interface Region {
    * ground — the only real consequence in a game that will not kill you.
    */
   hasShrine: boolean;
+  /**
+   * Set only by `regionOfPath`, and only on the five paths that cross the gulf
+   * (see `crossesAbyss` in `tree.ts`). No Sefirah is over the Abyss — a
+   * Sefirah is a place, and the Abyss is the absence of one — so no entry in
+   * the table below carries it.
+   *
+   * A crossing takes neither House nor shrine, which is the supernals' own
+   * severity beginning one rung early, and its way out stands behind a
+   * Word-Gate rather than beside the road. See `ABYSS_GATE_CHUNK`.
+   */
+  overTheAbyss?: boolean;
   teaching: string;
 }
 
@@ -114,6 +150,7 @@ export const regions: Region[] = [
     length: 6,
     demand: { min: 1, max: 2 },
     klipot: { kinds: ["cain"], count: 2 },
+    maskit: 0,
     hasHouse: true,
     // The one rung with no shrine, for two reasons that agree. Tav is *found*
     // here, so a shrine laid before its alcove is furniture — and now that the
@@ -136,6 +173,7 @@ export const regions: Region[] = [
     length: 6,
     demand: { min: 1, max: 2 },
     klipot: { kinds: ["cain", "delilah"], count: 3 },
+    maskit: 1,
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -151,6 +189,7 @@ export const regions: Region[] = [
     length: 6,
     demand: { min: 1, max: 3 },
     klipot: { kinds: ["cain", "brothers", "calf"], count: 4 },
+    maskit: 1,
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -165,7 +204,8 @@ export const regions: Region[] = [
     letters: ["kuf", "lamed"],
     length: 6,
     demand: { min: 1, max: 3 },
-    klipot: { kinds: ["brothers", "esav", "delilah"], count: 5 },
+    klipot: { kinds: ["brothers", "esav", "delilah", "reem"], count: 5 },
+    maskit: 1,
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -180,7 +220,8 @@ export const regions: Region[] = [
     letters: ["vav", "tzadi"],
     length: 7,
     demand: { min: 1, max: 3 },
-    klipot: { kinds: ["cain", "amalek", "izevel"], count: 6 },
+    klipot: { kinds: ["cain", "amalek", "izevel", "saraf"], count: 6 },
+    maskit: 1,
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -195,7 +236,8 @@ export const regions: Region[] = [
     letters: ["zayin", "tet"],
     length: 7,
     demand: { min: 2, max: 3 },
-    klipot: { kinds: ["cain", "amalek", "korach"], count: 6 },
+    klipot: { kinds: ["cain", "amalek", "korach", "arbeh"], count: 5 },
+    maskit: 1,
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -210,7 +252,8 @@ export const regions: Region[] = [
     letters: ["mem", "nun"],
     length: 7,
     demand: { min: 2, max: 3 },
-    klipot: { kinds: ["esav", "korach", "izevel"], count: 7 },
+    klipot: { kinds: ["esav", "korach", "izevel", "tannin"], count: 7 },
+    maskit: 1,
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -225,7 +268,8 @@ export const regions: Region[] = [
     letters: ["ayin", "bet", "kaf"],
     length: 8,
     demand: { min: 2, max: 3, bias: "hard" },
-    klipot: { kinds: ["korach", "izevel", "atalya"], count: 6 },
+    klipot: { kinds: ["korach", "izevel", "atalya", "rahav"], count: 6 },
+    maskit: 2,
     hasHouse: false,
     hasShrine: false,
     teaching:
@@ -240,7 +284,8 @@ export const regions: Region[] = [
     letters: ["shin", "dalet"],
     length: 8,
     demand: { min: 2, max: 3, bias: "hard" },
-    klipot: { kinds: ["atalya", "izevel", "nachash"], count: 9 },
+    klipot: { kinds: ["atalya", "izevel", "nachash", "og"], count: 9 },
+    maskit: 2,
     hasHouse: false,
     hasShrine: false,
     teaching:
@@ -255,7 +300,8 @@ export const regions: Region[] = [
     letters: ["yod"],
     length: 9,
     demand: { min: 2, max: 3, bias: "hard" },
-    klipot: { kinds: ["calf", "atalya", "nachash", "delilah"], count: 10 },
+    klipot: { kinds: ["calf", "atalya", "nachash", "delilah", "nefilim"], count: 10 },
+    maskit: 2,
     hasHouse: false,
     hasShrine: false,
     teaching:
@@ -264,9 +310,6 @@ export const regions: Region[] = [
 ];
 
 export const TOTAL_REGIONS = regions.length;
-
-/** The Abyss stands between Chesed and Binah — after region 7, before 8. */
-export const ABYSS_AFTER_REGION = 7;
 
 export function regionAt(index: number): Region {
   const region = regions[index - 1];

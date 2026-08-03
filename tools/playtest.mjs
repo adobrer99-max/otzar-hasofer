@@ -305,6 +305,13 @@ function decide(p, look, memory, opts) {
   // eight times. So a gate is not a barrier to be pressed at — it is a place
   // to walk away from, and the walking away has to last long enough to get
   // clear of the pocket's mouth.
+  //
+  // **This is wrong over the Abyss, and the tool cannot get there anyway.**
+  // On the five crossings the gate *is* the way out, so walking away from it
+  // is walking away from the exit — but every script here goes in by the
+  // linear warp, which has no crossings in it. Whoever teaches this harness to
+  // walk a Tree path has to teach it to spell first; until then a crossing is
+  // unfinishable by the tool by construction, not by accident.
   if (gateAhead) memory.leaveGate = 60;
   else if (memory.leaveGate > 0) memory.leaveGate -= 1;
 

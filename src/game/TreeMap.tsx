@@ -3,14 +3,22 @@ import type { SefirahId } from "../types/letter";
 import { kindleCost, type AscentRecord } from "../storage/ascentRepo";
 import { regions } from "./regions";
 import {
+  crossesAbyss,
+  DAAT,
   otherEnd,
   pathsFrom,
   stateOfPath,
-  TREE_LINES,
+  TREE_CANOPY,
+  TREE_FRAME,
+  TREE_LIMBS,
   TREE_POINTS,
-  TREE_VIEW,
+  TREE_ROOTS,
   type TreePath,
 } from "./tree";
+import { keliOnPath } from "./world/build";
+import { describeEffect } from "./items";
+import { guardianOf } from "./guardians";
+import { HUSKS } from "./combat";
 import styles from "./GamePage.module.css";
 
 /**
@@ -41,17 +49,20 @@ import styles from "./GamePage.module.css";
  * the busiest junction of the diagram.
  */
 
-/** Room around the drawing, in the same units, so glyphs are not clipped. */
-const PAD = 0.55;
 /** Drawing units to user units. Everything below is in the latter. */
 const SCALE = 100;
 
+/** The frame comes from `tree.ts` now, because the roots decide how tall it is. */
 const vb = {
-  x: -PAD * SCALE,
-  y: -PAD * SCALE,
-  w: (TREE_VIEW.width + PAD * 2) * SCALE,
-  h: (TREE_VIEW.height + PAD * 2) * SCALE,
+  x: TREE_FRAME.left * SCALE,
+  y: TREE_FRAME.top * SCALE,
+  w: (TREE_FRAME.right - TREE_FRAME.left) * SCALE,
+  h: (TREE_FRAME.bottom - TREE_FRAME.top) * SCALE,
 };
+
+/** A limb outline, written in drawing units, scaled up for the viewBox. */
+const scaled = (d: string) =>
+  d.replace(/-?\d+\.?\d*/g, (n) => (Number(n) * SCALE).toFixed(1));
 
 const regionOf = Object.fromEntries(regions.map((r) => [r.sefirah, r])) as Record<
   SefirahId,
@@ -63,12 +74,15 @@ export function TreeMap({
   at,
   onWalk,
   onKindle,
+  onFace,
   onSeal,
 }: {
   ascent: AscentRecord;
   at: SefirahId;
   onWalk: (path: TreePath) => void;
   onKindle: () => void;
+  /** Go into the room where what holds this Sefirah is standing. */
+  onFace: () => void;
   /** Offered only once every Sefirah is kindled — see `GamePage`. */
   onSeal?: () => void;
 }) {
@@ -77,7 +91,16 @@ export function TreeMap({
   const here = regionOf[at];
   const cost = kindleCost(here.index);
   const alreadyLit = lit.includes(at);
-  const canKindle = !alreadyLit && ascent.or >= cost;
+  /**
+   * **A Sefirah is held before it is bought.** Light is the second gate; the
+   * first is whatever is standing on it, and until that is broken the button
+   * offers the fight rather than the price. Saying which creature it is, and
+   * which letter answers it, is the difference between a locked door and a
+   * door with a keyhole.
+   */
+  const guardian = guardianOf(at);
+  const freed = (ascent.guardiansBroken ?? []).includes(at);
+  const canKindle = freed && !alreadyLit && ascent.or >= cost;
   const out = pathsFrom(at);
   /**
    * **What is in hand, not what was walked over.**
@@ -113,8 +136,22 @@ export function TreeMap({
           role="img"
           aria-label={`The Tree of Life. You stand in ${here.name}. ${lit.length} of ten Sefirot kindled, ${gathered.length} of twenty-two letters gathered.`}
         >
-          {/* The paths first, so the Sefirot sit on top of them. */}
-          {TREE_LINES.map(({ path, from, to, labelX, labelY }) => {
+          {/* **Under the kingdom, and over the crown.** Neither is walkable and
+              neither is decoration: the roots say the drawing rests on
+              something, and the branches say it stops before the tree does.
+              Drawn first, and dimmest, so nothing ever competes with a way
+              out. */}
+          <g className={styles.treeGround} aria-hidden="true">
+            {TREE_ROOTS.map((d, i) => (
+              <path key={`root${i}`} d={scaled(d)} className={styles.treeRoot} />
+            ))}
+            {TREE_CANOPY.map((d, i) => (
+              <path key={`branch${i}`} d={scaled(d)} className={styles.treeBranch} />
+            ))}
+          </g>
+
+          {/* The limbs, so the Sefirot sit on top of them. */}
+          {TREE_LIMBS.map(({ path, d, leaves, labelX, labelY }) => {
             const state = stateOfPath(path, at, walked);
             const letter = lettersById[path.letter];
             const held = gathered.includes(path.letter);
@@ -128,13 +165,28 @@ export function TreeMap({
             const shows = held || state === "open";
             return (
               <g key={path.id} className={styles[`treePath_${state}`]}>
-                <line
-                  x1={from.x * SCALE}
-                  y1={from.y * SCALE}
-                  x2={to.x * SCALE}
-                  y2={to.y * SCALE}
-                  className={styles.treeLine}
-                />
+                {/* **The limb, not a rule.** Thick where it comes out of the
+                    ground and fine at the tip, and bowed, because the width is
+                    read off the height of its ends — so the Breath out of the
+                    kingdom is the trunk and the ways into the crown are twigs.
+                    Nothing about the game changed and the shape acquired a
+                    direction: down is where it grew from. */}
+                <path d={scaled(d)} className={styles.treeLimb} />
+                {/* A walked path puts out leaves. The route through the Tree is
+                    the one thing about a climb that is wholly the Scribe's, and
+                    this is the only place it can be seen whole. */}
+                {state === "walked" &&
+                  leaves.map((leaf, i) => (
+                    <ellipse
+                      key={i}
+                      cx={leaf.x * SCALE}
+                      cy={leaf.y * SCALE}
+                      rx={9}
+                      ry={4.5}
+                      className={styles.treeLeaf}
+                      transform={`rotate(${leaf.angle.toFixed(1)} ${(leaf.x * SCALE).toFixed(1)} ${(leaf.y * SCALE).toFixed(1)})`}
+                    />
+                  ))}
                 {/* A letter is shown once it has been gathered. Before that the
                     path is a way to somewhere and not yet a letter, which is
                     the whole of what walking one is for. */}
@@ -152,6 +204,19 @@ export function TreeMap({
               </g>
             );
           })}
+
+          {/* **Da'at**, and the reason it is drawn at all.
+              Not a Sefirah, not a station, and nothing kindles it — a broken
+              ring in the gulf on the middle pillar, where every printed Tree
+              puts it and where Keter–Tiferet passes straight through. Left out,
+              the five broken limbs above look like a rendering fault; drawn,
+              they are obviously the same gap. */}
+          <g className={styles.treeDaat} aria-hidden="true">
+            <circle cx={DAAT.x * SCALE} cy={DAAT.y * SCALE} r={20} className={styles.treeDaatRing} />
+            <text x={DAAT.x * SCALE} y={(DAAT.y + 0.34) * SCALE} className={styles.treeDaatName}>
+              Da&rsquo;at
+            </text>
+          </g>
 
           {TREE_POINTS.map((point) => {
             const region = regionOf[point.sefirah];
@@ -177,7 +242,27 @@ export function TreeMap({
                     name below says which node this is without ambiguity, and an
                     empty disc that fills when kindled says the one thing the
                     diagram needs to say at a glance. */}
+                {/* **A kindled Sefirah gives off light**, which on a diagram is
+                    a fill and on a tree is a glow. Drawn as a second, wider
+                    disc under the first rather than as a filter: a blur is one
+                    more thing to get wrong on a phone, and a soft ring is what
+                    a small light in a dark orchard actually looks like. */}
+                <circle
+                  cx={point.x * SCALE}
+                  cy={point.y * SCALE}
+                  r={44}
+                  className={styles.treeHalo}
+                />
                 <circle cx={point.x * SCALE} cy={point.y * SCALE} r={24} className={styles.treeDisc} />
+                {/* The catch of light on the shoulder of a round thing. It is
+                    two pixels of highlight and it is the whole difference
+                    between a circle and a fruit. */}
+                <circle
+                  cx={point.x * SCALE - 7.5}
+                  cy={point.y * SCALE - 7.5}
+                  r={7}
+                  className={styles.treeGleam}
+                />
                 <text
                   x={point.x * SCALE}
                   y={point.y * SCALE + 46}
@@ -202,11 +287,40 @@ export function TreeMap({
             const to = otherEnd(path, at);
             const letter = lettersById[path.letter];
             const held = gathered.includes(path.letter);
+            const keli = keliOnPath(path, ascent.seed, ascent.items ?? []);
+            const overTheAbyss = crossesAbyss(path);
             return (
               <li key={path.id}>
                 <button type="button" className={styles.wayButton} onClick={() => onWalk(path)}>
-                  <span className={styles.wayTo}>{regionOf[to].name}</span>
+                  <span className={styles.wayTo}>
+                  {regionOf[to].name}
+                  {/* **Said before it is taken.** Five of the twenty-two go over
+                      the gulf, and what is on the far side of it is a rung with
+                      no House to bargain at and no shrine to set a mark on — so
+                      a veiling there costs the whole crossing. That is a thing
+                      to know standing here, not to discover halfway across. */}
+                  {overTheAbyss && <span className={styles.wayAbyss}>over the Abyss</span>}
+                </span>
                   <span className={styles.wayPays}>
+                    {/* **What is on the pedestal, before you walk.** The letter
+                        a path pays is fixed by the arrangement; the vessel is
+                        drawn from the day and the path, so it is the one thing
+                        on this map that is different tomorrow — and the only
+                        reason to walk somewhere for a thing rather than for a
+                        letter. Naming it is what turns twenty-two ways out into
+                        a list of places worth going.
+
+                        And **what it does**, because a pedestal can be walked
+                        past now: some vessels cost something, so a name alone
+                        would be asking the Scribe to route across the Tree for
+                        a surprise. Derived from the numbers rather than written
+                        beside them — see `describeEffect`. */}
+                    {keli && (
+                      <span className={styles.wayKeli}>
+                        ✦ {keli.name}
+                        <span className={styles.wayKeliDoes}>{describeEffect(keli.effect)}</span>
+                      </span>
+                    )}{" "}
                     {held ? (
                       // Walked before: it pays nothing again, and saying so is
                       // the difference between a shortcut and a wasted climb.
@@ -233,7 +347,7 @@ export function TreeMap({
           </span>
           {alreadyLit ? (
             <span className={styles.overworldLit}>{here.name} is kindled.</span>
-          ) : (
+          ) : freed ? (
             <button
               type="button"
               className={styles.kindleButton}
@@ -242,6 +356,10 @@ export function TreeMap({
             >
               Kindle {here.name} — {cost} light
             </button>
+          ) : (
+            <button type="button" className={styles.kindleButton} onClick={onFace}>
+              Face {HUSKS[guardian.kind].name}
+            </button>
           )}
           {onSeal && (
             <button type="button" className={styles.sealButton} onClick={onSeal}>
@@ -249,6 +367,21 @@ export function TreeMap({
             </button>
           )}
         </div>
+
+        {!freed && (
+          <p className={styles.overworldHeld}>
+            {here.name} is held by {HUSKS[guardian.kind].name} — {guardian.because}
+            {guardian.opens && (
+              <>
+                {" "}
+                <span className={styles.overworldKey}>
+                  {lettersById[guardian.opens.letter]?.name ?? guardian.opens.letter} answers it:{" "}
+                  {guardian.opens.how}
+                </span>
+              </>
+            )}
+          </p>
+        )}
 
         <p className={styles.overworldTally}>
           {lit.length} of ten kindled · {gathered.length} of twenty-two letters ·{" "}

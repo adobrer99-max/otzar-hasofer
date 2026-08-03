@@ -56,6 +56,25 @@ import { regions } from "./regions";
  * the Eye opens the last vertical into the crown, and the Stone that Bet sets
  * lies on the horizontal that holds mercy and severity apart.
  *
+ * ## The Breath sits one step from the kingdom, and only one
+ *
+ * Three paths run out of Malchut and exactly one of them pays Aleph. That is
+ * the arrangement doing the most load-bearing work it does, in both directions
+ * at once, and it should not be softened from either end.
+ *
+ * It has to be **within one step**, because `chunks.ts` measures every reach in
+ * the library against holding the Breath and says so outright. Put it any
+ * further and the first screen of the game is uncrossable.
+ *
+ * It has to be **only one of the three**, because that is where the map first
+ * costs a player something. Leave by the Fence or the Mark and you walk the
+ * next few rungs without a second jump, on ground that is always crossable —
+ * `route.test.ts` proves that over six hundred and sixty sampled paths — and
+ * never generous. `traversal.test.ts` measures the price and holds it as a
+ * floor rather than a fault. Giving Aleph a second path out of the kingdom
+ * would close that gap and would also make the first decision of every climb
+ * decorative, which is a poor trade for a number in a test going up.
+ *
  * This module is **pure**. It knows the shape of the Tree and nothing about
  * tiles, worlds or rendering.
  */
@@ -206,6 +225,42 @@ export function pathBetween(a: SefirahId, b: SefirahId): TreePath | undefined {
   return TREE_PATHS.find((p) => p.ends.includes(a) && p.ends.includes(b));
 }
 
+// ---------------------------------------------------------------------------
+// the Abyss
+// ---------------------------------------------------------------------------
+
+/**
+ * **The gulf, and which ways go over it.**
+ *
+ * The Abyss is the single most important structural fact about this diagram: the
+ * three supernals stand on the far side of a gap the lower seven do not reach
+ * across, and `regions.ts` has always known it — Binah, Chochmah and Keter hold
+ * no House and no shrine "above the Abyss", and `story.ts` carries a paragraph
+ * about it that is one of the best things in the game.
+ *
+ * **None of it fired on the Tree.** `GamePage` raised the Abyss plate on
+ * `regionIndex === 7`, which is the *linear* road's index for the rung above
+ * Chesed, and on the Tree a path always sets `walking`, so `path-done` won every
+ * time. The plate had never once been shown to a Scribe on the road that
+ * replaced the one it was written for. It is raised on stepping onto a crossing
+ * now, before the ground is built, because what it says is about the far side.
+ *
+ * So: the gulf is between the fourth row and the fifth, and a path crosses it
+ * when one end is above and the other below. That is five of the twenty-two —
+ * and the fifth is Keter–Tiferet, the long middle pillar, which passes straight
+ * through the place Da'at is drawn on every printed Tree. Counted rather than
+ * listed, so the rule survives anyone moving a node.
+ */
+export const ABYSS_BELOW = 4;
+
+export function crossesAbyss(path: TreePath): boolean {
+  const [a, b] = path.ends.map((s) => nodeOf[s].row);
+  return Math.min(a, b) <= ABYSS_BELOW && Math.max(a, b) > ABYSS_BELOW;
+}
+
+/** The ways over, for the map and for anything that needs to count them. */
+export const ABYSS_PATHS: readonly TreePath[] = TREE_PATHS.filter(crossesAbyss);
+
 /** Where a path sets you down, given where you stepped onto it. */
 export function otherEnd(path: TreePath, from: SefirahId): SefirahId {
   return path.ends[0] === from ? path.ends[1] : path.ends[0];
@@ -348,6 +403,250 @@ export const TREE_LINES: readonly TreeLine[] = TREE_PATHS.map((path) => {
     labelY: (from.y + to.y) / 2 + (dx / span) * LABEL_OFFSET,
   };
 });
+
+// ---------------------------------------------------------------------------
+// the Tree, as a tree
+// ---------------------------------------------------------------------------
+
+/**
+ * **It is called a tree, and it was drawn as a wiring diagram.**
+ *
+ * Ten circles and twenty-two straight rules of identical weight: correct, and
+ * it looked like a schematic of something rather than the thing every reader of
+ * this already carries a picture of. The geometry below is the same geometry —
+ * `TREE_POINTS` and `TREE_LINES` are untouched, and the printed frame they
+ * encode is what everybody knows by sight — with three things added that a
+ * diagram does not have and a tree cannot do without.
+ *
+ * **Weight.** A limb is thick where it comes out of the ground and fine at the
+ * tip. So a path's width is read off the *height* of its ends: the Breath, the
+ * first step out of the kingdom, is the trunk; the paths into the crown are
+ * twigs. Nothing about the game changes and the shape suddenly has a direction
+ * — down is where it grows from.
+ *
+ * **Bend.** Nothing that grew is straight. Each limb bows a little, and the
+ * side it bows to comes off a hash of its own id, so the Tree is irregular in
+ * the way a tree is and identical every time it is drawn.
+ *
+ * **Root and crown.** Below Malchut the roots go into the ground, because the
+ * kingdom is the one rung the game says is *stood upon* before anything is
+ * climbed; above Keter the branches open into nothing, because the crown is
+ * where the drawing stops rather than where the tree does.
+ *
+ * (The Tree is also drawn upside down in the sources — *ilan hafuch*, rooted
+ * above and fruiting below — which is a better idea than this one and belongs
+ * to a game whose Scribe climbs downward. This one climbs up.)
+ */
+
+/** Half-width of a limb in the drawing's units, at the foot and at the crown. */
+const LIMB_FOOT = 0.115;
+const LIMB_CROWN = 0.03;
+/** How far a limb bows off true, at its middle. */
+const LIMB_BOW = 0.055;
+
+const limbHalf = (y: number) =>
+  LIMB_CROWN + (y / TREE_VIEW.height) * (LIMB_FOOT - LIMB_CROWN);
+
+/** Deterministic, so a limb bows the same way every time it is drawn. */
+function bowOf(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i += 1) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return h % 2 === 0 ? LIMB_BOW : -LIMB_BOW;
+}
+
+/**
+ * A tapered, bowed ribbon between two points, as an SVG path.
+ *
+ * Two quadratics — out along one side and back along the other — because SVG
+ * has no tapering stroke and a limb of even width is the thing being fixed.
+ */
+function ribbon(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  wFrom: number,
+  wTo: number,
+  bow: number,
+): string {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const span = Math.hypot(dx, dy) || 1;
+  const nx = -dy / span;
+  const ny = dx / span;
+  const midW = (wFrom + wTo) / 2;
+  const cx = (from.x + to.x) / 2 + nx * bow;
+  const cy = (from.y + to.y) / 2 + ny * bow;
+  const p = (n: number) =>
+    `${(from.x + nx * wFrom * n).toFixed(4)} ${(from.y + ny * wFrom * n).toFixed(4)}`;
+  const q = (n: number) =>
+    `${(cx + nx * midW * n).toFixed(4)} ${(cy + ny * midW * n).toFixed(4)}`;
+  const r = (n: number) =>
+    `${(to.x + nx * wTo * n).toFixed(4)} ${(to.y + ny * wTo * n).toFixed(4)}`;
+  return `M ${p(1)} Q ${q(1)} ${r(1)} L ${r(-1)} Q ${q(-1)} ${p(-1)} Z`;
+}
+
+/**
+ * Everything a limb needs drawn, the line's own fields included.
+ *
+ * It *extends* `TreeLine` rather than sitting beside it because the alternative
+ * was the component holding two lists and matching them up by id on every
+ * render — which is the same data twice and a lookup between them.
+ */
+export interface TreeLimb extends TreeLine {
+  /**
+   * The tapered outline, in drawing units.
+   *
+   * **Two of them on a crossing.** A limb over the Abyss is drawn as the wood
+   * either side of a gap, because that is what the Abyss *is* — and it needs no
+   * legend, no colour and no label to say so. Everything else is one shape.
+   */
+  d: string;
+  /** Whether this limb goes over the gulf, for anything that draws it apart. */
+  crosses: boolean;
+  /** A leaf sits along the limb, on alternating sides, and turns with it. */
+  leaves: { x: number; y: number; angle: number }[];
+}
+
+/** Where along a limb the leaves come out, and how far off it they sit. */
+const LEAF_ALONG = [0.28, 0.5, 0.72];
+const LEAF_OFF = 0.075;
+/**
+ * How much of a crossing is missing, as a fraction of its length.
+ *
+ * A third: less and it reads as a join in the drawing rather than a gap, and
+ * more leaves the shorter crossings — Chochmah–Chesed is one row tall — with
+ * two stubs and no limb.
+ */
+const ABYSS_GAP = 0.34;
+
+export const TREE_LIMBS: readonly TreeLimb[] = TREE_LINES.map((line) => {
+  const { path, from, to } = line;
+  const bow = bowOf(path.id);
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const span = Math.hypot(dx, dy) || 1;
+  const nx = -dy / span;
+  const ny = dx / span;
+  const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+  const crosses = crossesAbyss(path);
+  const at = (t: number) => ({ x: from.x + dx * t, y: from.y + dy * t });
+  const near = 0.5 - ABYSS_GAP / 2;
+  const far = 0.5 + ABYSS_GAP / 2;
+  return {
+    ...line,
+    crosses,
+    d: crosses
+      ? // The wood on either side of the gulf. Bowed the same way as one piece
+        // would have been, so the two halves plainly belong to one limb that is
+        // no longer whole.
+        `${ribbon(from, at(near), limbHalf(from.y), limbHalf(at(near).y), bow * near)} ${ribbon(
+          at(far),
+          to,
+          limbHalf(at(far).y),
+          limbHalf(to.y),
+          bow * (1 - far),
+        )}`
+      : ribbon(from, to, limbHalf(from.y), limbHalf(to.y), bow),
+    leaves: LEAF_ALONG
+      // Nothing grows in the gap. A leaf hanging in the Abyss on a limb that
+      // is not there would undo the one thing the break is saying.
+      .filter((t) => !crosses || t < near || t > far)
+      .map((t, i) => {
+        const side = i % 2 === 0 ? 1 : -1;
+        const w = limbHalf(from.y + (to.y - from.y) * t);
+        return {
+          x: from.x + dx * t + nx * (w + LEAF_OFF) * side,
+          y: from.y + dy * t + ny * (w + LEAF_OFF) * side,
+          angle: angle + side * 34,
+        };
+      }),
+  };
+});
+
+/**
+ * **Da'at**, in the gulf on the middle pillar.
+ *
+ * Deliberately *not* a `TreePoint` and deliberately not in `TREE_POINTS`: the
+ * ten are places a Scribe stands, and the eleventh is the one place on this
+ * diagram that is not a station. Nothing kindles it, no path ends at it, and it
+ * has no name written under it — it is drawn because leaving it out is the
+ * mistake every simplified Tree makes, and because Keter–Tiferet runs straight
+ * through where it sits.
+ */
+export const DAAT = {
+  x: TREE_VIEW.width / 2,
+  y: nodeOf.keter.row - (ABYSS_BELOW + 0.5),
+} as const;
+
+/**
+ * A root or a crown-branch: the same ribbon, growing out of a Sefirah.
+ *
+ * **Each one leaves the trunk at its own place**, which is the whole of what
+ * makes this a root system rather than a starburst. Drawn from the node's exact
+ * centre — the obvious way, and what was tried first — five tapering ribbons
+ * radiating from one point read as *rays of light*, which is precisely the
+ * wrong thing to put under a kingdom and, at the crown, an accident that looked
+ * intentional. Offsetting each start and bending each one hard settles it.
+ */
+function spray(
+  at: TreePoint,
+  reach: readonly {
+    /** Where along the trunk it leaves, relative to the node. */
+    ox: number;
+    oy: number;
+    dx: number;
+    dy: number;
+    w: number;
+    bow: number;
+  }[],
+): readonly string[] {
+  return reach.map(({ ox, oy, dx, dy, w, bow }) => {
+    const start = { x: at.x + ox, y: at.y + oy };
+    return ribbon(start, { x: start.x + dx, y: start.y + dy }, w, 0.012, bow);
+  });
+}
+
+/**
+ * The roots, under the kingdom.
+ *
+ * Six, uneven, none of them mirroring another, and each bent hard enough to be
+ * a root: they leave the trunk going down and finish going *out*, which is what
+ * a root does and what a ray does not. The kingdom is the one rung this game
+ * says is stood upon before anything is climbed, and this is that sentence
+ * drawn.
+ */
+export const TREE_ROOTS: readonly string[] = spray(pointOf.malchut, [
+  { ox: -0.02, oy: 0.16, dx: -1.15, dy: 0.72, w: 0.085, bow: 0.34 },
+  { ox: -0.05, oy: 0.3, dx: -0.58, dy: 1.12, w: 0.07, bow: 0.19 },
+  { ox: 0.01, oy: 0.1, dx: -0.14, dy: 1.36, w: 0.1, bow: -0.12 },
+  { ox: 0.04, oy: 0.34, dx: 0.46, dy: 1.02, w: 0.075, bow: -0.22 },
+  { ox: 0.06, oy: 0.18, dx: 1.02, dy: 0.86, w: 0.08, bow: -0.31 },
+  { ox: 0.03, oy: 0.62, dx: 0.62, dy: 0.5, w: 0.045, bow: 0.16 },
+]);
+
+/**
+ * And what opens above the crown, which the drawing does not follow.
+ *
+ * Fewer and shorter than the roots, and reaching sideways rather than straight
+ * up: branches into open air, not a halo. Keter has its own light and does not
+ * need help looking radiant.
+ */
+export const TREE_CANOPY: readonly string[] = spray(pointOf.keter, [
+  { ox: -0.01, oy: -0.14, dx: -0.78, dy: -0.34, w: 0.035, bow: -0.22 },
+  { ox: -0.02, oy: -0.2, dx: -0.26, dy: -0.62, w: 0.032, bow: 0.14 },
+  { ox: 0.02, oy: -0.16, dx: 0.34, dy: -0.58, w: 0.034, bow: -0.15 },
+  { ox: 0.03, oy: -0.1, dx: 0.84, dy: -0.28, w: 0.03, bow: 0.2 },
+]);
+
+/**
+ * The frame the whole drawing needs, roots and canopy included — asymmetric,
+ * because a tree is. Used as the viewBox, so nothing has to guess at padding.
+ */
+export const TREE_FRAME = {
+  left: -0.62,
+  top: -1.0,
+  right: TREE_VIEW.width + 0.62,
+  bottom: TREE_VIEW.height + 1.5,
+} as const;
 
 /**
  * How a path stands to the Scribe: the ones out of where they are, the ones

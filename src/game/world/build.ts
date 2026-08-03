@@ -1,4 +1,5 @@
 import { cardsByHouse, housesBySefirah } from "../../data/dorot";
+import type { SefirahId } from "../../types/letter";
 import type { Verb } from "../abilities";
 import { abilityByLetter } from "../abilities";
 import {
@@ -12,6 +13,11 @@ import {
 import { makeRng, randomInt, shuffle } from "../rng";
 import { chooseTarget, type WordGateTarget } from "../wordGate";
 import {
+  ABYSS_GATE_CHUNK,
+  ARENA_A,
+  ARENA_B,
+  ARENA_SEA_A,
+  ARENA_SEA_B,
   CHUNK_H,
   CHUNK_W,
   CHUNKS,
@@ -30,10 +36,11 @@ import {
 } from "./chunks";
 import { HUSK_CHARS, HUSKS, kindForRole, LAMPS } from "../combat";
 import { VEIL_COST } from "../encounter";
-import { keliFor } from "../items";
+import { drawKeli, keliFor, type Keli } from "../items";
+import { guardianOf } from "../guardians";
 import { MARKER_CHARS, Tile, TILE_CHARS, TILE_SIZE } from "./tiles";
 import { doorsOf, planFloor, roomAtPoint, ROOM_H, ROOM_W } from "./rooms";
-import { TREE_PATHS, type TreePath } from "../tree";
+import { crossesAbyss, TREE_PATHS, type TreePath } from "../tree";
 import type { Chunk, Edge, Entity, Husk, Player, World } from "./types";
 
 export const PLAYER_W = 16;
@@ -116,7 +123,10 @@ export function buildRegion(
 ): World {
   const region = regionAt(regionIndex);
   const rng = makeRng((seed ^ (regionIndex * 0x9e3779b9)) >>> 0);
-  const { laid, wordGateTarget } = layout(region, rng, teaching, rows, held);
+  // The old road keeps the old fixture: `buildRegion` has no path to seed a
+  // draw from and no notion of what is carried.
+  const keli = keliFor(region.index);
+  const { laid, wordGateTarget } = layout(region, rng, teaching, rows, held, keli);
 
   return paint(
     laid,
@@ -129,11 +139,13 @@ export function buildRegion(
     fragmentsBefore(region.index),
     wordGateTarget,
     region.klipot,
+    region.maskit,
     rows,
     // The taught porch stays empty of husks. Its whole job is to land four
     // coaching lines on flat ground, a step and a gap, and a klipah wandering
     // through the middle of that teaches something else entirely.
     (laid.length > 0 ? 1 : 0) + (teaching && region.index === 1 ? TEACH_CHUNKS.length : 0),
+    keli,
   );
 }
 
@@ -159,6 +171,7 @@ export function paintChunks(laid: readonly Chunk[], seed = 1): World {
     0,
     undefined,
     { kinds: [], count: 0 },
+    0,
     1,
     laid.length,
   );
@@ -199,6 +212,8 @@ function layout(
   teaching: boolean,
   rowsOverride: number | undefined,
   held: readonly string[],
+  /** The vessel this rung will hold, if any — see `paint`. */
+  keli?: Keli,
 ): { laid: Chunk[]; wordGateTarget: WordGateTarget | undefined } {
   const regionIndex = region.index;
   const verbs = verbsOf(held);
@@ -255,6 +270,22 @@ function layout(
   // not permitted to express an unsolvable one.
   const wordGateTarget = chooseTarget(held, rng);
 
+  /**
+   * **Over the gulf the gate stops being a niche and becomes the way.**
+   *
+   * A Word-Gate elsewhere is one room off the path, worth twelve light for the
+   * exact root and free to walk past — which made the one place the game asks a
+   * Scribe to actually *know* something the one place it costs nothing to
+   * shrug at. Once a climb, at the Abyss, it is the door.
+   *
+   * Conditioned on the target rather than on the crossing alone, and that is
+   * the whole soft-lock argument: no target means no root this Scribe can
+   * spell, and a barrier with no answer is not a question. Then the crossing
+   * simply ends the way every other rung does. The rung tests measure how often
+   * that fallback is reached — it should be never, and it is.
+   */
+  const overTheAbyss = Boolean(region.overTheAbyss && wordGateTarget);
+
   // The fixed screens are inserted at positions within the body. Their *order*
   // here is their order on the ground, because the chosen slots are sorted
   // ascending — and that ordering carries a rule: the genizah niches always
@@ -265,7 +296,12 @@ function layout(
   const fixed: Chunk[] = [
     ...Array.from({ length: region.fragments ?? 0 }, () => FRAGMENT_CHUNK),
     ...region.letters.map(() => LETTER_CHUNK),
-    ...(wordGateTarget ? [WORD_GATE_CHUNK] : []),
+    // ...but not on a crossing, where the gate has moved to the way out and a
+    // second one beside the road would let the Scribe answer the question
+    // somewhere it costs nothing and walk through the door it opened.
+    // `openWordGate` dissolves every barrier in the world, and that is right:
+    // there is one gate per rung, and over the gulf it is the last one.
+    ...(wordGateTarget && !overTheAbyss ? [WORD_GATE_CHUNK] : []),
     // One mark per region below the Abyss, and none above it. Low at the foot
     // of the Tree where it is walked into, on a shelf higher up where taking
     // it is a choice.
@@ -273,7 +309,7 @@ function layout(
     ...(region.hasHouse ? [HOUSE_CHUNK] : []),
     // One vessel per rung above the kingdom, on a shelf off the floor. It is
     // the only fixed screen that gives something the alphabet does not.
-    ...(keliFor(region.index) ? [VESSEL_CHUNK] : []),
+    ...(keli ? [VESSEL_CHUNK] : []),
   ];
 
   // Every fixed screen is entered and left on the ground, so they may only be
@@ -327,7 +363,7 @@ function layout(
     }
     if (i < body.length) content.push(body[i]);
   }
-  content.push(END_CHUNK);
+  content.push(overTheAbyss ? ABYSS_GATE_CHUNK : END_CHUNK);
 
   const rows = rowsOverride ?? rowsFor(regionIndex);
   // A room is two screens and a floor is a whole number of rows, so an odd
@@ -741,8 +777,16 @@ function paint(
   firstFragmentIndex: number,
   wordGateTarget: WordGateTarget | undefined,
   klipot: Region["klipot"],
+  /** How many figured stones to lay in this rung's floor — see `Tile.Maskit`. */
+  maskit: number,
   rowsOverride: number | undefined,
   quiet: number,
+  /**
+   * The vessel this rung's pedestal holds, if it holds one. Passed in rather
+   * than looked up, because on the Tree it is *drawn* — from the day, the path,
+   * and what the Scribe is already carrying — and `paint` has none of those.
+   */
+  keli?: Keli,
 ): World {
   // The screens are dealt into a floor before anything is written. One row is
   // a corridor and is exactly what every rung was before rooms existed, so
@@ -820,7 +864,6 @@ function paint(
               if (dorotCardId) entities.push({ id: `e${entityId++}`, kind: "house", x: px, y: py, ref: dorotCardId });
               break;
             case "K": {
-              const keli = keliFor(regionIndex);
               if (keli) entities.push({ id: `e${entityId++}`, kind: "vessel", x: px, y: py, ref: keli.id });
               break;
             }
@@ -875,6 +918,7 @@ function paint(
 
   scatterMotes(tiles, width, height, entities, rng, () => `e${entityId++}`, lightOfTheDay);
   scatterHusks(tiles, width, height, husks, rng, () => `h${entityId++}`, klipot, quiet);
+  layMaskit(tiles, width, height, rng, maskit, quiet);
 
   const player: Player = {
     x: spawn.x,
@@ -894,6 +938,7 @@ function paint(
     climbing: false,
     inWater: false,
     crouching: false,
+    crawling: false,
     veiled: 0,
     grappleCooldown: 0,
     lamps: LAMPS,
@@ -925,10 +970,12 @@ function paint(
     height,
     player,
     entities,
+    klipot: klipot.kinds,
     rooms: floor.rooms,
     roomIndex: Math.max(0, roomAtPoint(floor.rooms, spawn.x / TILE_SIZE, spawn.y / TILE_SIZE)),
     respawn: { ...spawn },
     revealed: false,
+    mending: [],
     placed: [],
     wordGate: wordGateTarget,
     or: 0,
@@ -1029,6 +1076,60 @@ export function setTile(world: World, tx: number, ty: number, tile: Tile): void 
  * - **What flies goes in the air; everything else needs a floor.** A klipah
  *   that walks and is set down over nothing spends the region falling.
  */
+/**
+ * **The figured stones** — אֶבֶן מַשְׂכִּית, the ground that is not ground.
+ *
+ * A tile is eligible only if breaking it opens **no hole in the world**: it has
+ * to be stone, with air above it so it is walked on, and with something solid
+ * directly beneath so that what is left when it gives way is a step down of one
+ * tile onto a floor. That rule is not caution, it is the whole reason this can
+ * exist at all — `route.test.ts` earns the no-soft-lock guarantee over six
+ * hundred sampled paths against the *painted* grid, and a trap that could take
+ * a tile out of a floor would be a trap that can invalidate the proof at
+ * runtime, which no test could ever catch.
+ *
+ * So the trap costs a Scribe a surprise, a moment of falling and whatever comes
+ * up out of it. It cannot cost them the rung.
+ */
+function layMaskit(
+  tiles: Uint8Array,
+  width: number,
+  height: number,
+  rng: () => number,
+  count: number,
+  quiet: number,
+): void {
+  if (count <= 0) return;
+  const margin = Math.max(1, quiet) * CHUNK_W + 4;
+  const eligible: number[] = [];
+  for (let y = 1; y < height - 1; y += 1) {
+    for (let x = margin; x < width - (CHUNK_W + 4); x += 1) {
+      const at = y * width + x;
+      if (tiles[at] !== Tile.Stone) continue;
+      if (tiles[at - width] !== Tile.Empty) continue;
+      if (tiles[at + width] !== Tile.Stone) continue;
+      // **Never on a seam.** Two screens meet at every `CHUNK_W`, and the edge
+      // contract is checked by comparing the tiles either side of the join —
+      // so a figured stone laid there reads as a profile mismatch. It would
+      // also be a trap at the exact moment a Scribe is crossing from one
+      // authored screen to the next, which is the least fair place to put one.
+      const inScreen = x % CHUNK_W;
+      if (inScreen < 2 || inScreen > CHUNK_W - 3) continue;
+      eligible.push(at);
+    }
+  }
+  // Never two in a row: a pair side by side is a two-tile hole, which is a
+  // pit rather than a stumble, and it is also the only way this could drop a
+  // Scribe somewhere a single step down does not reach back out of.
+  const taken = new Set<number>();
+  for (const at of shuffle(rng, eligible)) {
+    if (taken.size >= count) break;
+    if (taken.has(at - 1) || taken.has(at + 1)) continue;
+    taken.add(at);
+    tiles[at] = Tile.Maskit;
+  }
+}
+
 function scatterHusks(
   tiles: Uint8Array,
   width: number,
@@ -1240,6 +1341,7 @@ export function regionOfPath(
   const earned = regionAt(earnedRung(held));
   /** The Scribe has wandered higher up the Tree than their letters have carried them. */
   const behind = earned.index < upper.index;
+  const over = crossesAbyss(path);
   return {
     ...lower,
     // The rung's index is the *upper* end's, because that is what says how far
@@ -1275,10 +1377,25 @@ export function regionOfPath(
     // screens walked by a Scribe with three letters — not ground they could not
     // cross, ground there was too much of.
     length: Math.min(Math.round((lower.length + upper.length) / 2), earned.length),
+    // **And the traps, capped the same way.** A path takes its figured stones
+    // from its lower end, and a Scribe holding three letters walking out of a
+    // high Sefirah would otherwise get the crown's floor with the kingdom's
+    // body. Measured before the cap: the share of Tree paths a competent probe
+    // carried to the exit fell from eighty-eight to eighty-two and a half.
+    maskit: Math.min(lower.maskit, earned.maskit),
     // The fixed screens stay with the lower end, which is a place rather than a
     // crossing. Fragments likewise, so the scroll is still strewn low.
-    hasHouse: lower.hasHouse,
-    hasShrine: lower.hasShrine,
+    //
+    // **Except over the gulf, where nothing stays.** Chochmah–Chesed would
+    // otherwise inherit Chesed's House and Chesed's shrine, and carry the
+    // kingdom's furniture out over the one stretch of the Tree that has none:
+    // *nothing stands here, no House, no figure, no one to ask*, which is the
+    // first line of `ABYSS_WORD` and has never until now been true of the
+    // ground it is said over. No shrine is not a cosmetic loss — no shrine
+    // means no mark, so a veiling on a crossing costs the whole rung.
+    hasHouse: over ? false : lower.hasHouse,
+    hasShrine: over ? false : lower.hasShrine,
+    overTheAbyss: over,
     fragments: lower.fragments,
   };
 }
@@ -1328,12 +1445,23 @@ export function buildPath(
   spent = false,
   /** The Fifth Encounter's Living Creatures — see `regionOfPath`. */
   klipot = 1,
+  /**
+   * The vessels already carried, so a pedestal never holds one of them. It is
+   * what makes the pool narrow as a climb goes on — the last vessels a Scribe
+   * finds are the ones they went out of their way for.
+   */
+  items: readonly string[] = [],
 ): World {
   const region = regionOfPath(path, held, klipot);
   // Seeded by the path rather than the region, so walking Malchut→Hod is not
   // the same ground as walking Yesod→Hod on the same run.
   const rng = makeRng((seed ^ hashOf(path.id)) >>> 0);
-  const { laid, wordGateTarget } = layout(region, rng, teaching, undefined, held);
+  // **Drawn, not fixed.** The day and the path seed this together, so the
+  // vessel on a given path is the same for everyone until midnight and
+  // different on every path — which makes the map a list of places to go for
+  // things, and is the whole reason the pool exists.
+  const keli = drawKeli(rng, items);
+  const { laid, wordGateTarget } = layout(region, rng, teaching, undefined, held, keli);
 
   return paint(
     laid,
@@ -1346,9 +1474,102 @@ export function buildPath(
     fragmentsBefore(region.index),
     wordGateTarget,
     region.klipot,
+    region.maskit,
     undefined,
     laid.length > 0 ? 1 : 0,
+    keli,
   );
+}
+
+/**
+ * **A guardian's room.**
+ *
+ * Three rooms rather than one, and the middle one is the fight: a Scribe walks
+ * in, the way shuts behind them, and the way on opens when the shell breaks.
+ * The entrance room exists because `stepRooms` will not seal the room you began
+ * in — correctly, since a door that shuts on the tick you appear is a door you
+ * never saw open — and the third holds the way out.
+ *
+ * Painted through `paintChunks`, which lays an explicit run of screens with no
+ * klipot scattered into it, because a guardian is not scattered. It is placed,
+ * once, in the middle of the middle room.
+ *
+ * The terrain is named rather than drawn from: `ARENA_SEA` for Leviathan, which
+ * cannot be marked in the water and therefore needs water and a bank, and the
+ * plain room for everything else. Behemoth wants a run and walls to turn at,
+ * which a plain room is; the Ziz wants a roof, which every screen in the
+ * library has.
+ */
+export function buildArena(sefirah: SefirahId, seed = 1): World {
+  const guardian = guardianOf(sefirah);
+  const region = regions.find((r) => r.sefirah === sefirah) ?? regionAt(1);
+  const sea = guardian.kind === "livyatan";
+  const laid = sea
+    ? [START_CHUNK, ARENA_A, ARENA_SEA_A, ARENA_SEA_B, ARENA_B, END_CHUNK]
+    : [START_CHUNK, ARENA_A, ARENA_A, ARENA_B, ARENA_B, END_CHUNK];
+
+  const world = paintChunks(laid, seed);
+  world.arena = sefirah;
+  world.regionIndex = region.index;
+  world.sefirah = sefirah;
+  // **Nothing in here but the way out and the thing in the way.** `paint`
+  // strews light the way it does on a rung, and a floor of motes in a boss
+  // room is a floor of motes: it turns the fight into a shopping trip and it
+  // says, wrongly, that there is something here to look for. What light there
+  // is comes out of the shell.
+  world.entities = world.entities.filter((e) => e.kind === "exit");
+
+  const spec = HUSKS[guardian.kind];
+  const middle = world.rooms[1] ?? world.rooms[0];
+  const x = (middle.x + middle.w / 2) * TILE_SIZE;
+  // **Seven tiles above the floor**, for the Ziz, and the number is the fight:
+  // a mark angled up carries about six and a third tiles of height from the
+  // Staff's sixteen extra ticks take it past nine. Anything lower and it is
+  // reachable by a Scribe with no Staff; anything higher and it is reachable by
+  // nobody. Everything else stands on the floor of the room.
+  const y = guardian.kind === "ziz"
+    ? (middle.y + middle.h - 11) * TILE_SIZE
+    : (middle.y + middle.h - 2) * TILE_SIZE - spec.size.h;
+  world.husks = [
+    {
+      id: `guardian-${sefirah}`,
+      kind: guardian.kind,
+      x,
+      y,
+      w: spec.size.w,
+      h: spec.size.h,
+      vx: 0,
+      vy: 0,
+      facing: -1,
+      shells: spec.shells,
+      home: { x, y },
+      cooldown: 0,
+      charging: 0,
+      struck: 0,
+    },
+  ];
+  middle.husks = [world.husks[0].id];
+  return world;
+}
+
+/**
+ * The vessel lying on a path today, without building the rung to find out.
+ *
+ * `buildPath` draws it from the path's own generator before it lays a single
+ * screen, so recreating that generator and taking the same first draw gives the
+ * same answer for a fraction of the cost — which is what lets the overworld
+ * name it on every way out of a Sefirah without generating twenty-two worlds to
+ * paint one menu.
+ *
+ * It is coupled to `buildPath` by the order of two lines and nothing else, so
+ * `items.test.ts` holds the two against each other rather than trusting it.
+ */
+export function keliOnPath(
+  path: TreePath,
+  seed: number,
+  items: readonly string[] = [],
+): Keli | undefined {
+  return drawKeli(makeRng((seed ^ hashOf(path.id)) >>> 0), items);
 }
 
 /** The screens a path is laid from, for auditing the chain. */

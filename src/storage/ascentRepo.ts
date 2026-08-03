@@ -69,6 +69,17 @@ export interface AscentRecord {
    */
   sefirotLit?: SefirahId[];
   /**
+   * Which Sefirot this climb freed — whose guardian it broke.
+   *
+   * Recorded per climb and read *across* them: `guardiansFreed` folds every
+   * ascent's list into the set a Scribe has broken ever, which is what the
+   * boons are drawn from. A Sefirah cannot be kindled while it is held, so
+   * this is also the gate on the ending; and a guardian broken in one climb
+   * stays broken for that climb only, because a Tree with nothing left holding
+   * it would be a Tree that is finished.
+   */
+  guardiansBroken?: SefirahId[];
+  /**
    * Which of the Seven Encounters this climb is, from the count of ascents
    * sealed before it (see `src/game/encounter.ts`). Absent once the seven are
    * behind you — later climbs are beyond the unfolding order, exactly as
@@ -145,6 +156,21 @@ export interface FormedWord {
  */
 export function kindleCost(regionIndex: number): number {
   return 8 + regionIndex * 4;
+}
+
+/**
+ * Every Sefirah this Scribe has ever freed, across all their climbs.
+ *
+ * The shape `sealedCount` has, and for the same reason: what a climb *is* is a
+ * record, and what a Scribe has *become* is a fold over all of them. The boons
+ * are drawn from this — see `guardians.ts`, where the division between the two
+ * across-runs systems is stated: the Seven Encounters change the world, and
+ * the guardians change the Scribe.
+ */
+export function guardiansFreed(ascents: readonly AscentRecord[]): SefirahId[] {
+  const freed = new Set<SefirahId>();
+  for (const a of ascents) for (const s of a.guardiansBroken ?? []) freed.add(s);
+  return [...freed];
 }
 
 /**

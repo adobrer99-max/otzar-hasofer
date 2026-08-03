@@ -133,6 +133,62 @@ export const START_CHUNK: Chunk = chunk("start", { demand: 1 }, [
   F,
 ]);
 
+// ---------------------------------------------------------------------------
+// the arenas
+// ---------------------------------------------------------------------------
+//
+// **A room a Sefirah is held in.** Not laid by `layout` and not drawn from by
+// anything — `buildArena` names them directly, because an arena is not a screen
+// a rung might happen to get. There are only two shapes, and the reason there
+// are only two is the point of the guardians: the *terrain* is the answer to
+// exactly one of the three great ones.
+//
+// Leviathan needs water to be unreachable in. Behemoth needs a run long enough
+// to build up in and walls it will turn at rather than stop at — which a plain
+// room already is. And the Ziz needs a roof, which every screen in this library
+// has, because a chunk is eighteen rows tall and fourteen of them are air.
+
+/** Flat, walled, and empty. Two of these are one room. */
+export const ARENA_A: Chunk = chunk("arena", { demand: 1 }, [
+  E, E, E, E, E, E, E, E, E, E, E, E, E, E,
+  E,
+  E,
+  F,
+  F,
+]);
+export const ARENA_B: Chunk = chunk("arena", { demand: 1 }, [
+  E, E, E, E, E, E, E, E, E, E, E, E, E, E,
+  E,
+  E,
+  F,
+  F,
+]);
+
+/**
+ * The same room with the middle of it flooded, and dry land at both ends.
+ *
+ * The dry land is the whole fight: Leviathan cannot be marked in the water, so
+ * a pool with no bank is a room with nothing to do in it. Four columns of stone
+ * floor each side, and the water four rows deep, so a body drawn out of it
+ * lands somewhere a mark can reach.
+ */
+export const ARENA_SEA_A: Chunk = chunk("arena-sea", { demand: 1 }, [
+  E, E, E, E, E, E, E, E, E, E, E, E, E,
+  "............wwww",
+  "............wwww",
+  "............wwww",
+  "############wwww",
+  F,
+]);
+export const ARENA_SEA_B: Chunk = chunk("arena-sea", { demand: 1 }, [
+  E, E, E, E, E, E, E, E, E, E, E, E, E,
+  "wwww............",
+  "wwww............",
+  "wwww............",
+  "wwww############",
+  F,
+]);
+
 /** The screen every region closes on. */
 export const END_CHUNK: Chunk = chunk("end", { demand: 1 }, [
   E, E, E, E, E, E, E, E, E, E, E, E, E, E,
@@ -223,6 +279,49 @@ export const WORD_GATE_CHUNK: Chunk = chunk("word-gate", { demand: 1 }, [
   E,
   "...==...........",
   E,
+  F,
+  F,
+]);
+
+/**
+ * The way out of a crossing: **the gate is the door.**
+ *
+ * Laid in place of `END_CHUNK` on the five paths that cross the Abyss, and
+ * nowhere else. Everything `WORD_GATE_CHUNK` is careful not to be, this is: the
+ * exit stands inside a sealed chamber, the barrier is its only mouth, and the
+ * ground floor no longer runs past underneath. A Scribe who will not answer
+ * does not cross.
+ *
+ * That inverts the traversal guarantee on purpose and in one place. The
+ * guarantee is not weakened, it is moved: `layout` lays this screen only when
+ * `chooseTarget` has already found a root the Scribe can spell with the letters
+ * in hand, `opens()` accepts *any* true root rather than only the one asked
+ * for, and a wrong inscription may be tried again forever. The gate cannot be
+ * failed, only refused — which is what makes refusing it mean something.
+ *
+ * The chamber's roof runs to row 0 rather than stopping at a ceiling. Columns
+ * 11–15 are solid the whole way up because the way out is read as a doorway the
+ * full height of its storey (see `touchEntities`), so a Scribe who wall-climbed
+ * over a mere lintel would leave the rung by standing above the chamber without
+ * ever going into it. There is nothing over the Abyss to climb onto.
+ */
+export const ABYSS_GATE_CHUNK: Chunk = chunk("abyss-gate", { demand: 1 }, [
+  "...........#####",
+  "...........#####",
+  "...........#####",
+  "...........#####",
+  "...........#####",
+  "...........#####",
+  "...........#####",
+  "...........#####",
+  "...........#####",
+  "...........#####",
+  "...........#####",
+  "...........#####",
+  "...........W....",
+  "...........W....",
+  "...........W.E..",
+  ".........?.W....",
   F,
   F,
 ]);
@@ -1286,6 +1385,7 @@ export const chunksById: Record<string, Chunk> = Object.fromEntries(
     LETTER_CHUNK,
     FRAGMENT_CHUNK,
     WORD_GATE_CHUNK,
+    ABYSS_GATE_CHUNK,
     HOUSE_CHUNK,
   ].map((c) => [c.id, c]),
 );

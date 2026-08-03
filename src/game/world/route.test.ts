@@ -1,10 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { lettersOnEntering, TOTAL_REGIONS } from "../regions";
 import { makeRng, randomInt } from "../rng";
-import { lettersFrom, nodeOf, otherEnd, pathsFrom, TREE_PATHS, type TreePath } from "../tree";
+import {
+  crossesAbyss,
+  lettersFrom,
+  nodeOf,
+  otherEnd,
+  pathsFrom,
+  TREE_PATHS,
+  type TreePath,
+} from "../tree";
 import type { SefirahId } from "../../types/letter";
 import { buildPath, buildRegion, FLOOR_ROWS, verbsOf } from "./build";
 import { routeTo } from "./route";
+import { openWordGate } from "./step";
 import { TILE_SIZE } from "./tiles";
 
 /**
@@ -32,6 +41,28 @@ import { TILE_SIZE } from "./tiles";
  */
 
 const SEEDS = [3, 91, 555, 12345, 777, 40404, 1, 2, 8, 99, 1000, 65535];
+
+/**
+ * **The graph cannot spell, and must not have to.**
+ *
+ * Over the Abyss the way out stands behind a Word-Gate — see `abyss.test.ts`,
+ * which is where that barrier is proved to be a real one. A barrier that opens
+ * on knowledge is not ground, so it is dissolved before the terrain is asked
+ * about, exactly the way the probe is handed every verb it is entitled to.
+ *
+ * Say plainly what this means, because the next reader will otherwise take the
+ * guarantee to cover more than it does: **on the five crossings, what is
+ * guaranteed here is a way from the start to the gate and from the gate to the
+ * exit.** Whether the Scribe can answer is a different question, asked in
+ * `abyss.test.ts`, and answered there by the machine that only ever poses a
+ * root the Scribe already holds the letters for.
+ */
+function ground(path: TreePath, seed: number, held: readonly string[]) {
+  const world = buildPath(path, seed, held);
+  if (crossesAbyss(path)) openWordGate(world, "The gate opens.");
+  return world;
+}
+
 
 /**
  * These carry their own budgets, for the reason `traversal.test.ts` records:
@@ -160,7 +191,7 @@ describe("the way out, on the Tree", () => {
     for (let seed = 1; seed <= 30; seed += 1) {
       for (const { path, held } of wander(seed * 7919, 22)) {
         walked += 1;
-        const world = buildPath(path, seed, held);
+        const world = ground(path, seed, held);
         if (!routeTo(world, verbsOf(held)).usable) {
           lost.push(`${path.id} seed ${seed} holding [${held.join(",") || "nothing"}]`);
         }
@@ -182,7 +213,7 @@ describe("the way out, on the Tree", () => {
     for (const path of pathsFrom("malchut")) {
       for (const seed of SEEDS) {
         expect(
-          routeTo(buildPath(path, seed, []), []).usable,
+          routeTo(ground(path, seed, []), []).usable,
           `${path.id} seed ${seed}, holding nothing`,
         ).toBe(true);
       }
@@ -210,7 +241,7 @@ describe("the way out, on the Tree", () => {
       if (nodeOf[path.ends[0]].row < 3) continue;
       for (const seed of SEEDS.slice(0, 4)) {
         asked += 1;
-        if (!routeTo(buildPath(path, seed, everything), []).usable) barred += 1;
+        if (!routeTo(ground(path, seed, everything), []).usable) barred += 1;
       }
     }
     expect(asked, "no upper paths were asked about").toBeGreaterThan(20);

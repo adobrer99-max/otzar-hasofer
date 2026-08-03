@@ -556,6 +556,20 @@
   line-height: var(--line-height);
 }
 
+/* What a vessel does, in its own numbers, above the two buttons. */
+.vesselDoes {
+  margin: 0 0 var(--space-3);
+  color: var(--color-copper, var(--accent));
+  font-size: 0.95rem;
+}
+
+/* And the reassurance that "leave it" is not "never" — small, under the pair. */
+.vesselLeft {
+  margin: var(--space-2) 0 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
 .plateDerivation {
   margin: 0 0 var(--space-3);
   color: var(--text-muted);
@@ -867,10 +881,64 @@
   overflow: visible;
 }
 
-.treeLine {
-  stroke: var(--border-hairline);
-  stroke-width: 4;
-  stroke-linecap: round;
+/* ---- the Tree as a tree ------------------------------------------------- */
+
+/* **Wood, mixed rather than named.** The accent is the theme's and moves —
+   gold, blue, green, silver — so a hardcoded brown would fight four of the six
+   palettes. Copper is fixed at the root of the sheet and reads as timber under
+   all of them; muted text carries the value so the bark stays legible in the
+   light theme as well as the dark. */
+.overworldInner {
+  --bark: color-mix(in srgb, var(--color-copper) 34%, var(--text-muted));
+  --bark-lit: color-mix(in srgb, var(--accent) 62%, var(--color-copper));
+  --leaf: color-mix(in srgb, var(--accent) 55%, var(--text-muted));
+}
+
+/* A limb: filled, not stroked, because the width varies along it and no stroke
+   tapers. `tree.ts` writes the outline. */
+.treeLimb {
+  fill: var(--bark);
+  /* A hairline of its own colour around the outline: on a filled shape that
+     is the edge of the wood, and it is what stops a dozen limbs crossing each
+     other reading as one flat mass. */
+  stroke: color-mix(in srgb, var(--bark) 70%, transparent);
+  stroke-width: 1.5;
+  opacity: 0.5;
+}
+
+/* The earth the roots go into: wide, dim, and centred under the kingdom. Not a
+   line — a line is a horizon, and this is a bed. */
+.treeEarth {
+  fill: color-mix(in srgb, var(--bark) 22%, transparent);
+}
+
+/* Under the kingdom and over the crown. Quieter than anything walkable — they
+   are the reason the drawing has a top and a bottom, and nothing more. */
+.treeRoot,
+.treeBranch {
+  fill: var(--bark);
+  opacity: 0.34;
+}
+
+.treeBranch {
+  opacity: 0.24;
+}
+
+/* A leaf comes out where a path has been walked. */
+.treeLeaf {
+  fill: var(--leaf);
+  opacity: 0.85;
+}
+
+/* The light a kindled Sefirah gives off. Nothing until it is lit. */
+.treeHalo {
+  fill: transparent;
+}
+
+/* The catch of light on a round thing. Barely there on purpose: at any real
+   strength it stops reading as a highlight and starts reading as a hole. */
+.treeGleam {
+  fill: color-mix(in srgb, var(--text) 9%, transparent);
 }
 
 /* Every label on the diagram is written over lines that cross behind it, so
@@ -878,7 +946,6 @@
    that halo *under* the glyph rather than through it — without it, a stroke
    this wide eats the letter it is protecting. */
 .treeGlyph,
-.treeSefirahHeb,
 .treeSefirahName {
   paint-order: stroke;
   stroke: var(--bg-raised);
@@ -899,9 +966,12 @@
 }
 
 /* A path already walked keeps its letter and dims: it is spent, and it is also
-   still there, because crossing back is how the Tree is a map. */
-.treePath_walked .treeLine {
-  stroke: color-mix(in srgb, var(--accent) 45%, transparent);
+   still there, because crossing back is how the Tree is a map. And it is in
+   leaf, which is the one thing on this drawing that is purely a record. */
+.treePath_walked .treeLimb {
+  fill: var(--bark-lit);
+  stroke: color-mix(in srgb, var(--bark-lit) 80%, transparent);
+  opacity: 0.85;
 }
 
 .treePath_walked .treeGlyph {
@@ -909,26 +979,26 @@
 }
 
 /* Lit: a way out of where you are standing. */
-.treePath_open .treeLine {
-  stroke: var(--accent-bright, var(--accent));
-  stroke-width: 6;
+.treePath_open .treeLimb {
+  fill: var(--accent-bright, var(--accent));
+  opacity: 0.92;
 }
 
 .treePath_open .treeGlyph {
   fill: var(--accent-bright, var(--accent));
 }
 
+/* A Sefirah is a vessel hanging on the Tree, so it is drawn as a thing with a
+   near side: filled, rimmed in bark rather than in hairline, and carrying a
+   catch of light. Empty until it is kindled. */
 .treeDisc {
-  fill: var(--bg-sunken);
-  stroke: var(--border-hairline);
-  stroke-width: 3;
-}
-
-.treeSefirahHeb {
-  fill: var(--text-muted);
-  font-size: 28px;
-  text-anchor: middle;
-  dominant-baseline: central;
+  /* Warmed with a little bark rather than left at the panel's own sunken
+     colour: on the dark theme an unlit Sefirah at `--bg-sunken` is a hole
+     punched in the drawing, and the ten are supposed to read as things hanging
+     on a tree that have not been lit yet. */
+  fill: color-mix(in srgb, var(--bark) 16%, var(--bg-sunken));
+  stroke: var(--bark);
+  stroke-width: 3.5;
 }
 
 .treeSefirahName {
@@ -938,21 +1008,31 @@
 }
 
 .treeNodeLit .treeDisc {
-  fill: color-mix(in srgb, var(--accent) 30%, var(--bg-sunken));
-  stroke: var(--accent);
+  fill: color-mix(in srgb, var(--accent) 42%, var(--bg-sunken));
+  stroke: var(--accent-bright, var(--accent));
 }
 
-.treeNodeLit .treeSefirahHeb {
-  fill: var(--accent-bright, var(--accent));
+/* Kindled, and the light goes somewhere. */
+.treeNodeLit .treeHalo {
+  fill: color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
+.treeNodeLit .treeGleam {
+  fill: color-mix(in srgb, var(--accent-bright, var(--accent)) 60%, transparent);
+}
+
+/* Where the Scribe is standing. A ring rather than a fill, so it reads at a
+   glance against the nine that are not, and stays legible on a lit node. */
 .treeNodeHere .treeDisc {
   stroke: var(--accent-bright, var(--accent));
-  stroke-width: 6;
+  stroke-width: 7;
 }
 
-.treeNodeHere .treeSefirahName,
-.treeNodeHere .treeSefirahHeb {
+.treeNodeHere .treeHalo {
+  fill: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.treeNodeHere .treeSefirahName {
   fill: var(--text);
 }
 
@@ -1050,4 +1130,62 @@
 
 .overworldOwed {
   color: var(--accent);
+}
+
+/* The vessel lying at the far end of a way out — the one thing on the map that
+   is different tomorrow. */
+/* What holds the Sefirah you are standing on, and which letter answers it. */
+.overworldHeld {
+  margin: var(--space-2) 0 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: var(--line-height);
+}
+
+.overworldKey {
+  color: var(--color-copper, var(--accent));
+}
+
+.wayKeli {
+  color: var(--color-copper, var(--accent));
+}
+
+/* **Da'at.** A broken ring rather than a disc, because it is the one place on
+   this diagram that is not a station: nothing kindles it and no path ends at
+   it. Dashed, so it reads as a thing that is not quite there. */
+.treeDaatRing {
+  fill: none;
+  stroke: var(--bark);
+  stroke-width: 2;
+  stroke-dasharray: 7 9;
+  opacity: 0.7;
+}
+
+.treeDaatName {
+  fill: var(--text-muted);
+  font-size: 17px;
+  font-style: italic;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: var(--bg-raised);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+  opacity: 0.85;
+}
+
+/* A way that goes over the gulf, named in the list of ways out. */
+.wayAbyss {
+  margin-left: var(--space-2);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* What the vessel does, under its name — quieter than the name, because the
+   name is what a Scribe routes toward and this is what they weigh. */
+.wayKeliDoes {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-muted);
 }
