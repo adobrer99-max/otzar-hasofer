@@ -54,6 +54,21 @@ const KEYS = {
 //
 // Each is a thing that shipped without ever being looked at.
 
+/**
+ * Present yourself at the crown, from the Tree.
+ *
+ * The four ending scripts used to warp onto the linear road's tenth rung and
+ * get the sealed plate by walking off the end of it. That road is gone, so the
+ * ending is reached the way a player reaches it: standing on a Keter whose
+ * Tree is kindled, and choosing to seal. The warp lights the ten (`lit`) —
+ * three hundred light is not something a harness can be asked to earn.
+ */
+const sealFromTheMap = async (page) => {
+  const seal = page.getByRole("button", { name: /Seal the ascent/ }).first();
+  await seal.waitFor({ state: "visible", timeout: 10000 }).catch(() => {});
+  if (await seal.count()) await seal.click();
+};
+
 const SCRIPTS = [
   {
     name: "porch",
@@ -79,21 +94,24 @@ const SCRIPTS = [
   {
     name: "crown-whole",
     about: "Keter with the Mouth and all seven Houses — the whole case made.",
-    warp: { rung: 10, letters: "all", lamps: 3, witnesses: 7, seed: 5 },
+    warp: { rung: 10, letters: "all", lamps: 3, witnesses: 7, seed: 5, freed: 1, lit: 1 },
+    enter: sealFromTheMap,
     until: (p) => p.plate === "sealed",
     seconds: 180,
   },
   {
     name: "crown-mute",
     about: "Keter without Peh. He arrives unable to say anything.",
-    warp: { rung: 10, letters: "all-but-peh", lamps: 3, witnesses: 7, seed: 5 },
+    warp: { rung: 10, letters: "all-but-peh", lamps: 3, witnesses: 7, seed: 5, freed: 1, lit: 1 },
+    enter: sealFromTheMap,
     until: (p) => p.plate === "sealed",
     seconds: 180,
   },
   {
     name: "crown-alone",
     about: "Keter with the Mouth and no witnesses — pleading into a silence.",
-    warp: { rung: 10, letters: "all", lamps: 3, witnesses: 0, seed: 5 },
+    warp: { rung: 10, letters: "all", lamps: 3, witnesses: 0, seed: 5, freed: 1, lit: 1 },
+    enter: sealFromTheMap,
     until: (p) => p.plate === "sealed",
     seconds: 180,
   },
@@ -168,6 +186,41 @@ const SCRIPTS = [
     },
     until: (p) => p.plate === "path-done",
     seconds: 150,
+  },
+  {
+    name: "heard",
+    about: "The fourth plea — some Houses stood for you, and the plate names who did not.",
+    // Three witnesses of seven: `crown-whole` and `crown-alone` cover the ends
+    // and `crown-mute` covers the Mouthless case, so this is the only one of
+    // the four endings no script had ever raised.
+    warp: { rung: 10, letters: "all", lamps: 3, witnesses: 3, seed: 5, freed: 1, lit: 1 },
+    enter: sealFromTheMap,
+    until: (p) => p.plate === "sealed",
+    seconds: 90,
+  },
+  {
+    name: "gate",
+    about: "A Word-Gate answered — the root spelled, the chamber opened.",
+    // **The thing this file said could not be done.** Its own note read: "a
+    // Word-Gate is the worst of them, and no key opens it… a crossing is
+    // unfinishable by the tool by construction." The probe reads the root off
+    // the gate now (`dev/probe.ts`), so the driver can spell it — the clue is
+    // on the plate for a person, and this is the machine reading the plate.
+    //
+    // An *ordinary* rung's gate rather than an Abyss crossing, and that is a
+    // measurement rather than a dodge: a crossing has no shrine, so a veiling
+    // costs the whole rung, and this driver is veiled several times before it
+    // is a quarter of the way across — 4% on the run that settled it. The
+    // gate machinery is what this proves; that the Abyss crossings can be
+    // walked *and* answered end to end is proved in `world/climb.test.ts`,
+    // where the driver is the fighting probe and has no clock.
+    warp: { rung: 6, letters: "all", lamps: 3, seed: 5, freed: 1 },
+    until: (p) => p.plate === "word-result" || p.finished,
+    seconds: 180,
+    onPlate: async (page, plate) => {
+      if (plate !== "word-gate") return false;
+      return await answerGate(page);
+    },
   },
   {
     name: "abyss",
@@ -296,6 +349,68 @@ const scripts = (wanted.length ? SCRIPTS.filter((s) => wanted.includes(s.name)) 
 if (!scripts.length) {
   console.error(`No such script. Try --list.`);
   process.exit(1);
+}
+
+
+// --- entering by the Tree ----------------------------------------------------
+
+/**
+ * Step onto a way out of wherever the warp put the Scribe down.
+ *
+ * **Every warped script comes through here now.** A warp used to drop straight
+ * onto `buildRegion(rung)` — the pre-Tree linear road — so the harness spent
+ * its whole life verifying a road no player has walked since the overworld
+ * shipped, and the road survived only because this file kept it warm. The warp
+ * writes `at` and `pathsWalked` today, so a warped Scribe stands on the map
+ * exactly as a playing one does, and getting into a rung means choosing a way
+ * — which is the thing worth checking anyway.
+ *
+ * `prefer` names the far end when a script cares which ground it gets.
+ */
+async function walkOut(page, prefer) {
+  // **Wait for the map, do not guess at it.** A fixed pause raced the overlay:
+  // two of three migrated scripts spent their whole clock standing on the Tree
+  // because the ways had not rendered when the click went out.
+  const ways = page.locator("[class*=wayButton]");
+  await ways.first().waitFor({ state: "visible", timeout: 10000 }).catch(() => {});
+  if (prefer) {
+    const wanted = ways.filter({ hasText: prefer }).first();
+    if (await wanted.count()) {
+      await wanted.click();
+      await page.waitForTimeout(900);
+      return;
+    }
+  }
+  // Any way out. The map lists each as "<Name> — <letter>", and the first is
+  // as good as another when the script only wants ground under its feet.
+  if (await ways.count()) {
+    await ways.first().click();
+    await page.waitForTimeout(900);
+  }
+}
+
+/**
+ * Answer the Word-Gate that is asking, using the root the probe reads off it.
+ *
+ * The clue is on the plate for a person to read; this is the machine reading
+ * it. Until now `decide` treated a gate as a place to walk away from and this
+ * file said plainly that "a crossing is unfinishable by the tool by
+ * construction" — which meant the one screen the game asks a Scribe to *know*
+ * something on had never been crossed by the harness.
+ */
+async function answerGate(page) {
+  const gate = await page.evaluate((key) => globalThis[key]?.read?.()?.gate, PROBE_KEY);
+  if (!gate) return false;
+  for (const id of gate.letterIds) {
+    const key = page.locator(`[data-letter="${id}"]`).first();
+    if (!(await key.count())) return false;
+    await key.click();
+    await page.waitForTimeout(120);
+  }
+  const inscribe = page.getByRole("button", { name: /Inscribe|Write it/i }).first();
+  if (await inscribe.count()) await inscribe.click();
+  await page.waitForTimeout(600);
+  return true;
 }
 
 // --- the browser -------------------------------------------------------------
@@ -490,6 +605,9 @@ async function play(script, browser) {
     await page.waitForTimeout(600);
     await script.enter(page);
     await page.waitForTimeout(600);
+  } else if (Object.keys(script.warp ?? {}).length > 0) {
+    // A warp stands the Scribe on the Tree; a rung is chosen, never given.
+    await walkOut(page, script.toward);
   }
 
   // Wait for the probe to answer, which is also the check that the warp took.
@@ -551,6 +669,15 @@ async function play(script, browser) {
     const { p, look } = state;
     last = p;
 
+    // What a frame costs, sampled once a second. The renderer re-synthesizes
+    // every visible tile from vector primitives with no atlas and no layer
+    // cache, and the roadmap's perf work is gated on numbers rather than on
+    // suspicion — so every run leaves some behind.
+    if (i % 60 === 0) {
+      const frames = await page.evaluate((key) => globalThis[key]?.frames?.(), PROBE_KEY);
+      if (frames?.frames > 0) report.frames = frames;
+    }
+
     // Record what the game says, once per thing said.
     if (p.message && report.captions.at(-1)?.text !== p.message) {
       report.captions.push({ tick: p.tick, text: p.message });
@@ -591,8 +718,14 @@ async function play(script, browser) {
         break;
       }
       await release();
-      await page.keyboard.press("Enter");
-      await page.waitForTimeout(300);
+      // A script may want to *answer* a plate rather than dismiss it — the
+      // Word-Gate is the only screen in the game where pressing on regardless
+      // is the wrong move, and the crossing script is the one that knows it.
+      const answered = script.onPlate ? await script.onPlate(page, p.plate) : false;
+      if (!answered) {
+        await page.keyboard.press("Enter");
+        await page.waitForTimeout(300);
+      }
       continue;
     }
 

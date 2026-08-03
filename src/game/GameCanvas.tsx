@@ -5,6 +5,7 @@ import { controlById, KEY_MAP, PAD_LAYOUT, type ControlId } from "./controls";
 import { drawWorld, trackCamera, type Camera } from "./render/draw";
 import { readPalette, type Palette } from "./render/palette";
 import { DT, step, type StepContext } from "./world/step";
+import { recordFrame } from "./dev/probe";
 import { NO_INPUT, type Input, type World } from "./world/types";
 import styles from "./GameCanvas.module.css";
 
@@ -239,6 +240,11 @@ export function GameCanvas({
       }
 
       trackCamera(camera.current, world, view.current.w, view.current.h, farsight);
+      // Timed around the draw alone, because the draw is what P6 is about —
+      // the step is a fixed-timestep loop and its cost is already bounded by
+      // `MAX_FRAME_SECONDS`. DEV only, and `recordFrame` is a push onto a
+      // capped array, so the instrument costs about what it measures.
+      const drawnAt = import.meta.env.DEV ? performance.now() : 0;
       drawWorld(
         context,
         world,
@@ -248,6 +254,7 @@ export function GameCanvas({
         view.current.h,
         verbs as readonly string[],
       );
+      if (import.meta.env.DEV) recordFrame(performance.now() - drawnAt);
 
       if (now - sampleAt > 100) {
         sampleAt = now;

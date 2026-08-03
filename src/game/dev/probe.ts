@@ -61,6 +61,30 @@ export interface Probe {
   message?: string;
   finished: boolean;
   out: boolean;
+  /**
+   * **Where the Scribe stands when there is no world** — the overworld.
+   *
+   * The probe used to return `null` without a world, which was true of the
+   * game it was written for: a warp dropped straight onto a rung, so no-world
+   * meant nothing was happening. The warp is Tree-native now, so no-world is
+   * the ordinary state *between* rungs — standing on the map, choosing a way
+   * — and a harness that cannot see it cannot check the door every player
+   * comes through.
+   */
+  onMap: boolean;
+  at?: string;
+  sefirotLit: number;
+  guardiansBroken: number;
+  /**
+   * The root the rung's Word-Gate is asking for, while its plate is up.
+   *
+   * The one thing a driver could never do: `playtest.mjs` says outright that
+   * "a crossing is unfinishable by the tool by construction", because no key
+   * opens a gate and the answer lives in a 3,100-root lexicon. It is not a
+   * cheat to hand it over — the clue is on the plate for a person to read, and
+   * this is the machine reading it.
+   */
+  gate?: { letterIds: string[]; hebrew: string; clue: string };
 }
 
 export function probeOf(
@@ -68,7 +92,21 @@ export function probeOf(
   ascent: AscentRecord | null,
   plate?: string,
 ): Probe | null {
-  if (!world) return null;
+  // Standing on the Tree: no world, but a climb very much in progress.
+  if (!world) {
+    if (!ascent) return null;
+    return {
+      ...EMPTY_WORLD,
+      letters: [...ascent.lettersHeld],
+      housesMet: ascent.housesMet.length,
+      fragments: ascent.scrollFragments?.length ?? 0,
+      plate,
+      onMap: true,
+      at: ascent.at ?? "malchut",
+      sefirotLit: ascent.sefirotLit?.length ?? 0,
+      guardiansBroken: ascent.guardiansBroken?.length ?? 0,
+    };
+  }
   // A broken husk is filtered out of `world.husks` on the tick it breaks, so
   // the array is what is still standing and the region's total is that plus
   // the count. Reading `world.husks.length` as the total would report "0 of 5
@@ -111,8 +149,50 @@ export function probeOf(
     message: world.message?.text,
     finished: world.finished,
     out: Boolean(world.out),
+    onMap: false,
+    at: ascent?.at,
+    sefirotLit: ascent?.sefirotLit?.length ?? 0,
+    guardiansBroken: ascent?.guardiansBroken?.length ?? 0,
+    gate:
+      world.wordGate && !world.wordGateOpen
+        ? {
+            letterIds: [...world.wordGate.letterIds],
+            hebrew: world.wordGate.hebrew,
+            clue: world.wordGate.clue,
+          }
+        : undefined,
   };
 }
+
+/** What a Scribe standing on the map has instead of a world. */
+const EMPTY_WORLD = {
+  tick: 0,
+  regionIndex: 0,
+  sefirah: "",
+  x: 0,
+  y: 0,
+  vx: 0,
+  onGround: true,
+  veiled: false,
+  inWater: false,
+  onVine: false,
+  grappled: false,
+  lamps: 0,
+  iframes: 0,
+  or: 0,
+  orGathered: 0,
+  veilings: 0,
+  width: 0,
+  progress: 0,
+  husks: { total: 0, standing: 0, broken: 0, nearest: undefined },
+  marks: 0,
+  message: undefined,
+  finished: false,
+  out: false,
+} satisfies Omit<
+  Probe,
+  "letters" | "housesMet" | "fragments" | "plate" | "onMap" | "at" | "sefirotLit" | "guardiansBroken" | "gate"
+>;
 
 /**
  * The tiles immediately around the Scribe, as names.
@@ -166,6 +246,8 @@ const TILE_NAMES: Record<number, string> = {
 export interface ProbeApi {
   read: () => Probe | null;
   look: (radius?: number) => string[][];
+  /** What a frame costs — see `frameStats`. The P6 perf gate reads this. */
+  frames: () => ReturnType<typeof frameStats>;
 }
 
 /**
@@ -180,6 +262,37 @@ function onVine(world: World): boolean {
     if (world.tiles[y * world.width + x] === Tile.Vine) return true;
   }
   return false;
+}
+
+/**
+ * **What a frame costs**, kept as a rolling window on the module rather than in
+ * React — a measurement that caused a render would be measuring itself.
+ *
+ * The renderer re-synthesizes every visible tile from vector primitives sixty
+ * times a second: no sprite atlas, no layer cache, a gradient allocated per
+ * frame. That is the roadmap's most likely mid-phone cliff and its P6 work is
+ * explicitly gated on numbers rather than on suspicion — these are the
+ * numbers. Recorded only in DEV, and only when someone asks for them.
+ */
+const FRAMES: number[] = [];
+const FRAME_WINDOW = 600;
+
+export function recordFrame(ms: number): void {
+  FRAMES.push(ms);
+  if (FRAMES.length > FRAME_WINDOW) FRAMES.shift();
+}
+
+/** p50 and p95 over the last ten seconds of frames, in milliseconds. */
+export function frameStats(): { frames: number; p50: number; p95: number; worst: number } {
+  if (FRAMES.length === 0) return { frames: 0, p50: 0, p95: 0, worst: 0 };
+  const sorted = [...FRAMES].sort((a, b) => a - b);
+  const at = (q: number) => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * q))];
+  return {
+    frames: sorted.length,
+    p50: Math.round(at(0.5) * 100) / 100,
+    p95: Math.round(at(0.95) * 100) / 100,
+    worst: Math.round(sorted[sorted.length - 1] * 100) / 100,
+  };
 }
 
 /** Hang the readout on `window`, and return the way to take it down again. */

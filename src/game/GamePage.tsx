@@ -53,13 +53,13 @@ import {
   witnessesOf,
   WITNESSES_POSSIBLE,
 } from "./story";
-import { buildArena, buildPath, buildRegion, verbsOf } from "./world/build";
+import { buildArena, buildPath, verbsOf } from "./world/build";
 import { boonsFrom, guardianOf } from "./guardians";
 import { guardiansFreed } from "../storage/ascentRepo";
 import { TreeMap } from "./TreeMap";
 import { afterWalking, crossesAbyss, nodeOf, TREE_PATHS, type TreePath } from "./tree";
 import { readWarp, warpParams, warpRecord, type WarpOptions } from "./dev/warp";
-import { installProbe, neighbourhood, probeOf } from "./dev/probe";
+import { frameStats, installProbe, neighbourhood, probeOf } from "./dev/probe";
 import type { World } from "./world/types";
 import styles from "./GamePage.module.css";
 
@@ -96,7 +96,6 @@ type Plate =
   | { kind: "vessel"; keliId: string }
   | { kind: "word-gate" }
   | { kind: "word-result"; verdict: WordGateVerdict }
-  | { kind: "region-done" }
   | {
       kind: "path-done";
       path: TreePath;
@@ -173,7 +172,7 @@ export function GamePage() {
   const lightRef = useRef(1);
   const encounterRef = useRef<ReturnType<typeof encounterFor>>(undefined);
   /**
-   * `climbOn` is created once and reads its world through refs, so the
+   * `onFinish` is created once and reads its world through refs, so the
    * Encounter's rules have to reach it the same way — a captured `layEncounter`
    * would be the one from the first render, and the rules would be whatever
    * they were before the record loaded.
@@ -354,49 +353,18 @@ export function GamePage() {
   );
   layEncounterRef.current = layEncounter;
 
-  const enterRegion = useCallback(
-    (record: AscentRecord, over?: { porch?: boolean; lamps?: number }) => {
-      // The porch is laid only for a Scribe who has not finished the teaching,
-      // and `buildRegion` itself limits it to Malchut.
-      const next = buildRegion(
-        record.regionIndex,
-        record.seed,
-        record.lightOfTheDay ?? time.lightOfTheDay,
-        over?.porch ?? !allLearned(taughtRef.current),
-      );
-      // What the vessels come to, applied to the region as it is built: the
-      // lamps a Scribe is made of and what a mote is worth are properties of
-      // the world rather than of a tick, so this is where they belong.
-      // The boons are read off the record rather than the memo, because this is
-      // the one door a *warped* climb comes through and a warp hands over a
-      // record the page has not seen yet. Across climbs they are folded in by
-      // `boons`, which is what every other build site uses.
-      const carried = powersFrom(record.items ?? [], boonsFrom(record.guardiansBroken ?? []));
-      next.player.lamps += carried.lamps;
-      next.orPerMote = Math.max(1, Math.round(next.orPerMote * carried.light));
-      layEncounter(next, [regionAt(record.regionIndex).sefirah]);
-      if (over?.lamps !== undefined) next.player.lamps = over.lamps;
-      setWorld(next);
-      setVow(null);
-      setPlate(null);
-    },
-    [time.lightOfTheDay, layEncounter],
-  );
-
   /**
-   * The one door into a climb. Both the threshold and the dev warp come
-   * through here, so a warped run cannot exercise an entry path a player never
-   * takes — which was the whole point of building the warp rather than a
-   * separate harness mode.
+   * **The linear road is gone.** `enterRegion`, `beginAt` and `climbOn` built
+   * `buildRegion(regionIndex)` and walked rungs one to ten in order — the game
+   * as it was before the Tree, kept alive after it only because the dev warp
+   * and seven harness scripts came in that way. The warp is Tree-native now
+   * (`dev/warp.ts` writes `at` and `pathsWalked`), so the road had no callers
+   * left but its own plate, and a road nobody drives is a second game to keep
+   * correct: it is where the Abyss keystroke bug went to seal a climb without
+   * kindling, and where `fight.test.ts` was measuring ground that no longer
+   * ships. `buildRegion` itself stays — the rung tests build with it, and it
+   * is still the honest generator for one Sefirah's ground.
    */
-  const beginAt = useCallback(
-    (record: AscentRecord, over?: { porch?: boolean; lamps?: number }) => {
-      persist(record);
-      enterRegion(record, over);
-    },
-    [persist, enterRegion],
-  );
-
   const newRecord = useCallback(
     (variant = 0): AscentRecord => {
       const now = new Date().toISOString();
@@ -509,7 +477,14 @@ export function GamePage() {
       // be told which key walks. State only — never `writeTaught`, so using
       // the warp cannot quietly retire a real Scribe's teaching.
       if (!options.porch) setTaught(ALL_LESSON_KEYS);
-      beginAt(
+      // **On the Tree, not on a rung.** This handed the record to `beginAt`,
+      // which builds `buildRegion(regionIndex)` — the pre-Tree linear road. So
+      // every warped check verified a road no player has walked since the
+      // overworld shipped, and seven of nine harness scripts entered that way.
+      // The record carries `at` and `pathsWalked` now (see `warpRecord`), so
+      // persisting it puts the Scribe on the map with the ways out in front of
+      // them, which is the door a player actually comes through.
+      persist(
         warpRecord(options, {
           id: NEW_ID(),
           seed: time.seed,
@@ -518,10 +493,13 @@ export function GamePage() {
           ascendantLetterId: time.ascendantLetterId,
           encounterNumber: encounterFor(sealedBefore)?.number,
         }),
-        { porch: options.porch, lamps: options.lamps },
       );
+      setWorld(null);
+      setWalking(null);
+      setFacing(null);
+      setPlate(null);
     },
-    [beginAt, setParams, time, sealedBefore],
+    [persist, setParams, time, sealedBefore],
   );
 
   // `#/game?rung=10&letters=all-but-peh&lamps=1` — what the harness drives,
@@ -545,6 +523,7 @@ export function GamePage() {
     // Same shape of guard, same reason — see `warpTo`.
     return installProbe({
       read: () => (import.meta.env.DEV ? probeOf(worldRef.current, ascentRef.current, plateRef.current?.kind) : null),
+      frames: () => frameStats(),
       look: (radius) => (import.meta.env.DEV ? neighbourhood(worldRef.current, radius) : []),
     });
   }, []);
@@ -841,7 +820,10 @@ export function GamePage() {
             // now — see `chooseWay` — which is where it belonged: the plate
             // says what is on the far side, and saying it afterwards is a
             // travel guide handed out at the destination.
-            { kind: "region-done" },
+            // Reached only by a world with no `walking` — which, since the
+            // linear road came out, nothing builds. Kept as the honest
+            // fallback for a world the page did not start.
+            { kind: "path-done", path: TREE_PATHS[0] },
     );
   }, [ascent?.regionIndex, world, vow, audio, walking, facing, giveBoon]);
 
@@ -955,34 +937,6 @@ export function GamePage() {
     });
   }, []);
 
-  /**
-   * Leave the region. `kindle` spends this region's light to light its
-   * Sefirah for good instead of carrying the light on as score — the only
-   * thing light can be spent on, and a choice offered ten times a climb.
-   */
-  const climbOn = useCallback((kindle = false) => {
-    setAscent((prev) => {
-      if (!prev) return prev;
-      const sefirah = regionAt(prev.regionIndex).sefirah;
-      const canKindle = kindle && prev.or >= kindleCost(prev.regionIndex);
-      const next: AscentRecord = {
-        ...prev,
-        or: canKindle ? prev.or - kindleCost(prev.regionIndex) : prev.or,
-        sefirotLit: canKindle
-          ? [...new Set([...(prev.sefirotLit ?? []), sefirah])]
-          : prev.sefirotLit,
-        regionIndex: Math.min(TOTAL_REGIONS, prev.regionIndex + 1),
-        updatedAt: new Date().toISOString(),
-      };
-      void saveAscent(next).catch(() => undefined);
-      const world = buildRegion(next.regionIndex, next.seed, lightRef.current);
-      layEncounterRef.current(world, [regionAt(next.regionIndex).sefirah]);
-      setWorld(world);
-      setVow(null);
-      return next;
-    });
-    setPlate(null);
-  }, []);
 
   const sealAscent = useCallback(() => {
     setAscent((prev) => {
@@ -1086,12 +1040,11 @@ export function GamePage() {
       // press whichever is focused, and Escape is handled below as declining.
       //
       // **The Abyss plate asks a question too**, and it was not in this list —
-      // so Enter fell through the enumeration below to `climbOn`, the pre-Tree
-      // linear road, which at region ten raises the sealed plate: a climb
-      // sealed without kindling anything, and the Seven Encounters advanced by
-      // a keystroke. The same hole this handler's warning comment was written
-      // about, reopened by a plate added after the warning. Any future plate
-      // whose buttons are an answer belongs in this branch, not the one below.
+      // so Enter fell through the enumeration below to the linear road, which
+      // at region ten raised the sealed plate: a climb sealed without kindling
+      // anything, and the Seven Encounters advanced by a keystroke. The road is
+      // gone now, but the shape of the mistake is not: any plate whose buttons
+      // are an *answer* belongs in this branch, not the one below.
       if (plate.kind === "vessel" || plate.kind === "abyss") {
         if (e.key !== "Escape") return;
         e.preventDefault();
@@ -1109,12 +1062,11 @@ export function GamePage() {
       ) {
         setPlate(null);
       }
-      // **Whatever this does, it must not be `climbOn`.** Enter used to fall
-      // through to it, which carried a Scribe whose last lamp had just gone out
-      // up to the next rung with three fresh ones — caught by a harness run
-      // that went out in Netzach and finished in Tiferet. The warning outlives
-      // the thing it was written about: going out no longer ends the climb, but
-      // it must still not be a way of getting on with it for free.
+      // **This must never become a way of getting on for free.** Enter once
+      // fell through to the linear road, which carried a Scribe whose last lamp
+      // had just gone out up to the next rung with three fresh ones — caught by
+      // a harness run that went out in Netzach and finished in Tiferet. Both
+      // the road and that bug are gone; the rule they taught is not.
       else if (plate.kind === "sealed") sealAscent();
       else if (plate.kind === "out") fall();
       // The end of a path goes back to the map, never on to a next rung — there
@@ -1122,14 +1074,13 @@ export function GamePage() {
       else if (plate.kind === "path-done" || plate.kind === "guardian-done") backToTree();
       // The linear road's own plate, and **only** that one. This used to be the
       // `else`, which is how the Abyss bug happened: a catch-all that climbs is
-      // a trap for every plate added after it. A plate this handler does not
-      // know is now dismissed, which is the worst a new plate can suffer.
-      else if (plate.kind === "region-done") climbOn(false);
+      // a trap for every plate added after it. The road is gone; a plate this
+      // handler does not name is dismissed, which is the worst it can suffer.
       else setPlate(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [plate, climbOn, sealAscent, fall, backToTree]);
+  }, [plate, sealAscent, fall, backToTree]);
 
   // Persist letters as they are found, without writing on every frame.
   const lastSaved = useRef("");
@@ -1291,7 +1242,6 @@ export function GamePage() {
           world={world}
           verbs={verbs}
           encounter={encounter}
-          onNext={climbOn}
           onWalk={walkPath}
           onSeal={sealAscent}
           onFall={fall}
@@ -1854,7 +1804,6 @@ function PlateOverlay({
   world,
   verbs,
   encounter,
-  onNext,
   onWalk,
   onSeal,
   onFall,
@@ -1870,7 +1819,6 @@ function PlateOverlay({
   /** What this body can do — the House plate says when a boon would sleep. */
   verbs: readonly Verb[];
   encounter: ReturnType<typeof encounterFor>;
-  onNext: (kindle?: boolean) => void;
   /** Step onto the path the Abyss plate is standing at the near edge of. */
   onWalk: (path: TreePath) => void;
   onSeal: () => void;
@@ -1936,7 +1884,6 @@ function PlateOverlay({
         {plate.kind === "word-result" && (
           <WordResultPlate verdict={plate.verdict} onClose={onClose} />
         )}
-        {plate.kind === "region-done" && ascent && <RegionDonePlate ascent={ascent} onNext={onNext} />}
         {plate.kind === "abyss" && (
           <AbyssPlate path={plate.path} onCross={() => onWalk(plate.path)} onBack={onClose} />
         )}
@@ -2186,6 +2133,12 @@ function WordGatePlate({
               className={`${styles.paletteLetter} hebrew`}
               lang="he"
               title={lettersById[id]?.name}
+              // Named as well as drawn. A glyph is the whole label otherwise,
+              // which leaves a screen reader saying "פ" and the harness with
+              // nothing to click by — and the gate is the one screen the game
+              // asks a Scribe to *know* something on.
+              aria-label={lettersById[id]?.name}
+              data-letter={id}
               onClick={() => place(id)}
             >
               {lettersById[id]?.glyph}
@@ -2477,51 +2430,6 @@ function GuardianDonePlate({
         <Button variant="primary" onClick={onBack} autoFocus>
           Stand on the Tree
         </Button>
-      </div>
-    </>
-  );
-}
-
-function RegionDonePlate({
-  ascent,
-  onNext,
-}: {
-  ascent: AscentRecord;
-  onNext: (kindle?: boolean) => void;
-}) {
-  const done = regionAt(ascent.regionIndex);
-  const next = regionAt(Math.min(TOTAL_REGIONS, ascent.regionIndex + 1));
-  const cost = kindleCost(ascent.regionIndex);
-  const alreadyLit = (ascent.sefirotLit ?? []).includes(done.sefirah);
-  const canKindle = !alreadyLit && ascent.or >= cost;
-
-  return (
-    <>
-      <p className={styles.plateKicker}>{done.name} is behind you</p>
-      <h2 className={styles.plateTitle}>The way opens to {next.name}</h2>
-      <p className={`${styles.plateHeb} hebrew`} lang="he">
-        {next.hebrew}
-      </p>
-      <p className={styles.plateUse}>{next.teaching}</p>
-      <p className={styles.plateDerivation}>
-        {ascent.lettersHeld.length} of the twenty-two letters found · {ascent.or} light carried.
-      </p>
-
-      {/* The only thing light can be spent on: keep it as score, or burn it
-          here and leave this Sefirah lit on the Tree for good. */}
-      {!alreadyLit && (
-        <p className={styles.offerGrants}>
-          {canKindle
-            ? `Kindle ${done.name} for ${cost} light, and it stays lit on your Tree.`
-            : `Kindling ${done.name} asks ${cost} light; you carry ${ascent.or}.`}
-        </p>
-      )}
-
-      <div className={styles.plateActions}>
-        <Button variant="primary" onClick={() => onNext(false)} autoFocus>
-          Climb on, keeping the light
-        </Button>
-        {canKindle && <Button onClick={() => onNext(true)}>Kindle {done.name}</Button>}
       </div>
     </>
   );
