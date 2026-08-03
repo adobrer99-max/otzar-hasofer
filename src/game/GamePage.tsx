@@ -45,6 +45,7 @@ import { afterFalling, wakeAt } from "./fall";
 import { describeEffect, keliById, powersFrom, synergiesIn } from "./items";
 import {
   ABYSS_WORD,
+  endingOf,
   pleaFor,
   PROLOGUE,
   sefirahOfCard,
@@ -52,13 +53,13 @@ import {
   witnessesOf,
   WITNESSES_POSSIBLE,
 } from "./story";
-import { buildArena, buildPath, buildRegion, verbsOf } from "./world/build";
+import { buildArena, buildPath, verbsOf } from "./world/build";
 import { boonsFrom, guardianOf } from "./guardians";
 import { guardiansFreed } from "../storage/ascentRepo";
 import { TreeMap } from "./TreeMap";
 import { afterWalking, crossesAbyss, nodeOf, TREE_PATHS, type TreePath } from "./tree";
 import { readWarp, warpParams, warpRecord, type WarpOptions } from "./dev/warp";
-import { installProbe, neighbourhood, probeOf } from "./dev/probe";
+import { frameStats, installProbe, neighbourhood, probeOf } from "./dev/probe";
 import type { World } from "./world/types";
 import styles from "./GamePage.module.css";
 
@@ -95,7 +96,6 @@ type Plate =
   | { kind: "vessel"; keliId: string }
   | { kind: "word-gate" }
   | { kind: "word-result"; verdict: WordGateVerdict }
-  | { kind: "region-done" }
   | {
       kind: "path-done";
       path: TreePath;
@@ -172,7 +172,7 @@ export function GamePage() {
   const lightRef = useRef(1);
   const encounterRef = useRef<ReturnType<typeof encounterFor>>(undefined);
   /**
-   * `climbOn` is created once and reads its world through refs, so the
+   * `onFinish` is created once and reads its world through refs, so the
    * Encounter's rules have to reach it the same way — a captured `layEncounter`
    * would be the one from the first render, and the rules would be whatever
    * they were before the record loaded.
@@ -187,9 +187,31 @@ export function GamePage() {
   taughtRef.current = taught;
   const lettersCountRef = useRef(0);
 
-  // The day's Sacred Time, computed once — the seed, the ascendant letter of
-  // the month, and whatever the festival calendar grants.
-  const time = useMemo(() => readAscentTime(new Date()), []);
+  /**
+   * The day's Sacred Time — the seed, the ascendant letter of the month, and
+   * whatever the festival calendar grants.
+   *
+   * **State, not a once-memo.** It was `useMemo(…, [])`, so a session left
+   * open across nightfall kept yesterday's seed, light and grace: the start
+   * screen named the wrong day, and a Begin after midnight climbed yesterday's
+   * Tree. It refreshes when the tab is looked at and once a minute, and only
+   * re-renders when the Hebrew day has actually turned — the comparison is the
+   * seed label, because the day turns at nightfall and no civil-date check
+   * knows when that is.
+   */
+  const [time, setTime] = useState(() => readAscentTime(new Date()));
+  useEffect(() => {
+    const refresh = () => {
+      const now = readAscentTime(new Date());
+      setTime((prev) => (prev.seedLabel === now.seedLabel ? prev : now));
+    };
+    const every = window.setInterval(refresh, 60_000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(every);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, []);
   lightRef.current = time.lightOfTheDay;
 
   // Which of the Seven Encounters this climb is. Past the seventh there is
@@ -331,56 +353,36 @@ export function GamePage() {
   );
   layEncounterRef.current = layEncounter;
 
-  const enterRegion = useCallback(
-    (record: AscentRecord, over?: { porch?: boolean; lamps?: number }) => {
-      // The porch is laid only for a Scribe who has not finished the teaching,
-      // and `buildRegion` itself limits it to Malchut.
-      const next = buildRegion(
-        record.regionIndex,
-        record.seed,
-        time.lightOfTheDay,
-        over?.porch ?? !allLearned(taughtRef.current),
-      );
-      // What the vessels come to, applied to the region as it is built: the
-      // lamps a Scribe is made of and what a mote is worth are properties of
-      // the world rather than of a tick, so this is where they belong.
-      // The boons are read off the record rather than the memo, because this is
-      // the one door a *warped* climb comes through and a warp hands over a
-      // record the page has not seen yet. Across climbs they are folded in by
-      // `boons`, which is what every other build site uses.
-      const carried = powersFrom(record.items ?? [], boonsFrom(record.guardiansBroken ?? []));
-      next.player.lamps += carried.lamps;
-      next.orPerMote = Math.max(1, Math.round(next.orPerMote * carried.light));
-      layEncounter(next, [regionAt(record.regionIndex).sefirah]);
-      if (over?.lamps !== undefined) next.player.lamps = over.lamps;
-      setWorld(next);
-      setVow(null);
-      setPlate(null);
-    },
-    [time.lightOfTheDay, layEncounter],
-  );
-
   /**
-   * The one door into a climb. Both the threshold and the dev warp come
-   * through here, so a warped run cannot exercise an entry path a player never
-   * takes — which was the whole point of building the warp rather than a
-   * separate harness mode.
+   * **The linear road is gone.** `enterRegion`, `beginAt` and `climbOn` built
+   * `buildRegion(regionIndex)` and walked rungs one to ten in order — the game
+   * as it was before the Tree, kept alive after it only because the dev warp
+   * and seven harness scripts came in that way. The warp is Tree-native now
+   * (`dev/warp.ts` writes `at` and `pathsWalked`), so the road had no callers
+   * left but its own plate, and a road nobody drives is a second game to keep
+   * correct: it is where the Abyss keystroke bug went to seal a climb without
+   * kindling, and where `fight.test.ts` was measuring ground that no longer
+   * ships. `buildRegion` itself stays — the rung tests build with it, and it
+   * is still the honest generator for one Sefirah's ground.
    */
-  const beginAt = useCallback(
-    (record: AscentRecord, over?: { porch?: boolean; lamps?: number }) => {
-      persist(record);
-      enterRegion(record, over);
-    },
-    [persist, enterRegion],
-  );
-
   const newRecord = useCallback(
-    (): AscentRecord => {
+    (variant = 0): AscentRecord => {
       const now = new Date().toISOString();
+      // The variant re-reads the calendar rather than reusing the memoed
+      // `time`, because the seed is `hash(label#variant)` and only this call
+      // knows the variant. Everything else about the day is variant-blind.
+      const day = variant === 0 ? time : readAscentTime(new Date(), "galut", variant);
       return {
         id: NEW_ID(),
-        seed: time.seed,
-        seedLabel: time.seedLabel,
+        seed: day.seed,
+        seedLabel: day.seedLabel,
+        variant,
+        // The day's light, frozen with the seed: a climb begun on Hanukkah is
+        // a Hanukkah climb on every rung, however long it takes. The grace of
+        // the day is deliberately *not* frozen — `sacredAscent` promises it is
+        // "safe to give and safe to take away at midnight", and it is the one
+        // piece of the day that is lent rather than kept.
+        lightOfTheDay: day.lightOfTheDay,
         createdAt: now,
         updatedAt: now,
         regionIndex: 1,
@@ -388,7 +390,6 @@ export function GamePage() {
         or: 0,
         regionsCleared: [],
         housesMet: [],
-        sacredNotes: time.notes,
         ascendantLetterId: time.ascendantLetterId,
         encounterNumber: encounterFor(sealedBefore)?.number,
       };
@@ -405,26 +406,30 @@ export function GamePage() {
    * is the game — so it is the first thing they are shown.
    */
   const beginAscent = useCallback(() => {
-    const record = newRecord();
-    persist(record);
-    setWorld(null);
-    setWalking(null);
-    setPlate(null);
-  }, [newRecord, persist]);
-
-  /**
-   * Resume. A record that has ever walked a path belongs to the Tree and comes
-   * back to the map; one written before the overworld existed goes back to the
-   * rung it left, which is where its Scribe actually was.
-   */
-  const resumeAscent = useCallback(() => {
-    if (!ascent) return;
-    if (ascent.at) {
+    void (async () => {
+      // **The first climb of a day is the day's own — every one after it is a
+      // fresh shuffle.** Variant 0 is the shared daily Tree; counting today's
+      // records gives each further Begin a different seed, which closes the
+      // abandon-and-restart exploit (a re-begun climb used to get the same map
+      // with the light restored) and makes replaying a day worth doing.
+      const all = await listAscents().catch(() => []);
+      // The climb being walked away from is put down, explicitly. Left merely
+      // unsealed it only *seemed* gone: `currentAscent` takes the freshest
+      // unsealed record, so the moment the new climb sealed, the abandoned one
+      // — mid-Tree, on a stale seed — became current again.
+      const open = ascent && !ascent.sealedAt && !ascent.abandonedAt ? ascent : undefined;
+      if (open) {
+        const closed = { ...open, abandonedAt: new Date().toISOString() };
+        await saveAscent(closed).catch(() => undefined);
+      }
+      const todays = all.filter((a) => a.seedLabel === time.seedLabel);
+      const record = newRecord(todays.length);
+      persist(record);
       setWorld(null);
       setWalking(null);
       setPlate(null);
-    } else enterRegion(ascent);
-  }, [ascent, enterRegion]);
+    })();
+  }, [ascent, newRecord, persist, time.seedLabel]);
 
   // --- the dev warp ---------------------------------------------------------
   //
@@ -472,7 +477,14 @@ export function GamePage() {
       // be told which key walks. State only — never `writeTaught`, so using
       // the warp cannot quietly retire a real Scribe's teaching.
       if (!options.porch) setTaught(ALL_LESSON_KEYS);
-      beginAt(
+      // **On the Tree, not on a rung.** This handed the record to `beginAt`,
+      // which builds `buildRegion(regionIndex)` — the pre-Tree linear road. So
+      // every warped check verified a road no player has walked since the
+      // overworld shipped, and seven of nine harness scripts entered that way.
+      // The record carries `at` and `pathsWalked` now (see `warpRecord`), so
+      // persisting it puts the Scribe on the map with the ways out in front of
+      // them, which is the door a player actually comes through.
+      persist(
         warpRecord(options, {
           id: NEW_ID(),
           seed: time.seed,
@@ -481,10 +493,13 @@ export function GamePage() {
           ascendantLetterId: time.ascendantLetterId,
           encounterNumber: encounterFor(sealedBefore)?.number,
         }),
-        { porch: options.porch, lamps: options.lamps },
       );
+      setWorld(null);
+      setWalking(null);
+      setFacing(null);
+      setPlate(null);
     },
-    [beginAt, setParams, time, sealedBefore],
+    [persist, setParams, time, sealedBefore],
   );
 
   // `#/game?rung=10&letters=all-but-peh&lamps=1` — what the harness drives,
@@ -508,6 +523,7 @@ export function GamePage() {
     // Same shape of guard, same reason — see `warpTo`.
     return installProbe({
       read: () => (import.meta.env.DEV ? probeOf(worldRef.current, ascentRef.current, plateRef.current?.kind) : null),
+      frames: () => frameStats(),
       look: (radius) => (import.meta.env.DEV ? neighbourhood(worldRef.current, radius) : []),
     });
   }, []);
@@ -804,7 +820,10 @@ export function GamePage() {
             // now — see `chooseWay` — which is where it belonged: the plate
             // says what is on the far side, and saying it afterwards is a
             // travel guide handed out at the destination.
-            { kind: "region-done" },
+            // Reached only by a world with no `walking` — which, since the
+            // linear road came out, nothing builds. Kept as the honest
+            // fallback for a world the page did not start.
+            { kind: "path-done", path: TREE_PATHS[0] },
     );
   }, [ascent?.regionIndex, world, vow, audio, walking, facing, giveBoon]);
 
@@ -824,7 +843,7 @@ export function GamePage() {
         path,
         ascent.seed,
         ascent.lettersHeld,
-        time.lightOfTheDay,
+        ascent.lightOfTheDay ?? time.lightOfTheDay,
         teaching,
         (ascent.pathsWalked ?? []).includes(path.id),
         rulesFor(encounter)?.klipot ?? 1,
@@ -918,39 +937,18 @@ export function GamePage() {
     });
   }, []);
 
-  /**
-   * Leave the region. `kindle` spends this region's light to light its
-   * Sefirah for good instead of carrying the light on as score — the only
-   * thing light can be spent on, and a choice offered ten times a climb.
-   */
-  const climbOn = useCallback((kindle = false) => {
-    setAscent((prev) => {
-      if (!prev) return prev;
-      const sefirah = regionAt(prev.regionIndex).sefirah;
-      const canKindle = kindle && prev.or >= kindleCost(prev.regionIndex);
-      const next: AscentRecord = {
-        ...prev,
-        or: canKindle ? prev.or - kindleCost(prev.regionIndex) : prev.or,
-        sefirotLit: canKindle
-          ? [...new Set([...(prev.sefirotLit ?? []), sefirah])]
-          : prev.sefirotLit,
-        regionIndex: Math.min(TOTAL_REGIONS, prev.regionIndex + 1),
-        updatedAt: new Date().toISOString(),
-      };
-      void saveAscent(next).catch(() => undefined);
-      const world = buildRegion(next.regionIndex, next.seed, lightRef.current);
-      layEncounterRef.current(world, [regionAt(next.regionIndex).sefirah]);
-      setWorld(world);
-      setVow(null);
-      return next;
-    });
-    setPlate(null);
-  }, []);
 
   const sealAscent = useCallback(() => {
     setAscent((prev) => {
       if (!prev) return prev;
-      const next: AscentRecord = { ...prev, sealedAt: new Date().toISOString() };
+      // The ending is frozen here, at the moment it is true — see
+      // `AscentRecord.endingPlea`. The plate computed it to *show* it; this is
+      // the record keeping what was shown.
+      const next: AscentRecord = {
+        ...prev,
+        ...endingOf(prev.lettersHeld, prev.housesMet),
+        sealedAt: new Date().toISOString(),
+      };
       void saveAscent(next).catch(() => undefined);
       return next;
     });
@@ -1040,7 +1038,14 @@ export function GamePage() {
       // plate — which now means "leave it" — while the Scribe was looking at a
       // focused "Take it up". Let the buttons have the keys: Enter and Space
       // press whichever is focused, and Escape is handled below as declining.
-      if (plate.kind === "vessel") {
+      //
+      // **The Abyss plate asks a question too**, and it was not in this list —
+      // so Enter fell through the enumeration below to the linear road, which
+      // at region ten raised the sealed plate: a climb sealed without kindling
+      // anything, and the Seven Encounters advanced by a keystroke. The road is
+      // gone now, but the shape of the mistake is not: any plate whose buttons
+      // are an *answer* belongs in this branch, not the one below.
+      if (plate.kind === "vessel" || plate.kind === "abyss") {
         if (e.key !== "Escape") return;
         e.preventDefault();
         setPlate(null);
@@ -1057,22 +1062,25 @@ export function GamePage() {
       ) {
         setPlate(null);
       }
-      // **Whatever this does, it must not be `climbOn`.** Enter used to fall
-      // through to it, which carried a Scribe whose last lamp had just gone out
-      // up to the next rung with three fresh ones — caught by a harness run
-      // that went out in Netzach and finished in Tiferet. The warning outlives
-      // the thing it was written about: going out no longer ends the climb, but
-      // it must still not be a way of getting on with it for free.
+      // **This must never become a way of getting on for free.** Enter once
+      // fell through to the linear road, which carried a Scribe whose last lamp
+      // had just gone out up to the next rung with three fresh ones — caught by
+      // a harness run that went out in Netzach and finished in Tiferet. Both
+      // the road and that bug are gone; the rule they taught is not.
       else if (plate.kind === "sealed") sealAscent();
       else if (plate.kind === "out") fall();
       // The end of a path goes back to the map, never on to a next rung — there
       // is no next rung on the Tree until the Scribe chooses one.
       else if (plate.kind === "path-done" || plate.kind === "guardian-done") backToTree();
-      else climbOn(false);
+      // The linear road's own plate, and **only** that one. This used to be the
+      // `else`, which is how the Abyss bug happened: a catch-all that climbs is
+      // a trap for every plate added after it. The road is gone; a plate this
+      // handler does not name is dismissed, which is the worst it can suffer.
+      else setPlate(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [plate, climbOn, sealAscent, fall, backToTree]);
+  }, [plate, sealAscent, fall, backToTree]);
 
   // Persist letters as they are found, without writing on every frame.
   const lastSaved = useRef("");
@@ -1114,7 +1122,6 @@ export function GamePage() {
           encounter={encounter}
           taught={allLearned(taught)}
           onBegin={beginAscent}
-          onResume={resumeAscent}
         />
       )}
 
@@ -1235,7 +1242,6 @@ export function GamePage() {
           world={world}
           verbs={verbs}
           encounter={encounter}
-          onNext={climbOn}
           onWalk={walkPath}
           onSeal={sealAscent}
           onFall={fall}
@@ -1273,7 +1279,20 @@ export function GamePage() {
       )}
 
       {paused && (
-        <PauseMenu ascent={ascent} time={time} audio={audio} onClose={() => setPaused(false)}>
+        <PauseMenu
+          ascent={ascent}
+          time={time}
+          audio={audio}
+          onClose={() => setPaused(false)}
+          onBeginAgain={
+            ascent && !ascent.sealedAt
+              ? () => {
+                  setPaused(false);
+                  beginAscent();
+                }
+              : undefined
+          }
+        >
           {/* The warp is a tool, and tools belong in the drawer with the rest
               of them rather than under the title of the game. */}
           {import.meta.env.DEV && !world && DevPanel && <DevPanel onWarp={warpTo} />}
@@ -1357,7 +1376,6 @@ function Threshold({
   encounter,
   taught,
   onBegin,
-  onResume,
 }: {
   ascent: AscentRecord | null;
   time: ReturnType<typeof readAscentTime>;
@@ -1365,7 +1383,6 @@ function Threshold({
   /** Whether this Scribe has been through the opening lessons before. */
   taught: boolean;
   onBegin: () => void;
-  onResume: () => void;
 }) {
   const sealed = ascent?.sealedAt;
   return (
@@ -1385,18 +1402,13 @@ function Threshold({
         </p>
 
         <div className={styles.startActions}>
-          {ascent && !sealed ? (
-            <>
-              <Button variant="primary" onClick={onResume} autoFocus>
-                Resume — {regionOfSefirah(standingAt(ascent)).name}
-              </Button>
-              <Button onClick={onBegin}>Begin again from Malchut</Button>
-            </>
-          ) : (
-            <Button variant="primary" onClick={onBegin} autoFocus>
-              {taught ? "Begin the ascent" : "Begin — the way will be shown"}
-            </Button>
-          )}
+          {/* No Resume here, and none is needed: this screen renders only when
+              there is no open climb (an open one lands on the Tree directly),
+              so the branch that offered to resume was unreachable — deleted
+              rather than kept as a promise the render condition breaks. */}
+          <Button variant="primary" onClick={onBegin} autoFocus>
+            {taught ? "Begin the ascent" : "Begin — the way will be shown"}
+          </Button>
         </div>
 
         {sealed && ascent && (
@@ -1427,12 +1439,22 @@ function PauseMenu({
   time,
   audio,
   onClose,
+  onBeginAgain,
   children,
 }: {
   ascent: AscentRecord | null;
   time: ReturnType<typeof readAscentTime>;
   audio: ReturnType<typeof useGameAudio>;
   onClose: () => void;
+  /**
+   * Put this climb down and begin a fresh one — offered only while a climb is
+   * open. **This is the only door to abandoning**: the start screen never
+   * renders while a climb is open, so without this a stuck climb could never
+   * be walked away from. The abandoned record is closed (`abandonedAt`), not
+   * shadowed, and the fresh climb draws the day's next variant — a different
+   * Tree, so beginning again is a fresh start rather than a reset.
+   */
+  onBeginAgain?: () => void;
   children?: React.ReactNode;
 }) {
   return (
@@ -1474,6 +1496,12 @@ function PauseMenu({
             <input type="checkbox" checked={audio.on} onChange={() => audio.toggle()} /> Sound
           </label>
         </p>
+
+        {onBeginAgain && (
+          <p className={styles.pauseToggles}>
+            <Button onClick={onBeginAgain}>Begin again from Malchut — this climb is put down</Button>
+          </p>
+        )}
 
         <DecoratedRule />
 
@@ -1776,7 +1804,6 @@ function PlateOverlay({
   world,
   verbs,
   encounter,
-  onNext,
   onWalk,
   onSeal,
   onFall,
@@ -1792,7 +1819,6 @@ function PlateOverlay({
   /** What this body can do — the House plate says when a boon would sleep. */
   verbs: readonly Verb[];
   encounter: ReturnType<typeof encounterFor>;
-  onNext: (kindle?: boolean) => void;
   /** Step onto the path the Abyss plate is standing at the near edge of. */
   onWalk: (path: TreePath) => void;
   onSeal: () => void;
@@ -1858,7 +1884,6 @@ function PlateOverlay({
         {plate.kind === "word-result" && (
           <WordResultPlate verdict={plate.verdict} onClose={onClose} />
         )}
-        {plate.kind === "region-done" && ascent && <RegionDonePlate ascent={ascent} onNext={onNext} />}
         {plate.kind === "abyss" && (
           <AbyssPlate path={plate.path} onCross={() => onWalk(plate.path)} onBack={onClose} />
         )}
@@ -2108,6 +2133,12 @@ function WordGatePlate({
               className={`${styles.paletteLetter} hebrew`}
               lang="he"
               title={lettersById[id]?.name}
+              // Named as well as drawn. A glyph is the whole label otherwise,
+              // which leaves a screen reader saying "פ" and the harness with
+              // nothing to click by — and the gate is the one screen the game
+              // asks a Scribe to *know* something on.
+              aria-label={lettersById[id]?.name}
+              data-letter={id}
               onClick={() => place(id)}
             >
               {lettersById[id]?.glyph}
@@ -2404,51 +2435,6 @@ function GuardianDonePlate({
   );
 }
 
-function RegionDonePlate({
-  ascent,
-  onNext,
-}: {
-  ascent: AscentRecord;
-  onNext: (kindle?: boolean) => void;
-}) {
-  const done = regionAt(ascent.regionIndex);
-  const next = regionAt(Math.min(TOTAL_REGIONS, ascent.regionIndex + 1));
-  const cost = kindleCost(ascent.regionIndex);
-  const alreadyLit = (ascent.sefirotLit ?? []).includes(done.sefirah);
-  const canKindle = !alreadyLit && ascent.or >= cost;
-
-  return (
-    <>
-      <p className={styles.plateKicker}>{done.name} is behind you</p>
-      <h2 className={styles.plateTitle}>The way opens to {next.name}</h2>
-      <p className={`${styles.plateHeb} hebrew`} lang="he">
-        {next.hebrew}
-      </p>
-      <p className={styles.plateUse}>{next.teaching}</p>
-      <p className={styles.plateDerivation}>
-        {ascent.lettersHeld.length} of the twenty-two letters found · {ascent.or} light carried.
-      </p>
-
-      {/* The only thing light can be spent on: keep it as score, or burn it
-          here and leave this Sefirah lit on the Tree for good. */}
-      {!alreadyLit && (
-        <p className={styles.offerGrants}>
-          {canKindle
-            ? `Kindle ${done.name} for ${cost} light, and it stays lit on your Tree.`
-            : `Kindling ${done.name} asks ${cost} light; you carry ${ascent.or}.`}
-        </p>
-      )}
-
-      <div className={styles.plateActions}>
-        <Button variant="primary" onClick={() => onNext(false)} autoFocus>
-          Climb on, keeping the light
-        </Button>
-        {canKindle && <Button onClick={() => onNext(true)}>Kindle {done.name}</Button>}
-      </div>
-    </>
-  );
-}
-
 /**
  * The light goes out, and the Scribe wakes.
  *
@@ -2616,6 +2602,13 @@ function SealedPlate({
                 </span>{" "}
                 <span className={styles.wordGloss}>
                   {word.transliteration} — {word.gloss}
+                  {/* `wasTarget` was written on every word and read by nothing,
+                      which meant the game never once acknowledged the harder
+                      thing: a gate asks for a *particular* root, any true root
+                      opens it, and only this mark says you found the one it
+                      named. It is the whole difference between answering and
+                      answering the question. */}
+                  {word.wasTarget && " · the root the gate named"}
                 </span>
               </li>
             ))}

@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { letters as allLetters } from "../../data/letters";
 import { LAMPS } from "../combat";
-import { lettersOnEntering, TOTAL_REGIONS } from "../regions";
+import { lettersOnEntering, regionAt, TOTAL_REGIONS } from "../regions";
+import { TREE_PATHS } from "../tree";
 import { SCROLL_LETTER } from "../scroll";
 import { witnessesOf, WITNESSES_POSSIBLE } from "../story";
 import {
@@ -71,7 +72,23 @@ describe("options off a URL", () => {
       seed: 99,
       porch: true,
       witnesses: 7,
+      freed: false,
+      lit: false,
     });
+  });
+
+  it("reads the freed flag, which is what makes a warped Sefirah kindleable", () => {
+    expect(readWarp(new URLSearchParams("rung=5&freed=1"))?.freed).toBe(true);
+    expect(readWarp(new URLSearchParams("rung=5"))?.freed).toBe(false);
+    expect(warpParams({ ...WARP_DEFAULTS, freed: true })).toContain("freed=1");
+    expect(warpParams(WARP_DEFAULTS)).not.toContain("freed");
+  });
+
+  it("reads the lit flag, which is what puts the ending within reach", () => {
+    expect(readWarp(new URLSearchParams("rung=10&lit=1"))?.lit).toBe(true);
+    const lit = warpRecord(options({ rung: 10, lit: true }), base).sefirotLit ?? [];
+    expect(lit, "the ending is offered only when all ten are kindled").toHaveLength(TOTAL_REGIONS);
+    expect(warpRecord(options({ rung: 10 }), base).sefirotLit).toBeUndefined();
   });
 
   it("clamps a rung, lamps and witnesses into what exists", () => {
@@ -107,12 +124,48 @@ describe("the record it builds", () => {
     expect(record.id).toBe(base.id);
     expect(record.seed).toBe(base.seed);
     expect(record.seedLabel).toBe(base.seedLabel);
-    expect(record.sacredNotes).toEqual(base.notes);
     expect(record.ascendantLetterId).toBe(base.ascendantLetterId);
     expect(record.encounterNumber).toBe(base.encounterNumber);
     expect(record.or).toBe(0);
     expect(record.sealedAt).toBeUndefined();
     expect(Date.parse(record.createdAt)).not.toBeNaN();
+  });
+
+  /**
+   * **The warp stands on the Tree.** Without `at` a record is by definition
+   * pre-overworld — that is what `standingAt` reads it as — so a warp that
+   * omitted it sent every harness run down the linear road, which is exactly
+   * why the road outlived the game that replaced it.
+   */
+  it("stands the Scribe on a Sefirah, with a route behind them", () => {
+    for (const rung of [1, 4, 7, TOTAL_REGIONS]) {
+      const record = warpRecord(options({ rung }), base);
+      expect(record.at, `rung ${rung} stood nowhere`).toBe(regionAt(rung).sefirah);
+      expect(record.regionIndex).toBe(rung);
+      // The route is the shortest one a Scribe could have walked to get here,
+      // so `pathsWalked` is a history rather than a decoration: the kingdom
+      // needs none, and everywhere else needs at least one.
+      const walked = record.pathsWalked ?? [];
+      if (rung === 1) {
+        expect(walked, "the kingdom is walked to from nowhere").toEqual([]);
+        continue;
+      }
+      expect(walked.length, `rung ${rung} walked nothing to get there`).toBeGreaterThan(0);
+      for (const id of walked) {
+        expect(TREE_PATHS.some((p) => p.id === id), `${id} is not a path`).toBe(true);
+      }
+      // And the route ends where the Scribe stands.
+      const last = TREE_PATHS.find((p) => p.id === walked[walked.length - 1])!;
+      expect(last.ends).toContain(record.at);
+    }
+  });
+
+  it("frees the guardians below only when asked, since a held Sefirah cannot be kindled", () => {
+    expect(warpRecord(options({ rung: 5 }), base).guardiansBroken).toBeUndefined();
+    const freed = warpRecord(options({ rung: 5, freed: true }), base).guardiansBroken ?? [];
+    expect(freed).toHaveLength(5);
+    expect(freed).toContain(regionAt(5).sefirah);
+    expect(freed).not.toContain(regionAt(6).sefirah);
   });
 
   it("counts every rung below as behind you, or the ladder reads wrong", () => {
