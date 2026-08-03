@@ -3,7 +3,7 @@ import type { Grace, Verb } from "./abilities";
 import type { Effect } from "./items";
 import { controlById, KEY_MAP, PAD_LAYOUT, type ControlId } from "./controls";
 import { drawWorld, trackCamera, type Camera } from "./render/draw";
-import { readPalette, type Palette } from "./render/palette";
+import { paletteOf, readPalette, type Palette } from "./render/palette";
 import { DT, step, type StepContext } from "./world/step";
 import { recordFrame } from "./dev/probe";
 import { NO_INPUT, type Input, type World } from "./world/types";
@@ -113,6 +113,12 @@ export function GameCanvas({
   const used = useRef<Set<ControlId>>(new Set());
   const camera = useRef<Camera>({ x: 0, y: 0 });
   const palette = useRef<Palette>(readPalette());
+  /**
+   * The theme palette tinted for the ground underfoot, recomputed when either
+   * of its two inputs changes rather than every frame — the mixing is cheap
+   * but it is exactly the kind of per-frame work P6 exists to stop adding.
+   */
+  const here = useRef<Palette>(paletteOf(palette.current, world.sefirah));
   const view = useRef({ w: 960, h: 432 });
   const pausedRef = useRef(paused);
   const callbacks = useRef({ onLetter, onFragment, onWordGate, onHouse, onVessel, onFinish, onSample });
@@ -210,6 +216,7 @@ export function GameCanvas({
       context.setTransform(dpr, 0, 0, dpr, 0, 0);
       context.imageSmoothingEnabled = false;
       palette.current = readPalette();
+      here.current = paletteOf(palette.current, world.sefirah);
     };
     resize();
 
@@ -218,6 +225,7 @@ export function GameCanvas({
     // The theme toggle rewrites `data-theme`; the canvas has to re-read it.
     const themeWatcher = new MutationObserver(() => {
       palette.current = readPalette();
+      here.current = paletteOf(palette.current, world.sefirah);
     });
     themeWatcher.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
@@ -263,7 +271,10 @@ export function GameCanvas({
         context,
         world,
         camera.current,
-        palette.current,
+        // **Where the Scribe is, in colour.** The theme decides charcoal or
+        // vellum; the place decides which way its stone leans. `world.sefirah`
+        // was already on the world and the renderer never asked.
+        here.current,
         view.current.w,
         view.current.h,
         verbs as readonly string[],
