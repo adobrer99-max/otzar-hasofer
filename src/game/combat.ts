@@ -242,7 +242,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     name: "Korach",
     hebrew: "קֹרַח",
     source: "Bamidbar 16 — the earth opened her mouth and swallowed them",
-    is: "It travels inside the ground, and comes up under you.",
+    is: "It travels inside the ground, and comes up under you — and for a moment after, it is out in the open and still.",
     reading: "The dispute that is not for the sake of heaven: it goes down out of sight and surfaces where you stand.",
     role: "floater",
     shells: 3,

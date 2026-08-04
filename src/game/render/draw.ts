@@ -4,6 +4,7 @@ import { Tile, TILE_SIZE } from "../world/tiles";
 import type { Entity, World } from "../world/types";
 import { alpha, mix, type Palette } from "./palette";
 import { ROOM_H, ROOM_W } from "../world/rooms";
+import { outOfReach } from "../world/step";
 import { HUSKS, type HuskKind } from "../combat";
 import { SILHOUETTES, SMOOTH } from "./husks";
 
@@ -1101,7 +1102,13 @@ function drawHusks(ctx: CanvasRenderingContext2D, world: World, palette: Palette
     if (husk.broken) continue;
     // Korach inside the ground is not drawn at all. It is not hidden by a
     // trick of the light — it is not there yet.
-    if (husk.kind === "korach" && husk.charging === 0) continue;
+    //
+    // **Asked of the same rule the marks are asked of**, and it used to read
+    // `charging === 0` here as well. `charging` counts only the rise, so the
+    // while it spends standing in the open afterwards counted as buried and
+    // the creature was not painted — which would have made the one moment it
+    // can be answered the one moment a player cannot see it.
+    if (outOfReach(husk)) continue;
     const spec = HUSKS[husk.kind];
     const cx = husk.x + husk.w / 2;
     const cy = husk.y + husk.h / 2;

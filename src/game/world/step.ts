@@ -1176,7 +1176,7 @@ function nearestHusk(world: World, ctx: StepContext, m: Mark): Husk | undefined 
   let best: Husk | undefined;
   let bestAt = Infinity;
   for (const husk of world.husks) {
-    if (husk.broken || submerged(husk)) continue;
+    if (husk.broken || outOfReach(husk)) continue;
     if (!canBeStruck(hiddenAt(world, husk), ctx.verbs)) continue;
     const at = Math.hypot(husk.x - m.x, husk.y - m.y);
     if (at < bestAt) {
@@ -1311,7 +1311,7 @@ function stepMarks(world: World, ctx: StepContext): void {
 
     if (m.mine) {
       for (const husk of world.husks) {
-        if (husk.broken || submerged(husk) || !bodiesTouch(m, husk)) continue;
+        if (husk.broken || outOfReach(husk) || !bodiesTouch(m, husk)) continue;
         if (!canBeStruck(hiddenAt(world, husk), ctx.verbs)) continue;
         strikeHusk(world, husk, m.bite, m.draws ? -1 : 1, m.x);
         // What is broken throws two shards out of it, up and away on both
@@ -1377,7 +1377,19 @@ function opened(world: World, husk: Husk): boolean {
   }
 }
 
-function strikeHusk(world: World, husk: Husk, bite: number, push: number, from: number): void {
+/**
+ * A blow lands on a klipah. Exported for the bench, which has to be able to
+ * hit the one that does nothing until it is hit — there is no other way to
+ * measure the Calf, and a creature no instrument can pose is a creature that
+ * silently stops working.
+ */
+export function strikeHusk(
+  world: World,
+  husk: Husk,
+  bite: number,
+  push: number,
+  from: number,
+): void {
   // A great one still *moves* when it is struck unopened — which is not a
   // consolation, it is the mechanism: drawing Leviathan is a hit that takes no
   // shell and pulls it landward, and there is no other way out of the water.
@@ -1422,9 +1434,53 @@ function strikeHusk(world: World, husk: Husk, bite: number, push: number, from: 
   say(world, `${spec.name} breaks, and the light in it is yours.`);
 }
 
-/** Whether a klipah is inside the ground, where nothing reaches it. */
-function submerged(husk: Husk): boolean {
-  return husk.kind === "korach" && husk.charging === 0;
+/**
+ * Whether a klipah is somewhere no mark can follow it.
+ *
+ * Exported so the bench can ask it. What it is really measuring is how much of
+ * a creature's life it is *answerable* for, and that turns out to be the only
+ * question that catches a klipah nobody can break: `breakIn` cannot, because a
+ * Scribe who keeps station is standing there for the one window in the cycle
+ * when it is reachable, and takes it.
+ *
+ * **This read `charging === 0`, and that was the whole of why Korach could not
+ * be broken.** `charging` counts only the rise, so every tick that was not the
+ * rise counted as buried — including the ticks it spends standing in the open
+ * afterwards. Over sixty-six honest walks a Scribe holding all twenty-two
+ * letters broke one of thirty-seven, and adding the settling phase alone moved
+ * that to two, because the creature was standing there in plain sight and still
+ * immune to everything.
+ *
+ * So it asks the real question: is it under, or is it out? Rising is out.
+ * Settling is out. Only the long burrow between one surfacing and the next is
+ * inside the ground, and that is the only part of the cycle a mark should pass
+ * through.
+ */
+export function outOfReach(husk: Husk): boolean {
+  if (husk.kind !== "korach") return false;
+  if (husk.charging > 0) return false;
+  return husk.cooldown <= (HUSKS.korach.throws ?? 0) - RISE - SETTLE;
+}
+
+/**
+ * Whether touching it costs anything.
+ *
+ * The same for everything except Korach, and for Korach it is the other half of
+ * the settling phase. **The moment it is answerable is the moment it is
+ * harmless.** The eruption is the attack — it opens under the Scribe's feet and
+ * rises through him, and nothing about that is softened. What follows is the
+ * price of having done it: it is out of the ground, stationary and spent, and a
+ * Scribe who turns round and writes on it pays nothing for standing there.
+ *
+ * Made separate because it was not, and the first version of the settling phase
+ * therefore handed the creature ninety extra ticks of *contact* along with the
+ * ninety ticks of being hittable. The honest dash to a freed crown stopped
+ * arriving on one seed in six: a klipah that had been unbreakable became
+ * unbreakable and twice as costly, which is the opposite of the change.
+ */
+function harmful(husk: Husk): boolean {
+  if (outOfReach(husk)) return false;
+  return husk.kind !== "korach" || husk.charging > 0;
 }
 
 /**
@@ -1609,6 +1665,43 @@ function stepHusks(world: World, ctx: StepContext): void {
           husk.vy = -95;
           break;
         }
+        /**
+         * **And the earth closed upon them.**
+         *
+         * Bamidbar 16:33 — they went down alive into the pit, *and the earth
+         * closed upon them*. The ground does not simply reopen for Korach when
+         * he wants it: having come up, he is out, and he is out for a while.
+         *
+         * This is the one klipah measurement caught as unanswerable. Rising
+         * took forty-two ticks in every three hundred and eighty-seven, so it
+         * was above ground — which is the only place a mark can reach it,
+         * since stone stops a mark and nothing stops Korach — for sixteen per
+         * cent of its life, measured, and it moved fast for all sixteen. Over
+         * sixty-six
+         * honest walks a fighting Scribe holding every letter in the game laid
+         * thirty-seven of them and broke **one**: three per cent, against
+         * thirty-nine to eighty-five for every other kind in the table. A
+         * klipah that cannot be broken is not a creature, it is weather — and
+         * its four light can never be collected by anybody.
+         *
+         * So the cycle is three phases rather than two. It rises; then it
+         * **stands there**, out of the ground and still, for long enough to be
+         * answered; and only then does it go back down. Nothing about the
+         * moment it opens under the Scribe is softened — that is the threat,
+         * and it is unchanged. What is added is the price of having done it.
+         */
+        const settled = husk.cooldown > (spec.throws ?? 0) - RISE - SETTLE;
+        if (settled) {
+          // **Still, and weightless.** Not falling: `flies` is what lets it
+          // move through the rock, and a klipah the rock does not hold falls
+          // through the floor the instant gravity is applied to it. The first
+          // draft of this settling phase did exactly that — it came up, dropped
+          // straight through the world, and was measured as unbreakable for a
+          // second time and for a new reason. It stands where the rise left it.
+          husk.vx = 0;
+          husk.vy = 0;
+          break;
+        }
         // Under. It slides toward the Scribe's column and rises when it is
         // beneath him — but never further than the ground it haunts. Stone is
         // nothing to it, so without a leash it simply followed the Scribe
@@ -1620,7 +1713,7 @@ function stepHusks(world: World, ctx: StepContext): void {
         husk.vy = 90;
         husk.vx = Math.sign(chase) * spec.speed;
         if (Math.abs(toward) < TILE_SIZE && husk.cooldown === 0 && spec.throws) {
-          husk.charging = 42;
+          husk.charging = RISE;
           husk.cooldown = spec.throws;
           // **Under the feet, not in them.** Surfacing at the Scribe's own
           // height put the two bodies in the same place on the same tick, so
@@ -1710,7 +1803,7 @@ function stepHusks(world: World, ctx: StepContext): void {
 
       // **The Tannin.** The great sea-creatures, and the first made thing the
       // account of creation bothers to name. It holds the water, where
-      // `submerged` already forbids a mark from touching it, and comes out at
+      // `outOfReach` already forbids a mark from touching it, and comes out at
       // whatever is standing on the bank — so the fight is about catching it
       // in the air, which is the only place it can be written on.
       case "tannin": {
@@ -1963,7 +2056,7 @@ function stepHusks(world: World, ctx: StepContext): void {
 
     moveHusk(world, ctx, husk);
 
-    if (p.veiled === 0 && !world.out && !submerged(husk) && bodiesTouch(husk, p)) {
+    if (p.veiled === 0 && !world.out && harmful(husk) && bodiesTouch(husk, p)) {
       // Almost all of them take a lamp, because that is what a husk is.
       // Delilah takes what you gathered instead — nothing you feel at the time.
       if (spec.takes === "light") coax(world, husk);
@@ -2001,6 +2094,28 @@ function pace(world: World, ctx: StepContext, husk: Husk, speed: number, gentle 
   husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
   void spec;
 }
+
+/**
+ * Korach's three phases, in ticks: the rise out of the ground, and the while he
+ * is left standing in the open afterwards.
+ *
+ * **`RISE` is a distance, not a duration**, and that is why it is fifty-four
+ * rather than the forty-two it was. It surfaces two and a half tiles beneath
+ * the Scribe's feet and climbs at ninety-five a second, so forty-two ticks
+ * carried it to the Scribe's *waist* and stopped — the creature stood there in
+ * the open with its head two pixels under a flat mark's line, and every mark
+ * ever thrown at it sailed over. Fifty-four ticks is the Scribe's own height
+ * plus the ground it started under, which puts it on the floor he is standing
+ * on. Measured: an aiming Scribe went from never breaking one in four thousand
+ * ticks to breaking one in ninety-six.
+ *
+ * `SETTLE` is the other half. Ninety ticks is a second and a half — long enough
+ * that a Scribe who is looking has time to answer, short enough that it is not
+ * simply a pacer with an entrance. Against `throws: 345` the two together take
+ * the creature from sixteen per cent of its life above ground to forty-three.
+ */
+const RISE = 54;
+const SETTLE = 90;
 
 /** The nearest loose mote, for the klipah that hunts them. */
 function nearestMote(world: World, husk: Husk): Entity | undefined {
