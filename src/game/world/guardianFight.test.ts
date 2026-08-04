@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { abilityByLetter, type Grace, type Verb } from "../abilities";
 import { guardianOf } from "../guardians";
-import { regions } from "../regions";
+import { lettersOnEntering, regions } from "../regions";
 import type { SefirahId } from "../../types/letter";
-import { buildArena } from "./build";
+import { buildArena, verbsOf } from "./build";
 import { fighter } from "./probes";
 import { step, type StepContext } from "./step";
 import { tileAt } from "./build";
@@ -234,6 +234,103 @@ function without(letters: string[]): StepContext {
  * widen the channel again and Mem comes back as a hidden lock; drain it and
  * Vav stops being needed and the declared lock becomes decorative.
  */
+/**
+ * **Every room, against the hand the map actually pays for arriving at it.**
+ *
+ * The band above enters each room holding all twenty-two letters, which is the
+ * ceiling case and answers the question the ending stands on — *are the rooms
+ * beatable at all*. It is not the question a Scribe asks. A Scribe arrives at a
+ * rung holding what the route there paid, plus whatever the map told them that
+ * guardian answers to, and nothing had ever measured that: the honest climb
+ * walks it, and when the honest climb failed it failed a hundred walks later,
+ * on a sentence about the crown.
+ *
+ * Measured, `lettersOnEntering(rung)` plus the declared key, three seeds each:
+ *
+ * ```
+ *   malchut  arbeh     hand  0   3/3   635 ticks
+ *   yesod    nefilim   hand  2   3/3   640
+ *   hod      saraf     hand  5   3/3   637
+ *   netzach  reem      hand  7   3/3   827
+ *   tiferet  rahav     hand  9   3/3   637
+ *   gevurah  og        hand 11   3/3   650
+ *   chesed   tannin    hand 13   3/3   616
+ *   binah    livyatan  hand 15   3/3   692
+ *   chochmah ziz       hand 18   0/3   stuck
+ *   keter    behemot   hand 20   3/3   773
+ * ```
+ */
+describe("every room, against the hand its rung pays", () => {
+  const honestHand = (index: number, key?: string) => [
+    ...new Set([...lettersOnEntering(index), key].filter(Boolean) as string[]),
+  ];
+  const ctxOf = (held: readonly string[]): StepContext => ({
+    verbs: verbsOf(held),
+    graces: held
+      .map((id) => abilityByLetter[id]?.grace)
+      .filter((g): g is Grace => Boolean(g)),
+  });
+
+  it("finishes nine of the ten, and names the one it does not", () => {
+    for (const region of regions) {
+      const key = guardianOf(region.sefirah).opens?.letter;
+      const ctx = ctxOf(honestHand(region.index, key));
+      for (const seed of SEEDS) {
+        const fight = duel(region.sefirah, seed, 24000, ctx);
+        // Chochmah is the exception and it is a real one, not a wandering
+        // probe: see the block below, which asserts exactly what it wants.
+        if (region.sefirah === "chochmah") continue;
+        expect(
+          fight.finished,
+          `${region.sefirah} (${guardianOf(region.sefirah).kind}) seed ${seed} cannot be finished ` +
+            `by a Scribe holding what the route there paid`,
+        ).toBe(true);
+      }
+    }
+  }, 300000);
+
+  /**
+   * **Chochmah asks for the Flame, and the map says the Staff.**
+   *
+   * The Staff is not wrong — it is the reach, and it is load-bearing: without
+   * Lamed the Ziz ends a sixty-thousand-tick duel with all six shells, never
+   * once touched, which is exactly what "whether you reach it is a question
+   * about how far you can throw" promises. What the map does not say is that
+   * reaching it is not breaking it. A mark bites **one** shell unless the
+   * Scribe carries Shin, which doubles it (`markBite`, `burns`), and six shells
+   * at one apiece is far past a room's budget: measured, three of six off in
+   * sixty thousand ticks and the duel lost long before the rest.
+   *
+   * **And Shin is not paid until after Chochmah.** The four letters an honest
+   * Scribe does not yet hold on arriving are Dalet, Shin, Yod and Peh. So the
+   * ninth rung of the ending path is, as it stands, a room a Scribe reaches
+   * holding eighteen letters and cannot finish — and adding Shin alone finishes
+   * it in six hundred and sixteen ticks, while adding Zayin or Kaf does
+   * nothing.
+   *
+   * This is a balance question with three possible answers — move Shin earlier,
+   * thin the Ziz's six shells, or let the Staff do more than carry — and it is
+   * not one to settle on a probe's evidence in the middle of a chunk-library
+   * phase. It is pinned here instead, in both directions, so that whichever
+   * answer is chosen the test says so immediately.
+   */
+  it("cannot be finished at Chochmah until the Flame is in hand", () => {
+    const key = guardianOf("chochmah").opens?.letter;
+    const without = ctxOf(honestHand(9, key));
+    const with_ = ctxOf([...honestHand(9, key), "shin"]);
+    for (const seed of SEEDS) {
+      expect(
+        duel("chochmah", seed, 24000, without).finished,
+        `seed ${seed}: the Ziz broke without the Flame — the balance question is answered, update this`,
+      ).toBe(false);
+      expect(
+        duel("chochmah", seed, 24000, with_).finished,
+        `seed ${seed}: the Ziz will not break even with the Flame`,
+      ).toBe(true);
+    }
+  }, 300000);
+});
+
 describe("Binah's room asks for the Hook, and nothing else", () => {
   it("can be finished carrying Vav and not the Mouth of water", () => {
     for (const seed of SEEDS) {

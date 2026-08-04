@@ -109,6 +109,8 @@ interface Ledger {
   struggles: number;
   /** Paths that have put the probe out twice — routed around thereafter. */
   avoid: Map<string, number>;
+  /** Letters the probe could not win and was handed — see `ensureLetter`. */
+  carried: string[];
 }
 
 /**
@@ -141,6 +143,7 @@ const fresh = (): Ledger => ({
   ticks: 0,
   struggles: 0,
   avoid: new Map(),
+  carried: [],
 });
 
 /** The same budget by ground the other probes use. */
@@ -300,12 +303,45 @@ function reach(ledger: Ledger, to: SefirahId, seed: number, cap = CAP): boolean 
   return ledger.at === to;
 }
 
-/** Hold a letter before a room that answers to it, the way the map says to. */
+/**
+ * Hold a letter before a room that answers to it, the way the map says to.
+ *
+ * **And stop re-walking a loss.** A letter lives on exactly one path, so there
+ * is no routing around it — and everything here is deterministic, so a path the
+ * fighter goes out on is a path it goes out on *identically*, every time, for
+ * as long as the budget allows. Measured on the committed library, seed 12345:
+ * eighty consecutive attempts at Netzach–Chesed for Vav, two walks apiece, all
+ * lost the same way, and the tour reported "vav was never gathered" after
+ * spending its whole cap on a coin that only has one face. Four of six seeds
+ * failed like that, on Mem or on Vav, with no change to the library at all.
+ *
+ * Four honest tries, gathering between them because a bigger hand is a
+ * different rung — and then the letter is **carried**: credited, counted, and
+ * named in the report. That is the same concession `walkLeg` already makes for
+ * a stall, made for the same reason and on the same evidence. Walked on their
+ * own with the hand their band assumes, these paths put the fighter out 0 and 5
+ * times in ten; the tour meets them at its own worst moment, and a probe losing
+ * a fight a person wins is a fact about this pair of hands.
+ *
+ * What it must not become is a way to not notice the ground getting worse. So
+ * the count is asserted, not just printed: a tour carried over most of its
+ * letters has stopped being a measurement.
+ */
+const TRIES = 4;
+
 function ensureLetter(ledger: Ledger, letterId: string, seed: number, cap = CAP): boolean {
   const path = TREE_PATHS.find((p) => p.letter === letterId)!;
-  while (!ledger.held.includes(letterId) && ledger.walks < cap) {
+  for (let tries = 0; !ledger.held.includes(letterId) && ledger.walks < cap; tries += 1) {
+    if (tries >= TRIES) {
+      ledger.carried.push(`${letterId} on ${path.id}`);
+      ledger.held.push(letterId);
+      break;
+    }
     if (!reach(ledger, path.ends[0], seed, cap)) continue;
-    walkLeg(ledger, path, seed);
+    if (walkLeg(ledger, path, seed) === "fell") {
+      gather(ledger, seed);
+      ledger.avoid.clear();
+    }
   }
   return ledger.held.includes(letterId);
 }
@@ -475,6 +511,17 @@ describe("the tour — all ten freed and kindled, the consummation", () => {
         // The three great rooms answer to one letter each — hold it first,
         // which is what the map's own "answers to" line tells a player.
         //
+        // **Chochmah gets Shin, and the room does need it.** Measured and
+        // pinned in `guardianFight.test.ts`: entering the Ziz's room with the
+        // eighteen letters an honest route pays by the ninth rung, plus the
+        // Staff the map declares, the duel does not finish on any seed — and
+        // adding the Flame alone finishes it in six hundred and sixteen ticks,
+        // while adding Zayin or Kaf does nothing. Shin is not paid until after
+        // Chochmah, so the ninth rung of the ending path is a room a Scribe can
+        // reach and cannot break. That is a balance question with three
+        // possible answers and it is not settled here; until it is, the tour
+        // holds the Flame before it goes up, and this comment is why.
+        //
         // **And Binah still gets Mem here, though the room no longer needs
         // it.** This file recorded the fault when it was written: a duelist
         // holding Vav and not Mem stalled the full budget against Leviathan,
@@ -493,7 +540,10 @@ describe("the tour — all ten freed and kindled, the consummation", () => {
         // instrument rather than in the ground, and it is written here rather
         // than quietly worked around: the tour's own fighter cannot yet do what
         // the duel probe proves is possible.
-        const kit = [guardianOf(stop).opens?.letter, stop === "binah" ? "mem" : undefined];
+        const kit = [
+          guardianOf(stop).opens?.letter,
+          stop === "binah" ? "mem" : stop === "chochmah" ? "shin" : undefined,
+        ];
         for (const key of kit) {
           if (!key) continue;
           expect(ensureLetter(ledger, key, seed), `seed ${seed}: ${key} was never gathered`).toBe(true);
@@ -515,13 +565,20 @@ describe("the tour — all ten freed and kindled, the consummation", () => {
         // Kindle as you go, walking a fresh path and back for more light when
         // the purse is short — which is what the map actually offers a Scribe
         // standing somewhere they cannot yet afford.
+        // **The loop may not require standing where it is trying to get back
+        // to.** It gathers by walking a path and coming home, so the Scribe is
+        // elsewhere for part of every attempt — and `ledger.at === stop` in the
+        // guard meant that one failed return ended the whole attempt with the
+        // light still in hand. Measured: Tiferet, forty-one light against a
+        // cost of twenty-eight, five walks of patience unspent, and the tour
+        // reported the rung as never kindled. Re-reaching is what the body of
+        // the loop already does; the guard was undoing it.
         let patience = 6;
-        while (
-          ledger.at === stop &&
-          !ledger.sefirotLit.includes(stop) &&
-          patience > 0 &&
-          ledger.walks < CAP
-        ) {
+        while (!ledger.sefirotLit.includes(stop) && patience > 0 && ledger.walks < CAP) {
+          if (ledger.at !== stop && !reach(ledger, stop, seed)) {
+            patience -= 1;
+            continue;
+          }
           const cost = kindleCost(regionOfSefirah(stop).index);
           if (ledger.or >= cost) {
             ledger.or -= cost;
@@ -535,6 +592,16 @@ describe("the tour — all ten freed and kindled, the consummation", () => {
           reach(ledger, stop, seed);
           patience -= 1;
         }
+        // **And spend what the last walk brought.** The loop checks the purse
+        // at the top and gathers at the bottom, so the light of the final walk
+        // was never offered to the shrine: measured, Tiferet reported as never
+        // kindled with forty-one light in hand against a cost of twenty-eight.
+        // Six walks of patience and the sixth one wasted, every time.
+        const last = kindleCost(regionOfSefirah(stop).index);
+        if (!ledger.sefirotLit.includes(stop) && ledger.at === stop && ledger.or >= last) {
+          ledger.or -= last;
+          ledger.sefirotLit.push(stop);
+        }
         expect(
           ledger.sefirotLit,
           `seed ${seed}: ${stop} was never kindled (${ledger.or} light, ${ledger.walks} walks, ` +
@@ -542,6 +609,15 @@ describe("the tour — all ten freed and kindled, the consummation", () => {
         ).toContain(stop);
       }
       expect(ledger.sefirotLit).toHaveLength(10);
+      // **How much of the route the probe was handed.** Two concessions are
+      // made to it — a stalled leg still arrives, and a letter path lost four
+      // times is credited — and both exist because this pair of hands loses
+      // fights a person wins. Neither may become the way the tour passes: a
+      // climb carried over a third of the alphabet is not evidence of anything.
+      expect(
+        ledger.carried,
+        `seed ${seed}: the tour was handed ${ledger.carried.length} letters — ${ledger.carried.join(", ")}`,
+      ).toHaveLength(0);
       expect(
         ledger.walks,
         `seed ${seed}: the tour took ${ledger.walks} walks, ${ledger.struggles} struggled, ` +

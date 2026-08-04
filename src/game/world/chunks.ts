@@ -886,6 +886,43 @@ export const CHUNKS: Chunk[] = [
     F,
   ]),
 
+  /**
+   * A block in the road, two tiles high, with the light on top of it.
+   *
+   * The plainest thing this library did not have. Every letterless screen here
+   * was a hole or a shelf over a hole; nothing was simply *in the way* at a
+   * height a body steps over. Two tiles is a plain jump's whole rise, so it
+   * asks for the jump and nothing beyond it, and the mote is up there because a
+   * thing worth climbing should have something on it.
+   */
+  chunk("the-plinth", { demand: 1 }, [
+    E, E, E, E, E, E, E, E, E, E, E, E, E,
+    ".....*...*......",
+    ".....######.....",
+    ".....######.....",
+    F,
+    F,
+  ]),
+
+  /**
+   * Two three-tile gaps with an island between them.
+   *
+   * **The island is four tiles and it was two.** Two is enough to stand on and
+   * not enough to stop on: measured, a body that cleared the first gap arrived
+   * at the second still moving and went into it, thirty-four times in one rung.
+   * A screen crossable in isolation and not in a region is the worst kind here,
+   * because the sweep that checks every chunk one at a time says nothing about
+   * it — this one was caught by the region walk, on one seed, at ninety per cent.
+   */
+  chunk("two-pits", { demand: 1 }, [
+    E, E, E, E, E, E, E, E, E, E, E, E, E,
+    "...*......*.....",
+    E,
+    E,
+    "###...####...###",
+    "###...####...###",
+  ]),
+
   // -------------------------------------------------------------------------
   // ground, demand 2 — Malchut's teeth. Letterless, and still demanding.
   // -------------------------------------------------------------------------
@@ -965,6 +1002,114 @@ export const CHUNKS: Chunk[] = [
     "..###...###.....",
     "##..........####",
     "##..........####",
+  ]),
+
+  /**
+   * A stair of plinths, each two tiles above the last, over unbroken ground.
+   *
+   * **Nothing here is a void, and that is the design.** This screen began as a
+   * chain of ledges across a basin and cost three fixes and about thirty
+   * veilings on one seed of Yesod before the lesson arrived: a ledge stops a
+   * body only when it is *falling* onto it, so a body still rising goes through
+   * the thing it aimed at and into the hole behind it. Two rules came out of
+   * that and hold everywhere in this file now — **anything that is the only way
+   * over a void is stone**, and no hop is four tiles at the same height, which
+   * is a plain jump's exact reach and therefore a coin toss rather than a
+   * demand. (The same knife-edge is why `set-and-step` has six tiles between
+   * its walls rather than four.)
+   *
+   * What the demand is here instead: three climbs of two with a one-tile slot
+   * between each, and the floor under all of it, so a miss costs the time to
+   * come back around and never the rung.
+   */
+  chunk("stagger-stacks", { demand: 2 }, [
+    E, E, E, E, E, E, E, E, E, E,
+    "...*.....*......",
+    E,
+    ".......####.....",
+    ".......####.....",
+    "..###..####.....",
+    "..###..####.....",
+    F,
+    F,
+  ]),
+
+  /**
+   * The floor is gone and the way over it is a shelf that has to be got onto —
+   * two tiles up and one across from the lip, which is a plain jump with the
+   * rise spent and nothing to spare.
+   */
+  chunk("the-undercut", { demand: 2 }, [
+    E, E, E, E, E, E, E, E, E, E, E, E, E,
+    "....*..*...*....",
+    "....========....",
+    E,
+    "###..........###",
+    "###..........###",
+  ]),
+
+  /**
+   * A block at the very lip of the gap, so the jump is taken from two tiles up
+   * and the run at it is short.
+   *
+   * **Four tiles, and five was tried.** Taking off higher than the landing buys
+   * carry — the body is in the air longer on the way down — and `long-pit`
+   * spends that on four tiles from one tile up. Doubling the lip does not buy a
+   * second tile: measured, a letterless Scribe failed five on every seed. What
+   * the extra height buys is the *approach*, which here is three tiles rather
+   * than a run-up, and that is the demand.
+   */
+  chunk("the-lip", { demand: 2 }, [
+    E, E, E, E, E, E, E, E, E, E, E, E, E,
+    "...*.......*....",
+    "..#####.........",
+    "..#####.........",
+    "#######....#####",
+    "#######....#####",
+  ]),
+
+  // -------------------------------------------------------------------------
+  // ground, demand 3, and no letter — **the lane that had nothing in it.**
+  //
+  // Measured over three seeds and every path of the Tree: the demand-3
+  // ground-to-ground lane held six screens and *not one of them was free*, so
+  // the hardest ordinary ground in the game could only ever be laid for a
+  // Scribe who already held two verbs, and the six were the six most-repeated
+  // screens of a full tour — eight to eleven appearances each, in one climb.
+  // Height and aim can be demanding without a letter, which is what these are.
+  // -------------------------------------------------------------------------
+
+  /**
+   * Three stumps in a basin that runs the whole screen. Every jump is inside a
+   * plain one and every one of them has to be aimed, and there is no floor
+   * under any of it: a miss is a veiling rather than a stumble.
+   */
+  chunk("long-teeth", { demand: 3 }, [
+    E, E, E, E, E, E, E, E, E, E,
+    "...*..*.....*...",
+    E,
+    "......###.......",
+    "......###.......",
+    "..###......###..",
+    "..###......###..",
+    "##............##",
+    "##............##",
+  ]),
+
+  /**
+   * Seven tiles of nothing with one ledge in the middle of it, and a second
+   * ledge over that with the light on it — the crossing is two aimed jumps and
+   * the mote is a third that buys nothing but the mote.
+   */
+  chunk("the-gulf", { demand: 3 }, [
+    E, E, E, E, E, E, E, E, E, E, E,
+    "......*....*....",
+    ".....=====......",
+    E,
+    "......###.......",
+    E,
+    "####.......#####",
+    "####.......#####",
   ]),
 
   // -------------------------------------------------------------------------
@@ -1219,6 +1364,71 @@ export const CHUNKS: Chunk[] = [
   // ground, one verb, demand 2 — the same letter asked twice
   // -------------------------------------------------------------------------
 
+  // Three of the twelve verbs were asked for by exactly two screens each —
+  // reveal, block and climb — against grapple's six and the Breath's seven, so
+  // finding the Eye, the House or the Ladder changed the ground less than any
+  // other letter in the game. The three below are the second ask for each.
+
+  /**
+   * The stepping stones of `veiled-span`, further apart and standing over a
+   * basin that runs the width of the screen. The Eye is not a key here; it is
+   * the difference between three tiles of ground and nothing at all.
+   */
+  chunk("veiled-steps", { requires: ["reveal"], demand: 2 }, [
+    E, E, E, E, E, E, E, E, E, E, E, E,
+    "....*.....*.....",
+    E,
+    "...VV..VV..VV...",
+    E,
+    "##...........###",
+    "##...........###",
+  ]),
+
+  /** The step of `set-stone`, twice, with four tiles of floor to set from between. */
+  chunk("set-and-step", { requires: ["block"], demand: 2 }, [
+    E, E, E, E, E, E, E, E, E, E, E, E,
+    "......*..*......",
+    "...##......##...",
+    "...##......##...",
+    "...##......##...",
+    F,
+    F,
+  ]),
+
+  /**
+   * A face too high to top, with the Ladder growing up it. Climb the vine and
+   * step off it onto the head of the wall — which is why the stone beside it is
+   * two tiles wide rather than one: a one-tile crown is a landing a body misses.
+   */
+  chunk("vine-face", { requires: ["climb"], demand: 2 }, [
+    E, E, E, E, E, E, E, E, E, E,
+    "........*.*.....",
+    ".......v##......",
+    ".......v##......",
+    ".......v##......",
+    ".......v##......",
+    ".......v##......",
+    F,
+    F,
+  ]),
+
+  /** Bramble twice, which is what `thorn-tangle` is to the Edge. */
+  chunk("bramble-twice", { requires: ["flame"], demand: 2 }, [
+    E, E, E, E, E, E,
+    "....G.......G...",
+    "....G.......G...",
+    "....G.......G...",
+    "....G.......G...",
+    "....G...*...G...",
+    "....G..===..G...",
+    "....G.......G...",
+    "....G.......G...",
+    "....G.......G...",
+    "....G.......G...",
+    F,
+    F,
+  ]),
+
   /** Two thickets with a step between them, so the Edge is drawn more than once. */
   chunk("thorn-tangle", { requires: ["cut"], demand: 2 }, [
     E, E, E, E, E, E,
@@ -1314,6 +1524,45 @@ export const CHUNKS: Chunk[] = [
   // -------------------------------------------------------------------------
   // ground, two verbs — the teeth of the upper Tree
   // -------------------------------------------------------------------------
+
+  /** The step of `set-and-step` with two tiles to stand and set from, not four. */
+  chunk("set-and-set", { requires: ["block"], demand: 3 }, [
+    E, E, E, E, E, E, E, E, E, E, E, E,
+    ".....*..*..*....",
+    "......##..##....",
+    "......##..##....",
+    "......##..##....",
+    F,
+    F,
+  ]),
+
+  /** The face of `vine-face`, twice, so the Ladder is drawn more than once. */
+  chunk("vine-and-vine", { requires: ["climb"], demand: 3 }, [
+    E, E, E, E, E, E, E, E, E, E,
+    "....*.*....*.*..",
+    "...v##.....v##..",
+    "...v##.....v##..",
+    "...v##.....v##..",
+    "...v##.....v##..",
+    "...v##.....v##..",
+    F,
+    F,
+  ]),
+
+  /**
+   * Twelve tiles of nothing with a two-tile span in the middle of it that is
+   * not there until it is looked at. Revealed, it is two five-tile jumps, and
+   * five is a tile past a plain one — so the Eye makes the screen exist and the
+   * Breath is what crosses it. Neither is any use alone.
+   */
+  chunk("veiled-vault", { requires: ["reveal", "double-jump"], demand: 3 }, [
+    E, E, E, E, E, E, E, E, E, E, E, E, E,
+    "......*..*......",
+    ".......VV.......",
+    E,
+    "##............##",
+    "##............##",
+  ]),
 
   /** Nine tiles. Beyond the Bridge alone, and beyond the Breath alone. */
   chunk("chasm-vault", { requires: ["dash", "double-jump"], demand: 3 }, [
