@@ -245,19 +245,34 @@ function without(letters: string[]): StepContext {
  * walks it, and when the honest climb failed it failed a hundred walks later,
  * on a sentence about the crown.
  *
- * Measured, `lettersOnEntering(rung)` plus the declared key, three seeds each:
+ * **It found one, and the Tree was changed for it.** Nine rooms finished; the
+ * Ziz did not, on any seed. The Staff was not wrong and is load-bearing —
+ * without Lamed the bird ends a sixty-thousand-tick duel with all six shells,
+ * never once touched, which is exactly what *whether you reach it is a question
+ * about how far you can throw* promises. What the map did not say is that
+ * reaching it is not breaking it: a mark bites one shell unless the Scribe
+ * carries Shin, which doubles it, and adding the Flame alone finished the room
+ * in six hundred and sixteen ticks while Zayin or Kaf did nothing.
+ *
+ * And Shin lay **in Chochmah** — so the answer to the ninth rung was found on
+ * the ninth rung, which is a rung you cannot finish. It was traded to Gevurah
+ * for Tet, where fire belongs on this Tree anyway; see the note over Chochmah's
+ * letters in `regions.ts`. This test is what caught it and what holds it.
+ *
+ * Measured after the trade, `lettersOnEntering(rung)` plus the declared key,
+ * three seeds each — every room, no exceptions:
  *
  * ```
- *   malchut  arbeh     hand  0   3/3   635 ticks
- *   yesod    nefilim   hand  2   3/3   640
- *   hod      saraf     hand  5   3/3   637
- *   netzach  reem      hand  7   3/3   827
- *   tiferet  rahav     hand  9   3/3   637
- *   gevurah  og        hand 11   3/3   650
- *   chesed   tannin    hand 13   3/3   616
- *   binah    livyatan  hand 15   3/3   692
- *   chochmah ziz       hand 18   0/3   stuck
- *   keter    behemot   hand 20   3/3   773
+ *   malchut  arbeh     hand  0   635 ticks
+ *   yesod    nefilim   hand  2   640
+ *   hod      saraf     hand  5   637
+ *   netzach  reem      hand  7   827
+ *   tiferet  rahav     hand  9   637
+ *   gevurah  og        hand 11   650
+ *   chesed   tannin    hand 13   616
+ *   binah    livyatan  hand 15   692
+ *   chochmah ziz       hand 18   616
+ *   keter    behemot   hand 20   773
  * ```
  */
 describe("every room, against the hand its rung pays", () => {
@@ -271,62 +286,35 @@ describe("every room, against the hand its rung pays", () => {
       .filter((g): g is Grace => Boolean(g)),
   });
 
-  it("finishes nine of the ten, and names the one it does not", () => {
+  it("finishes all ten for a Scribe holding only what the route there paid", () => {
+    const rows: string[] = [];
     for (const region of regions) {
       const key = guardianOf(region.sefirah).opens?.letter;
-      const ctx = ctxOf(honestHand(region.index, key));
+      const hand = honestHand(region.index, key);
       for (const seed of SEEDS) {
-        const fight = duel(region.sefirah, seed, 24000, ctx);
-        // Chochmah is the exception and it is a real one, not a wandering
-        // probe: see the block below, which asserts exactly what it wants.
-        if (region.sefirah === "chochmah") continue;
+        const fight = duel(region.sefirah, seed, 24000, ctxOf(hand));
+        rows.push(
+          `${region.sefirah} seed ${seed}: ${fight.finished ? fight.ticks : fight.out ? "OUT" : "stuck"}`,
+        );
         expect(
           fight.finished,
           `${region.sefirah} (${guardianOf(region.sefirah).kind}) seed ${seed} cannot be finished ` +
-            `by a Scribe holding what the route there paid`,
+            `by a Scribe holding the ${hand.length} letters the route there paid:\n${rows.join("\n")}`,
         ).toBe(true);
       }
     }
   }, 300000);
 
   /**
-   * **Chochmah asks for the Flame, and the map says the Staff.**
-   *
-   * The Staff is not wrong — it is the reach, and it is load-bearing: without
-   * Lamed the Ziz ends a sixty-thousand-tick duel with all six shells, never
-   * once touched, which is exactly what "whether you reach it is a question
-   * about how far you can throw" promises. What the map does not say is that
-   * reaching it is not breaking it. A mark bites **one** shell unless the
-   * Scribe carries Shin, which doubles it (`markBite`, `burns`), and six shells
-   * at one apiece is far past a room's budget: measured, three of six off in
-   * sixty thousand ticks and the duel lost long before the rest.
-   *
-   * **And Shin is not paid until after Chochmah.** The four letters an honest
-   * Scribe does not yet hold on arriving are Dalet, Shin, Yod and Peh. So the
-   * ninth rung of the ending path is, as it stands, a room a Scribe reaches
-   * holding eighteen letters and cannot finish — and adding Shin alone finishes
-   * it in six hundred and sixteen ticks, while adding Zayin or Kaf does
-   * nothing.
-   *
-   * This is a balance question with three possible answers — move Shin earlier,
-   * thin the Ziz's six shells, or let the Staff do more than carry — and it is
-   * not one to settle on a probe's evidence in the middle of a chunk-library
-   * phase. It is pinned here instead, in both directions, so that whichever
-   * answer is chosen the test says so immediately.
+   * And the Staff is still the lock the map declares it is — the trade above
+   * moved what *breaks* the Ziz, and must not have quietly moved what *reaches*
+   * it. Without Lamed the bird is untouched: not slow, not expensive, untouched.
    */
-  it("cannot be finished at Chochmah until the Flame is in hand", () => {
-    const key = guardianOf("chochmah").opens?.letter;
-    const without = ctxOf(honestHand(9, key));
-    const with_ = ctxOf([...honestHand(9, key), "shin"]);
+  it("leaves the Ziz beyond a Scribe with no Staff, however long they stand there", () => {
+    const hand = honestHand(9, "shin").filter((l) => l !== "lamed");
     for (const seed of SEEDS) {
-      expect(
-        duel("chochmah", seed, 24000, without).finished,
-        `seed ${seed}: the Ziz broke without the Flame — the balance question is answered, update this`,
-      ).toBe(false);
-      expect(
-        duel("chochmah", seed, 24000, with_).finished,
-        `seed ${seed}: the Ziz will not break even with the Flame`,
-      ).toBe(true);
+      const fight = duel("chochmah", seed, 60000, ctxOf(hand));
+      expect(fight.finished, `seed ${seed}: the Ziz broke without the Staff`).toBe(false);
     }
   }, 300000);
 });
