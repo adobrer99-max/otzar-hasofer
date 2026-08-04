@@ -464,16 +464,24 @@ describe("the tour — all ten freed and kindled, the consummation", () => {
         // The three great rooms answer to one letter each — hold it first,
         // which is what the map's own "answers to" line tells a player.
         //
-        // **And Binah needs Mem as well, which the map does not say.**
-        // Measured while building this file: the duelist holding Vav and not
-        // Mem stalls the full budget against Leviathan — it cannot close the
-        // water between the near bank and the beast, and the marks die on the
-        // way. The same hand plus Mem finishes in six hundred and ninety
-        // ticks. Binah is called the sea, and you need the Waters to fight in
-        // it — thematically right, mechanically unstated: either the arena
-        // should honour the map's claim that Vav alone answers, or the map
-        // should say more. A P4 arena question, recorded where the instrument
-        // found it.
+        // **And Binah still gets Mem here, though the room no longer needs
+        // it.** This file recorded the fault when it was written: a duelist
+        // holding Vav and not Mem stalled the full budget against Leviathan,
+        // so the tour gathered the Waters before going near the sea and asked
+        // whether the arena should honour the map or the map should say more.
+        // The arena answered — `ARENA_SEA`'s channel is narrowed to a gap a
+        // body clears, and `guardianFight.test.ts` holds both halves of it now:
+        // Binah is finishable carrying Vav and not Mem, and still unfinishable
+        // without Vav.
+        //
+        // Taking the key out of this list was tried on the strength of that and
+        // put back. The duelist crosses the narrowed channel; **this** probe,
+        // which is a generalist that walks whole rungs rather than a body
+        // fighting one creature, does not — measured, thirty-five walks and
+        // thirteen falls and Binah's room never finished. That is a gap in the
+        // instrument rather than in the ground, and it is written here rather
+        // than quietly worked around: the tour's own fighter cannot yet do what
+        // the duel probe proves is possible.
         const kit = [guardianOf(stop).opens?.letter, stop === "binah" ? "mem" : undefined];
         for (const key of kit) {
           if (!key) continue;
