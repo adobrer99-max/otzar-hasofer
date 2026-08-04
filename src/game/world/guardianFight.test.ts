@@ -4,7 +4,7 @@ import { guardianOf } from "../guardians";
 import { regions } from "../regions";
 import type { SefirahId } from "../../types/letter";
 import { buildArena } from "./build";
-import { fighter } from "./fight.test";
+import { fighter } from "./probes";
 import { step, type StepContext } from "./step";
 import { tileAt } from "./build";
 import { Tile, TILE_SIZE } from "./tiles";

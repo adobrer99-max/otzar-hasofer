@@ -5,7 +5,7 @@ import { makeRng, randomInt } from "./rng";
 import { kindleCost } from "../storage/ascentRepo";
 import { afterWalking, otherEnd, pathsFrom, TREE_PATHS, type Standing } from "./tree";
 import { buildPath, rowsFor, verbsOf } from "./world/build";
-import { fighter } from "./world/fight.test";
+import { fighter } from "./world/probes";
 import type { World } from "./world/types";
 import type { StepContext } from "./world/step";
 import { regionOfSefirah, regions } from "./regions";

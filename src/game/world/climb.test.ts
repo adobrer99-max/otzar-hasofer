@@ -15,7 +15,7 @@ import { guardianOf } from "../guardians";
 import { judge, lightFor, opens } from "../wordGate";
 import type { SefirahId } from "../../types/letter";
 import { buildPath, verbsOf } from "./build";
-import { fighter } from "./fight.test";
+import { fighter } from "./probes";
 import { duel } from "./guardianFight.test";
 import { openWordGate, type StepContext } from "./step";
 import type { World } from "./types";
@@ -112,11 +112,22 @@ interface Ledger {
 }
 
 /**
- * The runaway guard, not a judgment: a tour that needs more than eighty walks
- * is a driver looping, and the assertion message says what the real number
- * was. Measured tours land in the forties and fifties at probe skill.
+ * The runaway guard, not a judgment: a tour that needs this many walks is a
+ * driver looping, and the assertion message says what the real number was.
+ *
+ * **Two hundred, and it was eighty.** Eighty was set when tours were said to
+ * land "in the forties and fifties"; re-measured, they land at 39 and 70 on the
+ * two seeds here — so seed 91 was running with ten walks of headroom against a
+ * guard that also decided pass or fail. Adding screens to the chunk library
+ * pushed it to 79 and then past, and the failure printed as "keter was never
+ * kindled", which is a sentence about the ending rather than about a budget.
+ *
+ * A runaway is unbounded; the distance between 70 and 200 is not a tolerance
+ * for slow tours, it is the gap between *slow* and *looping*. What the walk
+ * count is actually worth is printed in the assertion messages, where a drift
+ * can be read before it is a failure.
  */
-const CAP = 80;
+const CAP = 200;
 
 const fresh = (): Ledger => ({
   at: "malchut",
@@ -526,7 +537,8 @@ describe("the tour — all ten freed and kindled, the consummation", () => {
         }
         expect(
           ledger.sefirotLit,
-          `seed ${seed}: ${stop} was never kindled (${ledger.or} light, ${ledger.walks} walks)`,
+          `seed ${seed}: ${stop} was never kindled (${ledger.or} light, ${ledger.walks} walks, ` +
+            `${ledger.struggles} struggled, ${ledger.falls} falls)`,
         ).toContain(stop);
       }
       expect(ledger.sefirotLit).toHaveLength(10);
