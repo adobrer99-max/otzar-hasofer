@@ -53,7 +53,7 @@ import {
 } from "./chunks";
 import { HUSK_CHARS, HUSKS, kindForRole, LAMPS, type HuskKind } from "../combat";
 import { VEIL_COST } from "../encounter";
-import { drawKeli, keliFor, type Keli } from "../items";
+import { drawKeli, keliFor, poolFor, type Keli } from "../items";
 import { guardianOf } from "../guardians";
 import { MARKER_CHARS, Tile, TILE_CHARS, TILE_SIZE } from "./tiles";
 import { doorsOf, planFloor, roomAtPoint, ROOM_H, ROOM_W } from "./rooms";
@@ -1523,7 +1523,7 @@ export function buildPath(
   // vessel on a given path is the same for everyone until midnight and
   // different on every path — which makes the map a list of places to go for
   // things, and is the whole reason the pool exists.
-  const keli = drawKeli(rng, items);
+  const keli = drawKeli(rng, items, poolFor(seed));
   const { laid, wordGateTarget } = layout(region, rng, teaching, undefined, held, keli);
 
   return paint(
@@ -1664,7 +1664,7 @@ export function keliOnPath(
   seed: number,
   items: readonly string[] = [],
 ): Keli | undefined {
-  return drawKeli(makeRng((seed ^ hashOf(path.id)) >>> 0), items);
+  return drawKeli(makeRng((seed ^ hashOf(path.id)) >>> 0), items, poolFor(seed));
 }
 
 /** The screens a path is laid from, for auditing the chain. */

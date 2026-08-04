@@ -551,6 +551,17 @@ export const BEND_TOWARD = 200;
 export const BEND_RATE = 0.03;
 /** The weight an arcing mark carries — a fraction of the body's own gravity. */
 export const MARK_FALL = 0.55;
+
+/**
+ * How long the Scoring's line hangs after the mark that drew it is spent.
+ *
+ * Ninety ticks — a second and a half, which is long enough to be a place a
+ * klipah walks into and short enough that a rung cannot be filled with them.
+ * The mark that hangs keeps its bite and loses its motion, so it is a stroke
+ * left on the ground rather than a second mark: *nothing is written above them,
+ * and every letter hangs from one.*
+ */
+export const MARK_HANGS = 90;
 /** A shard is short and quick, so a split covers ground rather than repeating the throw. */
 export const SHARD_SPEED = 320;
 export const SHARD_LIFE = 16;
@@ -577,6 +588,10 @@ export interface MarkPowers {
   splits?: boolean;
   /** It has weight, and falls as it flies. */
   arcs?: boolean;
+  /** Spent, it hangs where it stopped instead of going out. */
+  lingers?: boolean;
+  /** At the end of its flight it turns and comes back to the hand. */
+  returns?: boolean;
 }
 
 export function markPowers(
@@ -604,6 +619,8 @@ export function markPowers(
     homing: carried.homing,
     splits: carried.splits,
     arcs: carried.arcs,
+    lingers: carried.lingers,
+    returns: carried.returns,
   };
 }
 

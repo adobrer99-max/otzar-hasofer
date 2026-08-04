@@ -1,14 +1,24 @@
 import { describe, expect, it } from "vitest";
 import { abilities } from "./abilities";
-import { describeEffect, drawKeli, keliById, keliFor, KELIM, powersFrom, synergiesIn } from "./items";
+import {
+  describeEffect,
+  drawKeli,
+  keliById,
+  keliFor,
+  KELIM,
+  POOL_TODAY,
+  poolFor,
+  powersFrom,
+  synergiesIn,
+} from "./items";
 import { markPowers } from "./combat";
 import { makeRng } from "./rng";
 import { TREE_PATHS } from "./tree";
 import { TOTAL_REGIONS } from "./regions";
-import { buildPath, buildRegion, keliOnPath } from "./world/build";
+import { buildPath, buildRegion, keliOnPath, setTile } from "./world/build";
 import { step, type StepContext } from "./world/step";
-import { TILE_SIZE } from "./world/tiles";
-import { NO_INPUT } from "./world/types";
+import { Tile, TILE_SIZE } from "./world/tiles";
+import { NO_INPUT, type World } from "./world/types";
 
 /**
  * The vessels, and the line they must not cross.
@@ -34,12 +44,24 @@ describe("the vessels", () => {
       "iframes",
       "light",
       "pierces",
-      // The four behaviours. They widen what a vessel may touch and not what it
-      // may *grant*: the assertion below is unchanged, and it is the rule.
+      // The behaviours. They widen what a vessel may touch and not what it may
+      // *grant*: the assertion below is unchanged, and it is the rule.
       "bounces",
       "homing",
       "splits",
       "arcs",
+      // And six more, which is the point of them. Fifteen of the twenty used to
+      // be the same four knobs at different settings — six light-givers, five
+      // that lengthened the moment after a hit, five that added a lamp — so a
+      // second one of a kind was a bigger number and never a different idea.
+      // Each of these comes out of the object's own line rather than out of a
+      // gap in a table.
+      "lingers",
+      "returns",
+      "heavy",
+      "spared",
+      "keeps",
+      "relights",
     ]);
     const verbs = new Set(abilities.filter((a) => a.kind === "verb").map((a) => a.verb));
     for (const keli of KELIM) {
@@ -481,6 +503,286 @@ describe("what a vessel costs", () => {
       if (ledger(keli.id).costs.length > 0) {
         expect(said, `the ${keli.name} hides what it costs`).toContain("but");
       }
+    }
+  });
+
+  /**
+   * And a behaviour has to be *said*, not merely had. This is the historical
+   * failure mode of this codebase from the other side: `describeEffect` walks a
+   * hand-written list of keys, so a vessel can quietly gain a behaviour whose
+   * plate goes on reporting only its scalars — a Scribe reads "+60% grace after
+   * a hit" and never learns the first blow of the rung is free.
+   */
+  it("names every behaviour a vessel can carry, and not only its numbers", () => {
+    const behaviours = [
+      "pierces",
+      "bounces",
+      "homing",
+      "splits",
+      "arcs",
+      "lingers",
+      "returns",
+      "heavy",
+      "spared",
+      "keeps",
+      "relights",
+    ] as const;
+    for (const flag of behaviours) {
+      expect(describeEffect({ [flag]: true }), `a vessel that ${flag} says nothing of it`).not.toBe(
+        "",
+      );
+    }
+    // And on the real objects, where the scalars could have drowned it out.
+    for (const keli of KELIM) {
+      const carried = behaviours.filter((f) => keli.effect[f]);
+      if (carried.length === 0) continue;
+      const said = describeEffect(keli.effect);
+      const bare = describeEffect(
+        Object.fromEntries(Object.entries(keli.effect).filter(([k]) => !carried.includes(k as never))),
+      );
+      expect(said, `the ${keli.name} reads the same with its behaviours as without`).not.toBe(bare);
+    }
+  });
+});
+
+/**
+ * **Twelve of the twenty, and which twelve is the day's business.**
+ *
+ * The pool above answers *where* a vessel lies. This answers *how many exist at
+ * all*, which is the question the pool did not have an answer to: twenty
+ * objects against twenty-two paths meant a Scribe who walked the Tree finished
+ * every climb holding the whole game, and two finished climbs differed in the
+ * route and in nothing that route was for.
+ *
+ * So the day lays twelve. A full tour leaves eight of them unmet — and the
+ * eight are the day's, not a roll, because the seed is the Hebrew date. What a
+ * Scribe cannot have today is a fact about today.
+ */
+describe("the twelve the day lays out", () => {
+  const DAY = 7;
+  const idsOf = (seed: number) => poolFor(seed).map((k) => k.id);
+
+  it("lays fewer than the game has", () => {
+    expect(poolFor(DAY)).toHaveLength(POOL_TODAY);
+    expect(
+      POOL_TODAY,
+      "the day lays the whole game, so a tour ends holding everything",
+    ).toBeLessThan(KELIM.length);
+    // And is deep enough that a tour is not a formality either.
+    expect(POOL_TODAY).toBeGreaterThan(8);
+  });
+
+  it("is the same twelve all day and a different twelve tomorrow", () => {
+    expect(idsOf(DAY)).toEqual(idsOf(DAY));
+    const today = new Set(idsOf(DAY));
+    const differs = [8, 9, 10, 11].some((d) => idsOf(d).some((id) => !today.has(id)));
+    expect(differs, "every day lays the same twelve").toBe(true);
+  });
+
+  it("is uniform across the Tree — one pool, not one per path", () => {
+    // Which twelve exist is a fact about the day; only *where* each one lies is
+    // a fact about a path. Everything any path can offer is in the day's pool.
+    const pool = new Set(idsOf(DAY));
+    for (const path of TREE_PATHS) {
+      const lying = keliOnPath(path, DAY, []);
+      expect(pool.has(lying!.id), `${path.id} offers ${lying?.id}, which is not today's`).toBe(true);
+    }
+  });
+
+  /**
+   * The measurement the phase exists for: walk the whole Tree, take everything
+   * offered, and end holding twelve — so eight of the twenty were never on the
+   * board. Done through `keliOnPath` rather than twenty-two built rungs; the
+   * test above holds the two against each other, which is what makes that fair.
+   */
+  it("leaves a Scribe who walks every path holding twelve of the twenty", () => {
+    const held: string[] = [];
+    for (const path of TREE_PATHS) {
+      const lying = keliOnPath(path, DAY, held);
+      if (lying && !held.includes(lying.id)) held.push(lying.id);
+    }
+    expect(held.length, "a full tour of the Tree found fewer than the day laid").toBe(POOL_TODAY);
+    expect(
+      KELIM.length - held.length,
+      "a full tour ends holding the whole game",
+    ).toBeGreaterThanOrEqual(KELIM.length - POOL_TODAY);
+  });
+
+  /**
+   * And a spent pool leaves no bare plinths. `buildPath` lays the vessel room
+   * only when there is a vessel for it, so the twenty-second path of a
+   * thorough tour is a path with one fewer screen — not a walk to an empty
+   * pedestal, which is the shape this failure would otherwise take.
+   */
+  it("stops offering rather than offering nothing", () => {
+    const spent = idsOf(DAY);
+    for (const path of TREE_PATHS.slice(0, 6)) {
+      expect(keliOnPath(path, DAY, spent), `${path.id} still offers something`).toBeUndefined();
+    }
+    const world = buildPath(TREE_PATHS[0], DAY, [], 1, false, false, 1, spent);
+    expect(
+      world.entities.filter((e) => e.kind === "vessel"),
+      "a spent day still lays a pedestal",
+    ).toHaveLength(0);
+  }, 60000);
+
+  it("still offers a room to a Scribe carrying nothing", () => {
+    for (const path of TREE_PATHS) {
+      expect(keliOnPath(path, DAY, []), `${path.id} offers nothing to an empty hand`).toBeDefined();
+    }
+  });
+});
+
+/**
+ * **The six that are not a bigger number.**
+ *
+ * Fifteen of the twenty vessels were the same handful of knobs at different
+ * settings — six changed what light is worth, six a cooldown, five the lamps,
+ * five the moment after a hit, four the reach — so a second object of a kind
+ * was never a second idea, and a pedestal asked "is this number bigger?" and
+ * nothing else.
+ *
+ * Six of them were given a behaviour instead, each read off the object's own
+ * authored line rather than out of a gap in a table, and each one deliberately
+ * *not* a verb: nothing here does what a letter does, which is the rule the
+ * first test in this file keeps.
+ *
+ * What is asserted is the thing a scalar cannot do. Every case runs the same
+ * arrangement twice, with the vessel and without it, because half of it alone
+ * would only prove the reducer ran. The two that belong to a thrown mark are in
+ * `marks.test.ts`, beside the four that came before them; the four here belong
+ * to the body.
+ */
+describe("what a vessel does that a bigger number cannot", () => {
+  const ctx: StepContext = { verbs: [], graces: [] };
+
+  /** A floor, a Scribe stood on it, and nothing else in the room. */
+  function room(): World {
+    const world = buildRegion(1, 7, 1, false, 1);
+    world.tiles.fill(Tile.Empty);
+    world.entities = [];
+    world.husks = [];
+    world.marks = [];
+    world.rooms = [];
+    for (let x = 0; x < world.width; x += 1) setTile(world, x, world.height - 1, Tile.Stone);
+    world.player.x = 6 * TILE_SIZE;
+    world.player.y = (world.height - 1) * TILE_SIZE - world.player.h;
+    world.player.vx = 0;
+    world.player.vy = 0;
+    return world;
+  }
+
+  /** One klipah of the ordinary sort, laid on top of the Scribe so it lands. */
+  function blow(world: World): void {
+    const source = buildRegion(5, 91, 1, false, 1).husks.find((h) => h.kind !== "delilah");
+    world.husks = [
+      { ...source!, x: world.player.x, y: world.player.y, vx: 0, vy: 0, shells: 9, cooldown: 0 },
+    ];
+  }
+
+  /** Lands one blow on a Scribe holding these, and says what it did. */
+  function struck(items: string[], lamps = 5): { world: World; before: number } {
+    const world = room();
+    world.player.lamps = lamps;
+    world.player.iframes = 0;
+    blow(world);
+    const before = world.player.lamps;
+    step(world, NO_INPUT, { ...ctx, items });
+    return { world, before };
+  }
+
+  /**
+   * **The Wrapper — the first blow of a rung takes no lamp.** Its `iframes`
+   * already buy a longer moment *after* a hit; this is the hit itself, once,
+   * and then spent for the rung. The difference between the first mistake and
+   * the second, rather than a lamp that regrows.
+   */
+  it("wraps the first blow of a rung, and only the first", () => {
+    const { world, before } = struck(["mappah"]);
+    expect(world.player.lamps, "the wrapping was not there for the first blow").toBe(before);
+    expect(world.spared, "nothing was spent, so it will spare forever").toBe(true);
+    // Spent. The second blow is an ordinary blow.
+    world.player.iframes = 0;
+    world.husks[0].cooldown = 0;
+    step(world, NO_INPUT, { ...ctx, items: ["mappah"] });
+    expect(world.player.lamps, "the wrapping spared a second blow too").toBe(before - 1);
+    // And a bare Scribe pays for the first one.
+    expect(struck([]).world.player.lamps).toBe(before - 1);
+  });
+
+  /**
+   * **The Lampstand — the middle light does not go out.** A different mercy
+   * from the Wrapper's: that one spends itself on whatever comes first, and
+   * this one waits at the bottom for the blow that would end the climb.
+   */
+  it("refuses the last lamp once, and lets it go the second time", () => {
+    const { world } = struck(["menorah"], 1);
+    expect(world.out, "the last lamp went out with the Lampstand held").toBeFalsy();
+    expect(world.player.lamps, "the Lampstand let the last lamp go").toBe(1);
+    expect(world.relit).toBe(true);
+    world.player.iframes = 0;
+    world.husks[0].cooldown = 0;
+    step(world, NO_INPUT, { ...ctx, items: ["menorah"] });
+    expect(world.out, "the Lampstand kept relighting").toBe(true);
+    // And without it, the same blow ends the same rung.
+    expect(struck([], 1).world.out).toBe(true);
+  });
+
+  /**
+   * **The Hide is heavy.** Not a lamp saved but a body not thrown — which over
+   * a basin is the difference between a lamp and a lamp and a veiling.
+   */
+  it("halves what a blow throws a Scribe", () => {
+    const thrown = (items: string[]) => {
+      const { world } = struck(items);
+      return Math.abs(world.player.vx);
+    };
+    const light = thrown([]);
+    expect(light, "nothing threw the Scribe at all, so nothing was measured").toBeGreaterThan(0);
+    expect(thrown(["gevil"]), "the Hide weighs nothing").toBeCloseTo(light / 2, 5);
+  });
+
+  /**
+   * **The Case — a veiling spills no light.** A veiling still costs the time and
+   * the ground, which is what a veiling is for; what it stops costing is the
+   * light already gathered. The one vessel that answers the only price the
+   * terrain is allowed to charge.
+   */
+  it("keeps the light through a veiling that would otherwise spill it", () => {
+    const veiled = (items: string[]) => {
+      const world = room();
+      world.or = 40;
+      setTile(world, Math.floor(world.player.x / TILE_SIZE), world.height - 2, Tile.Thorn);
+      step(world, NO_INPUT, { ...ctx, items });
+      expect(world.veilings, "nothing was veiled, so nothing was measured").toBe(1);
+      return world.or;
+    };
+    expect(veiled([]), "a veiling cost a bare Scribe nothing").toBeLessThan(40);
+    expect(veiled(["nartik"]), "the Case spilled the light anyway").toBe(40);
+  });
+
+  /**
+   * And the other half of the same change, as with the first four: a behaviour
+   * nothing carries is a branch no climb reaches, and one that does not survive
+   * the fold from vessel to `Powers` is a branch no climb reaches either.
+   */
+  it("puts all six on something a climb can find, and lends them to nobody else", () => {
+    const flags = ["lingers", "returns", "heavy", "spared", "keeps", "relights"] as const;
+    for (const flag of flags) {
+      const carriers = KELIM.filter((k) => k.effect[flag] || k.synergy?.effect[flag]);
+      expect(carriers.length, `nothing in the pool ${flag}`).toBeGreaterThan(0);
+      expect(
+        powersFrom([carriers[0].id])[flag],
+        `${carriers[0].id} does not reach the Scribe`,
+      ).toBe(true);
+      expect(powersFrom([])[flag], `an empty hand ${flag}`).toBeFalsy();
+    }
+    // The two that belong to a mark have to survive the second fold as well.
+    for (const flag of ["lingers", "returns"] as const) {
+      const carrier = KELIM.find((k) => k.effect[flag])!;
+      expect(markPowers([], [], [carrier.id])[flag], `${carrier.id} does not reach the mark`).toBe(
+        true,
+      );
     }
   });
 });

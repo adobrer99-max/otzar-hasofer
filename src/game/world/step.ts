@@ -24,6 +24,8 @@ import {
   KNOCKBACK_Y,
   MARK_COOLDOWN,
   MARK_FALL,
+  MARK_HANGS,
+  MARK_LIFE,
   MARK_SIZE,
   MARK_SPEED,
   MARK_TURNS,
@@ -1069,7 +1071,13 @@ function veil(world: World, ctx: StepContext, message: string): void {
   if (world.player.veiled > 0) return;
   world.player.veiled = VEIL_TICKS;
   world.veilings += 1;
-  world.or = Math.max(0, world.or - world.veilCost);
+  // **The Case — nothing in it is lost.** A veiling still costs the time and
+  // the ground, which is what a veiling is for; what it stops costing is the
+  // light already gathered. The one vessel that answers the only price the
+  // terrain is allowed to charge.
+  if (!powersFrom(ctx.items ?? [], ctx.boons).keeps) {
+    world.or = Math.max(0, world.or - world.veilCost);
+  }
 
   // A veiling always opens the room. You wake at the mark, which is elsewhere,
   // and a room that stayed shut behind you would be a door nobody could ever
@@ -1133,6 +1141,8 @@ function throwMark(world: World, input: Input, ctx: StepContext): void {
     turns: powers.bounces ? MARK_TURNS : 0,
     splits: powers.splits,
     arcs: powers.arcs,
+    hangs: powers.lingers ? MARK_HANGS : undefined,
+    returns: powers.returns,
     glyph: ctx.markGlyph ?? "א",
   });
   p.markCooldown = Math.max(4, Math.round(MARK_COOLDOWN * (powers.cooldown ?? 1)));
@@ -1208,6 +1218,20 @@ function stepMarks(world: World, ctx: StepContext): void {
     });
 
   for (const m of world.marks) {
+    /**
+     * **The Scoring's line, which is a stroke and not a mark.** A spent mark
+     * that hangs keeps its bite and loses everything else: it does not move, it
+     * does not fall, it does not turn or bend or split. So the branch is here
+     * at the top rather than folded into the flight below — a hanging line is
+     * not a slow mark, it is a different thing that happens to still hurt.
+     */
+    if (m.hangs !== undefined && m.hangs > 0 && m.life <= 1) {
+      m.hangs -= 1;
+      m.life = m.hangs > 0 ? 2 : 0;
+      m.vx = 0;
+      m.vy = 0;
+      continue;
+    }
     // Weight, if it has any. Applied before the move so the fall and the
     // tile test agree about where the mark is.
     if (m.arcs) m.vy += GRAVITY * MARK_FALL * DT;
@@ -1217,12 +1241,32 @@ function stepMarks(world: World, ctx: StepContext): void {
     m.y += m.vy * DT;
     m.life -= 1;
 
+    /**
+     * **The Pointer, taken up again.** At the end of its flight the mark turns
+     * once and comes back along the line it went out on, striking whatever it
+     * passed and missed. Once only — `turned` — because a mark that came back
+     * forever is a mark that never has to be aimed, and aiming is the whole of
+     * what the strike key is for.
+     */
+    if (m.returns && !m.turned && m.life <= 1) {
+      m.turned = true;
+      m.vx = -m.vx;
+      m.vy = -m.vy;
+      m.life = MARK_LIFE;
+    }
+
     // Stone stops a mark. So does the edge of the world.
     const cx = m.x + m.w / 2;
     const cy = m.y + m.h / 2;
     if (stone(cx, cy)) {
       if (!m.turns) {
-        m.life = 0;
+        // A line that was going to hang hangs where the stone stopped it,
+        // which is the one place a scribe would actually rule one.
+        if (m.hangs !== undefined && m.hangs > 0) {
+          m.x = wasX;
+          m.y = wasY;
+          m.life = 2;
+        } else m.life = 0;
         continue;
       }
       // Which way it hit. Test the two components apart, or a mark that
@@ -1402,21 +1446,63 @@ function coax(world: World, husk: Husk): void {
 /** A lamp goes, and the Scribe is thrown clear. At zero he goes out. */
 function wound(world: World, ctx: StepContext, away: 1 | -1): void {
   const p = world.player;
-  const hit = takeHit(p.lamps, p.iframes, powersFrom(ctx.items ?? [], ctx.boons).iframes);
+  const powers = powersFrom(ctx.items ?? [], ctx.boons);
+  const hit = takeHit(p.lamps, p.iframes, powers.iframes);
   if (hit.lamps === p.lamps && !hit.out) return;
+
+  /**
+   * Thrown clear, which every blow does whatever it costs — including the two
+   * a vessel pays for below, or a Scribe would be spared the lamp and left
+   * standing in the thing that took it.
+   *
+   * **The Hide is heavy**, and halves it. What that buys is not being thrown
+   * across the room, which over a basin is the difference between a lamp and a
+   * lamp and a veiling.
+   */
+  const clear = () => {
+    const thrown = powers.heavy ? 0.5 : 1;
+    p.iframes = hit.iframes;
+    p.vx = away * KNOCKBACK_X * thrown;
+    p.vy = -KNOCKBACK_Y * thrown;
+    p.dash = 0;
+    p.grappleTo = undefined;
+  };
+
+  /**
+   * **The Wrapper — the first blow of a rung takes no lamp.** Not a longer
+   * moment after being hit, which is what its `iframes` already buy, but the
+   * blow itself: *wrapped, a thing takes longer to come to harm.* Once, and the
+   * grace is spent for the rung, so it is the difference between the first
+   * mistake and the second rather than a lamp that regrows.
+   */
+  if (powers.spared && !world.spared) {
+    world.spared = true;
+    clear();
+    say(world, "The wrapping takes it. Not this time.");
+    return;
+  }
+
+  /**
+   * **The Lampstand — the middle light is never let go out.** Once in a rung a
+   * blow that would take the last lamp takes nothing, which is a different
+   * mercy from the Wrapper's: that one spends itself on whatever comes first,
+   * and this one waits at the bottom for the blow that would end the climb.
+   */
+  if (hit.out && powers.relights && !world.relit) {
+    world.relit = true;
+    clear();
+    say(world, "The middle light does not go out.");
+    return;
+  }
+
   p.lamps = hit.lamps;
-  p.iframes = hit.iframes;
-  p.vx = away * KNOCKBACK_X;
-  p.vy = -KNOCKBACK_Y;
-  p.dash = 0;
-  p.grappleTo = undefined;
+  clear();
   if (hit.out) {
     world.out = true;
     say(world, GOING_OUT);
     return;
   }
   say(world, `A husk takes a lamp. ${p.lamps} left.`);
-  void ctx;
 }
 
 function stepHusks(world: World, ctx: StepContext): void {

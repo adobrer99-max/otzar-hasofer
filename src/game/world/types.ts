@@ -141,6 +141,15 @@ export interface Mark extends Body {
   splits?: boolean;
   /** It has weight, and falls as it flies. */
   arcs?: boolean;
+  /**
+   * Ticks it will go on hanging where it stops — the Scoring's blind line,
+   * which every letter hangs from. Carried from the throw and counted down only
+   * once the flight is over, so it is a mark's afterlife rather than its reach.
+   */
+  hangs?: number;
+  /** Whether it turns for home when its life runs out, and whether it has. */
+  returns?: boolean;
+  turned?: boolean;
   /** The letter written, for the renderer. */
   glyph: string;
 }
@@ -297,6 +306,10 @@ export interface World {
   orGathered: number;
   veilings: number;
   marksSet: number;
+  /** Whether the Wrapper's one mercy has been spent on this rung. */
+  spared?: boolean;
+  /** Whether the Lampstand's middle light has already refused to go out. */
+  relit?: boolean;
   /**
    * Which kinds this rung draws its klipot from.
    *

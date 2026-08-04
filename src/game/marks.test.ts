@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { MARK_HUNT, MARK_SIZE, MARK_TURNS } from "./combat";
+import { MARK_HANGS, MARK_HUNT, MARK_SIZE, MARK_TURNS } from "./combat";
 import { buildRegion, setTile } from "./world/build";
 import { step, type StepContext } from "./world/step";
 import { Tile, TILE_SIZE } from "./world/tiles";
@@ -13,7 +13,9 @@ import { NO_INPUT, type Husk, type Mark, type World } from "./world/types";
  * object, and the only question at a pedestal was whether the number was
  * bigger. Four behaviours were added to make a vessel an idea instead: stone
  * turns a mark, a mark bends after a shell, a broken shell throws shards, a
- * mark has weight.
+ * mark has weight. Two more came later, out of the same complaint measured a
+ * second time — a spent mark hangs where it stopped, and a mark comes back
+ * along the line it went out on.
  *
  * Each of them is a branch inside `stepMarks`, which is exactly the kind of
  * code that reads correct and does nothing — the flag threads through four
@@ -242,7 +244,119 @@ describe("what a vessel can lend a mark", () => {
   });
 
   /**
-   * And the mark the game has always had is unchanged: none of the four is on
+   * **Hanging — the Scoring's line.**
+   *
+   * The Scoring rules a page before a word is written on it, and every letter
+   * hangs from one. So its mark stops being a thrown thing at the end of its
+   * flight and becomes a line left in the air: it keeps its bite and loses
+   * everything else, for a long time, exactly where it was spent.
+   *
+   * What makes it a behaviour and not a longer reach is that the two are
+   * different in kind. Reach carries the mark *further*; this stops it and
+   * leaves it. A wall makes the difference visible — a longer throw dies on
+   * the stone, and a hanging one rules a line against it.
+   */
+  describe("hanging", () => {
+    it("leaves a spent mark in the air where a plain one is gone", () => {
+      const alive = (hangs?: number) => {
+        const w = arena();
+        w.marks = [mark({ x: 4, y: 12 }, 300, 0, { life: 3, hangs })];
+        fly(w, 40);
+        return w.marks.length;
+      };
+      expect(alive(MARK_HANGS), "a hanging line was spent like any other mark").toBe(1);
+      expect(alive(undefined), "a plain mark outlived its reach").toBe(0);
+    });
+
+    it("stops it where it was spent rather than carrying it on", () => {
+      world.marks = [mark({ x: 4, y: 12 }, 300, 0, { life: 3, hangs: MARK_HANGS })];
+      fly(world, 20);
+      const hanging = world.marks[0];
+      const where = hanging.x;
+      fly(world, 20);
+      expect(world.marks[0].x, "a hanging line drifted").toBe(where);
+      expect(world.marks[0].vx, "a hanging line is still being thrown").toBe(0);
+    });
+
+    it("still bites what walks into it", () => {
+      // Thrown at nothing and left to hang, and only then does anything walk
+      // into it — so what bites is the line and not the throw.
+      world.marks = [mark({ x: 4, y: 12 }, 300, 0, { life: 3, hangs: MARK_HANGS })];
+      fly(world, 10);
+      const line = world.marks[0];
+      expect(line, "nothing hung, so nothing was measured").toBeDefined();
+      const target = husk(world, { x: 7, y: 12 });
+      target.shells = 1;
+      for (let i = 0; i < 40 && !target.broken; i += 1) {
+        target.x = line.x;
+        target.y = line.y;
+        target.vx = 0;
+        step(world, NO_INPUT, ctx);
+      }
+      expect(target.broken, "a hanging line has no bite left in it").toBe(true);
+    });
+
+    it("rules its line against the stone that stopped it", () => {
+      for (let y = 0; y < world.height; y += 1) setTile(world, 8, y, Tile.Stone);
+      world.marks = [mark({ x: 4, y: 12 }, 400, 0, { hangs: MARK_HANGS })];
+      fly(world, 30);
+      expect(world.marks, "stone spent a line that should have hung on it").toHaveLength(1);
+      const at = Math.floor((world.marks[0].x + world.marks[0].w / 2) / TILE_SIZE);
+      expect(at, "the line hung inside the wall").toBeLessThan(8);
+    });
+
+    it("goes out in the end, so a room does not fill with lines", () => {
+      world.marks = [mark({ x: 4, y: 12 }, 300, 0, { life: 3, hangs: 6 })];
+      fly(world, 60);
+      expect(world.marks).toHaveLength(0);
+    });
+  });
+
+  /**
+   * **Returning — the Pointer, taken up again.**
+   *
+   * A `yad` is set down between one line and the next and taken up again, and
+   * so is its mark: at the end of its flight it turns once and comes back along
+   * the way it went, striking whatever it passed and missed. Once, because a
+   * mark that came back forever would never have to be aimed.
+   */
+  describe("returning", () => {
+    it("comes back along the line it went out on", () => {
+      world.marks = [mark({ x: 4, y: 12 }, 300, 0, { life: 4, returns: true })];
+      fly(world, 6);
+      expect(world.marks[0], "a returning mark was spent at the end of its reach").toBeDefined();
+      expect(world.marks[0].vx, "it went on out instead of turning").toBeLessThan(0);
+      expect(world.marks[0].turned).toBe(true);
+    });
+
+    it("strikes what the throw flew past", () => {
+      // Behind the Scribe, so only a mark on its way back can reach it.
+      const target = husk(world, { x: 1, y: 12 });
+      target.shells = 1;
+      world.marks = [mark({ x: 4, y: 12 }, 260, 0, { life: 5, returns: true })];
+      for (let i = 0; i < 60 && !target.broken; i += 1) {
+        step(world, NO_INPUT, ctx);
+        target.x = 1 * TILE_SIZE;
+        target.y = 12 * TILE_SIZE;
+        target.vx = 0;
+      }
+      expect(target.broken, "the Pointer never came back far enough to strike").toBe(true);
+    });
+
+    it("turns once and not again", () => {
+      world.marks = [mark({ x: 4, y: 12 }, 300, 0, { life: 4, returns: true })];
+      fly(world, 8);
+      const back = world.marks[0].vx;
+      fly(world, 200);
+      // Either it is spent, or it is still going the way it turned. What it may
+      // not do is be flying outward again.
+      if (world.marks[0]) expect(Math.sign(world.marks[0].vx)).toBe(Math.sign(back));
+      else expect(world.marks).toHaveLength(0);
+    });
+  });
+
+  /**
+   * And the mark the game has always had is unchanged: none of them is on
    * unless something turns it on. Cheap to assert and the thing that would
    * break first if a default were ever written into `NOTHING`.
    */
