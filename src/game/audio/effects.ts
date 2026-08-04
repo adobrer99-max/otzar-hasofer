@@ -76,3 +76,94 @@ export function arrival(score: Score): void {
   pluck(pitchOf(score.mode, 5, 1), at + 0.12, 2.0, 0.1, "sine");
   pluck(pitchOf(score.mode, 8, 1), at + 0.24, 1.8, 0.07, "sine");
 }
+
+// ---------------------------------------------------------------------------
+// the fight
+// ---------------------------------------------------------------------------
+
+/**
+ * **The fight was silent.** Everything above is the Scribe's body and the
+ * things they pick up — and the loop they actually spend a climb inside made
+ * no sound at all: a mark thrown, a shell struck, a klipah broken, a lamp gone
+ * out. Five events of about twenty-five were wired, and none of the five was
+ * combat, so the most kinetic part of the game read as a diagram.
+ *
+ * These stay inside the rung's mode like the rest, but they sit **below** the
+ * melody rather than in it: a fight should be felt as percussion under the
+ * nigun, not as a second tune arguing with it. So the tonics are low, the
+ * plucks are short, and the only bright thing in here is a shell giving way —
+ * which is the one moment the light actually comes out.
+ */
+
+/** A mark written and thrown: the pen leaving the page. Dry, and very short. */
+export function strike(score: Score): void {
+  const at = now();
+  breath(at, 0.04, 0.045, 2200);
+  pluck(pitchOf(score.mode, 5, 0), at, 0.09, 0.05, "square");
+}
+
+/**
+ * A mark meeting a shell and not breaking it — a knock, deliberately dull.
+ * This is the commonest sound in the game after a footfall, so it has to be
+ * something a player can hear a hundred times without noticing it.
+ */
+export function hit(score: Score): void {
+  const at = now();
+  breath(at, 0.05, 0.03, 900);
+  pluck(pitchOf(score.mode, 2, 0), at, 0.08, 0.035, "triangle");
+}
+
+/**
+ * A shell given up: the noise of the break, and then the light that was shut
+ * inside it. The bright part is the point — it is the same tick a mote makes,
+ * because it is the same light.
+ */
+export function broken(score: Score): void {
+  const at = now();
+  breath(at, 0.1, 0.06, 1500);
+  pluck(pitchOf(score.mode, 8, 1), at + 0.03, 0.35, 0.08, "triangle");
+  pluck(pitchOf(score.mode, 5, 1), at + 0.09, 0.5, 0.05, "sine");
+}
+
+/**
+ * One lamp gone. A step *down* the mode rather than a sting: what the Scribe
+ * is made of is smaller than it was, and there is still some of it left.
+ */
+export function lampLost(score: Score): void {
+  const at = now();
+  pluck(pitchOf(score.mode, 4, 0), at, 0.5, 0.11, "sine");
+  pluck(pitchOf(score.mode, 2, 0), at + 0.1, 0.8, 0.09, "sine");
+}
+
+/**
+ * The last of them. The drone's own note, an octave under, left to fall away
+ * — the kingdom coming up to meet the Scribe rather than a failure buzzer.
+ * There is no losing in this game; there is waking up further down.
+ */
+export function goingOut(score: Score): void {
+  const at = now();
+  pluck(score.droneHz / 2, at, 2.6, 0.14, "sine");
+  pluck(score.droneHz / 4, at + 0.18, 3.2, 0.1, "sine");
+  breath(at + 0.05, 0.9, 0.03, 300);
+}
+
+/**
+ * Light poured into a Sefirah, which is the only thing light is for. Rising
+ * where `cadence` falls: a kindling is not an arrival, it is a place lit that
+ * will still be lit after the Scribe has gone out.
+ */
+export function kindled(score: Score): void {
+  const at = now();
+  [1, 3, 5, 8].forEach((degree, i) => {
+    pluck(pitchOf(score.mode, degree, 1), at + i * 0.11, 1.2, 0.11, "triangle");
+  });
+  pluck(pitchOf(score.mode, 1, 2), at + 0.44, 2.4, 0.07, "sine");
+}
+
+/** A vessel lifted off its pedestal: an object, so a knock rather than a note. */
+export function vessel(score: Score): void {
+  const at = now();
+  breath(at, 0.08, 0.045, 1200);
+  pluck(pitchOf(score.mode, 3, 0), at + 0.04, 0.6, 0.08, "triangle");
+  pluck(pitchOf(score.mode, 6, 0), at + 0.14, 0.5, 0.05, "sine");
+}

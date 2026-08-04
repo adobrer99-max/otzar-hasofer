@@ -704,9 +704,10 @@ export function GamePage() {
           ? { ...prev, items: [...(prev.items ?? []), keliId], updatedAt: new Date().toISOString() }
           : prev,
       );
+      audio.onVessel();
       setPlate(null);
     },
-    [world],
+    [world, audio],
   );
 
   const onFragment = useCallback((index: number) => {
@@ -1073,9 +1074,10 @@ export function GamePage() {
       };
       void saveAscent(next).catch(() => undefined);
       learnTree("kindle");
+      audio.onKindled();
       return next;
     });
-  }, [learnTree]);
+  }, [learnTree, audio]);
 
   const sealAscent = useCallback(() => {
     setAscent((prev) => {
