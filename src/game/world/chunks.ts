@@ -139,16 +139,41 @@ export const START_CHUNK: Chunk = chunk("start", { demand: 1 }, [
 //
 // **A room a Sefirah is held in.** Not laid by `layout` and not drawn from by
 // anything — `buildArena` names them directly, because an arena is not a screen
-// a rung might happen to get. There are only two shapes, and the reason there
-// are only two is the point of the guardians: the *terrain* is the answer to
-// exactly one of the three great ones.
+// a rung might happen to get. `ARENA_ROOMS` in `build.ts` is the table that says
+// which pair holds which creature, and the plain room below is what a guardian
+// gets when the plain room is the right answer.
 //
-// Leviathan needs water to be unreachable in. Behemoth needs a run long enough
-// to build up in and walls it will turn at rather than stop at — which a plain
-// room already is. And the Ziz needs a roof, which every screen in this library
-// has, because a chunk is eighteen rows tall and fourteen of them are air.
+// **The rule every one of these keeps, and the reason for it.** Nothing solid
+// stands in rows thirteen to fifteen except where a guardian's own mechanic
+// needs it, because that band is where a walking body and a thrown letter both
+// live: stone there is a hurdle to a Scribe and a wall to a mark, so a careless
+// block in the middle of a sealed room is a fight nobody can finish. Terrain
+// therefore goes *overhead*, or it is water, or it is ledge — which stops only
+// a falling body and never a klipah, a mark or a walk. The one deliberate
+// exception is Netzach, and it is deliberate because the Re'em's whole line is
+// about running into stone.
+//
+// Read `combat.ts` beside this. **None of these rooms adds a behaviour** — the
+// creatures already have theirs, and terrain is the whole of what is being
+// authored here. Three of them amplify one: Netzach gives the Re'em stone to
+// run into, Yesod gives the Nefilim something to hang from, Binah gives
+// Leviathan the water it cannot be reached in. The rest are a look and a
+// place — a canopy, a shelf, steps, a vault, an arcade, a roost — and the
+// measured cost of the fight in them is the same to within a tick or two, which
+// `guardianFight.test.ts` records rather than rounds off. Ten rooms that are ten
+// places; three of them are also three fights.
 
-/** Flat, walled, and empty. Two of these are one room. */
+/**
+ * Flat, walled, and empty — the approach and the way out of every arena, and
+ * **Behemoth's whole room**, which is not an omission.
+ *
+ * It runs, the walls do not stop it because it turns at them rather than
+ * stopping, and the one thing that halts it is a stone the Scribe set. Every
+ * feature the other nine rooms have would be a second thing that stops it, and
+ * a second thing that stops it is the fight given away. Emptiness is the
+ * terrain that amplifies Behemoth: a long clear run and nothing in it that the
+ * Scribe did not put there.
+ */
 export const ARENA_A: Chunk = chunk("arena", { demand: 1 }, [
   E, E, E, E, E, E, E, E, E, E, E, E, E, E,
   E,
@@ -168,9 +193,35 @@ export const ARENA_B: Chunk = chunk("arena", { demand: 1 }, [
  * The same room with the middle of it flooded, and dry land at both ends.
  *
  * The dry land is the whole fight: Leviathan cannot be marked in the water, so
- * a pool with no bank is a room with nothing to do in it. Four columns of stone
- * floor each side, and the water four rows deep, so a body drawn out of it
- * lands somewhere a mark can reach.
+ * a pool with no bank is a room with nothing to do in it. The water is four
+ * rows deep, so a body drawn out of it lands somewhere a mark can reach.
+ *
+ * **And the channel is jumpable, which it was not.** Measured with the fighting
+ * probe over three seeds: a Scribe carrying Vav — the one letter the map says
+ * Binah asks for — and not Mem was stuck in this room for the whole
+ * twenty-four-thousand-tick budget, every time. The way out is beyond the water
+ * and the water was eight columns of it, so the room quietly demanded a second
+ * letter the map never declares, and a Scribe who routed here without it walked
+ * into a room they could not leave.
+ *
+ * Swimming was also the wrong answer on its own terms. Leviathan's whole
+ * premise is that **nothing touches it in the water** — being in there with it
+ * is not a thing the fight wants a Scribe to do. So the pool is narrowed to six
+ * columns and the water stays exactly what it was for: the place the creature
+ * cannot be reached in, and has to be drawn out of.
+ *
+ * Six and not four, which would have been a plain running jump: this rung is
+ * over the Abyss, every Scribe standing in it has crossed a Word-Gate to be
+ * here, and the Breath carries seven. What the narrowing buys is that the
+ * channel is answered by what a Scribe already has rather than by one letter
+ * the map never names.
+ *
+ * **The near bank did not move**, and that is not tidiness. `guardians.test.ts`
+ * stands a Scribe two tiles into the room and asks whether the Hook can draw
+ * Leviathan out from there — the lock the whole rung is built on — and the
+ * creature swims to the water's near edge, so that edge is the range the test
+ * measures. Taking the two columns off the far side keeps the answer to "can
+ * the Hook reach it" exactly what it was, and narrows only the crossing.
  */
 export const ARENA_SEA_A: Chunk = chunk("arena-sea", { demand: 1 }, [
   E, E, E, E, E, E, E, E, E, E, E, E, E,
@@ -182,10 +233,315 @@ export const ARENA_SEA_A: Chunk = chunk("arena-sea", { demand: 1 }, [
 ]);
 export const ARENA_SEA_B: Chunk = chunk("arena-sea", { demand: 1 }, [
   E, E, E, E, E, E, E, E, E, E, E, E, E,
-  "wwww............",
-  "wwww............",
-  "wwww............",
-  "wwww############",
+  "ww..............",
+  "ww..............",
+  "ww..............",
+  "ww##############",
+  F,
+]);
+
+/**
+ * **Malchut — the Arbeh.** A canopy, and it is nothing to them.
+ *
+ * The eighth plague is the only one that is a number rather than a thing, and
+ * the locust is the one guardian that goes *through* the world: `flies` is set
+ * on it, so stone, ledge and every other honest feature of a room are simply
+ * absent as far as it is concerned. So the Kingdom's arena is the shelter that
+ * does not shelter — a broken canopy the Scribe can climb onto and stand under
+ * and put between themselves and the room, and the cloud comes through it as if
+ * it were not there. Ledges rather than stone, because a ledge stops only a
+ * falling body: nothing here is in the way of a walk or a mark.
+ */
+export const ARENA_CANOPY_A: Chunk = chunk("arena-canopy", { demand: 1 }, [
+  E, E, E, E, E, E, E, E,
+  "...===....===...",
+  E, E, E,
+  "..===......===..",
+  E, E, E,
+  F,
+  F,
+]);
+export const ARENA_CANOPY_B: Chunk = chunk("arena-canopy", { demand: 1 }, [
+  E, E, E, E, E, E, E, E,
+  "..===......===..",
+  E, E, E,
+  "...===....===...",
+  E, E, E,
+  F,
+  F,
+]);
+
+/**
+ * **Yesod — the Nefilim.** Something to hang from, which it never had.
+ *
+ * "It hangs where it is and does nothing until you are underneath it" — and in
+ * the plain room it was laid on the floor like everything else, where hanging
+ * is indistinguishable from sitting. It has speed zero and holds `vy` at zero
+ * until the Scribe walks under it, so a Nefilim on the ground is not a slow
+ * fight, it is *no* fight: measured at six hundred and sixteen ticks, exactly
+ * the empty room's own number.
+ *
+ * The pendant over the seam reaches down to row twelve, which is where
+ * `buildArena` hangs it, so the creature is under stone rather than floating in
+ * nothing — and the fall, when it comes, is the whole of what the name means.
+ *
+ * **Four tiles up and not nine**, which was measured and not chosen. Hung at
+ * the Ziz's height it was outside the carry of an ordinary mark, and Yesod
+ * declares no letter at all: the room would have grown a silent Staff lock that
+ * the map never mentions, and the honest climb found it immediately — a Scribe
+ * holding five letters stood in a sealed room with nothing they could reach.
+ */
+export const ARENA_TEETH_A: Chunk = chunk("arena-teeth", { demand: 1 }, [
+  "....###.......##",
+  "....###.......##",
+  "....###.......##",
+  "..............##",
+  "..............##",
+  "..............##",
+  "..............##",
+  "..............##",
+  "..............##",
+  "..............##",
+  "..............##",
+  "..............##",
+  E, E, E, E,
+  F,
+  F,
+]);
+export const ARENA_TEETH_B: Chunk = chunk("arena-teeth", { demand: 1 }, [
+  "##.......###....",
+  "##.......###....",
+  "##.......###....",
+  "##..............",
+  "##..............",
+  "##..............",
+  "##..............",
+  "##..............",
+  "##..............",
+  "##..............",
+  "##..............",
+  "##..............",
+  E, E, E, E,
+  F,
+  F,
+]);
+
+/**
+ * **Hod — the Saraf.** Somewhere to stand that is not the ground.
+ *
+ * The bite is not what kills; what kills is the ground you have to go back over,
+ * because the Saraf leaves a burning mark behind it that lives a hundred and
+ * fifty ticks. In an empty room the answer to a burning floor is to walk to the
+ * other end of the burning floor. A shelf two tiles up is the other answer —
+ * off it entirely — and two tiles is exactly a plain running jump's rise, so
+ * the shelf is offered to every Scribe and not only to one holding the Breath.
+ *
+ * Ledges, so the Saraf itself keeps pacing underneath: it cannot follow, and it
+ * is not stopped either.
+ */
+export const ARENA_SHELF_A: Chunk = chunk("arena-shelf", { demand: 1 }, [
+  E, E, E, E, E, E, E, E, E, E, E, E, E, E,
+  "...=====........",
+  E,
+  F,
+  F,
+]);
+export const ARENA_SHELF_B: Chunk = chunk("arena-shelf", { demand: 1 }, [
+  E, E, E, E, E, E, E, E, E, E, E, E, E, E,
+  "........=====...",
+  E,
+  F,
+  F,
+]);
+
+/**
+ * **Netzach — the Re'em.** Two stones for it to run into.
+ *
+ * `combat.ts` says of it: *stone takes a shell off it — step out of the way and
+ * it does the work. The one klipah in the game a Scribe can break without
+ * writing.* That was written and then laid in a room with nothing in it but two
+ * end walls, so the sentence was true in principle and unreachable in practice.
+ *
+ * The Re'em's charge tests the tile at its own mid-height, which for a body
+ * twenty pixels tall standing on the floor is row fifteen — hence a stub two
+ * rows tall rather than a decorative one. **This is the one place stone stands
+ * in the walking band**, and it stands there knowingly: it is a hurdle a Scribe
+ * vaults, five and six tiles out from where the creature is set, so the room's
+ * middle stays open and the two stones are exactly where a thing that will not
+ * turn ends up.
+ */
+export const ARENA_PILLAR_A: Chunk = chunk("arena-pillar", { demand: 1 }, [
+  E, E, E, E, E, E, E, E, E, E, E, E, E, E,
+  "..........#.....",
+  "..........#.....",
+  F,
+  F,
+]);
+export const ARENA_PILLAR_B: Chunk = chunk("arena-pillar", { demand: 1 }, [
+  E, E, E, E, E, E, E, E, E, E, E, E, E, E,
+  ".....#..........",
+  ".....#..........",
+  F,
+  F,
+]);
+
+/**
+ * **Tiferet — Rahav.** Tiers, because the ground stops being tenable.
+ *
+ * Every shell taken off Rahav makes it larger and quicker — by the last one it
+ * is nearly twice the creature it started as and moves at nearly twice the
+ * speed, and it charges whenever the Scribe is anywhere near. What an empty
+ * room offers against that is running away along a line, which is a fight that
+ * gets worse in only one direction.
+ *
+ * So the harmony's room is built as a set of steps to either side, ledges at
+ * two, four and six tiles, and the fight has a second axis in it: Rahav cannot
+ * climb — none of the pacing creatures can — so the higher a Scribe goes the
+ * more the exchange becomes writing downward instead of retreating sideways.
+ * Pride swells at the foot of the steps.
+ */
+export const ARENA_TIERS_A: Chunk = chunk("arena-tiers", { demand: 1 }, [
+  E, E, E, E, E, E, E, E, E, E,
+  "..........====..",
+  E,
+  "......====......",
+  E,
+  "..====..........",
+  E,
+  F,
+  F,
+]);
+export const ARENA_TIERS_B: Chunk = chunk("arena-tiers", { demand: 1 }, [
+  E, E, E, E, E, E, E, E, E, E,
+  "..====..........",
+  E,
+  "......====......",
+  E,
+  "..........====..",
+  E,
+  F,
+  F,
+]);
+
+/**
+ * **Gevurah — Og.** A weight overhead, and shafts in it.
+ *
+ * Og's step brings the ceiling down *where the Scribe is standing*, not where
+ * Og is: it drops a stone seven tiles above the Scribe's own head. In a room
+ * whose ceiling is nothing at all, that is a mark appearing out of clear air.
+ * Here it comes out of a vault heavy enough to look like it could give.
+ *
+ * The number the slab is drawn against is that seven: the stone is spawned at
+ * row seven, so anything solid at or below it would kill Og's only reach on the
+ * tick it was thrown. The vault therefore stops at row five, and severity keeps
+ * the one thing it does.
+ */
+export const ARENA_VAULT_A: Chunk = chunk("arena-vault", { demand: 1 }, [
+  F,
+  F,
+  F,
+  "####.######.####",
+  "####.######.####",
+  "###...####...###",
+  E, E, E, E, E, E, E, E, E, E,
+  F,
+  F,
+]);
+export const ARENA_VAULT_B: Chunk = chunk("arena-vault", { demand: 1 }, [
+  F,
+  F,
+  F,
+  "##.######.######",
+  "##.######.######",
+  "#...####...#####",
+  E, E, E, E, E, E, E, E, E, E,
+  F,
+  F,
+]);
+
+/**
+ * **Chesed — the open tent.** An arcade, and no water, which is not what this
+ * room set out to be.
+ *
+ * The Tannin holds the water and comes out at whatever stands on the bank, and
+ * it has always been laid in a dry room, where its own code falls through to
+ * the branch marked *laid on a rung with no water in it at all* and it paces
+ * like a Cain. Chesed is water and the day the tanninim were made; a pool was
+ * the obvious gift, and it was drawn, measured three ways, and taken out again.
+ *
+ * **Water in this room is a letter lock the map does not declare.** Not the
+ * depth of it and not the width: `touchTiles` veils any Scribe who is in water
+ * at all without Mem — *the deep will not carry you yet* — so a pool anywhere
+ * on the ground a Scribe has to walk is a wall they can never pass, and the way
+ * out of a guardian's room is on the far side of it. Measured over seeds
+ * 3/91/555, a Scribe holding nine letters and not Mem broke the Tannin in about
+ * two hundred and fifty ticks and then stood in a room they could not leave for
+ * the remaining twenty-three thousand seven hundred and fifty. Chesed declares
+ * no letter — its guardian's own reward *is* reach — and a rung that asks for
+ * one the map never names is exactly the fault this phase found in Binah.
+ *
+ * A shallower pool did not fix it, and neither did moving it: a body that will
+ * not wade stops at the near bank, and the fighting probe reads a water tile
+ * ahead as a wall, correctly, because that is what Leviathan taught it.
+ *
+ * So Chesed gets a **look and not a mechanic**, and this comment says so rather
+ * than the commit message claiming a sea fight. The tent of Mamre was open on
+ * its four sides; the arcade below is that, and the ground under it is clear
+ * from wall to wall. Leviathan keeps the water, which is Binah's, and the
+ * Tannin's own sea is a thing this game still owes it.
+ */
+export const ARENA_TENT_A: Chunk = chunk("arena-tent", { demand: 1 }, [
+  F,
+  F,
+  "###..........###",
+  "###..........###",
+  "##............##",
+  "##............##",
+  "#..............#",
+  "#..............#",
+  E, E, E, E, E, E, E, E,
+  F,
+  F,
+]);
+export const ARENA_TENT_B: Chunk = chunk("arena-tent", { demand: 1 }, [
+  F,
+  F,
+  "####........####",
+  "####........####",
+  "###..........###",
+  "###..........###",
+  "##............##",
+  "##............##",
+  E, E, E, E, E, E, E, E,
+  F,
+  F,
+]);
+
+/**
+ * **Chochmah — the Ziz.** The roof it is said to hold.
+ *
+ * *It never comes down* — it rides at its own height and the only question in
+ * the fight is how far a Scribe can throw. The line says it holds the roof, and
+ * there was no roof: it hung in open air at a height chosen by arithmetic.
+ *
+ * The vault here is drawn at row six, one row above where `buildArena` sets the
+ * creature, so it rides directly beneath it. Ledges, and above the Ziz rather
+ * than below it, for the reason the whole rung exists: this fight is a letter
+ * lock, and anything a Scribe could climb, or anything that could stop a mark
+ * short of the creature, would answer the Staff's question for them.
+ */
+export const ARENA_ROOST_A: Chunk = chunk("arena-roost", { demand: 1 }, [
+  E, E, E, E, E, E,
+  "..====....====..",
+  E, E, E, E, E, E, E, E, E,
+  F,
+  F,
+]);
+export const ARENA_ROOST_B: Chunk = chunk("arena-roost", { demand: 1 }, [
+  E, E, E, E, E, E,
+  "...====...====..",
+  E, E, E, E, E, E, E, E, E,
+  F,
   F,
 ]);
 

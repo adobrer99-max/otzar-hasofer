@@ -71,7 +71,15 @@ export function duel(sefirah: SefirahId, seed: number, budget = 24000, ctx: Step
     // Within a mark's carry, stand and write; further, close the distance —
     // but never into water, which is Leviathan's whole question: the bank is
     // the place to fight from, and the Hook does the crossing.
-    const far = Math.abs(dx) > TILE_SIZE * 7;
+    // **Under a thing that is over you.** Seven tiles is a good distance to
+    // write at something standing on the same floor, and it is the wrong
+    // distance entirely for something in the air: a mark aimed up from seven
+    // tiles away goes up, and the creature is over *there*. So when the beast
+    // is overhead the probe keeps closing until it is beneath it, which is what
+    // a person does — and in Yesod it is the whole fight, because the Nefilim
+    // does nothing at all until someone is underneath it.
+    const above = beast.y + beast.h < p.y;
+    const far = Math.abs(dx) > TILE_SIZE * (above ? 1 : 7);
     const aheadX = Math.floor((p.x + p.w / 2) / TILE_SIZE) + towards;
     const footRow = Math.floor((p.y + p.h + 1) / TILE_SIZE);
     const waterAhead =
@@ -84,7 +92,7 @@ export function duel(sefirah: SefirahId, seed: number, budget = 24000, ctx: Step
       right: advance && towards > 0,
       left: advance && towards < 0,
       // The Ziz holds the roof; held up is how a mark goes looking for it.
-      up: beast.y + beast.h < p.y,
+      up: above,
       // The stone rhythm from the lock tests: set one, take it back, set it
       // again, which is what a person does while the thing is running at them.
       act: stone && i % 30 === 0,
@@ -120,21 +128,39 @@ describe("every room can be walked out of", () => {
    * full hand and three plain lamps, the room is finished — the guardian
    * broken and the exit reached — with no going out.
    *
-   * Measured when this was written, over seeds 3/91/555 (ticks are the
-   * slowest seed, lamps the worst seed):
+   * Measured over seeds 3/91/555 (ticks are the slowest seed, lamps the worst
+   * seed), and re-measured once each room got its own terrain — the second
+   * column is what the room cost when every guardian but Leviathan stood in the
+   * same empty box:
    *
    * ```
-   *   malchut  arbeh     ≤ 635 ticks   3 lamps kept
-   *   yesod    nefilim   ≤ 616         3
-   *   hod      saraf     ≤ 624         2
-   *   netzach  reem      ≤ 616         3
-   *   tiferet  rahav     ≤ 616         3
-   *   gevurah  og        ≤ 616         3
-   *   chesed   tannin    ≤ 616         3
-   *   binah    livyatan  ≤ 690         3
-   *   chochmah ziz       ≤ 631         3
-   *   keter    behemot   ≤ 773         3
+   *   malchut  arbeh     ≤ 635 ticks  (was 635)   3 lamps kept
+   *   yesod    nefilim   ≤ 616        (was 616)   3
+   *   hod      saraf     ≤ 624        (was 624)   2
+   *   netzach  reem      ≤ 825        (was 616)   3
+   *   tiferet  rahav     ≤ 616        (was 616)   3
+   *   gevurah  og        ≤ 616        (was 616)   3
+   *   chesed   tannin    ≤ 616        (was 616)   3
+   *   binah    livyatan  ≤ 689        (was 690)   3
+   *   chochmah ziz       ≤ 616        (was 631)   3
+   *   keter    behemot   ≤ 773        (was 773)   3
    * ```
+   *
+   * **One number moved, and it should be read as one number.** Netzach's Re'em
+   * now has stone to run into — the line `combat.ts` wrote for it and could not
+   * reach in an empty room — and the fight got a third longer because the room
+   * does part of it. Everything else is within a tick or two of where it was,
+   * and Chochmah is *lower* only because the probe learned to walk under a
+   * thing that is over it, which is a change to the instrument and not to the
+   * bird.
+   *
+   * That is the honest report of this phase. Yesod's Nefilim genuinely hangs
+   * now and genuinely falls, which it never did, and costs exactly what it
+   * cost before. The rest — Malchut's canopy, Hod's shelf, Tiferet's steps,
+   * Gevurah's vault, Chesed's arcade, Chochmah's roost — change what a Scribe
+   * *may* do and what the place looks like, and a probe that walks in a
+   * straight line and throws does not take any of them up on it. Ten rooms
+   * that are ten places; three of them are also three fights.
    *
    * The headline for the ending decision: **to a full-hand Scribe the rooms
    * are cheap** — ten to thirteen seconds of game time each, and a lamp is
@@ -176,6 +202,57 @@ describe("every room can be walked out of", () => {
           `${region.sefirah} seed ${seed} ended with ${fight.lampsLeft} lamps`,
         ).toBeGreaterThanOrEqual(1);
       }
+    }
+  }, 300000);
+});
+
+/** The same hand, minus named letters — a Scribe who did not walk every way. */
+function without(letters: string[]): StepContext {
+  const drop = new Set(letters);
+  const held = Object.entries(abilityByLetter).filter(([id]) => !drop.has(id));
+  return {
+    verbs: held.map(([, a]) => a?.verb).filter((v): v is Verb => Boolean(v)),
+    graces: held.map(([, a]) => a?.grace).filter((g): g is Grace => Boolean(g)),
+  };
+}
+
+/**
+ * **A room may ask for exactly the letter the map says it asks for.**
+ *
+ * `guardians.ts` declares one lock per guardian, and that declaration is what
+ * the Tree shows a Scribe deciding where to walk. Binah's is Vav, the Hook,
+ * because Leviathan cannot be marked in the water and has to be drawn out of
+ * it. But the room's *terrain* had a second, undeclared demand in it: the
+ * exit lay past eight columns of water, so a Scribe holding Vav and not Mem
+ * arrived at a room they could not leave — stuck for the whole
+ * twenty-four-thousand-tick budget, on every seed. The map had told them the
+ * truth and the ground had not.
+ *
+ * The fix was terrain, not code: the channel narrowed to a gap a running body
+ * clears (`ARENA_SEA_A`/`ARENA_SEA_B`), leaving the water exactly what it was
+ * for. These hold both halves of that, because either can regress on its own —
+ * widen the channel again and Mem comes back as a hidden lock; drain it and
+ * Vav stops being needed and the declared lock becomes decorative.
+ */
+describe("Binah's room asks for the Hook, and nothing else", () => {
+  it("can be finished carrying Vav and not the Mouth of water", () => {
+    for (const seed of SEEDS) {
+      const fight = duel("binah", seed, 24000, without(["mem"]));
+      expect(
+        fight.finished,
+        `seed ${seed}: no way out of the sea without Mem (${fight.ticks} ticks)`,
+      ).toBe(true);
+      expect(fight.out, `seed ${seed} went out`).toBe(false);
+    }
+  }, 300000);
+
+  it("cannot be finished without Vav, which is the lock the map declares", () => {
+    for (const seed of SEEDS) {
+      const fight = duel("binah", seed, 24000, without(["vav"]));
+      expect(
+        fight.finished,
+        `seed ${seed}: Leviathan was broken without the Hook`,
+      ).toBe(false);
     }
   }, 300000);
 });

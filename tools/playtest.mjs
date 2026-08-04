@@ -651,6 +651,99 @@ const SCRIPTS = [
     until: () => true,
     seconds: 30,
   },
+  {
+    name: "arenas",
+    about: "All ten guardians' rooms, one screenshot each — the terrain, the palette and the creature.",
+    /**
+     * **The ten rooms, looked at.**
+     *
+     * Nine of the ten fights shared one empty box until the arenas were
+     * authored, and every claim about the new terrain is a claim about a
+     * picture: whether Yesod's Nefilim reads as hanging from the mass above it,
+     * whether Gevurah's vault looks like a weight, whether the ten palettes are
+     * ten places or one place ten times. None of that is a thing a duel probe
+     * can answer — it counts ticks and lamps, and it would count them happily
+     * in a room drawn entirely in mud.
+     *
+     * A record per Sefirah, seeded rather than climbed, and the map's own
+     * "Face …" button to go in — which is the door a player uses. `noPlay`,
+     * because nothing here is meant to be fought: the frame wanted is the one
+     * before anything happens.
+     */
+    warp: {},
+    noPlay: true,
+    enter: async (page) => {
+      const ROOMS = [
+        ["malchut", 1], ["yesod", 2], ["hod", 3], ["netzach", 4], ["tiferet", 5],
+        ["gevurah", 6], ["chesed", 7], ["binah", 8], ["chochmah", 9], ["keter", 10],
+      ];
+      const ALL = [
+        "aleph", "bet", "gimel", "dalet", "heh", "vav", "zayin", "chet", "tet", "yod",
+        "kaf", "lamed", "mem", "nun", "samech", "ayin", "peh", "tzadi", "kuf", "resh",
+        "shin", "tav",
+      ];
+      const missing = [];
+      for (const [sefirah, index] of ROOMS) {
+        await page.evaluate(
+          async ({ sefirah, index, ALL }) => {
+            const req = indexedDB.open("otzar-hasofer");
+            const db = await new Promise((res, rej) => {
+              req.onsuccess = () => res(req.result);
+              req.onerror = () => rej(req.error);
+            });
+            const now = new Date().toISOString();
+            const tx = db.transaction("ascents", "readwrite");
+            // One record at a time, cleared between rooms, so the game always
+            // resumes the climb this loop is looking at.
+            tx.objectStore("ascents").clear();
+            tx.objectStore("ascents").put({
+              id: "playtest-arena",
+              seed: 7,
+              seedLabel: "playtest",
+              createdAt: now,
+              updatedAt: now,
+              regionIndex: index,
+              at: sefirah,
+              pathsWalked: ["malchut-yesod"],
+              lettersHeld: ALL,
+              or: 0,
+              regionsCleared: [],
+              housesMet: [],
+              sefirotLit: [],
+            });
+            await new Promise((res) => { tx.oncomplete = res; });
+          },
+          { sefirah, index, ALL },
+        );
+        await page.reload({ waitUntil: "domcontentloaded" });
+        await page.waitForTimeout(700);
+        await pastThePrologue(page);
+        const face = page.getByRole("button", { name: /^Face / });
+        if (!(await face.count())) {
+          missing.push(sefirah);
+          continue;
+        }
+        await face.first().click();
+        await page.waitForTimeout(400);
+        // **Walk in.** A guardian's room is three rooms — an entrance, the
+        // fight, and the way out — and the Scribe appears in the first one,
+        // which is plain by design. The first pass of this script photographed
+        // ten identical porches and called it a sweep. Thirty tiles of holding
+        // right is what puts the camera on the middle room, which is the one
+        // that was authored.
+        await page.keyboard.down(KEYS.right);
+        await page.waitForTimeout(5200);
+        await page.keyboard.up(KEYS.right);
+        await page.waitForTimeout(500);
+        await page.screenshot({ path: join(outDir, `arena-${index}-${sefirah}.png`) });
+      }
+      if (missing.length) {
+        throw new Error(`no way into the room at: ${missing.join(", ")}`);
+      }
+    },
+    until: () => true,
+    seconds: 30,
+  },
 ];
 
 // --- arguments ---------------------------------------------------------------

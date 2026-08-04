@@ -17,8 +17,24 @@ import {
   ABYSS_GATE_CHUNK,
   ARENA_A,
   ARENA_B,
+  ARENA_CANOPY_A,
+  ARENA_CANOPY_B,
+  ARENA_PILLAR_A,
+  ARENA_PILLAR_B,
+  ARENA_ROOST_A,
+  ARENA_ROOST_B,
   ARENA_SEA_A,
   ARENA_SEA_B,
+  ARENA_SHELF_A,
+  ARENA_SHELF_B,
+  ARENA_TEETH_A,
+  ARENA_TEETH_B,
+  ARENA_TENT_A,
+  ARENA_TENT_B,
+  ARENA_TIERS_A,
+  ARENA_TIERS_B,
+  ARENA_VAULT_A,
+  ARENA_VAULT_B,
   CHUNK_H,
   CHUNK_W,
   CHUNKS,
@@ -35,7 +51,7 @@ import {
   VESSEL_CHUNK,
   WORD_GATE_CHUNK,
 } from "./chunks";
-import { HUSK_CHARS, HUSKS, kindForRole, LAMPS } from "../combat";
+import { HUSK_CHARS, HUSKS, kindForRole, LAMPS, type HuskKind } from "../combat";
 import { VEIL_COST } from "../encounter";
 import { drawKeli, keliFor, type Keli } from "../items";
 import { guardianOf } from "../guardians";
@@ -1542,19 +1558,44 @@ export function buildPath(
  * klipot scattered into it, because a guardian is not scattered. It is placed,
  * once, in the middle of the middle room.
  *
- * The terrain is named rather than drawn from: `ARENA_SEA` for Leviathan, which
- * cannot be marked in the water and therefore needs water and a bank, and the
- * plain room for everything else. Behemoth wants a run and walls to turn at,
- * which a plain room is; the Ziz wants a roof, which every screen in the
- * library has.
+ * The terrain is named rather than drawn from — `ARENA_ROOMS` below — and it is
+ * named per *creature* rather than per Sefirah, because what a room is for is
+ * the thing standing in it. Only the middle two screens change: the approach and
+ * the way out stay plain, so the fight is the only place a Scribe has to read
+ * the ground.
  */
+export const ARENA_ROOMS: Partial<Record<HuskKind, readonly [Chunk, Chunk]>> = {
+  arbeh: [ARENA_CANOPY_A, ARENA_CANOPY_B],
+  nefilim: [ARENA_TEETH_A, ARENA_TEETH_B],
+  saraf: [ARENA_SHELF_A, ARENA_SHELF_B],
+  reem: [ARENA_PILLAR_A, ARENA_PILLAR_B],
+  rahav: [ARENA_TIERS_A, ARENA_TIERS_B],
+  og: [ARENA_VAULT_A, ARENA_VAULT_B],
+  tannin: [ARENA_TENT_A, ARENA_TENT_B],
+  livyatan: [ARENA_SEA_A, ARENA_SEA_B],
+  ziz: [ARENA_ROOST_A, ARENA_ROOST_B],
+  // And Behemoth is absent on purpose: the plain room *is* its terrain, for the
+  // reason written over `ARENA_A`.
+};
+
+/**
+ * Hung from the ceiling rather than stood on the floor — the two creatures whose
+ * own code says they are never on the ground — and how far up, counted in rows
+ * from the bottom of the room. Each room is drawn with stone directly above the
+ * number, so the creature reads as held there rather than floating.
+ *
+ * The two numbers are different because the two fights are. The Ziz's height
+ * *is* its lock: nothing but the Staff reaches eleven rows, which is exactly
+ * what Chochmah declares. Yesod declares nothing, so the Nefilim hangs at six —
+ * inside an ordinary mark's carry, and still well over a Scribe's head.
+ */
+const HANGS: Partial<Record<HuskKind, number>> = { ziz: 11, nefilim: 6 };
+
 export function buildArena(sefirah: SefirahId, seed = 1): World {
   const guardian = guardianOf(sefirah);
   const region = regions.find((r) => r.sefirah === sefirah) ?? regionAt(1);
-  const sea = guardian.kind === "livyatan";
-  const laid = sea
-    ? [START_CHUNK, ARENA_A, ARENA_SEA_A, ARENA_SEA_B, ARENA_B, END_CHUNK]
-    : [START_CHUNK, ARENA_A, ARENA_A, ARENA_B, ARENA_B, END_CHUNK];
+  const [first, second] = ARENA_ROOMS[guardian.kind] ?? [ARENA_A, ARENA_B];
+  const laid = [START_CHUNK, ARENA_A, first, second, ARENA_B, END_CHUNK];
 
   const world = paintChunks(laid, seed);
   world.arena = sefirah;
@@ -1575,8 +1616,14 @@ export function buildArena(sefirah: SefirahId, seed = 1): World {
   // Staff's sixteen extra ticks take it past nine. Anything lower and it is
   // reachable by a Scribe with no Staff; anything higher and it is reachable by
   // nobody. Everything else stands on the floor of the room.
-  const y = guardian.kind === "ziz"
-    ? (middle.y + middle.h - 11) * TILE_SIZE
+  //
+  // The Nefilim hangs too, lower, and for its own reason: it holds `vy` at zero
+  // until the Scribe is underneath it, so a Nefilim on the floor is a Nefilim
+  // with nothing to do. Hung, the one thing it was named for can happen. Both
+  // heights and the argument between them are in `HANGS`.
+  const hangs = HANGS[guardian.kind];
+  const y = hangs
+    ? (middle.y + middle.h - hangs) * TILE_SIZE
     : (middle.y + middle.h - 2) * TILE_SIZE - spec.size.h;
   world.husks = [
     {
