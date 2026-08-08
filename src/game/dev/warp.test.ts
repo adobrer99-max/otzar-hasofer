@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { letters as allLetters } from "../../data/letters";
 import { LAMPS } from "../combat";
+import { carried, CARRIED, RELICS } from "../relics";
 import { lettersOnEntering, regionAt, TOTAL_REGIONS } from "../regions";
 import { TREE_PATHS } from "../tree";
 import { SCROLL_LETTER } from "../scroll";
@@ -74,7 +75,56 @@ describe("options off a URL", () => {
       witnesses: 7,
       freed: false,
       lit: false,
+      relics: [],
     });
+  });
+
+  /**
+   * **The Reliquary, both halves at once.** `carried` refuses anything chosen
+   * that was never found — correctly, since both fields come off storage — so a
+   * warp that set only the hand would hand over nothing and the relics would
+   * read as inert. The two must move together, and this is what says so.
+   */
+  it("carries the relics it was told to, and finds them so they may be carried", () => {
+    const read = readWarp(new URLSearchParams("rung=5&relics=luchot,shamir"))!;
+    expect(read.relics).toEqual(["luchot", "shamir"]);
+    const record = warpRecord(options({ relics: read.relics }), base);
+    expect(record.relicsFound).toEqual(["luchot", "shamir"]);
+    expect(record.reliquary).toEqual(["luchot", "shamir"]);
+    // And what is actually in hand is what `foldRelics` will read.
+    expect(carried(record.reliquary ?? [], record.relicsFound ?? []).map((r) => r.id)).toEqual([
+      "luchot",
+      "shamir",
+    ]);
+  });
+
+  it("takes the whole collection, and hands over only what a hand holds", () => {
+    const read = readWarp(new URLSearchParams("rung=5&relics=all"))!;
+    expect(read.relics).toHaveLength(RELICS.length);
+    const record = warpRecord(options({ relics: read.relics }), base);
+    expect(record.relicsFound).toHaveLength(RELICS.length);
+    expect(record.reliquary).toHaveLength(CARRIED);
+    expect(warpParams({ ...WARP_DEFAULTS, relics: read.relics })).toContain("relics=all");
+  });
+
+  /**
+   * A typo in a harness script should produce a Scribe carrying less than they
+   * meant, not a page that will not load — the same rule `carried` keeps about
+   * a record written by an older build.
+   */
+  it("drops a relic that names nothing rather than throwing", () => {
+    expect(readWarp(new URLSearchParams("rung=5&relics=argaz,a-thing-that-was-cut"))?.relics).toEqual(
+      ["argaz"],
+    );
+    expect(readWarp(new URLSearchParams("rung=5"))?.relics).toEqual([]);
+    expect(warpParams(WARP_DEFAULTS)).not.toContain("relics");
+  });
+
+  it("carries none by default, so nothing the harness measures is a Scribe with three objects", () => {
+    expect(WARP_DEFAULTS.relics).toEqual([]);
+    const record = warpRecord(options(), base);
+    expect(record.reliquary).toBeUndefined();
+    expect(record.relicsFound).toBeUndefined();
   });
 
   it("reads the freed flag, which is what makes a warped Sefirah kindleable", () => {

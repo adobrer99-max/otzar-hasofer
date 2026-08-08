@@ -1,3 +1,20 @@
+/*
+ * **Tokens that exist.** This sheet spent a long time asking for `--gold-ink`,
+ * `--muted` and `--rule`, none of which is defined anywhere — so twenty-two of
+ * its declarations were dropped whole by the browser. The colours fell back to
+ * `--text` and the borders were simply not drawn, which is why the day chooser
+ * had no pills and the keycap hints had no boxes.
+ *
+ * The live names are `--accent` / `--accent-bright`, `--text-muted` and
+ * `--border-hairline`, all in `src/styles/theme.css`. And the gold is two
+ * tokens, not one, for a reason that sheet states itself: in the light theme
+ * `--accent` also backs buttons and is deliberately too light for small text,
+ * so it is used only for large or decorative gold — **small body-gold is
+ * `--accent-bright`**. Festival themes re-map both, so nothing here may be a
+ * hex value.
+ *
+ * `src/styles/tokens.test.ts` now fails on a `var()` that names nothing.
+ */
 .page {
   /* **The window, not a column.** This was a centred `--measure` column with
      page padding, which is right for a document and wrong for a game: the
@@ -37,7 +54,7 @@
   font-size: 0.72rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--gold-ink);
+  color: var(--accent-bright);
   margin: 0;
 }
 
@@ -50,13 +67,13 @@
 
 .startHeb {
   font-size: clamp(1.4rem, 4vw, 2rem);
-  color: var(--gold-ink);
+  color: var(--accent);
   margin: 0;
 }
 
 .startLede {
   margin: var(--space-2) 0 0;
-  color: var(--muted);
+  color: var(--text-muted);
 }
 
 .startActions {
@@ -71,7 +88,7 @@
 .startDay {
   margin: 0;
   font-size: 0.82rem;
-  color: var(--muted);
+  color: var(--text-muted);
 }
 
 .startDay {
@@ -83,7 +100,7 @@
 .startSound {
   margin: var(--space-3) 0 0;
   font-size: 0.82rem;
-  color: var(--muted);
+  color: var(--text-muted);
 }
 
 /* What the Encounter changes. Copper rather than muted, because unlike the
@@ -93,6 +110,119 @@
   font-size: 0.85rem;
   color: var(--color-copper, var(--accent));
   font-style: italic;
+}
+
+/* Past the seventh seal, the seven become seven things to choose between. */
+.dayChoice {
+  margin-top: var(--space-3);
+}
+
+.dayKicker {
+  margin: 0 0 var(--space-2);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-bright);
+}
+
+.days {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.day,
+.dayOn {
+  padding: 3px var(--space-2);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  background: none;
+  font: inherit;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.day:hover,
+.day:focus-visible {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.dayOn {
+  border-color: var(--accent-bright);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--text);
+}
+
+/* ---- the Reliquary, chosen from on the threshold ------------------------- */
+
+/**
+ * Its own shape rather than the day-chooser's chips, which is what it wore
+ * first. A chip is right for "The Third Encounter"; a relic carries its whole
+ * bargain — what it gives and what it takes, both of which have to be readable
+ * before the choice is made — and photographed at that length the chips wrapped
+ * to three centred lines apiece and stopped reading as controls at all. A row
+ * with the name on its own line and the price under it is the same information
+ * and is plainly a thing you press.
+ */
+.relics {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.relic,
+.relicOn {
+  display: block;
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  /* The hairline, like everything else with an edge on this page. It was drawn
+     off a mixed gold at first, on the evidence that a hairline was invisible —
+     but the two hairline tokens tried were `--rule` and `--gold-ink`, neither of
+     which exists, so a real one had never actually been seen. */
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  background: none;
+  font: inherit;
+  /* A button centres its own text; everything else on the threshold is
+     centred too, so this had to be said twice to be believed. */
+  text-align: left;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.relic:hover,
+.relic:focus-visible {
+  border-color: var(--accent-bright);
+  color: var(--text);
+}
+
+.relicOn {
+  border-color: var(--accent-bright);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--text);
+}
+
+.relicName {
+  display: block;
+  font-size: 0.86rem;
+  /* Small text, so `--accent-bright` — see the note at the head of the file. */
+  color: var(--accent-bright);
+}
+
+.relicBargain {
+  display: block;
+  font-size: 0.76rem;
+  line-height: 1.4;
 }
 
 /* ---- standing on the Tree, behind the map ------------------------------- */
@@ -111,7 +241,7 @@
   font-size: 0.72rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--gold-ink);
+  color: var(--accent-bright);
   margin: 0;
 }
 
@@ -123,7 +253,7 @@
 
 .standingHeb {
   font-size: 1.4rem;
-  color: var(--gold-ink);
+  color: var(--accent);
   margin: 0;
 }
 
@@ -131,7 +261,7 @@
 .standingHint {
   margin: 0;
   font-size: 0.85rem;
-  color: var(--muted);
+  color: var(--text-muted);
 }
 
 .standingHint {
@@ -179,7 +309,7 @@
   margin: 0;
   padding: var(--space-2) 0;
   font-size: 0.8rem;
-  color: var(--muted);
+  color: var(--text-muted);
 }
 
 /* What the Tree is teaching, at its foot — one line, never more, and gone for
@@ -225,7 +355,7 @@
 
 .pauseToggles {
   font-size: 0.9rem;
-  color: var(--muted);
+  color: var(--text-muted);
 }
 
 /* ---- the corner bar ----------------------------------------------------- */
@@ -243,18 +373,18 @@
   /* Under the notch and the gesture bar otherwise — see `index.html`. */
   padding: 6px calc(var(--space-3) + env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) calc(var(--space-3) + env(safe-area-inset-left, 0px));
   font-size: 0.74rem;
-  color: var(--muted);
+  color: var(--text-muted);
   pointer-events: none;
 }
 
 .cornerLink {
   pointer-events: auto;
-  color: var(--muted);
+  color: var(--text-muted);
   text-decoration: none;
 }
 
 .cornerLink:hover {
-  color: var(--gold-ink);
+  color: var(--accent-bright);
 }
 
 .cornerButton {
@@ -268,13 +398,13 @@
 }
 
 .cornerButton:hover {
-  color: var(--gold-ink);
+  color: var(--accent-bright);
 }
 
 .cornerKeys kbd {
   font-family: inherit;
   font-size: 0.72rem;
-  border: 1px solid var(--rule);
+  border: 1px solid var(--border-hairline);
   border-radius: 3px;
   padding: 0 4px;
 }
@@ -453,12 +583,26 @@
   width: 100%;
 }
 
+/*
+ * **The belt fits the screen it is on.**
+ *
+ * Twenty-two letters at a fixed 1.9rem is 757px of tiles, which a 1280-wide
+ * desktop lays in one row and a 390-wide phone wraps into **three** — a sixth
+ * of the screen, permanently, above the ground the game is played on. Measured
+ * at `--phone` on a Scribe holding the whole alphabet, which is the hand the
+ * back half of every climb is walked with.
+ *
+ * The clamp is fluid rather than a breakpoint because the belt's problem is
+ * arithmetic and not a device: it needs whatever width divides into two rows.
+ * The upper bound is the size it always was, so nothing wider than about
+ * 45rem changes at all.
+ */
 .beltLetter {
-  width: 1.9rem;
-  height: 1.9rem;
+  width: clamp(1.35rem, 4.2vw, 1.9rem);
+  height: clamp(1.35rem, 4.2vw, 1.9rem);
   display: grid;
   place-items: center;
-  font-size: 1.15rem;
+  font-size: clamp(0.85rem, 2.7vw, 1.15rem);
   color: var(--accent);
   border: 1px solid var(--border-hairline);
   border-radius: var(--radius-md);
@@ -1078,7 +1222,7 @@
   font-size: 0.6rem;
   line-height: 1;
   letter-spacing: 0.04em;
-  color: var(--muted);
+  color: var(--text-muted);
   text-transform: lowercase;
 }
 
@@ -1248,7 +1392,7 @@
    simply is not coming, and the HUD should not shout about a loss that is
    only a loss of something never held. */
 .vowMarkBroken {
-  color: var(--muted);
+  color: var(--text-muted);
   text-decoration: line-through;
   text-decoration-thickness: 1px;
 }

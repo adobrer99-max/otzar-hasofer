@@ -196,6 +196,32 @@ export interface Plea {
 }
 
 /**
+ * **The four endings, named in the past tense** — for the Book, and for the
+ * threshold saying what happened last time.
+ *
+ * Separate from `pleaFor`'s own kickers on purpose, and not a duplication of
+ * them: that function speaks to a Scribe *standing at the crown right now*
+ * ("You arrive without a mouth"), and everything that reads a record is
+ * speaking about a climb that is over. The same sentence in both places would
+ * be wrong in one of them.
+ *
+ * A record's `endingPlea` is the only key needed to look one up, which is why
+ * a page of the Book costs nothing to render however old the climb is.
+ */
+export const PLEA_NAMED: Record<PleaKind, { title: string; short: string }> = {
+  mute: {
+    title: "You arrived without a mouth",
+    short: "the case was never made — Peh was still in three pieces",
+  },
+  alone: {
+    title: "You pleaded alone",
+    short: "no House had been spoken with, and nobody stood",
+  },
+  heard: { title: "You were heard", short: "some of the seven stood for you" },
+  whole: { title: "The whole case was made", short: "all seven Houses stood" },
+};
+
+/**
  * What happens when the Scribe reaches the crown.
  *
  * Note what this deliberately does not do: **nothing here returns a verdict.**

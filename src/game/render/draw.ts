@@ -4,7 +4,10 @@ import { Tile, TILE_SIZE } from "../world/tiles";
 import type { Entity, World } from "../world/types";
 import { alpha, type Palette } from "./palette";
 import { ROOM_H, ROOM_W } from "../world/rooms";
-import { HUSKS } from "../combat";
+import { outOfReach } from "../world/step";
+import { recordPhase } from "../dev/probe";
+import { faceCount, paletteKey, setFaceScale, stamp } from "./faces";
+import { paintHusk } from "./husks";
 
 /**
  * The Ascent, drawn.
@@ -86,12 +89,23 @@ export function drawWorld(
   const y0 = Math.max(0, Math.floor(camera.y / TILE_SIZE) - 1);
   const y1 = Math.min(world.height - 1, Math.ceil((camera.y + spanH) / TILE_SIZE) + 1);
 
+  // Faces are painted at the scale they will be stamped at, and the transform
+  // in hand is the only honest source for it: the canvas has already been
+  // scaled by the device pixel ratio, and the line above by the zoom.
+  setFaceScale(ctx.getTransform().a);
+
+  const tilesAt = import.meta.env.DEV ? performance.now() : 0;
+  let tiles = 0;
   for (let ty = y0; ty <= y1; ty += 1) {
     for (let tx = x0; tx <= x1; tx += 1) {
+      if (tileAt(world, tx, ty) !== Tile.Empty) tiles += 1;
       drawTile(ctx, world, tx, ty, palette, verbs);
     }
   }
+  if (import.meta.env.DEV) recordPhase("tiles", performance.now() - tilesAt, tiles);
+  if (import.meta.env.DEV) recordPhase("faces", 0, faceCount());
 
+  const restAt = import.meta.env.DEV ? performance.now() : 0;
   drawHusks(ctx, world, palette);
   drawMarks(ctx, world, palette);
   for (const entity of world.entities) {
@@ -101,6 +115,7 @@ export function drawWorld(
 
   drawGrapple(ctx, world, palette);
   drawScribe(ctx, world, palette);
+  if (import.meta.env.DEV) recordPhase("bodies", performance.now() - restAt, 0);
   ctx.restore();
 
   // Last, and in screen space: the room is the lit panel.
@@ -404,34 +419,51 @@ function drawStone(
   y: number,
   palette: Palette,
 ): void {
-  ctx.fillStyle = palette.stone;
-  ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-
   // Engraver's hatching, only where the stone is actually exposed to the air —
   // buried tiles stay flat, which keeps a thick floor from turning into noise.
   const openAbove = tileAt(world, tx, ty - 1) === Tile.Empty;
-  if (openAbove) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(x, y, TILE_SIZE, TILE_SIZE);
-    ctx.clip();
-    ctx.strokeStyle = alpha(palette.light ? palette.stoneEdge : palette.gold, palette.light ? 0.55 : 0.16);
-    ctx.lineWidth = 1;
-    for (let i = -TILE_SIZE; i < TILE_SIZE; i += HATCH_SPACING) {
-      ctx.beginPath();
-      ctx.moveTo(x + i, y + TILE_SIZE);
-      ctx.lineTo(x + i + TILE_SIZE, y);
-      ctx.stroke();
+
+  /**
+   * **The face, which is everything that is the same on every stone.** The
+   * fill, the hatching, the lit top edge and the border do not know where the
+   * tile is — only whether the air is above it — so they are painted once per
+   * palette and stamped after that. See `faces.ts` for the measurement that
+   * asked for this.
+   */
+  stamp(ctx, `stone|${paletteKey(palette)}|${openAbove}`, x, y, (c) => {
+    c.fillStyle = palette.stone;
+    c.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
+    if (openAbove) {
+      c.save();
+      c.beginPath();
+      c.rect(0, 0, TILE_SIZE, TILE_SIZE);
+      c.clip();
+      c.strokeStyle = alpha(
+        palette.light ? palette.stoneEdge : palette.gold,
+        palette.light ? 0.55 : 0.16,
+      );
+      c.lineWidth = 1;
+      for (let i = -TILE_SIZE; i < TILE_SIZE; i += HATCH_SPACING) {
+        c.beginPath();
+        c.moveTo(i, TILE_SIZE);
+        c.lineTo(i + TILE_SIZE, 0);
+        c.stroke();
+      }
+      c.restore();
+
+      c.strokeStyle = palette.gold;
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.moveTo(0, 0.75);
+      c.lineTo(TILE_SIZE, 0.75);
+      c.stroke();
     }
-    ctx.restore();
+    c.strokeStyle = alpha(palette.stoneEdge, 0.85);
+    c.lineWidth = 1;
+    c.strokeRect(0.5, 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
+  });
 
-    ctx.strokeStyle = palette.gold;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(x, y + 0.75);
-    ctx.lineTo(x + TILE_SIZE, y + 0.75);
-    ctx.stroke();
-
+  if (openAbove) {
     // **What has grown on the lit edge.** Two or three fine blades on about a
     // third of the exposed tiles, seeded off the tile's own coordinates so the
     // same stone is mossed the same way every time it is drawn.
@@ -455,10 +487,6 @@ function drawStone(
       }
     }
   }
-
-  ctx.strokeStyle = alpha(palette.stoneEdge, 0.85);
-  ctx.lineWidth = 1;
-  ctx.strokeRect(x + 0.5, y + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
 }
 
 /**
@@ -526,6 +554,16 @@ function drawMaskit(
 }
 
 function drawPlacedStone(ctx: CanvasRenderingContext2D, x: number, y: number, palette: Palette): void {
+  // The whole of this tile is a function of the palette, so it is painted
+  // once and stamped — see `faces.ts`. The painter is unchanged; it is
+  // handed an origin instead of a position.
+  stamp(ctx, `placed|${paletteKey(palette)}`, x, y, (c) => paintPlacedStone(c, palette));
+}
+
+function paintPlacedStone(ctx: CanvasRenderingContext2D, palette: Palette): void {
+  const x = 0;
+  const y = 0;
+
   ctx.fillStyle = alpha(palette.gold, 0.2);
   ctx.fillRect(x + 1, y + 1, TILE_SIZE - 2, TILE_SIZE - 2);
   ctx.strokeStyle = palette.goldBright;
@@ -552,20 +590,24 @@ function drawLedge(
   y: number,
   palette: Palette,
 ): void {
-  ctx.strokeStyle = palette.gold;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(x, y + 3);
-  ctx.lineTo(x + TILE_SIZE, y + 3);
-  ctx.stroke();
+  // The standing edge and its underside are the same on every ledge; the leaf
+  // is seeded from the tile and stays live. See `faces.ts`.
+  stamp(ctx, `ledge|${paletteKey(palette)}`, x, y, (c) => {
+    c.strokeStyle = palette.gold;
+    c.lineWidth = 2;
+    c.beginPath();
+    c.moveTo(0, 3);
+    c.lineTo(TILE_SIZE, 3);
+    c.stroke();
 
-  // The underside tapers away from the standing edge — bark, not masonry.
-  ctx.strokeStyle = alpha(palette.gold, 0.35);
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(x, y + 5.5);
-  ctx.quadraticCurveTo(x + TILE_SIZE / 2, y + 7.5, x + TILE_SIZE, y + 5.5);
-  ctx.stroke();
+    // The underside tapers away from the standing edge — bark, not masonry.
+    c.strokeStyle = alpha(palette.gold, 0.35);
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(0, 5.5);
+    c.quadraticCurveTo(TILE_SIZE / 2, 7.5, TILE_SIZE, 5.5);
+    c.stroke();
+  });
 
   if (jitter(tx, ty + 31) > 0.5) {
     const side = jitter(tx + 3, ty) > 0.5 ? 1 : -1;
@@ -590,8 +632,12 @@ function drawWater(
   y: number,
   palette: Palette,
 ): void {
-  ctx.fillStyle = alpha(palette.blue, palette.light ? 0.32 : 0.55);
-  ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+  // The body of the water is one flat colour; only the surface moves, and it
+  // moves with the tick, so it stays live. See `faces.ts`.
+  stamp(ctx, `water|${paletteKey(palette)}`, x, y, (c) => {
+    c.fillStyle = alpha(palette.blue, palette.light ? 0.32 : 0.55);
+    c.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
+  });
 
   if (tileAt(world, tx, ty - 1) !== Tile.Water) {
     // The surface: a slow, drawn wave rather than an animated shimmer.
@@ -609,6 +655,16 @@ function drawWater(
 }
 
 function drawThorn(ctx: CanvasRenderingContext2D, x: number, y: number, palette: Palette): void {
+  // The whole of this tile is a function of the palette, so it is painted
+  // once and stamped — see `faces.ts`. The painter is unchanged; it is
+  // handed an origin instead of a position.
+  stamp(ctx, `thorn|${paletteKey(palette)}`, x, y, (c) => paintThorn(c, palette));
+}
+
+function paintThorn(ctx: CanvasRenderingContext2D, palette: Palette): void {
+  const x = 0;
+  const y = 0;
+
   ctx.strokeStyle = palette.copper;
   ctx.lineWidth = 1.6;
   ctx.beginPath();
@@ -627,6 +683,16 @@ function drawThorn(ctx: CanvasRenderingContext2D, x: number, y: number, palette:
 }
 
 function drawGrowth(ctx: CanvasRenderingContext2D, x: number, y: number, palette: Palette): void {
+  // The whole of this tile is a function of the palette, so it is painted
+  // once and stamped — see `faces.ts`. The painter is unchanged; it is
+  // handed an origin instead of a position.
+  stamp(ctx, `growth|${paletteKey(palette)}`, x, y, (c) => paintGrowth(c, palette));
+}
+
+function paintGrowth(ctx: CanvasRenderingContext2D, palette: Palette): void {
+  const x = 0;
+  const y = 0;
+
   ctx.fillStyle = alpha(palette.gold, 0.13);
   ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
   ctx.strokeStyle = alpha(palette.copper, 0.85);
@@ -676,6 +742,16 @@ function drawVeiled(ctx: CanvasRenderingContext2D, x: number, y: number, palette
 }
 
 function drawDoor(ctx: CanvasRenderingContext2D, x: number, y: number, palette: Palette): void {
+  // The whole of this tile is a function of the palette, so it is painted
+  // once and stamped — see `faces.ts`. The painter is unchanged; it is
+  // handed an origin instead of a position.
+  stamp(ctx, `door|${paletteKey(palette)}`, x, y, (c) => paintDoor(c, palette));
+}
+
+function paintDoor(ctx: CanvasRenderingContext2D, palette: Palette): void {
+  const x = 0;
+  const y = 0;
+
   ctx.fillStyle = alpha(palette.blue, 0.6);
   ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
   ctx.strokeStyle = palette.gold;
@@ -701,6 +777,16 @@ function drawAnchor(ctx: CanvasRenderingContext2D, x: number, y: number, palette
 }
 
 function drawLowGap(ctx: CanvasRenderingContext2D, x: number, y: number, palette: Palette): void {
+  // The whole of this tile is a function of the palette, so it is painted
+  // once and stamped — see `faces.ts`. The painter is unchanged; it is
+  // handed an origin instead of a position.
+  stamp(ctx, `lowgap|${paletteKey(palette)}`, x, y, (c) => paintLowGap(c, palette));
+}
+
+function paintLowGap(ctx: CanvasRenderingContext2D, palette: Palette): void {
+  const x = 0;
+  const y = 0;
+
   ctx.fillStyle = alpha(palette.stone, 0.9);
   ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
   ctx.strokeStyle = alpha(palette.gold, 0.3);
@@ -866,6 +952,63 @@ function drawEntity(ctx: CanvasRenderingContext2D, e: Entity, palette: Palette, 
       ctx.stroke();
       ctx.fillStyle = alpha(palette.goldBright, 0.3);
       ctx.fill();
+      break;
+    }
+    case "relic": {
+      // A hidden thing in its niche. Drawn as a *wrapped* object rather than
+      // as itself — a bound bundle standing on end, sealed with a cord — for
+      // the reason the collection is named after: these were put away, not
+      // displayed. What it is, the plate says; what the room says is only that
+      // something is here.
+      //
+      // Read against the vessel, which is the only other thing in the game
+      // offered rather than walked into: the pedestal is lit from *beneath*
+      // and this is lit from *behind*, so the two are told apart at the
+      // twenty-odd pixels a room is actually framed at, before either plate
+      // rises.
+      if (e.taken) break;
+      const breathe = 0.42 + Math.sin(tick / 34) * 0.14;
+      const top = e.y + 3;
+      const foot = e.y + TILE_SIZE;
+
+      // The light behind it, in the recess.
+      const back = ctx.createRadialGradient(cx, cy, 1, cx, cy, 22);
+      back.addColorStop(0, alpha(palette.goldBright, breathe * 0.55));
+      back.addColorStop(1, alpha(palette.goldBright, 0));
+      ctx.fillStyle = back;
+      ctx.fillRect(cx - 22, cy - 22, 44, 44);
+
+      // The bundle: narrower at the head, where the wrapping is gathered.
+      //
+      // **One fill for both grounds, and it is gold rather than ink.** The
+      // first pass took the klipot's rule — the darkest value the palette has —
+      // and on vellum a wrapped bundle at seventy per cent ink is a black wedge
+      // standing in a niche: it read as a hole in the wall rather than as a
+      // thing in it. The klipot are dark because they are the dark; a relic is
+      // treasure, and belongs to the same gold as the letters, the motes and
+      // the vessel. What separates it from the pedestal is the silhouette and
+      // where the light comes from, not the colour.
+      ctx.fillStyle = alpha(palette.gold, 0.3);
+      ctx.strokeStyle = palette.goldBright;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(cx - 3, top);
+      ctx.lineTo(cx + 3, top);
+      ctx.lineTo(cx + 7, foot);
+      ctx.lineTo(cx - 7, foot);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Two turns of cord, which is the whole of what says "bound".
+      ctx.strokeStyle = alpha(palette.goldBright, 0.85);
+      ctx.lineWidth = 1;
+      for (const dy of [7, 13]) {
+        ctx.beginPath();
+        ctx.moveTo(cx - 4.2 - dy * 0.16, top + dy);
+        ctx.lineTo(cx + 4.2 + dy * 0.16, top + dy);
+        ctx.stroke();
+      }
       break;
     }
     case "house": {
@@ -1100,54 +1243,19 @@ function drawHusks(ctx: CanvasRenderingContext2D, world: World, palette: Palette
     if (husk.broken) continue;
     // Korach inside the ground is not drawn at all. It is not hidden by a
     // trick of the light — it is not there yet.
-    if (husk.kind === "korach" && husk.charging === 0) continue;
-    const spec = HUSKS[husk.kind];
-    const cx = husk.x + husk.w / 2;
-    const cy = husk.y + husk.h / 2;
-    const opened = 1 - husk.shells / spec.shells;
-
-    // What is trapped inside, brighter as the shell gives way.
-    ctx.fillStyle = alpha(palette.goldBright, 0.18 + opened * 0.4);
-    ctx.beginPath();
-    ctx.arc(cx, cy, husk.w * 0.38, 0, Math.PI * 2);
-    ctx.fill();
-
-    // The shell. White for a moment when struck, so a hit reads.
-    ctx.strokeStyle = husk.struck > 0 ? palette.goldBright : alpha(palette.stoneEdge, 0.95);
-    ctx.fillStyle = alpha(palette.bgDeep, 0.9 - opened * 0.3);
-    ctx.lineWidth = 1.6;
-    // The shape says the role, not the name: round for the ones the ground
-    // means nothing to, a standing diamond for the ones that commit to a
-    // charge, a shouldered slab for the rooted throwers, a plain shell for the
-    // pacers. Ten names on four silhouettes, so a screen stays readable at a
-    // glance and the name is what the plate is for.
-    ctx.beginPath();
-    const role = spec.role;
-    if (role === "floater") {
-      ctx.arc(cx, cy, husk.w / 2, 0, Math.PI * 2);
-    } else if (role === "charger") {
-      ctx.moveTo(cx, husk.y);
-      ctx.lineTo(husk.x + husk.w, cy);
-      ctx.lineTo(cx, husk.y + husk.h);
-      ctx.lineTo(husk.x, cy);
-      ctx.closePath();
-    } else {
-      const r = 4;
-      ctx.roundRect(husk.x, husk.y, husk.w, husk.h, role === "thrower" ? [r, r, 0, 0] : r);
-    }
-    ctx.fill();
-    ctx.stroke();
-
-    // A crack for every shell already taken off.
-    ctx.strokeStyle = alpha(palette.goldBright, 0.5 + opened * 0.4);
-    ctx.lineWidth = 1;
-    for (let i = 0; i < spec.shells - husk.shells; i += 1) {
-      const a = (i / spec.shells) * Math.PI * 2 + husk.home.x;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx + Math.cos(a) * husk.w * 0.5, cy + Math.sin(a) * husk.h * 0.5);
-      ctx.stroke();
-    }
+    //
+    // **Asked of the same rule the marks are asked of**, and it used to read
+    // `charging === 0` here as well. `charging` counts only the rise, so the
+    // while it spends standing in the open afterwards counted as buried and
+    // the creature was not painted — which would have made the one moment it
+    // can be answered the one moment a player cannot see it.
+    //
+    // This and the tick are the whole of what a klipah's picture needs from
+    // the world; the rest is the creature itself, and lives in `husks.ts`
+    // beside its shape. Keeping the two apart is what let the silhouettes be
+    // enumerated by a test while the painting around them could not be.
+    if (outOfReach(husk, world)) continue;
+    paintHusk(ctx, husk, palette, world.tick);
   }
 }
 

@@ -16,6 +16,22 @@
  * game draws on — behind six regions of silence. Assembling it in Malchut and
  * Yesod means the Houses speak from the second region onward, and the one
  * silent figure in Malchut becomes the reason to look for the fragments.
+ *
+ * **A climb always begins with the scroll torn, and that is a decision.**
+ * P3 proposed carrying one fragment forward after a climb that sealed with a
+ * plea — going mute twice being the thing the system quietly discourages —
+ * and it was considered and declined here. It runs the wrong way: a Scribe
+ * seals with a plea *because* they found the Mouth, so the reward for having
+ * had Peh would be that Peh is cheaper next time, which makes a strong climb
+ * stronger and takes the sting out of the mute ending rather than adding to
+ * it. Inverting it — a fragment for the Scribe who went mute — would be worse
+ * still, since it pays for failing.
+ *
+ * The plea has a real across-run consequence without any of that: the
+ * threshold remembers how the last climb ended, the Book keeps every ending,
+ * and the Houses open further into their own episodes the more often they
+ * have *stood* for the Scribe (`cardsOpen` in `world/build.ts`) — which is
+ * mechanical, felt, and paid in the one currency the plea is actually about.
  */
 
 export interface ScrollFragment {

@@ -1,6 +1,7 @@
 import { lettersById } from "../data/letters";
 import type { SefirahId } from "../types/letter";
 import { kindleCost, type AscentRecord } from "../storage/ascentRepo";
+import { kindlePrice, type Climbing } from "./relics";
 import { regions } from "./regions";
 import {
   crossesAbyss,
@@ -18,6 +19,7 @@ import {
 import { keliOnPath } from "./world/build";
 import { describeEffect } from "./items";
 import { guardianOf } from "./guardians";
+import type { SealKind } from "./sealing";
 import { HUSKS } from "./combat";
 import styles from "./GamePage.module.css";
 
@@ -72,11 +74,13 @@ const regionOf = Object.fromEntries(regions.map((r) => [r.sefirah, r])) as Recor
 export function TreeMap({
   ascent,
   at,
+  climb,
   readOnly = false,
   onWalk,
   onKindle,
   onFace,
   onSeal,
+  sealKind,
 }: {
   ascent: AscentRecord;
   at: SefirahId;
@@ -86,13 +90,24 @@ export function TreeMap({
   onKindle: () => void;
   /** Go into the room where what holds this Sefirah is standing. */
   onFace: () => void;
-  /** Offered only once every Sefirah is kindled — see `GamePage`. */
+  /** Offered when an ending is within reach — see `sealing.ts`. */
   onSeal?: () => void;
+  /**
+   * Which ending it is. The two are not the same act and must not wear the
+   * same words: one is a Tree standing lit, the other is a Scribe standing on
+   * a crown nothing is holding, with a case to make and no guarantee of it.
+   */
+  sealKind?: SealKind;
+  /** The day and what is carried, folded — see `kindlePrice`. */
+  climb: Climbing;
 }) {
   const walked = ascent.pathsWalked ?? [];
   const lit = ascent.sefirotLit ?? [];
   const here = regionOf[at];
-  const cost = kindleCost(here.index);
+  // Priced through `kindlePrice`, exactly as `kindleHere` charges through it —
+  // the map naming a cheaper number than the one taken would be the worst bug
+  // the Reliquary could ship.
+  const cost = kindlePrice(kindleCost(here.index), lit.length, climb);
   const alreadyLit = lit.includes(at);
   /**
    * **A Sefirah is held before it is bought.** Light is the second gate; the
@@ -120,7 +135,10 @@ export function TreeMap({
    */
   const gathered = ascent.lettersHeld;
   const left = regions.filter((r) => !lit.includes(r.sefirah));
-  const owed = left.reduce((sum, r) => sum + kindleCost(r.index), 0);
+  // What the rest of the Tree would cost from here — priced in the order it
+  // would actually be lit, so the oil's three cheap kindlings are counted once
+  // rather than granted to every remaining Sefirah.
+  const owed = left.reduce((sum, r, i) => sum + kindlePrice(kindleCost(r.index), lit.length + i, climb), 0);
 
   return (
     <section className={styles.overworld}>
@@ -377,7 +395,9 @@ export function TreeMap({
             )}
             {onSeal && (
               <button type="button" className={styles.sealButton} onClick={onSeal}>
-                Seal the ascent — all ten are kindled
+                {sealKind === "crown"
+                  ? "Present yourself at the crown"
+                  : "Seal the ascent — all ten are kindled"}
               </button>
             )}
           </div>

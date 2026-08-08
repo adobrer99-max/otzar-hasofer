@@ -80,7 +80,7 @@ describe("the creatures", () => {
   });
 
   /**
-   * **The Tannin** holds the water, where `submerged` forbids a mark from
+   * **The Tannin** holds the water, where `outOfReach` forbids a mark from
    * reaching it, and comes out of it. If it never came out there would be
    * nothing to fight — so what is asserted is that it leaves the water at all.
    */
@@ -100,6 +100,64 @@ describe("the creatures", () => {
   });
 
   /**
+   * **And nothing can touch it while it is in there**, which is the other half
+   * of the same sentence and was the half nobody had written.
+   *
+   * Its line on the plate a player reads has always said "it stays in the
+   * water, where nothing can touch it, and comes out of it at you", and the
+   * case that steers it has always said the fight is about catching it in the
+   * air "which is the only place it can be written on". Neither was true: the
+   * rule that was supposed to enforce it, `outOfReach`, opened with a check for
+   * Korach and returned false for everything else, so a mark landing on a
+   * submerged Tannin took a shell off it like any other klipah. The creature's
+   * whole shape was a comment.
+   *
+   * Found in a copy sweep rather than by playing, which is the argument for
+   * doing them: a line that promises a mechanic is a bug report with no stack
+   * trace.
+   */
+  it("lets nothing touch the Tannin while it holds the water", () => {
+    const surface = world.height - 6;
+    for (let y = surface; y < world.height - 1; y += 1) {
+      for (let x = 10; x < 20; x += 1) setTile(world, x, y, Tile.Water);
+    }
+    const beast = stand(world, "tannin", { x: 14, y: surface + 2 });
+    const shells = beast.shells;
+
+    /** One of the Scribe's marks, laid exactly on it. */
+    const write = () => {
+      world.marks = [
+        {
+          id: "m",
+          mine: true,
+          x: beast.x,
+          y: beast.y,
+          w: 10,
+          h: 10,
+          vx: 0,
+          vy: 0,
+          life: 30,
+          pierces: false,
+          bite: 1,
+          draws: false,
+          glyph: "א",
+        },
+      ];
+      run(world, 1);
+    };
+
+    // Written on where it lives. Nothing comes off it.
+    write();
+    expect(beast.shells, "the water did not protect it").toBe(shells);
+
+    // And out of the water it breaks like anything else — or the creature
+    // would be scenery rather than a fight.
+    beast.y = (surface - 3) * TILE_SIZE;
+    write();
+    expect(beast.shells, "it cannot be written on out of the water either").toBeLessThan(shells);
+  });
+
+  /**
    * **The Re'em** will not turn, and stone therefore does the work: a Scribe
    * who steps aside breaks a shell without writing anything, which is the only
    * place in the game that is true.
@@ -115,15 +173,37 @@ describe("the creatures", () => {
     expect(world.marks.filter((m) => m.mine)).toHaveLength(0);
   });
 
-  /** **The Saraf** leaves the ground it crossed burning behind it. */
-  it("leaves fire behind the Saraf", () => {
+  /**
+   * **The Saraf** leaves the ground it crossed burning behind it — and then the
+   * fire goes out, which is as much of the mechanic as the fire is.
+   *
+   * This used to look for an ember alive on one particular tick, and it passed
+   * for the wrong reason: a fire was laid every twenty-two ticks and burned for
+   * a hundred and fifty, so seven overlapped at all times and there was no tick
+   * in the creature's life when the ground was not alight. That is terrain, not
+   * a trail — measured, it made Tiferet the one place in the game a Scribe went
+   * out of more than half the walks. So the shape is what is asserted now:
+   * something is laid, it burns, it goes out, and another comes.
+   */
+  it("leaves fire behind the Saraf, and lets it burn out", () => {
     stand(world, "saraf", { x: 12, y: world.height - 3 });
-    run(world, 60);
-    const embers = world.marks.filter((m) => !m.mine && m.vx === 0 && m.vy === 0);
-    expect(embers.length, "the Saraf crossed the ground and left nothing on it").toBeGreaterThan(0);
+    const embers = () => world.marks.filter((m) => !m.mine && m.vx === 0 && m.vy === 0);
+    run(world, 2);
+    const lit = embers();
+    expect(lit.length, "the Saraf crossed the ground and left nothing on it").toBeGreaterThan(0);
     // A klipah's mark wounds on contact, which is what makes the trail a trail
     // rather than decoration — and it is `stepMarks` that does it, not this.
-    expect(embers[0].bite).toBeGreaterThan(0);
+    expect(lit[0].bite).toBeGreaterThan(0);
+
+    // It goes out. Without this the trail is a floor the rung is paved with.
+    let wentOut = 0;
+    for (let i = 0; i < 300; i += 1) {
+      run(world, 1);
+      if (embers().length === 0) wentOut += 1;
+    }
+    expect(wentOut, "the ground the Saraf crossed never stops burning").toBeGreaterThan(0);
+    // And it comes back, or the creature laid one fire and was done.
+    expect(embers().length + wentOut, "the Saraf stopped laying fire").toBeGreaterThan(0);
   });
 
   /** **Rahav** grows on being struck, which is the one thing pride does. */

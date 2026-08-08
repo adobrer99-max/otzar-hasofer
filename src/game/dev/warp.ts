@@ -6,6 +6,7 @@ import { lettersOnEntering, regionAt, regions, TOTAL_REGIONS } from "../regions"
 import { pathsFrom, type TreePath } from "../tree";
 import type { SefirahId } from "../../types/letter";
 import { SCROLL_LETTER } from "../scroll";
+import { carried, relicById, RELICS } from "../relics";
 
 /**
  * A way into the middle of the game.
@@ -80,6 +81,21 @@ export interface WarpOptions {
    * end of it; that road is gone, and this is what replaces it.
    */
   lit: boolean;
+  /**
+   * **The reliquary a warped Scribe sets out with**, by id — see `relics.ts`.
+   *
+   * Both halves of the record at once: whatever is named becomes `relicsFound`
+   * (which is what the Threshold's chooser offers) and the first three become
+   * `reliquary` (which is what `foldRelics` actually reads). They have to move
+   * together, because `carried` refuses anything chosen that was never found —
+   * correctly, since both fields come off storage — so a warp that set only the
+   * hand would hand over nothing at all and look like the relics were inert.
+   *
+   * Empty by default. A warp that quietly filled the Reliquary would make every
+   * measurement the harness takes a measurement of a Scribe carrying three
+   * objects, which is the same failure the `freed` flag is off for.
+   */
+  relics: readonly string[];
 }
 
 export const WARP_DEFAULTS: WarpOptions = {
@@ -90,6 +106,7 @@ export const WARP_DEFAULTS: WarpOptions = {
   witnesses: 0,
   freed: false,
   lit: false,
+  relics: [],
 };
 
 const clamp = (n: number, low: number, high: number) =>
@@ -130,7 +147,20 @@ export function readWarp(params: URLSearchParams): WarpOptions | undefined {
     witnesses: clamp(Number(params.get("witnesses") ?? 0), 0, HOUSE_RUNGS.length),
     freed: params.get("freed") === "1",
     lit: params.get("lit") === "1",
+    relics: readRelics(params.get("relics")),
   };
+}
+
+/**
+ * `relics=all`, or a comma-separated list of ids. Anything that names nothing
+ * is dropped rather than throwing, for the same reason `carried` strips it: the
+ * value comes off a URL, and a typo in a harness script should produce a Scribe
+ * carrying less than they meant rather than a page that will not load.
+ */
+function readRelics(raw: string | null): string[] {
+  if (!raw) return [];
+  if (raw === "all") return RELICS.map((r) => r.id);
+  return [...new Set(raw.split(",").map((id) => id.trim()))].filter((id) => Boolean(relicById[id]));
 }
 
 /** The rungs that hold a House, in climb order — the seven below the Abyss. */
@@ -158,6 +188,9 @@ export function warpParams(options: WarpOptions): string {
   if (options.witnesses > 0) params.set("witnesses", String(options.witnesses));
   if (options.freed) params.set("freed", "1");
   if (options.lit) params.set("lit", "1");
+  if (options.relics.length > 0) {
+    params.set("relics", options.relics.length === RELICS.length ? "all" : options.relics.join(","));
+  }
   return params.toString();
 }
 
@@ -240,6 +273,14 @@ export function warpRecord(
     housesMet: witnessCards(options.witnesses),
     ...(options.freed ? { guardiansBroken: below } : {}),
     ...(options.lit ? { sefirotLit: below } : {}),
+    // Found and carried together — see `WarpOptions.relics`. `carried` caps and
+    // orders, so the hand is whatever the first three named are.
+    ...(options.relics.length > 0
+      ? {
+          relicsFound: [...options.relics],
+          reliquary: carried([...options.relics], [...options.relics]).map((r) => r.id),
+        }
+      : {}),
     ascendantLetterId: base.ascendantLetterId,
     encounterNumber: base.encounterNumber,
   };

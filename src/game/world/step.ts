@@ -2,6 +2,7 @@ import type { Grace, Verb } from "../abilities";
 import { setTile, tileAt } from "./build";
 import { CHUNK_H } from "./chunks";
 import { powersFrom, type Effect } from "../items";
+import type { Keeping } from "../relics";
 import {
   isClimbable,
   isHazard,
@@ -24,6 +25,8 @@ import {
   KNOCKBACK_Y,
   MARK_COOLDOWN,
   MARK_FALL,
+  MARK_HANGS,
+  MARK_LIFE,
   MARK_SIZE,
   MARK_SPEED,
   MARK_TURNS,
@@ -84,6 +87,13 @@ const GRAPPLE_THROW_Y = 300;
 const GRAPPLE_THROW_X = 250;
 const GRAPPLE_COOLDOWN_TICKS = 16;
 const VEIL_TICKS = 48;
+/**
+ * The last rung below the Abyss — Chesed. Aaron's rod is barred above it, and
+ * the number is written here rather than imported because `regions.ts` has no
+ * notion of the gulf: what marks it is `overTheAbyss` on the five crossings,
+ * which is a fact about paths and not about rungs.
+ */
+const LAST_BELOW_ABYSS = 7;
 const MESSAGE_TICKS = 200;
 
 export interface StepContext {
@@ -103,6 +113,21 @@ export interface StepContext {
   onHouse?: (cardId: string) => void;
   /** Raised when a vessel is lifted off its pedestal. */
   onVessel?: (keliId: string) => void;
+  /**
+   * Raised at a hidden thing in its chamber. Unlike every other pickup this
+   * one outlives the climb, so it is *offered* the way a vessel is rather than
+   * walked into — see `relics.ts`.
+   */
+  onRelic?: (relicId: string) => void;
+  /**
+   * **What the reliquary keeps** — the rules that are not numbers, from the
+   * relics carried this climb. Three of them are read in this file and nowhere
+   * else: the Shamir's mark that passes stone, Aaron's rod budding a lamp back,
+   * and the fire of the altar refusing to go out. See `relics.ts`; the numbers
+   * come in through the world (`huskLight`, `veilCost`, the lamps) because they
+   * are laid as the world is entered rather than asked every tick.
+   */
+  keeps?: Keeping;
   /**
    * The vessels the Scribe carries. They change numbers — the mark's bite and
    * reach, the lamps, the light — and never grant a verb, which is the whole
@@ -835,7 +860,14 @@ function stepRooms(world: World): void {
     !room.cleared &&
     !room.entrance &&
     room.kind !== "exit" &&
-    room.kind !== "vessel";
+    room.kind !== "vessel" &&
+    // ...and not the relic chamber, for the vessel's reason sharpened. Both
+    // rooms hold an *offer* rather than a fight, and a door that shuts on a
+    // Scribe reaching for something they are free to decline is a trap. The
+    // chamber has the stronger claim of the two: its ground lane runs clear the
+    // whole width precisely so that a Scribe with no Ayin and no interest walks
+    // past it, and a seal writes stone across that lane.
+    room.kind !== "relic";
   world.inSealedRoom = closes;
 
   if (!standing) {
@@ -964,6 +996,25 @@ function touchEntities(world: World, ctx: StepContext): void {
       continue;
     }
 
+    /**
+     * A hidden thing, offered on the same terms and for a stronger reason: a
+     * relic is kept past the seal, so taking one is the only decision in a
+     * climb whose consequence is not spent by the end of it. Level-triggered
+     * exactly as the pedestal is — `active` means "standing at it" — so
+     * stepping away and coming back offers it again.
+     *
+     * `taken` is set by the page, when the Scribe says yes.
+     */
+    if (e.kind === "relic") {
+      if (!near) {
+        e.active = false;
+      } else if (!e.active) {
+        e.active = true;
+        if (e.ref) ctx.onRelic?.(e.ref);
+      }
+      continue;
+    }
+
     if (!near) continue;
 
     switch (e.kind) {
@@ -1069,7 +1120,13 @@ function veil(world: World, ctx: StepContext, message: string): void {
   if (world.player.veiled > 0) return;
   world.player.veiled = VEIL_TICKS;
   world.veilings += 1;
-  world.or = Math.max(0, world.or - world.veilCost);
+  // **The Case — nothing in it is lost.** A veiling still costs the time and
+  // the ground, which is what a veiling is for; what it stops costing is the
+  // light already gathered. The one vessel that answers the only price the
+  // terrain is allowed to charge.
+  if (!powersFrom(ctx.items ?? [], ctx.boons, ctx.keeps).keeps) {
+    world.or = Math.max(0, world.or - world.veilCost);
+  }
 
   // A veiling always opens the room. You wake at the mark, which is elsewhere,
   // and a room that stayed shut behind you would be a door nobody could ever
@@ -1113,7 +1170,7 @@ const bodiesTouch = (a: { x: number; y: number; w: number; h: number }, b: typeo
 function throwMark(world: World, input: Input, ctx: StepContext): void {
   const p = world.player;
   if (!input.strike || p.markCooldown > 0 || p.veiled > 0) return;
-  const powers = markPowers(ctx.verbs, ctx.graces, ctx.items, ctx.boons);
+  const powers = markPowers(ctx.verbs, ctx.graces, ctx.items, ctx.boons, ctx.keeps);
   const up = input.up ? -0.62 : input.down ? 0.62 : 0;
   const speed = MARK_SPEED * (powers.speed ?? 1);
   world.marks.push({
@@ -1133,6 +1190,8 @@ function throwMark(world: World, input: Input, ctx: StepContext): void {
     turns: powers.bounces ? MARK_TURNS : 0,
     splits: powers.splits,
     arcs: powers.arcs,
+    hangs: powers.lingers ? MARK_HANGS : undefined,
+    returns: powers.returns,
     glyph: ctx.markGlyph ?? "א",
   });
   p.markCooldown = Math.max(4, Math.round(MARK_COOLDOWN * (powers.cooldown ?? 1)));
@@ -1166,7 +1225,7 @@ function nearestHusk(world: World, ctx: StepContext, m: Mark): Husk | undefined 
   let best: Husk | undefined;
   let bestAt = Infinity;
   for (const husk of world.husks) {
-    if (husk.broken || submerged(husk)) continue;
+    if (husk.broken || outOfReach(husk, world)) continue;
     if (!canBeStruck(hiddenAt(world, husk), ctx.verbs)) continue;
     const at = Math.hypot(husk.x - m.x, husk.y - m.y);
     if (at < bestAt) {
@@ -1208,6 +1267,20 @@ function stepMarks(world: World, ctx: StepContext): void {
     });
 
   for (const m of world.marks) {
+    /**
+     * **The Scoring's line, which is a stroke and not a mark.** A spent mark
+     * that hangs keeps its bite and loses everything else: it does not move, it
+     * does not fall, it does not turn or bend or split. So the branch is here
+     * at the top rather than folded into the flight below — a hanging line is
+     * not a slow mark, it is a different thing that happens to still hurt.
+     */
+    if (m.hangs !== undefined && m.hangs > 0 && m.life <= 1) {
+      m.hangs -= 1;
+      m.life = m.hangs > 0 ? 2 : 0;
+      m.vx = 0;
+      m.vy = 0;
+      continue;
+    }
     // Weight, if it has any. Applied before the move so the fall and the
     // tile test agree about where the mark is.
     if (m.arcs) m.vy += GRAVITY * MARK_FALL * DT;
@@ -1217,12 +1290,37 @@ function stepMarks(world: World, ctx: StepContext): void {
     m.y += m.vy * DT;
     m.life -= 1;
 
+    /**
+     * **The Pointer, taken up again.** At the end of its flight the mark turns
+     * once and comes back along the line it went out on, striking whatever it
+     * passed and missed. Once only — `turned` — because a mark that came back
+     * forever is a mark that never has to be aimed, and aiming is the whole of
+     * what the strike key is for.
+     */
+    if (m.returns && !m.turned && m.life <= 1) {
+      m.turned = true;
+      m.vx = -m.vx;
+      m.vy = -m.vy;
+      m.life = MARK_LIFE;
+    }
+
     // Stone stops a mark. So does the edge of the world.
+    //
+    // **Unless the Scribe carries the Shamir**, in which case his own do not
+    // stop: no iron was lifted over the stones of the house because this went
+    // through them instead. A klipah's marks are unaffected, which is the whole
+    // of what `m.mine` is doing here — the stone is still a wall to the dark.
     const cx = m.x + m.w / 2;
     const cy = m.y + m.h / 2;
-    if (stone(cx, cy)) {
+    if (stone(cx, cy) && !(m.mine && ctx.keeps?.cuts)) {
       if (!m.turns) {
-        m.life = 0;
+        // A line that was going to hang hangs where the stone stopped it,
+        // which is the one place a scribe would actually rule one.
+        if (m.hangs !== undefined && m.hangs > 0) {
+          m.x = wasX;
+          m.y = wasY;
+          m.life = 2;
+        } else m.life = 0;
         continue;
       }
       // Which way it hit. Test the two components apart, or a mark that
@@ -1267,7 +1365,7 @@ function stepMarks(world: World, ctx: StepContext): void {
 
     if (m.mine) {
       for (const husk of world.husks) {
-        if (husk.broken || submerged(husk) || !bodiesTouch(m, husk)) continue;
+        if (husk.broken || outOfReach(husk, world) || !bodiesTouch(m, husk)) continue;
         if (!canBeStruck(hiddenAt(world, husk), ctx.verbs)) continue;
         strikeHusk(world, husk, m.bite, m.draws ? -1 : 1, m.x);
         // What is broken throws two shards out of it, up and away on both
@@ -1333,7 +1431,19 @@ function opened(world: World, husk: Husk): boolean {
   }
 }
 
-function strikeHusk(world: World, husk: Husk, bite: number, push: number, from: number): void {
+/**
+ * A blow lands on a klipah. Exported for the bench, which has to be able to
+ * hit the one that does nothing until it is hit — there is no other way to
+ * measure the Calf, and a creature no instrument can pose is a creature that
+ * silently stops working.
+ */
+export function strikeHusk(
+  world: World,
+  husk: Husk,
+  bite: number,
+  push: number,
+  from: number,
+): void {
   // A great one still *moves* when it is struck unopened — which is not a
   // consolation, it is the mechanism: drawing Leviathan is a hit that takes no
   // shell and pulls it landward, and there is no other way out of the water.
@@ -1378,9 +1488,67 @@ function strikeHusk(world: World, husk: Husk, bite: number, push: number, from: 
   say(world, `${spec.name} breaks, and the light in it is yours.`);
 }
 
-/** Whether a klipah is inside the ground, where nothing reaches it. */
-function submerged(husk: Husk): boolean {
-  return husk.kind === "korach" && husk.charging === 0;
+/**
+ * Whether a klipah is somewhere no mark can follow it.
+ *
+ * Exported so the bench can ask it. What it is really measuring is how much of
+ * a creature's life it is *answerable* for, and that turns out to be the only
+ * question that catches a klipah nobody can break: `breakIn` cannot, because a
+ * Scribe who keeps station is standing there for the one window in the cycle
+ * when it is reachable, and takes it.
+ *
+ * **This read `charging === 0`, and that was the whole of why Korach could not
+ * be broken.** `charging` counts only the rise, so every tick that was not the
+ * rise counted as buried — including the ticks it spends standing in the open
+ * afterwards. Over sixty-six honest walks a Scribe holding all twenty-two
+ * letters broke one of thirty-seven, and adding the settling phase alone moved
+ * that to two, because the creature was standing there in plain sight and still
+ * immune to everything.
+ *
+ * So it asks the real question: is it under, or is it out? Rising is out.
+ * Settling is out. Only the long burrow between one surfacing and the next is
+ * inside the ground, and that is the only part of the cycle a mark should pass
+ * through.
+ */
+export function outOfReach(husk: Husk, world?: World): boolean {
+  /**
+   * **The Tannin holds the water.** Three places said so — its own line on the
+   * plate a player reads, the case that steers it, and the test that proves it
+   * leaves the water at all — and nothing implemented it: a mark landing on a
+   * submerged Tannin took a shell off it like any other. The sentence "it stays
+   * in the water, where nothing can touch it, and comes out of it at you" was
+   * the creature's whole shape, and the fight it describes — catch it in the
+   * air, because the air is the only place it can be written on — did not exist.
+   *
+   * `world` is optional because most callers are asking about a klipah rather
+   * than about a place; without one this answers the question it always
+   * answered, which keeps the pure-husk callers honest.
+   */
+  if (husk.kind === "tannin") return world ? inWater(world, husk) : false;
+  if (husk.kind !== "korach") return false;
+  if (husk.charging > 0) return false;
+  return husk.cooldown <= (HUSKS.korach.throws ?? 0) - RISE - SETTLE;
+}
+
+/**
+ * Whether touching it costs anything.
+ *
+ * The same for everything except Korach, and for Korach it is the other half of
+ * the settling phase. **The moment it is answerable is the moment it is
+ * harmless.** The eruption is the attack — it opens under the Scribe's feet and
+ * rises through him, and nothing about that is softened. What follows is the
+ * price of having done it: it is out of the ground, stationary and spent, and a
+ * Scribe who turns round and writes on it pays nothing for standing there.
+ *
+ * Made separate because it was not, and the first version of the settling phase
+ * therefore handed the creature ninety extra ticks of *contact* along with the
+ * ninety ticks of being hittable. The honest dash to a freed crown stopped
+ * arriving on one seed in six: a klipah that had been unbreakable became
+ * unbreakable and twice as costly, which is the opposite of the change.
+ */
+function harmful(husk: Husk, world: World): boolean {
+  if (outOfReach(husk, world)) return false;
+  return husk.kind !== "korach" || husk.charging > 0;
 }
 
 /**
@@ -1402,21 +1570,98 @@ function coax(world: World, husk: Husk): void {
 /** A lamp goes, and the Scribe is thrown clear. At zero he goes out. */
 function wound(world: World, ctx: StepContext, away: 1 | -1): void {
   const p = world.player;
-  const hit = takeHit(p.lamps, p.iframes, powersFrom(ctx.items ?? [], ctx.boons).iframes);
+  const powers = powersFrom(ctx.items ?? [], ctx.boons, ctx.keeps);
+  const hit = takeHit(p.lamps, p.iframes, powers.iframes);
   if (hit.lamps === p.lamps && !hit.out) return;
+
+  /**
+   * Thrown clear, which every blow does whatever it costs — including the two
+   * a vessel pays for below, or a Scribe would be spared the lamp and left
+   * standing in the thing that took it.
+   *
+   * **The Hide is heavy**, and halves it. What that buys is not being thrown
+   * across the room, which over a basin is the difference between a lamp and a
+   * lamp and a veiling.
+   */
+  const clear = () => {
+    const thrown = powers.heavy ? 0.5 : 1;
+    p.iframes = hit.iframes;
+    p.vx = away * KNOCKBACK_X * thrown;
+    p.vy = -KNOCKBACK_Y * thrown;
+    p.dash = 0;
+    p.grappleTo = undefined;
+  };
+
+  /**
+   * **The Wrapper — the first blow of a rung takes no lamp.** Not a longer
+   * moment after being hit, which is what its `iframes` already buy, but the
+   * blow itself: *wrapped, a thing takes longer to come to harm.* Once, and the
+   * grace is spent for the rung, so it is the difference between the first
+   * mistake and the second rather than a lamp that regrows.
+   */
+  if (powers.spared && !world.spared) {
+    world.spared = true;
+    clear();
+    say(world, "The wrapping takes it. Not this time.");
+    return;
+  }
+
+  /**
+   * **The Lampstand — the middle light is never let go out.** Once in a rung a
+   * blow that would take the last lamp takes nothing, which is a different
+   * mercy from the Wrapper's: that one spends itself on whatever comes first,
+   * and this one waits at the bottom for the blow that would end the climb.
+   */
+  if (hit.out && powers.relights && !world.relit) {
+    world.relit = true;
+    clear();
+    say(world, "The middle light does not go out.");
+    return;
+  }
+
+  /**
+   * **Aaron's rod** — a dead stick that budded and blossomed and bore almonds
+   * all in one night. The first lamp lost on a rung grows back.
+   *
+   * Two things keep it from being the Wrapper under another name. It is barred
+   * **above the Abyss**, where the ground is longest and the klipot heaviest,
+   * so it is a kindness at the foot of the Tree and nothing at the top; and it
+   * never saves the last lamp, because a lamp that buds back has to have
+   * something to bud from. What would have ended the climb is the fire's
+   * business, below.
+   */
+  if (!hit.out && ctx.keeps?.buds && !world.budded && world.regionIndex <= LAST_BELOW_ABYSS) {
+    world.budded = true;
+    clear();
+    say(world, "The rod buds. The lamp comes back.");
+    return;
+  }
+
+  /**
+   * **The fire of the altar**, which came down once and was never lit again,
+   * only kept. Once in a *climb* — not once a rung, which is the Lampstand's —
+   * the last lamp refuses to go out.
+   *
+   * `world.everlasting` is the only flag in `World` meant to outlive its own
+   * rung: the page reads it at the exit and at the fall and writes the relic
+   * onto the record as spent, so a reload cannot hand the fire back. That is
+   * the same reason `relicsFound` lives on the record rather than in state.
+   */
+  if (hit.out && ctx.keeps?.perpetual && !world.everlasting) {
+    world.everlasting = true;
+    clear();
+    say(world, "The fire of the altar does not go out.");
+    return;
+  }
+
   p.lamps = hit.lamps;
-  p.iframes = hit.iframes;
-  p.vx = away * KNOCKBACK_X;
-  p.vy = -KNOCKBACK_Y;
-  p.dash = 0;
-  p.grappleTo = undefined;
+  clear();
   if (hit.out) {
     world.out = true;
     say(world, GOING_OUT);
     return;
   }
   say(world, `A husk takes a lamp. ${p.lamps} left.`);
-  void ctx;
 }
 
 function stepHusks(world: World, ctx: StepContext): void {
@@ -1523,6 +1768,43 @@ function stepHusks(world: World, ctx: StepContext): void {
           husk.vy = -95;
           break;
         }
+        /**
+         * **And the earth closed upon them.**
+         *
+         * Bamidbar 16:33 — they went down alive into the pit, *and the earth
+         * closed upon them*. The ground does not simply reopen for Korach when
+         * he wants it: having come up, he is out, and he is out for a while.
+         *
+         * This is the one klipah measurement caught as unanswerable. Rising
+         * took forty-two ticks in every three hundred and eighty-seven, so it
+         * was above ground — which is the only place a mark can reach it,
+         * since stone stops a mark and nothing stops Korach — for sixteen per
+         * cent of its life, measured, and it moved fast for all sixteen. Over
+         * sixty-six
+         * honest walks a fighting Scribe holding every letter in the game laid
+         * thirty-seven of them and broke **one**: three per cent, against
+         * thirty-nine to eighty-five for every other kind in the table. A
+         * klipah that cannot be broken is not a creature, it is weather — and
+         * its four light can never be collected by anybody.
+         *
+         * So the cycle is three phases rather than two. It rises; then it
+         * **stands there**, out of the ground and still, for long enough to be
+         * answered; and only then does it go back down. Nothing about the
+         * moment it opens under the Scribe is softened — that is the threat,
+         * and it is unchanged. What is added is the price of having done it.
+         */
+        const settled = husk.cooldown > (spec.throws ?? 0) - RISE - SETTLE;
+        if (settled) {
+          // **Still, and weightless.** Not falling: `flies` is what lets it
+          // move through the rock, and a klipah the rock does not hold falls
+          // through the floor the instant gravity is applied to it. The first
+          // draft of this settling phase did exactly that — it came up, dropped
+          // straight through the world, and was measured as unbreakable for a
+          // second time and for a new reason. It stands where the rise left it.
+          husk.vx = 0;
+          husk.vy = 0;
+          break;
+        }
         // Under. It slides toward the Scribe's column and rises when it is
         // beneath him — but never further than the ground it haunts. Stone is
         // nothing to it, so without a leash it simply followed the Scribe
@@ -1534,7 +1816,7 @@ function stepHusks(world: World, ctx: StepContext): void {
         husk.vy = 90;
         husk.vx = Math.sign(chase) * spec.speed;
         if (Math.abs(toward) < TILE_SIZE && husk.cooldown === 0 && spec.throws) {
-          husk.charging = 42;
+          husk.charging = RISE;
           husk.cooldown = spec.throws;
           // **Under the feet, not in them.** Surfacing at the Scribe's own
           // height put the two bodies in the same place on the same tick, so
@@ -1624,7 +1906,7 @@ function stepHusks(world: World, ctx: StepContext): void {
 
       // **The Tannin.** The great sea-creatures, and the first made thing the
       // account of creation bothers to name. It holds the water, where
-      // `submerged` already forbids a mark from touching it, and comes out at
+      // `outOfReach` already forbids a mark from touching it, and comes out at
       // whatever is standing on the bank — so the fight is about catching it
       // in the air, which is the only place it can be written on.
       case "tannin": {
@@ -1695,7 +1977,7 @@ function stepHusks(world: World, ctx: StepContext): void {
             h: MARK_SIZE,
             vx: 0,
             vy: 0,
-            life: 150,
+            life: SARAF_FIRE,
             pierces: false,
             bite: 1,
             draws: false,
@@ -1877,7 +2159,7 @@ function stepHusks(world: World, ctx: StepContext): void {
 
     moveHusk(world, ctx, husk);
 
-    if (p.veiled === 0 && !world.out && !submerged(husk) && bodiesTouch(husk, p)) {
+    if (p.veiled === 0 && !world.out && harmful(husk, world) && bodiesTouch(husk, p)) {
       // Almost all of them take a lamp, because that is what a husk is.
       // Delilah takes what you gathered instead — nothing you feel at the time.
       if (spec.takes === "light") coax(world, husk);
@@ -1899,7 +2181,7 @@ const solidFor = (world: World, ctx: StepContext) => ({
 
 /**
  * Walking a ledge and turning at its edge — the oldest of the behaviours, and
- * now shared, because four of the ten do it when they are doing nothing else.
+ * now shared, because eight of the twenty do it when they are doing nothing else.
  */
 function pace(world: World, ctx: StepContext, husk: Husk, speed: number, gentle = false): void {
   const spec = HUSKS[husk.kind];
@@ -1915,6 +2197,41 @@ function pace(world: World, ctx: StepContext, husk: Husk, speed: number, gentle 
   husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
   void spec;
 }
+
+/**
+ * Korach's three phases, in ticks: the rise out of the ground, and the while he
+ * is left standing in the open afterwards.
+ *
+ * **`RISE` is a distance, not a duration**, and that is why it is fifty-four
+ * rather than the forty-two it was. It surfaces two and a half tiles beneath
+ * the Scribe's feet and climbs at ninety-five a second, so forty-two ticks
+ * carried it to the Scribe's *waist* and stopped — the creature stood there in
+ * the open with its head two pixels under a flat mark's line, and every mark
+ * ever thrown at it sailed over. Fifty-four ticks is the Scribe's own height
+ * plus the ground it started under, which puts it on the floor he is standing
+ * on. Measured: an aiming Scribe went from never breaking one in four thousand
+ * ticks to breaking one in ninety-six.
+ *
+ * `SETTLE` is the other half. Ninety ticks is a second and a half — long enough
+ * that a Scribe who is looking has time to answer, short enough that it is not
+ * simply a pacer with an entrance. Against `throws: 345` the two together take
+ * the creature from sixteen per cent of its life above ground to forty-three.
+ *
+ * Three phases because burrowing is the third: rise, stand, and go back under.
+ */
+const RISE = 54;
+const SETTLE = 90;
+
+/**
+ * How long a Saraf's fire stays on the ground where it was laid, against a
+ * `throws: 90` cadence — two-thirds of a second alight, a second and a half
+ * between. It was a hundred and fifty ticks laid every twenty-two, which put
+ * seven fires down at once and meant the ground around the creature was never
+ * not burning: measured, that made Tiferet end fifty-three per cent of all
+ * walks against four to nineteen everywhere else. A trail with gaps in it is
+ * the thing its own line always described.
+ */
+const SARAF_FIRE = 40;
 
 /** The nearest loose mote, for the klipah that hunts them. */
 function nearestMote(world: World, husk: Husk): Entity | undefined {

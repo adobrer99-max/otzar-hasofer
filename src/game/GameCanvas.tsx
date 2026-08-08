@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { Grace, Verb } from "./abilities";
 import type { Effect } from "./items";
+import type { Keeping } from "./relics";
 import { controlById, KEY_MAP, PAD_LAYOUT, type ControlId } from "./controls";
 import { drawWorld, trackCamera, type Camera } from "./render/draw";
-import { readPalette, type Palette } from "./render/palette";
+import { paletteOf, readPalette, type Palette } from "./render/palette";
 import { DT, step, type StepContext } from "./world/step";
 import { recordFrame } from "./dev/probe";
 import { NO_INPUT, type Input, type World } from "./world/types";
@@ -60,6 +61,34 @@ export interface HudSample {
   marksSet: number;
 }
 
+/**
+ * **Every callback the step loop can make, named once and required.**
+ *
+ * This type exists because of a bug it now makes impossible. `StepContext`
+ * declares all six of these optional — rightly, since the fight probes build a
+ * context with none of them — and `ctxRef.current` was annotated `StepContext`
+ * and assembled by hand. So when `onVessel` was added, it was threaded through
+ * the props, stored in `callbacks.current`, and **never assigned onto the
+ * context**. `step.ts` calls `ctx.onVessel?.(e.ref)`; `?.` on `undefined` is a
+ * no-op; there was no type error and no runtime error, and **no vessel could be
+ * picked up in the shipped game at all** — the whole of the twelve-of-twenty
+ * daily pool, the six authored behaviours, the plate and the belt, unreachable.
+ *
+ * Nothing could have caught it. `step.ts` was correct and the suite never
+ * renders this component; the fight and economy probes construct a
+ * `StepContext` directly and pass `items` in, so they measured a game the
+ * player was not playing; and the harness driver cannot climb to a pedestal —
+ * `VESSEL_CHUNK` is a shelf two rows up, which is why the `house` script needed
+ * a `Probe.house` field to steer by.
+ *
+ * So the guard is a **type** rather than a test: `Required<Pick<…>>` cannot be
+ * satisfied with a key missing, so the forwarding object below fails `tsc` if a
+ * callback is ever added and left unwired.
+ */
+type StepCallbacks = Required<
+  Pick<StepContext, "onLetter" | "onFragment" | "onWordGate" | "onHouse" | "onVessel" | "onRelic" | "onFinish">
+>;
+
 export interface GameCanvasProps {
   world: World;
   verbs: readonly Verb[];
@@ -78,6 +107,11 @@ export interface GameCanvasProps {
    * cannot be dropped, spent or declined.
    */
   boons: readonly Effect[];
+  /**
+   * What the reliquary keeps, minus anything already spent — the three rules
+   * `step.ts` reads every tick. See `relics.ts`.
+   */
+  keeps: Keeping;
   /** Suspends the loop for a plate, a pause, or an end-of-region panel. */
   paused: boolean;
   onLetter: (letterId: string) => void;
@@ -85,6 +119,7 @@ export interface GameCanvasProps {
   onWordGate: () => void;
   onHouse: (cardId: string) => void;
   onVessel: (keliId: string) => void;
+  onRelic: (relicId: string) => void;
   onFinish: () => void;
   onSample: (sample: HudSample) => void;
 }
@@ -96,6 +131,7 @@ export function GameCanvas({
   verbs,
   graces,
   boons,
+  keeps,
   markGlyph,
   items,
   paused,
@@ -104,6 +140,7 @@ export function GameCanvas({
   onWordGate,
   onHouse,
   onVessel,
+  onRelic,
   onFinish,
   onSample,
 }: GameCanvasProps) {
@@ -113,26 +150,37 @@ export function GameCanvas({
   const used = useRef<Set<ControlId>>(new Set());
   const camera = useRef<Camera>({ x: 0, y: 0 });
   const palette = useRef<Palette>(readPalette());
+  /**
+   * The theme palette tinted for the ground underfoot, recomputed when either
+   * of its two inputs changes rather than every frame — the mixing is cheap
+   * but it is exactly the kind of per-frame work P6 exists to stop adding.
+   */
+  const here = useRef<Palette>(paletteOf(palette.current, world.sefirah));
   const view = useRef({ w: 960, h: 432 });
   const pausedRef = useRef(paused);
-  const callbacks = useRef({ onLetter, onFragment, onWordGate, onHouse, onVessel, onFinish, onSample });
+  const callbacks = useRef({ onLetter, onFragment, onWordGate, onHouse, onVessel, onRelic, onFinish, onSample });
 
   pausedRef.current = paused;
-  callbacks.current = { onLetter, onFragment, onWordGate, onHouse, onVessel, onFinish, onSample };
+  callbacks.current = { onLetter, onFragment, onWordGate, onHouse, onVessel, onRelic, onFinish, onSample };
 
-  const ctxRef = useRef<StepContext>({ verbs, graces });
-  ctxRef.current = {
-    verbs,
-    graces,
-    items,
-    boons,
-    markGlyph,
+  /**
+   * The forwarding half, annotated so that every callback must be here. Each
+   * reads through `callbacks.current` rather than closing over the prop, so a
+   * handler that changes identity between renders is still the one the loop
+   * calls — the loop is started once and never restarted.
+   */
+  const forward: StepCallbacks = {
     onLetter: (id) => callbacks.current.onLetter(id),
     onFragment: (i) => callbacks.current.onFragment(i),
     onWordGate: () => callbacks.current.onWordGate(),
     onHouse: (id) => callbacks.current.onHouse(id),
+    onVessel: (id) => callbacks.current.onVessel(id),
+    onRelic: (id) => callbacks.current.onRelic(id),
     onFinish: () => callbacks.current.onFinish(),
   };
+
+  const ctxRef = useRef<StepContext>({ verbs, graces });
+  ctxRef.current = { verbs, graces, items, boons, keeps, markGlyph, ...forward };
 
   // --- input --------------------------------------------------------------
 
@@ -210,6 +258,7 @@ export function GameCanvas({
       context.setTransform(dpr, 0, 0, dpr, 0, 0);
       context.imageSmoothingEnabled = false;
       palette.current = readPalette();
+      here.current = paletteOf(palette.current, world.sefirah);
     };
     resize();
 
@@ -218,6 +267,7 @@ export function GameCanvas({
     // The theme toggle rewrites `data-theme`; the canvas has to re-read it.
     const themeWatcher = new MutationObserver(() => {
       palette.current = readPalette();
+      here.current = paletteOf(palette.current, world.sefirah);
     });
     themeWatcher.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
@@ -263,7 +313,10 @@ export function GameCanvas({
         context,
         world,
         camera.current,
-        palette.current,
+        // **Where the Scribe is, in colour.** The theme decides charcoal or
+        // vellum; the place decides which way its stone leans. `world.sefirah`
+        // was already on the world and the renderer never asked.
+        here.current,
         view.current.w,
         view.current.h,
         verbs as readonly string[],

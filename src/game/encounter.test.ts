@@ -6,9 +6,11 @@ import {
   encounterTitle,
   ENCOUNTER_RULES,
   ILLUMINED_MULTIPLIER,
-  isIllumined,
+  illuminedBy,
   ruleByNumber,
+  ruleOf,
   rulesFor,
+  beyondTheSeven,
   sealedCount,
   VEIL_COST,
   type EncounterRule,
@@ -154,8 +156,10 @@ describe("the Seven Encounters", () => {
   it("keeps the doubling as the First's own rule", () => {
     expect(ruleByNumber[1].motes).toBe(ILLUMINED_MULTIPLIER);
     expect(encounters[0].sefirah).toBe("chesed");
-    expect(isIllumined(encounters[0], "chesed")).toBe(true);
-    expect(isIllumined(encounters[0], "gevurah")).toBe(false);
+    // Read off the *rule*, which is what ships — past the seventh seal there
+    // is no live Encounter, and a chosen First has to light Chesed anyway.
+    expect(illuminedBy(ruleByNumber[1])).toBe("chesed");
+    expect(illuminedBy(undefined)).toBeUndefined();
   });
 
   /** Every rule is worth *having*: none of them makes a climb harder. */
@@ -317,5 +321,81 @@ describe("what the rules do to a running world", () => {
     expect(rested.veilings).toBeGreaterThan(0);
     expect(taxed.or).toBe(20 - VEIL_COST);
     expect(rested.or, "Shabbat still took light off").toBe(20);
+  });
+});
+
+/**
+ * **Past the seventh, you choose the day.**
+ *
+ * The Seven Encounters were this game's whole long arc and they end: the
+ * eighth climb read "Beyond the seven" and was played on the game's own
+ * numbers with nothing acting on it. Seven sealed climbs is a fortnight for
+ * anybody enjoying themselves. So the seven become seven earned
+ * play-modifiers — nothing invented, since the rules already exist and are
+ * already proved distinct above.
+ */
+describe("the rule a climb is played under", () => {
+  it("is the Encounter's, inside the seven", () => {
+    for (const rule of ENCOUNTER_RULES) {
+      expect(ruleOf({ encounterNumber: rule.number })).toBe(rule);
+    }
+  });
+
+  it("is the chosen one, past them", () => {
+    expect(ruleOf({ ruleNumber: 4 })).toBe(ruleByNumber[4]);
+  });
+
+  /**
+   * A climb inside the seven is not choosing anything, and a record carrying
+   * both must not be able to play the Fourth's fourth lamp while counting as
+   * the First. The unfolding order wins, always.
+   */
+  it("never lets a chosen rule override the unfolding order", () => {
+    expect(ruleOf({ encounterNumber: 1, ruleNumber: 4 })).toBe(ruleByNumber[1]);
+  });
+
+  it("is nothing at all for a bare climb, and for every record written before this existed", () => {
+    expect(ruleOf({})).toBeUndefined();
+    expect(ruleOf(undefined)).toBeUndefined();
+    expect(ruleOf(null)).toBeUndefined();
+    // A number that is not one of the seven is not a rule.
+    expect(ruleOf({ ruleNumber: 9 })).toBeUndefined();
+    expect(ruleOf({ encounterNumber: 0 })).toBeUndefined();
+  });
+
+  it("knows when the choice becomes the Scribe's", () => {
+    for (let sealed = 0; sealed < 7; sealed += 1) {
+      expect(beyondTheSeven(sealed), `${sealed} sealed`).toBe(false);
+    }
+    expect(beyondTheSeven(7)).toBe(true);
+    expect(beyondTheSeven(40)).toBe(true);
+  });
+
+  /** Every rule is choosable, or the choice is a smaller thing than it looks. */
+  it("offers all seven, and each of them acts", () => {
+    for (const rule of ENCOUNTER_RULES) {
+      const chosen = ruleOf({ ruleNumber: rule.number });
+      expect(chosen, `the ${rule.number} cannot be chosen`).toBe(rule);
+      expect(moved(chosen!), `the ${rule.number} moves nothing`).not.toEqual([]);
+    }
+  });
+
+  /**
+   * **The trap this nearly walked into.** Every rule but the First moves a
+   * number that is a fact about the rule; the First's is a fact about a
+   * *place* — light doubles in Chesed — and that place was read off the live
+   * Encounter, which past the seventh seal is `undefined`. A Scribe who chose
+   * the First would have been shown "light gathered in Chesed counts double"
+   * and then gathered ordinary light in Chesed. A rule that changes nothing is
+   * indistinguishable from a rule that works, which is the thing this whole
+   * table is written to prevent.
+   */
+  it("still knows which Sefirah a chosen rule lights, with no Encounter to ask", () => {
+    for (const rule of ENCOUNTER_RULES) {
+      if (!rule.motes) continue;
+      const lit = illuminedBy(ruleOf({ ruleNumber: rule.number }));
+      expect(lit, `the ${rule.number} doubles light nowhere`).toBeTruthy();
+      expect(regions.some((r) => r.sefirah === lit), `${lit} is not on the Tree`).toBe(true);
+    }
   });
 });

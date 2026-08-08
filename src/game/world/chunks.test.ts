@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  ARENA_A,
+  ARENA_B,
   CHUNK_H,
   CHUNK_W,
   CHUNKS,
@@ -19,8 +21,10 @@ import {
   SHRINE_LOW,
   START_CHUNK,
 } from "./chunks";
-import { HUSK_CHARS } from "../combat";
-import { paintChunks } from "./build";
+import { HUSKS, HUSK_CHARS, type HuskKind } from "../combat";
+import { guardianOf } from "../guardians";
+import { regions } from "../regions";
+import { ARENA_ROOMS, paintChunks } from "./build";
 import { routeTo } from "./route";
 import { MARKER_CHARS, TILE_CHARS } from "./tiles";
 import type { Chunk, Edge } from "./types";
@@ -351,5 +355,130 @@ describe("the chunk library", () => {
       wanting,
       `screens that need more than they declare, which is a soft lock on the Tree:\n  ${wanting.join("\n  ")}`,
     ).toEqual([]);
+  });
+});
+
+/**
+ * **The arenas, which nothing was checking.**
+ *
+ * `chunksById` holds the screens `layout` draws from, and the guardians' rooms
+ * are deliberately not among them — an arena is named by `buildArena`, never
+ * dealt. The cost of that was that the whole contract above simply did not
+ * apply to them: a miscounted row in a boss room was a hole in the floor of a
+ * sealed room, and the only thing that would have caught it was the duel probe
+ * failing for a reason it could not explain.
+ *
+ * So the arenas are held to the parts of the contract that are true of them,
+ * and to the one rule that is *only* true of them — the walking band.
+ */
+describe("the guardians' rooms", () => {
+  const pairs = Object.entries(ARENA_ROOMS) as [HuskKind, readonly [Chunk, Chunk]][];
+  const rooms: Chunk[] = [ARENA_A, ARENA_B, ...pairs.flatMap(([, pair]) => [...pair])];
+
+  it("holds every room to the same dimensions and the same vocabulary", () => {
+    for (const c of rooms) {
+      expect(c.rows, `${c.id} row count`).toHaveLength(CHUNK_H);
+      c.rows.forEach((row, y) => {
+        expect(row.length, `${c.id} row ${y}: "${row}"`).toBe(CHUNK_W);
+        for (const ch of row) {
+          const known = ch in TILE_CHARS || MARKER_CHARS.has(ch) || ch in HUSK_CHARS;
+          expect(known, `${c.id} uses unknown character "${ch}"`).toBe(true);
+        }
+      });
+    }
+  });
+
+  it("never asks a body to stand where the sky would have to hold it", () => {
+    for (const c of rooms) {
+      for (let x = 0; x < CHUNK_W; x += 1) {
+        if (clear(c.rows[1][x])) continue;
+        expect(clear(c.rows[0][x]), `${c.id} column ${x} is stone at row 1 under open air`).toBe(false);
+      }
+    }
+  });
+
+  /**
+   * **The walking band.** Rows thirteen to fifteen are where a standing body
+   * and a thrown letter both live, so stone there is a hurdle to a Scribe *and*
+   * a wall to a mark — and a wall to a mark in a room that is sealed until the
+   * thing in it breaks is a room nobody leaves. Ledge and water are fine: a
+   * ledge stops only a falling body, and water stops nothing at all.
+   *
+   * Netzach is the exception, and it is the exception on purpose: the Re'em's
+   * charge tests the tile at its own mid-height, so the two stones it runs into
+   * have to be in this band or they are decoration. It is named here rather
+   * than waved through, so a second exception cannot arrive quietly.
+   */
+  it("keeps stone out of the walking band, except where the Re'em runs into it", () => {
+    for (const c of rooms) {
+      if (c.id === "arena-pillar") continue;
+      for (const y of [13, 14, 15]) {
+        for (let x = 0; x < CHUNK_W; x += 1) {
+          const ch = c.rows[y][x];
+          expect(
+            ch === "." || ch === "=" || ch === "w",
+            `${c.id} has "${ch}" at (${x},${y}), in the band a walk and a mark both cross`,
+          ).toBe(true);
+        }
+      }
+    }
+  });
+
+  /**
+   * The pair is laid between two plain rooms, so the outer edges are what has
+   * to chain. The seam between the two halves is theirs to do as they like with
+   * — which is how Leviathan's channel and the Tannin's pool exist at all.
+   */
+  it("meets the plain rooms it is laid between", () => {
+    for (const [kind, [first, second]] of pairs) {
+      for (const y of EDGE_CLEAR_ROWS) {
+        for (const x of LEFT) {
+          expect(clear(first.rows[y][x]), `${kind}: nothing enters ${first.id} at (${x},${y})`).toBe(true);
+        }
+        for (const x of RIGHT) {
+          expect(clear(second.rows[y][x]), `${kind}: nothing leaves ${second.id} at (${x},${y})`).toBe(true);
+        }
+      }
+      for (const y of EDGE_FLOOR_ROWS) {
+        for (const x of LEFT) {
+          expect(first.rows[y][x], `${kind}: no floor into ${first.id} at (${x},${y})`).toBe("#");
+        }
+        for (const x of RIGHT) {
+          expect(second.rows[y][x], `${kind}: no floor out of ${second.id} at (${x},${y})`).toBe("#");
+        }
+      }
+    }
+  });
+
+  /**
+   * **Water is a letter lock whether or not the map says so.** `touchTiles`
+   * veils any Scribe standing in water without Mem — *the deep will not carry
+   * you yet* — so a wet tile on the ground of a sealed room is a wall between
+   * that Scribe and the way out. Binah may have it, because Binah is the one
+   * rung that declares a letter for its water and whose channel was measured
+   * jumpable without Mem. Chesed had a pool for exactly as long as it took to
+   * measure this, and the comment over `ARENA_TENT_A` is what came of it.
+   */
+  it("puts water in no room but Leviathan's", () => {
+    for (const [kind, pair] of pairs) {
+      for (const c of pair) {
+        const wet = c.rows.some((row) => row.includes("w"));
+        expect(wet && kind !== "livyatan", `${kind}'s room asks for Mem and its rung never says so`).toBe(false);
+      }
+    }
+  });
+
+  it("gives a room only to creatures that guard, and names the plain room's tenant", () => {
+    const guardians = new Set(regions.map((r) => guardianOf(r.sefirah).kind));
+    for (const [kind] of pairs) {
+      expect(guardians.has(kind), `${kind} has an arena and guards nothing`).toBe(true);
+      expect(HUSKS[kind], `${kind} is not a klipah`).toBeDefined();
+    }
+    // Behemoth is the one guardian with no entry, because emptiness is its
+    // terrain — see `ARENA_A`. If a second name ever falls out of the table it
+    // is far more likely to be an omission than a decision, so the absence is
+    // pinned to exactly this one.
+    const plain = [...guardians].filter((kind) => !ARENA_ROOMS[kind]);
+    expect(plain).toEqual(["behemot"]);
   });
 });

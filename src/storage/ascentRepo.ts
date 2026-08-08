@@ -107,6 +107,17 @@ export interface AscentRecord {
    */
   encounterNumber?: number;
   /**
+   * **The rule this climb was chosen to be played under**, past the seven.
+   *
+   * The Encounters are the unfolding order and are not a choice while a Scribe
+   * is inside them — `encounterNumber` wins wherever it is set. After the
+   * seventh seal the seven become seven earned play-modifiers and this is
+   * which one was picked; absent means the climb was made bare, which is also
+   * a choice and is what every record written before this existed reads as.
+   * See `ruleOf`.
+   */
+  ruleNumber?: number;
+  /**
    * Roots formed at the Word-Gates, in the order they were inscribed. The
    * ascent's own small vocabulary, listed at the crown.
    */
@@ -117,6 +128,36 @@ export interface AscentRecord {
    * can do.
    */
   items?: string[];
+  /**
+   * **The relics carried into this climb, frozen at Begin** — see
+   * `game/relics.ts`.
+   *
+   * Chosen at the threshold and written down here for the same reason
+   * `ruleNumber` is: `currentAscent` resumes an unsealed record, so a choice
+   * held only in React state would be lost on a reload — and since a relic
+   * changes what is generated, the same seed would then build different ground.
+   * That is the abandon-and-resume exploit `variant` was invented to close,
+   * wearing a new coat.
+   */
+  reliquary?: string[];
+  /**
+   * And the relics **found** on this climb. The Reliquary itself is a fold over
+   * these across sealed climbs (`relicsKept` in `game/book.ts`) rather than a
+   * store of its own — but the find has to be written down somewhere, because
+   * there is nothing already on the record it could be derived from.
+   */
+  relicsFound?: string[];
+  /**
+   * The relics whose one-shot has been used up this climb — today only the fire
+   * of the altar, whose last-lamp mercy is *once a climb* rather than once a
+   * rung.
+   *
+   * On the record rather than in React state for the same reason `relicsFound`
+   * is: `currentAscent` resumes an unsealed climb, so a reload would hand the
+   * fire back and a Scribe could spend it once per reload. Written when a rung
+   * ends, from `world.everlasting`.
+   */
+  relicsSpent?: string[];
   /**
    * The graces guests of the Houses have given on this climb — see
    * `game/ushpizinOffers.ts`. The other half of `items`: a vessel changes what
@@ -242,18 +283,32 @@ export function kindleCost(regionIndex: number): number {
 }
 
 /**
- * Every Sefirah this Scribe has ever freed, across all their climbs.
+ * **How many times each Sefirah has been freed**, across all this Scribe's
+ * climbs.
  *
  * The shape `sealedCount` has, and for the same reason: what a climb *is* is a
  * record, and what a Scribe has *become* is a fold over all of them. The boons
  * are drawn from this — see `guardians.ts`, where the division between the two
  * across-runs systems is stated: the Seven Encounters change the world, and
  * the guardians change the Scribe.
+ *
+ * **It counts rather than collecting**, and that replaced a `guardiansFreed`
+ * that returned a bare set. The set was the whole shape of the problem: ten
+ * booleans, all ten reachable inside one thorough climb, and every climb after
+ * that changing a Scribe not at all. Breaking a guardian a second time was
+ * worth exactly nothing, so there was never a reason to walk that way again.
+ * The tiers read this number; the keys are still exactly the old set.
+ *
+ * A climb's own `guardiansBroken` holds each Sefirah once (a guardian broken
+ * is broken for the rest of that climb), so this counts *climbs in which it
+ * was broken*, which is the honest unit: the return trip, not the repetition.
  */
-export function guardiansFreed(ascents: readonly AscentRecord[]): SefirahId[] {
-  const freed = new Set<SefirahId>();
-  for (const a of ascents) for (const s of a.guardiansBroken ?? []) freed.add(s);
-  return [...freed];
+export function timesFreed(ascents: readonly AscentRecord[]): Record<string, number> {
+  const times: Record<string, number> = {};
+  for (const a of ascents) {
+    for (const s of new Set(a.guardiansBroken ?? [])) times[s] = (times[s] ?? 0) + 1;
+  }
+  return times;
 }
 
 /**

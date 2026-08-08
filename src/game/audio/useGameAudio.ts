@@ -46,6 +46,10 @@ export interface GameAudio {
   onScrollWhole: () => void;
   onGateOpened: () => void;
   onArrival: () => void;
+  /** Light poured into a Sefirah — the only thing light is for. */
+  onKindled: () => void;
+  /** A vessel lifted off its pedestal. */
+  onVessel: () => void;
 }
 
 export function useGameAudio(
@@ -118,6 +122,26 @@ export function useGameAudio(
     let lastOr = worldRef.current?.or ?? 0;
     let lastFootfallAt = 0;
     let hadAirJump = false;
+    /**
+     * **The fight, which made no sound at all.** Five of about twenty-five
+     * events were wired and none of them was combat, so the loop a Scribe
+     * actually spends a climb inside read as a diagram. All four are edges off
+     * counters the world already keeps — no new state, and nothing the
+     * simulation has to be told about.
+     */
+    let lastMarks = worldRef.current?.marks.filter((m) => m.mine).length ?? 0;
+    let lastBroken = worldRef.current?.husksBroken ?? 0;
+    let lastLamps = worldRef.current?.player.lamps ?? 0;
+    let wasOut = Boolean(worldRef.current?.out);
+    /**
+     * Which husks are *currently* flashing white. A count would have been
+     * wrong in the commonest case there is: `struck` is a countdown, so it
+     * stays above zero between two quick hits on the same husk, and standing
+     * over one klipah writing five marks into it sounded once. Per-husk edges,
+     * in a `WeakSet` so a broken husk needs no cleaning up — it is filtered
+     * out of `world.husks` on the tick it breaks and simply falls out of here.
+     */
+    const flashing = new WeakSet<object>();
 
     const watch = () => {
       frame = requestAnimationFrame(watch);
@@ -152,6 +176,44 @@ export function useGameAudio(
       // Light gathered.
       if (world.or > lastOr) fx.mote(current);
       lastOr = world.or;
+
+      // A mark written. Counted rather than watched on the cooldown, because
+      // a mark exists for as long as it flies and the cooldown is a number
+      // that ticks — the array growing is the throw itself.
+      //
+      // **The Scribe's own marks only.** `world.marks` also holds what Jezebel
+      // sends, so counting the whole array played the sound of writing every
+      // time something was thrown *at* you — measured, not guessed: six
+      // keypresses produced twenty-one strikes on a rung with several husks
+      // standing.
+      const marks = world.marks.filter((m) => m.mine).length;
+      if (marks > lastMarks) fx.strike(current);
+      lastMarks = marks;
+
+      // A shell struck and not broken, per husk rather than in total.
+      for (const husk of world.husks) {
+        if (husk.struck > 0) {
+          if (!flashing.has(husk)) {
+            flashing.add(husk);
+            fx.hit(current);
+          }
+        } else {
+          flashing.delete(husk);
+        }
+      }
+
+      // A shell given up, and the light out of it.
+      if (world.husksBroken > lastBroken) fx.broken(current);
+      lastBroken = world.husksBroken;
+
+      // What the Scribe is made of. The last one is its own sound: the
+      // kingdom coming up rather than a failure buzzer.
+      if (world.player.lamps < lastLamps && world.player.lamps > 0) fx.lampLost(current);
+      lastLamps = world.player.lamps;
+      if (Boolean(world.out) !== wasOut) {
+        wasOut = Boolean(world.out);
+        if (wasOut) fx.goingOut(current);
+      }
     };
 
     frame = requestAnimationFrame(watch);
@@ -183,6 +245,8 @@ export function useGameAudio(
     }, [on]),
     onScrollWhole: guard(fx.cadence),
     onGateOpened: guard(fx.cadence),
+    onKindled: guard(fx.kindled),
+    onVessel: guard(fx.vessel),
     onArrival: guard(fx.arrival),
   };
 }

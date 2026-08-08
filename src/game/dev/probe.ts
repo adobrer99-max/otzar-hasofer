@@ -54,8 +54,31 @@ export interface Probe {
   husks: { total: number; standing: number; broken: number; nearest?: number };
   /** Where the rung's House figure stands, from the Scribe. Absent if none. */
   house?: { dx: number; dy: number };
+  /**
+   * And where the pedestal is, for the same reason and with a sharper one
+   * behind it: the vessel is the collectible whose whole wiring was broken for
+   * months and could not be seen. See below.
+   */
+  vessel?: { dx: number; dy: number };
+  /**
+   * Where the hidden thing is, if this rung's chamber still holds one, and
+   * whether the Eye has been opened.
+   *
+   * Both, because the chamber is the first thing in the game with **two**
+   * gates: the driver has to press act to make the staircase exist and then
+   * climb it, and told only the first it would report a clean run from the
+   * floor. `revealed` is what says the press landed — Ayin is on the same key
+   * as the Hook and four other letters, and which one answers depends on what
+   * is standing beside you.
+   */
+  relic?: { dx: number; dy: number };
+  /** What this climb has brought out of a chamber — the twin of `items`. */
+  relics: string[];
+  revealed: boolean;
   marks: number;
   letters: string[];
+  /** The vessels actually lifted, so a script can assert taking rather than offering. */
+  items: string[];
   housesMet: number;
   fragments: number;
   /** Which plate is up, if any — the only way to know a story beat landed. */
@@ -100,6 +123,8 @@ export function probeOf(
     return {
       ...EMPTY_WORLD,
       letters: [...ascent.lettersHeld],
+      items: [...(ascent.items ?? [])],
+      relics: [...(ascent.relicsFound ?? [])],
       housesMet: ascent.housesMet.length,
       fragments: ascent.scrollFragments?.length ?? 0,
       plate,
@@ -129,6 +154,21 @@ export function probeOf(
    * is the seeing.
    */
   const house = world.entities.find((e) => e.kind === "house" && !e.taken);
+  /**
+   * **And the pedestal**, which needed this more than the House did.
+   *
+   * `onVessel` was threaded through `GameCanvas`'s props and never assigned
+   * onto the step context, so `ctx.onVessel?.()` was a no-op and **no vessel
+   * could be taken in the shipped game at all**. Nothing saw it: the fight
+   * probes build their own `StepContext` and pass `items` straight in, so they
+   * measured a game nobody was playing, and no harness script could reach a
+   * pedestal — `VESSEL_CHUNK` puts it on a shelf two rows up, exactly the ledge
+   * the walking driver has no reason to climb. A type now makes the wiring
+   * mistake impossible; this makes the *reaching* possible, so a script can
+   * watch the plate rise.
+   */
+  const keli = world.entities.find((e) => e.kind === "vessel" && !e.taken);
+  const hidden = world.entities.find((e) => e.kind === "relic" && !e.taken);
   return {
     tick: world.tick,
     regionIndex: world.regionIndex,
@@ -155,6 +195,15 @@ export function probeOf(
       nearest: nearest === undefined ? undefined : Math.round(nearest),
     },
     marks: world.marks.length,
+    vessel: keli
+      ? { dx: Math.round(keli.x - world.player.x), dy: Math.round(keli.y - world.player.y) }
+      : undefined,
+    relic: hidden
+      ? { dx: Math.round(hidden.x - world.player.x), dy: Math.round(hidden.y - world.player.y) }
+      : undefined,
+    relics: [...(ascent?.relicsFound ?? [])],
+    revealed: world.revealed,
+    items: [...(ascent?.items ?? [])],
     house: house
       ? { dx: Math.round(house.x - world.player.x), dy: Math.round(house.y - world.player.y) }
       : undefined,
@@ -202,12 +251,23 @@ const EMPTY_WORLD = {
   progress: 0,
   husks: { total: 0, standing: 0, broken: 0, nearest: undefined },
   marks: 0,
+  revealed: false,
   message: undefined,
   finished: false,
   out: false,
 } satisfies Omit<
   Probe,
-  "letters" | "housesMet" | "fragments" | "plate" | "onMap" | "at" | "sefirotLit" | "guardiansBroken" | "gate"
+  | "letters"
+  | "items"
+  | "relics"
+  | "housesMet"
+  | "fragments"
+  | "plate"
+  | "onMap"
+  | "at"
+  | "sefirotLit"
+  | "guardiansBroken"
+  | "gate"
 >;
 
 /**
@@ -264,6 +324,8 @@ export interface ProbeApi {
   look: (radius?: number) => string[][];
   /** What a frame costs — see `frameStats`. The P6 perf gate reads this. */
   frames: () => ReturnType<typeof frameStats>;
+  /** Where the frame went — see `phaseStats`. */
+  phases: () => ReturnType<typeof phaseStats>;
 }
 
 /**
@@ -296,6 +358,29 @@ const FRAME_WINDOW = 600;
 export function recordFrame(ms: number): void {
   FRAMES.push(ms);
   if (FRAMES.length > FRAME_WINDOW) FRAMES.shift();
+}
+
+/**
+ * **Where a frame goes**, split into the two halves that can be optimised
+ * separately: the tile loop, which re-synthesizes every visible tile from
+ * vector primitives, and everything with a body in it. Temporary — this exists
+ * to point the P6 work at the right half rather than at the plausible one.
+ */
+const PHASES: Record<string, { ms: number; n: number; count: number }> = {};
+
+export function recordPhase(name: string, ms: number, count: number): void {
+  const p = (PHASES[name] ??= { ms: 0, n: 0, count: 0 });
+  p.ms += ms;
+  p.n += 1;
+  p.count = count;
+}
+
+export function phaseStats(): Record<string, { avgMs: number; frames: number; count: number }> {
+  const out: Record<string, { avgMs: number; frames: number; count: number }> = {};
+  for (const [name, p] of Object.entries(PHASES)) {
+    out[name] = { avgMs: Math.round((p.ms / p.n) * 1000) / 1000, frames: p.n, count: p.count };
+  }
+  return out;
 }
 
 /** p50 and p95 over the last ten seconds of frames, in milliseconds. */

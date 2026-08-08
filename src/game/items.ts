@@ -1,3 +1,5 @@
+import { makeRng, shuffle } from "./rng";
+
 /**
  * The vessels — what the Scribe finds and carries, as against what he *is*.
  *
@@ -51,6 +53,18 @@ export interface Effect {
   splits?: boolean;
   /** The mark has weight, and falls as it flies. */
   arcs?: boolean;
+  /** A spent mark hangs where it stopped, and still strikes what touches it. */
+  lingers?: boolean;
+  /** At the end of its flight a mark turns and comes back to the hand. */
+  returns?: boolean;
+  /** A husk's blow moves the Scribe half as far. */
+  heavy?: boolean;
+  /** The first blow of a rung takes no lamp. */
+  spared?: boolean;
+  /** A veiling spills no gathered light. */
+  keeps?: boolean;
+  /** Once in a rung, the last lamp is not taken. */
+  relights?: boolean;
 }
 
 export interface Keli {
@@ -167,7 +181,7 @@ export const KELIM: Keli[] = [
     name: "The Wrapper",
     hebrew: "מַפָּה",
     found: "The cloth a scroll is bound in when it is not being read. Wrapped, a thing takes longer to come to harm.",
-    effect: { iframes: 1.6 },
+    effect: { iframes: 1.6, spared: true },
     synergy: {
       with: "nartik",
       effect: { iframes: 1.4 },
@@ -186,7 +200,7 @@ export const KELIM: Keli[] = [
     name: "The Hide",
     hebrew: "גְּוִיל",
     found: "The whole skin, unsplit — heavier, coarser, and what the oldest scrolls are written on. It outlasts the parchment and it is harder to write on.",
-    effect: { lamps: 1, cooldown: 1.2, iframes: 1.5 },
+    effect: { lamps: 1, cooldown: 1.2, iframes: 1.5, heavy: true },
     synergy: {
       with: "kulmus",
       effect: { cooldown: 0.75 },
@@ -198,7 +212,7 @@ export const KELIM: Keli[] = [
     name: "The Scoring",
     hebrew: "שִׂרְטוּט",
     found: "The blind lines a scribe rules before he writes, pressed into the skin with a point. Nothing is written above them; every letter hangs from one.",
-    effect: { reach: 10, speed: 1.15 },
+    effect: { reach: 10, speed: 1.15, lingers: true },
     synergy: {
       with: "sargel",
       effect: { speed: 1.2, reach: 6 },
@@ -222,7 +236,7 @@ export const KELIM: Keli[] = [
     name: "The Pointer",
     hebrew: "יָד",
     found: "A small silver hand on a shaft, for following the reading without touching the letters. It keeps a distance, which is the point of it — and it is held, and set down, and taken up again between one line and the next.",
-    effect: { reach: 20, cooldown: 1.25 },
+    effect: { reach: 20, cooldown: 1.25, returns: true },
     synergy: {
       with: "sirtut",
       effect: { reach: 8 },
@@ -253,7 +267,7 @@ export const KELIM: Keli[] = [
     name: "The Case",
     hebrew: "נַרְתִּיק",
     found: "A cylinder of wood and leather that a scroll stands upright in. Nothing in it is read often, and nothing in it is lost.",
-    effect: { iframes: 1.35, light: 1.15 },
+    effect: { iframes: 1.35, light: 1.15, keeps: true },
   },
   {
     id: "kav",
@@ -279,7 +293,7 @@ export const KELIM: Keli[] = [
     name: "The Lampstand",
     hebrew: "מְנוֹרָה",
     found: "Beaten from a single talent, branch and cup and knop and flower, and not assembled from parts. Seven lights, and the middle one is the one that is never let go out.",
-    effect: { lamps: 2, light: 0.8 },
+    effect: { lamps: 2, light: 0.8, relights: true },
     synergy: {
       with: "ner",
       effect: { light: 1.5 },
@@ -325,6 +339,12 @@ export interface Powers {
   homing: boolean;
   splits: boolean;
   arcs: boolean;
+  lingers: boolean;
+  returns: boolean;
+  heavy: boolean;
+  spared: boolean;
+  keeps: boolean;
+  relights: boolean;
 }
 
 const NOTHING: Powers = {
@@ -340,6 +360,12 @@ const NOTHING: Powers = {
   homing: false,
   splits: false,
   arcs: false,
+  lingers: false,
+  returns: false,
+  heavy: false,
+  spared: false,
+  keeps: false,
+  relights: false,
 };
 
 function fold(into: Powers, effect: Effect): Powers {
@@ -362,6 +388,12 @@ function fold(into: Powers, effect: Effect): Powers {
     homing: into.homing || Boolean(effect.homing),
     splits: into.splits || Boolean(effect.splits),
     arcs: into.arcs || Boolean(effect.arcs),
+    lingers: into.lingers || Boolean(effect.lingers),
+    returns: into.returns || Boolean(effect.returns),
+    heavy: into.heavy || Boolean(effect.heavy),
+    spared: into.spared || Boolean(effect.spared),
+    keeps: into.keeps || Boolean(effect.keeps),
+    relights: into.relights || Boolean(effect.relights),
   };
 }
 
@@ -369,7 +401,44 @@ function fold(into: Powers, effect: Effect): Powers {
  * What a set of vessels amounts to — their own effects, and then whichever
  * synergies both halves of are actually held.
  */
-export function powersFrom(held: readonly string[], boons: readonly Effect[] = []): Powers {
+/**
+ * **The Ark bears what bears it.** *"The staves were never to be taken out of
+ * the rings, so it was always ready to be lifted and never actually needed
+ * lifting: the men who bore it were held up off the ground by the thing they
+ * were holding up."*
+ *
+ * So a vessel's *price* is not charged — every number a keli would make worse
+ * is dropped and its gifts are kept. Neutral is one for the rates and nought
+ * for the two quantities, and `cooldown` is the one that reads backwards:
+ * below one is faster, so above one is the cost.
+ *
+ * The behaviours are never stripped. None of them is a price — a mark that
+ * arcs or bounces is a different mark, not a worse one — and a vessel whose
+ * whole line is a behaviour would otherwise come out of the Ark as nothing.
+ */
+function unpriced(effect: Effect): Effect {
+  const kept: Effect = { ...effect };
+  for (const key of ["bite", "speed", "iframes", "light"] as const) {
+    if ((kept[key] ?? 1) < 1) delete kept[key];
+  }
+  if ((kept.cooldown ?? 1) > 1) delete kept.cooldown;
+  if ((kept.reach ?? 0) < 0) delete kept.reach;
+  if ((kept.lamps ?? 0) < 0) delete kept.lamps;
+  return kept;
+}
+
+export function powersFrom(
+  held: readonly string[],
+  boons: readonly Effect[] = [],
+  /**
+   * What the reliquary keeps that bears on this fold — today only the Ark. Note
+   * it is applied to the *vessels* and not to the boons: a guardian's grace is
+   * not carried and has no price, and the one relic with an `Effect` of its own
+   * (the Shamir's slower mark) rides the boon channel, where the Ark has no
+   * business lifting its weight.
+   */
+  keeps: { bears?: boolean } = {},
+): Powers {
   let powers = NOTHING;
   // **The boons fold first**, and they are the same shape as a vessel's effect
   // on purpose: a guardian broken in some earlier climb is a thing the Scribe
@@ -377,15 +446,16 @@ export function powersFrom(held: readonly string[], boons: readonly Effect[] = [
   // else multiplies up from. See `guardians.ts` — the Encounters change the
   // world, and these change the Scribe.
   for (const boon of boons) powers = fold(powers, boon);
+  const borne = (effect: Effect) => (keeps.bears ? unpriced(effect) : effect);
   for (const id of held) {
     const keli = keliById[id];
     if (!keli) continue;
-    powers = fold(powers, keli.effect);
+    powers = fold(powers, borne(keli.effect));
   }
   for (const id of held) {
     const keli = keliById[id];
     if (keli?.synergy && held.includes(keli.synergy.with)) {
-      powers = fold(powers, keli.synergy.effect);
+      powers = fold(powers, borne(keli.synergy.effect));
     }
   }
   return powers;
@@ -423,6 +493,12 @@ export function describeEffect(effect: Effect): string {
   if (effect.bounces) gains.push("stone turns it");
   if (effect.homing) gains.push("bends after a shell");
   if (effect.splits) gains.push("a break throws shards");
+  if (effect.lingers) gains.push("a spent mark hangs where it stopped");
+  if (effect.returns) gains.push("it comes back along the line it went");
+  if (effect.heavy) gains.push("a blow moves you half as far");
+  if (effect.spared) gains.push("the first blow of a rung takes no lamp");
+  if (effect.keeps) gains.push("a veiling spills no light");
+  if (effect.relights) gains.push("once a rung, the last lamp is not taken");
   // Weight is the one behaviour that is a price rather than a gift.
   if (effect.arcs) costs.push("it falls as it flies");
   const said = gains.join(" · ");
@@ -439,8 +515,42 @@ export function synergiesIn(held: readonly string[]): { keli: Keli; line: string
 }
 
 /**
- * Which vessel a rung holds, if any — drawn from what the Scribe does not
- * already carry, by the rung's own generator.
+ * **How many of the twenty lie on the Tree on any one day.**
+ *
+ * The pool used to be the whole set, and the whole set is twenty against
+ * twenty-two paths — so a Scribe who walked the Tree ended every climb holding
+ * every object in the game. That is not a pool, it is an inventory with a walk
+ * in front of it, and it undid the thing the pool was built for: two finished
+ * climbs differing in *what the Scribe is made of*.
+ *
+ * Twelve. A full tour still leaves eight of the twenty unseen, so the day
+ * decides which eight you cannot have — and the argument the pool was written
+ * on holds even harder here. **The seed is the Hebrew date**: today's twelve
+ * are today's twelve for everyone, nobody can roll them again, and the choice
+ * a Scribe has is which of them to walk to. What was a shopping list is now a
+ * shopping list with things crossed off it.
+ *
+ * And when the day's twelve are all carried the pedestals do not go bare —
+ * `buildPath` lays the vessel room only when there is a vessel for it, so a
+ * Tree whose gifts are spent simply stops offering.
+ */
+export const POOL_TODAY = 12;
+
+/**
+ * The vessels lying on the Tree today, drawn from the day and nothing else.
+ *
+ * Deliberately **not** seeded per path: which twelve exist is a fact about the
+ * day, uniform across the whole Tree, and only *where* each one lies is a fact
+ * about a path. Seeding this per path would mean the pool was different
+ * depending on which way you looked at it, which is not a pool at all.
+ */
+export function poolFor(seed: number): Keli[] {
+  return shuffle(makeRng(seed >>> 0), KELIM).slice(0, POOL_TODAY);
+}
+
+/**
+ * Which vessel a rung holds, if any — drawn from the day's pool, less what the
+ * Scribe already carries, by the rung's own generator.
  *
  * The caller's `rng` is seeded from the day and the path together, so this is
  * **fixed until midnight and different on every path**: the Reed lies where it
@@ -451,7 +561,9 @@ export function synergiesIn(held: readonly string[]): { keli: Keli; line: string
  * Excluding what is held is what stops the back half of a climb being pedestals
  * with nothing on them. It also means the pool *narrows* as a climb goes on,
  * which is the right shape: the last vessels a Scribe finds are the ones they
- * went out of their way for.
+ * went out of their way for — and with `pool` twelve rather than twenty, it
+ * narrows to nothing before the twenty-second path, which is the point of the
+ * day's thinning.
  *
  * **The draw indexes the whole pool and then walks forward past what is held**,
  * rather than indexing a filtered one. The difference is invisible while every
@@ -461,12 +573,19 @@ export function synergiesIn(held: readonly string[]): { keli: Keli; line: string
  * put something else where the Reed was. Walking forward keeps a path's vessel
  * fixed by the day and the path until that vessel is taken — which is what
  * makes the map a shopping list rather than a rumour.
+ *
+ * `pool` defaults to the whole set for the old road, which has no day to draw
+ * one from; every rung of the Tree passes `poolFor(seed)`.
  */
-export function drawKeli(rng: () => number, held: readonly string[]): Keli | undefined {
-  if (KELIM.every((k) => held.includes(k.id))) return undefined;
-  let at = Math.floor(rng() * KELIM.length) % KELIM.length;
-  while (held.includes(KELIM[at].id)) at = (at + 1) % KELIM.length;
-  return KELIM[at];
+export function drawKeli(
+  rng: () => number,
+  held: readonly string[],
+  pool: readonly Keli[] = KELIM,
+): Keli | undefined {
+  if (pool.every((k) => held.includes(k.id))) return undefined;
+  let at = Math.floor(rng() * pool.length) % pool.length;
+  while (held.includes(pool[at].id)) at = (at + 1) % pool.length;
+  return pool[at];
 }
 
 /**

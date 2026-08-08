@@ -93,8 +93,8 @@ export interface Region {
    * a Yesod of Cain and the Brothers alone: not one run of ten reached the way
    * out.
    *
-   * The counts climb, with one dip, and the dip is measured rather than
-   * decorative: **Binah stands six where Chesed stands seven**, because the
+   * The counts climb, with two dips, and both are measured rather than
+   * decorative. **Binah stands six where Chesed stands seven**, because the
    * three that meet there — the earth opening, what Jezebel sent, and Athaliah
    * putting the light out before you reach it — cost more between them than any
    * other rung's three. At seven it put half of every ten runs out. What a rung
@@ -253,7 +253,11 @@ export const regions: Region[] = [
     name: "Gevurah",
     hebrew: "גבורה",
     middah: "Discipline / Severity",
-    letters: ["zayin", "tet"],
+    // **The Edge and the Flame**, and the Flame came here from Chochmah — see
+    // the note over Chochmah's letters for the measurement that moved it. Both
+    // are instruments of severity: one cuts a way and one consumes what stood
+    // in it, and the tradition puts fire on this pillar rather than the other.
+    letters: ["zayin", "shin"],
     length: 7,
     demand: { min: 2, max: 3 },
     klipot: { kinds: ["cain", "amalek", "korach", "arbeh"], count: 5 },
@@ -261,7 +265,7 @@ export const regions: Region[] = [
     hasHouse: true,
     hasShrine: true,
     teaching:
-      "Restraint — the boundary that holds, and the discernment to know where it belongs. The edge given here clears a way; it does not conquer one.",
+      "Restraint — the boundary that holds, and the discernment to know where it belongs. What is given here clears a way and burns one; neither conquers.",
   },
   {
     index: 7,
@@ -301,7 +305,27 @@ export const regions: Region[] = [
     name: "Chochmah",
     hebrew: "חכמה",
     middah: "Wisdom",
-    letters: ["shin", "dalet"],
+    /**
+     * **The Coil and the Door, and the Flame is gone from here.**
+     *
+     * Shin lay on this rung, and Chochmah's guardian needs it: measured in
+     * `guardianFight.test.ts`, a Scribe entering the Ziz's room holding the
+     * eighteen letters an honest route pays by the ninth rung, plus the Staff
+     * the map declares, cannot break it on any seed — and adding the Flame
+     * alone finishes the room in six hundred and sixteen ticks. The Staff
+     * carries a mark to the bird; the Flame is what makes the mark worth
+     * landing. Shin lying *in* Chochmah meant the answer to the ninth rung was
+     * found on the ninth rung, which is a rung you cannot finish.
+     *
+     * It went to Gevurah, which is where fire belongs on this Tree anyway —
+     * severity is the fire pillar, and Shin is the tooth and the fire and the
+     * year that turns by consuming what came before. Tet came back the other
+     * way, and reads better here than it did there: the coiled serpent in the
+     * basket, *the good that is hidden, reachable only by going low*, on the
+     * rung whose whole teaching is that nothing can be taken and everything
+     * must be received.
+     */
+    letters: ["tet", "dalet"],
     length: 8,
     demand: { min: 2, max: 3, bias: "hard" },
     klipot: { kinds: ["atalya", "izevel", "nachash", "og"], count: 9 },
@@ -309,7 +333,7 @@ export const regions: Region[] = [
     hasHouse: false,
     hasShrine: false,
     teaching:
-      "Wisdom — the first point, the flash before the form. Nothing here can be taken; it can only be received, and it arrives as fire.",
+      "Wisdom — the first point, the flash before the form. Nothing here can be taken; it can only be received, and it is found by going low.",
   },
   {
     index: 10,

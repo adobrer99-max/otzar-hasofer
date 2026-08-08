@@ -1,8 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { lettersOnEntering, regionAt, regions, TOTAL_REGIONS } from "../regions";
-import { CHUNKS, CHUNK_H, CHUNK_W } from "./chunks";
-import { buildRegion, layoutOf, verbsOf } from "./build";
+import { CHUNKS, CHUNK_H, CHUNK_W, chunksById, TEACH_CHUNKS } from "./chunks";
+import {
+  buildPath,
+  buildRegion,
+  cardsOpen,
+  CARDS_PER_STANDING,
+  FIRST_CARDS,
+  layoutOf,
+  verbsOf,
+} from "./build";
+import { TREE_PATHS } from "../tree";
 import { ROOM_H, ROOM_W } from "./rooms";
+import { cardsByHouse, dorotHouses, dorotHousesById, housesBySefirah } from "../../data/dorot";
 
 const SEEDS = [3, 91, 555, 12345, 777];
 
@@ -203,13 +213,38 @@ describe("assembling a region", () => {
 
   it("still lays the taught porch in Malchut and nowhere else", () => {
     for (const seed of SEEDS) {
-      const taught = buildRegion(1, seed, 1, true).width;
-      const plain = buildRegion(1, seed).width;
-      // Three teaching screens — but a room is two screens, so a rung is
-      // squared up to a whole number of rooms and the porch may cost a fourth
-      // screen of plain ground. Which is a beat after the pit, and no loss.
-      expect(taught - plain, `seed ${seed}`).toBeGreaterThanOrEqual(3 * CHUNK_W);
-      expect(taught - plain, `seed ${seed}`).toBeLessThanOrEqual(4 * CHUNK_W);
+      /**
+       * **Read off the screens rather than off the width**, which is the
+       * correction the relic chamber forced and which was owed anyway.
+       *
+       * This asserted that the taught rung is three to four screens wider than
+       * the plain one. A rung is squared up to whole *rooms* of two screens, so
+       * what that arithmetic actually measures is the parity of the plain
+       * rung's screen count: an even one grows by four and an odd one by two.
+       * Both are the same three-screen porch. Malchut's count happened to be
+       * even for the whole life of the assertion, and adding one fixed screen
+       * to the rung made it odd — so a band drawn around a rounding artefact
+       * failed on a change that did not touch the porch at all.
+       *
+       * The porch is three screens. That is the claim, and `layoutOf` says it
+       * exactly.
+       */
+      const laid = layoutOf(1, seed, true).map((c) => c.id);
+      const bare = layoutOf(1, seed).map((c) => c.id);
+      expect(laid.filter((id) => id.startsWith("teach-")), `seed ${seed}`).toHaveLength(
+        TEACH_CHUNKS.length,
+      );
+      expect(bare.filter((id) => id.startsWith("teach-")), `seed ${seed}`).toEqual([]);
+      // And the porch is *prepended*: everything a Scribe stops at is exactly
+      // what it would otherwise be. Not the whole chain — a rung is squared up
+      // to whole rooms with plain ground, so three extra screens can pull one
+      // more filler screen in with them, and that is the porch costing a beat
+      // rather than the seed being disturbed.
+      const stops = (ids: string[]) =>
+        ids.filter((id) => id in chunksById && !CHUNKS.some((c) => c.id === id));
+      expect(stops(laid).filter((id) => !id.startsWith("teach-")), `seed ${seed}`).toEqual(
+        stops(bare),
+      );
     }
     for (let region = 2; region <= TOTAL_REGIONS; region += 1) {
       expect(buildRegion(region, 7, 1, true).width, `region ${region}`).toBe(
@@ -236,5 +271,87 @@ describe("assembling a region", () => {
         expect(world.rooms[world.roomIndex], `region ${region} seed ${seed}`).toBeDefined();
       }
     }
+  });
+});
+
+/**
+ * **The Houses open as they stand for you.**
+ *
+ * A hundred and sixty-eight cards ship with this game and a climb meets about
+ * four per cent of them. Drawn uniformly, twenty climbs gave a Scribe a flat
+ * shallow sample of everybody and a deep acquaintance with nobody — an
+ * anthology rather than a relationship. The pool is a window now, widened by
+ * how often that Sefirah's House has stood at the crown.
+ */
+describe("how far into a House a rung may draw", () => {
+  it("opens two to a Scribe nobody has ever stood for", () => {
+    expect(cardsOpen(8, 0)).toBe(FIRST_CARDS);
+    expect(cardsOpen(16, 0)).toBe(FIRST_CARDS);
+  });
+
+  it("widens by two on every standing, and stops at the House's own size", () => {
+    expect(cardsOpen(8, 1)).toBe(FIRST_CARDS + CARDS_PER_STANDING);
+    expect(cardsOpen(8, 3)).toBe(8);
+    expect(cardsOpen(8, 99)).toBe(8);
+    expect(cardsOpen(16, 7)).toBe(16);
+  });
+
+  /**
+   * The arc is deliberately the length of the Seven Encounters: a patriarchal
+   * House of eight is whole at the third standing, a matriarchal one of
+   * sixteen at the seventh.
+   */
+  it("matches the real Houses, and finishes inside seven standings", () => {
+    for (const house of dorotHouses) {
+      const total = cardsByHouse(house.id).length;
+      expect(total, `${house.figure} has no cards`).toBeGreaterThan(0);
+      expect(
+        cardsOpen(total, 7),
+        `${house.figure} is not whole after seven standings`,
+      ).toBe(total);
+    }
+  });
+
+  it("never opens nothing, whatever it is asked", () => {
+    expect(cardsOpen(1, 0)).toBe(1);
+    expect(cardsOpen(0, 0)).toBe(1);
+    expect(cardsOpen(8, -4)).toBe(FIRST_CARDS);
+  });
+
+  /**
+   * **Per House, not over the pool.** A rung's pool is both Houses' cards end
+   * to end, so a window over the concatenation would give a new Scribe the
+   * patriarchal House's opening and lock the matriarchal one out entirely —
+   * and `story.ts` leans on either being able to stand at a rung.
+   */
+  it("lets either House stand at a rung, from the very first climb", () => {
+    for (const sefirah of ["malchut", "yesod", "hod", "netzach", "tiferet", "gevurah", "chesed"]) {
+      const open = housesBySefirah(sefirah).flatMap((house) =>
+        cardsByHouse(house.id).slice(0, cardsOpen(cardsByHouse(house.id).length, 0)),
+      );
+      const kinds = new Set(open.map((c) => dorotHousesById[c.houseId]?.kind));
+      expect(kinds, `${sefirah} offers only one kind of House at the start`).toEqual(
+        new Set(["patriarchal", "matriarchal"]),
+      );
+    }
+  });
+
+  /** And the generator actually honours it — the window is not decoration. */
+  it("draws a figure from inside the window and nowhere else", () => {
+    const path = TREE_PATHS.find((p) => p.ends.includes("malchut"))!;
+    const inside = new Set(
+      housesBySefirah("malchut").flatMap((house) =>
+        cardsByHouse(house.id).slice(0, cardsOpen(cardsByHouse(house.id).length, 0)).map((c) => c.id),
+      ),
+    );
+    let seen = 0;
+    for (let seed = 1; seed <= 40; seed += 1) {
+      const world = buildPath(path, seed, [], 1, false, false, 1, [], 0);
+      const figure = world.entities.find((e) => e.kind === "house");
+      if (!figure?.ref) continue;
+      seen += 1;
+      expect(inside.has(figure.ref), `${figure.ref} is past the window`).toBe(true);
+    }
+    expect(seen, "no seed put a figure on this rung at all").toBeGreaterThan(0);
   });
 });

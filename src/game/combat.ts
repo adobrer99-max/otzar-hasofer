@@ -242,7 +242,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     name: "Korach",
     hebrew: "קֹרַח",
     source: "Bamidbar 16 — the earth opened her mouth and swallowed them",
-    is: "It travels inside the ground, and comes up under you.",
+    is: "It travels inside the ground, and comes up under you — and for a moment after, it is out in the open and still.",
     reading: "The dispute that is not for the sake of heaven: it goes down out of sight and surfaces where you stand.",
     role: "floater",
     shells: 3,
@@ -359,7 +359,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     light: 3,
     size: { w: 18, h: 16 },
     notices: 240,
-    throws: 22,
+    throws: 90,
   },
   rahav: {
     kind: "rahav",
@@ -551,6 +551,17 @@ export const BEND_TOWARD = 200;
 export const BEND_RATE = 0.03;
 /** The weight an arcing mark carries — a fraction of the body's own gravity. */
 export const MARK_FALL = 0.55;
+
+/**
+ * How long the Scoring's line hangs after the mark that drew it is spent.
+ *
+ * Ninety ticks — a second and a half, which is long enough to be a place a
+ * klipah walks into and short enough that a rung cannot be filled with them.
+ * The mark that hangs keeps its bite and loses its motion, so it is a stroke
+ * left on the ground rather than a second mark: *nothing is written above them,
+ * and every letter hangs from one.*
+ */
+export const MARK_HANGS = 90;
 /** A shard is short and quick, so a split covers ground rather than repeating the throw. */
 export const SHARD_SPEED = 320;
 export const SHARD_LIFE = 16;
@@ -577,6 +588,10 @@ export interface MarkPowers {
   splits?: boolean;
   /** It has weight, and falls as it flies. */
   arcs?: boolean;
+  /** Spent, it hangs where it stopped instead of going out. */
+  lingers?: boolean;
+  /** At the end of its flight it turns and comes back to the hand. */
+  returns?: boolean;
 }
 
 export function markPowers(
@@ -584,14 +599,16 @@ export function markPowers(
   graces: readonly Grace[],
   items: readonly string[] = [],
   boons: readonly Effect[] = [],
+  /** What the reliquary keeps that bears on the fold — see `powersFrom`. */
+  keeps: { bears?: boolean } = {},
 ): MarkPowers {
   // The letters are the progression and the vessels are the furnishing, and
   // the line between them is the **verb list** — nothing here may hand out a
   // thirteenth verb. It is not a line between kind and quantity: `pierces` was
-  // always on both sides of that one, and four more behaviours join it below.
+  // always on both sides of that one, and six more behaviours join it below.
   // A vessel that only scaled a number could never be a reason to walk one
   // path rather than another, which is the whole of what the Tree is for.
-  const carried = powersFrom(items, boons);
+  const carried = powersFrom(items, boons, keeps);
   return {
     pierces: verbs.includes("cut") || carried.pierces,
     burns: verbs.includes("flame"),
@@ -604,6 +621,8 @@ export function markPowers(
     homing: carried.homing,
     splits: carried.splits,
     arcs: carried.arcs,
+    lingers: carried.lingers,
+    returns: carried.returns,
   };
 }
 

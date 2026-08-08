@@ -62,8 +62,22 @@ import { regionOfSefirah } from "./regions";
  * far up the Tree a place is, is exactly what `regionOfSefirah(s).index` means
  * everywhere else in this codebase.
  */
-export function wakeAt(ascent: Pick<AscentRecord, "at" | "sefirotLit">): SefirahId {
-  const from = regionOfSefirah(standingAt(ascent)).index;
+export function wakeAt(
+  ascent: Pick<AscentRecord, "at" | "sefirotLit">,
+  /**
+   * What the reliquary keeps about a fall — see `relics.ts`.
+   *
+   * **The foundation stone** stood three fingers above the ground in the place
+   * where the Ark had been, and the world is still resting on it: a Scribe
+   * carrying it wakes where they set out rather than at the highest thing they
+   * had lit. Its price is elsewhere and it is a real one — a veiling costs
+   * twice — so this is not the fall made free, it is the fall made *local*.
+   */
+  keeps: { wakesHigh?: boolean; keepsLight?: boolean } = {},
+): SefirahId {
+  const here = standingAt(ascent);
+  if (keeps.wakesHigh) return here;
+  const from = regionOfSefirah(here).index;
   const lit = (ascent.sefirotLit ?? [])
     .map((s) => regionOfSefirah(s))
     .filter((r) => r.index <= from);
@@ -86,16 +100,24 @@ export function wakeAt(ascent: Pick<AscentRecord, "at" | "sefirotLit">): Sefirah
  * has never cost lamps, because lamps are not a thing you keep.
  */
 export function afterFalling(
-  ascent: Pick<AscentRecord, "at" | "sefirotLit" | "falls">,
+  ascent: Pick<AscentRecord, "at" | "sefirotLit" | "falls"> & { or?: number },
+  /**
+   * **The tablets** — the whole ones and the smashed ones in the same box, and
+   * nobody ever proposed throwing the smashed ones away. What was carried is
+   * carried still. Its price is that the crown will not receive you: only all
+   * ten kindled ends a climb held that way, which is the one relic that forbids
+   * an ending outright.
+   */
+  keeps: { wakesHigh?: boolean; keepsLight?: boolean } = {},
 ): Pick<AscentRecord, "at" | "regionIndex" | "or" | "falls"> {
-  const at = wakeAt(ascent);
+  const at = wakeAt(ascent, keeps);
   return {
     at,
     // Kept in step with `at` for the saved-game format, the HUD and every
     // caller that predates the Tree — the same rule `walkPath`'s bookkeeping
     // keeps, and for the same reason.
     regionIndex: regionOfSefirah(at).index,
-    or: 0,
+    or: keeps.keepsLight ? (ascent.or ?? 0) : 0,
     falls: (ascent.falls ?? 0) + 1,
   };
 }

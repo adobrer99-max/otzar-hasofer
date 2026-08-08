@@ -17,8 +17,24 @@ import {
   ABYSS_GATE_CHUNK,
   ARENA_A,
   ARENA_B,
+  ARENA_CANOPY_A,
+  ARENA_CANOPY_B,
+  ARENA_PILLAR_A,
+  ARENA_PILLAR_B,
+  ARENA_ROOST_A,
+  ARENA_ROOST_B,
   ARENA_SEA_A,
   ARENA_SEA_B,
+  ARENA_SHELF_A,
+  ARENA_SHELF_B,
+  ARENA_TEETH_A,
+  ARENA_TEETH_B,
+  ARENA_TENT_A,
+  ARENA_TENT_B,
+  ARENA_TIERS_A,
+  ARENA_TIERS_B,
+  ARENA_VAULT_A,
+  ARENA_VAULT_B,
   CHUNK_H,
   CHUNK_W,
   CHUNKS,
@@ -27,6 +43,7 @@ import {
   HOUSE_CHUNK,
   LANDING_CHUNK,
   LETTER_CHUNK,
+  RELIC_CHUNK,
   RISE_CHUNK,
   SHRINE_HIGH,
   SHRINE_LOW,
@@ -35,10 +52,11 @@ import {
   VESSEL_CHUNK,
   WORD_GATE_CHUNK,
 } from "./chunks";
-import { HUSK_CHARS, HUSKS, kindForRole, LAMPS } from "../combat";
+import { HUSK_CHARS, HUSKS, kindForRole, LAMPS, type HuskKind } from "../combat";
 import { VEIL_COST } from "../encounter";
-import { drawKeli, keliFor, type Keli } from "../items";
+import { drawKeli, keliFor, poolFor, type Keli } from "../items";
 import { guardianOf } from "../guardians";
+import { relicAt } from "../relics";
 import { MARKER_CHARS, Tile, TILE_CHARS, TILE_SIZE } from "./tiles";
 import { doorsOf, planFloor, roomAtPoint, ROOM_H, ROOM_W } from "./rooms";
 import { crossesAbyss, TREE_PATHS, type TreePath } from "../tree";
@@ -311,6 +329,13 @@ function layout(
     // One vessel per rung above the kingdom, on a shelf off the floor. It is
     // the only fixed screen that gives something the alphabet does not.
     ...(keli ? [VESSEL_CHUNK] : []),
+    // And the chamber, on every rung that has a hidden thing to hide — which
+    // is every Sefirah but the crown. **Unconditional on whether the relic is
+    // already held**, deliberately: `room` below is `fixed.length + 2`, so a
+    // conditional fixed screen would change the rung's length and every draw
+    // after it, and the Tree would become a function of the Scribe's reliquary
+    // rather than of the day. A relic already found leaves the chamber empty.
+    ...(relicAt(region.sefirah) ? [RELIC_CHUNK] : []),
   ];
 
   // Every fixed screen is entered and left on the ground, so they may only be
@@ -328,7 +353,21 @@ function layout(
   // them. `length` becomes the floor rather than the whole story, and a rung
   // is exactly as long as its own content asks — Keter, carrying two plates,
   // does not grow at all.
-  const room = fixed.length + 2;
+  //
+  // **And the chamber is not one of them**, which is the whole reason it can
+  // be afforded. `room` is a rule about *plates*: a screen you stop on wants a
+  // screen of game on either side of it. The relic chamber is the one fixed
+  // screen a Scribe walks straight through — its ground lane is clear the whole
+  // width by construction, and it raises nothing unless you climb to it. Counted
+  // as a plate it grew every rung by twelve per cent and Chochmah by a third
+  // (eighteen screens to twenty-four), because `room` feeds the body's length
+  // *and* the padding loop *and* the squaring, so one screen compounds into
+  // three. Measured over sixty-six honest walks with the klipot standing, that
+  // cost the fighter nine points of finish rate and **two and a half times the
+  // goings-out** — a price paid by every climb for a room most of them never
+  // enter. So it is slotted like a fixed screen and lengthens nothing.
+  const stopping = fixed.filter((c) => c.id !== RELIC_CHUNK.id).length;
+  const room = Math.max(fixed.length, stopping + 2);
   const quota = banded.some(asksForALetter)
     ? gatedQuota(Math.max(region.length, room), region.demand)
     : 0;
@@ -538,8 +577,9 @@ function structural(c: Chunk): boolean {
  * Without this the seed is free to fill a region entirely with screens that
  * ask nothing but walking and jumping — and it did: measured across the upper
  * Tree, better than half of all assemblies could be crossed holding only the
- * two movement keys, because the nine letterless screens in the library were
- * enough to build a whole region out of. A region that gives you twelve verbs
+ * two movement keys, because the letterless screens in the library were enough
+ * to build a whole region out of — nine of them when this was measured, and
+ * sixteen since the library grew. A region that gives you twelve verbs
  * and then never asks for one is the flat feeling this whole change is about.
  */
 function gatedQuota(length: number, band: { min: number }): number {
@@ -766,6 +806,39 @@ function groundSlots(body: readonly Chunk[]): number[] {
   return slots;
 }
 
+/**
+ * **The Houses remember, and open further.**
+ *
+ * A hundred and sixty-eight Dorot cards ship with this game and a climb meets
+ * about four per cent of them, drawn uniformly at random — which meant that
+ * after twenty climbs a Scribe had a flat, shallow sample of everybody and a
+ * deep acquaintance with nobody. The figures were an anthology rather than a
+ * relationship.
+ *
+ * So the pool a rung draws from is a *window*, and it widens with how often
+ * that Sefirah's House has stood for the Scribe at the crown — `witnessSefirot`
+ * across every sealed climb, folded by `timesStood` in `book.ts`. Standing is
+ * the right counter rather than meeting: walking past a figure is not being
+ * spoken for, and a Scribe who has gone mute every time has met a great many
+ * of them and been stood for by nobody.
+ *
+ * Two at first and two more per standing, per House. A patriarchal House has
+ * eight cards and opens fully at the third standing; a matriarchal one has
+ * sixteen and opens at the seventh — which is the length of the Seven
+ * Encounters, and is not a coincidence.
+ *
+ * **Applied per House rather than to the pool**, which matters: the pool is
+ * both Houses' cards end to end, so a window over the concatenation would give
+ * a new Scribe the patriarchal House's opening and lock the matriarchal one
+ * out entirely — and `story.ts` leans on either being able to stand at a rung.
+ */
+export const FIRST_CARDS = 2;
+export const CARDS_PER_STANDING = 2;
+
+export function cardsOpen(total: number, timesStood: number): number {
+  return Math.max(1, Math.min(total, FIRST_CARDS + Math.max(0, timesStood) * CARDS_PER_STANDING));
+}
+
 /** Writes the laid chunks into a tile grid and lifts the markers into entities. */
 function paint(
   laid: readonly Chunk[],
@@ -788,6 +861,18 @@ function paint(
    * and what the Scribe is already carrying — and `paint` has none of those.
    */
   keli?: Keli,
+  /**
+   * How many times this Sefirah's House has stood for the Scribe at the crown,
+   * across every sealed climb — see `cardsOpen`.
+   */
+  cardDepth = 0,
+  /**
+   * The hidden things this Scribe has already found, across every sealed
+   * climb. The chamber is laid either way — see `RELIC_CHUNK` — so this decides
+   * only whether anything stands in it, which changes no tile and therefore no
+   * ground. An empty chamber is the picture of a thing already taken.
+   */
+  relicsFound: readonly string[] = [],
 ): World {
   // The screens are dealt into a floor before anything is written. One row is
   // a corridor and is exactly what every rung was before rooms existed, so
@@ -806,10 +891,14 @@ function paint(
   let entityId = 0;
 
   // The House figure, when the region has one: a card from either of the
-  // Sefirah's Houses, patriarchal or matriarchal — both stand at the rung.
+  // Sefirah's Houses, patriarchal or matriarchal — both stand at the rung, and
+  // how far into each one's episodes this Scribe has earned is `cardsOpen`.
   let dorotCardId: string | undefined;
   if (hasHouse) {
-    const pool = housesBySefirah(sefirah).flatMap((house) => cardsByHouse(house.id));
+    const pool = housesBySefirah(sefirah).flatMap((house) => {
+      const cards = cardsByHouse(house.id);
+      return cards.slice(0, cardsOpen(cards.length, cardDepth));
+    });
     if (pool.length > 0) dorotCardId = pool[randomInt(rng, pool.length)].id;
   }
 
@@ -866,6 +955,18 @@ function paint(
               break;
             case "K": {
               if (keli) entities.push({ id: `e${entityId++}`, kind: "vessel", x: px, y: py, ref: keli.id });
+              break;
+            }
+            case "R": {
+              // Keyed off the Sefirah alone, with no draw of any kind: the
+              // chamber's contents must not touch this rng, because `drawKeli`
+              // is its first consumer and `keliOnPath` recreates that draw to
+              // tell the map which vessel a path holds. Nothing here is random
+              // anyway — a place hides one thing, always the same thing.
+              const relic = relicAt(sefirah);
+              if (relic && !relicsFound.includes(relic.id)) {
+                entities.push({ id: `e${entityId++}`, kind: "relic", x: px, y: py, ref: relic.id });
+              }
               break;
             }
             default:
@@ -1450,6 +1551,18 @@ export function buildPath(
    * finds are the ones they went out of their way for.
    */
   items: readonly string[] = [],
+  /**
+   * How often this rung's House has stood for the Scribe at the crown. Passed
+   * in rather than looked up, because it is a fold over every sealed climb
+   * (`timesStood` in `book.ts`) and the generator knows nothing about storage.
+   */
+  cardDepth = 0,
+  /**
+   * The hidden things already in the Scribe's reliquary, so a chamber whose
+   * relic is one of them stands empty. It changes nothing about the ground —
+   * see `RELIC_CHUNK` on why the screen is laid either way.
+   */
+  relicsFound: readonly string[] = [],
 ): World {
   const region = regionOfPath(path, held, klipot);
   // Seeded by the path rather than the region, so walking Malchut→Hod is not
@@ -1459,7 +1572,7 @@ export function buildPath(
   // vessel on a given path is the same for everyone until midnight and
   // different on every path — which makes the map a list of places to go for
   // things, and is the whole reason the pool exists.
-  const keli = drawKeli(rng, items);
+  const keli = drawKeli(rng, items, poolFor(seed));
   const { laid, wordGateTarget } = layout(region, rng, teaching, undefined, held, keli);
 
   return paint(
@@ -1477,6 +1590,8 @@ export function buildPath(
     undefined,
     laid.length > 0 ? 1 : 0,
     keli,
+    cardDepth,
+    relicsFound,
   );
 }
 
@@ -1493,19 +1608,44 @@ export function buildPath(
  * klipot scattered into it, because a guardian is not scattered. It is placed,
  * once, in the middle of the middle room.
  *
- * The terrain is named rather than drawn from: `ARENA_SEA` for Leviathan, which
- * cannot be marked in the water and therefore needs water and a bank, and the
- * plain room for everything else. Behemoth wants a run and walls to turn at,
- * which a plain room is; the Ziz wants a roof, which every screen in the
- * library has.
+ * The terrain is named rather than drawn from — `ARENA_ROOMS` below — and it is
+ * named per *creature* rather than per Sefirah, because what a room is for is
+ * the thing standing in it. Only the middle two screens change: the approach and
+ * the way out stay plain, so the fight is the only place a Scribe has to read
+ * the ground.
  */
+export const ARENA_ROOMS: Partial<Record<HuskKind, readonly [Chunk, Chunk]>> = {
+  arbeh: [ARENA_CANOPY_A, ARENA_CANOPY_B],
+  nefilim: [ARENA_TEETH_A, ARENA_TEETH_B],
+  saraf: [ARENA_SHELF_A, ARENA_SHELF_B],
+  reem: [ARENA_PILLAR_A, ARENA_PILLAR_B],
+  rahav: [ARENA_TIERS_A, ARENA_TIERS_B],
+  og: [ARENA_VAULT_A, ARENA_VAULT_B],
+  tannin: [ARENA_TENT_A, ARENA_TENT_B],
+  livyatan: [ARENA_SEA_A, ARENA_SEA_B],
+  ziz: [ARENA_ROOST_A, ARENA_ROOST_B],
+  // And Behemoth is absent on purpose: the plain room *is* its terrain, for the
+  // reason written over `ARENA_A`.
+};
+
+/**
+ * Hung from the ceiling rather than stood on the floor — the two creatures whose
+ * own code says they are never on the ground — and how far up, counted in rows
+ * from the bottom of the room. Each room is drawn with stone directly above the
+ * number, so the creature reads as held there rather than floating.
+ *
+ * The two numbers are different because the two fights are. The Ziz's height
+ * *is* its lock: nothing but the Staff reaches eleven rows, which is exactly
+ * what Chochmah declares. Yesod declares nothing, so the Nefilim hangs at six —
+ * inside an ordinary mark's carry, and still well over a Scribe's head.
+ */
+const HANGS: Partial<Record<HuskKind, number>> = { ziz: 11, nefilim: 6 };
+
 export function buildArena(sefirah: SefirahId, seed = 1): World {
   const guardian = guardianOf(sefirah);
   const region = regions.find((r) => r.sefirah === sefirah) ?? regionAt(1);
-  const sea = guardian.kind === "livyatan";
-  const laid = sea
-    ? [START_CHUNK, ARENA_A, ARENA_SEA_A, ARENA_SEA_B, ARENA_B, END_CHUNK]
-    : [START_CHUNK, ARENA_A, ARENA_A, ARENA_B, ARENA_B, END_CHUNK];
+  const [first, second] = ARENA_ROOMS[guardian.kind] ?? [ARENA_A, ARENA_B];
+  const laid = [START_CHUNK, ARENA_A, first, second, ARENA_B, END_CHUNK];
 
   const world = paintChunks(laid, seed);
   world.arena = sefirah;
@@ -1526,8 +1666,14 @@ export function buildArena(sefirah: SefirahId, seed = 1): World {
   // Staff's sixteen extra ticks take it past nine. Anything lower and it is
   // reachable by a Scribe with no Staff; anything higher and it is reachable by
   // nobody. Everything else stands on the floor of the room.
-  const y = guardian.kind === "ziz"
-    ? (middle.y + middle.h - 11) * TILE_SIZE
+  //
+  // The Nefilim hangs too, lower, and for its own reason: it holds `vy` at zero
+  // until the Scribe is underneath it, so a Nefilim on the floor is a Nefilim
+  // with nothing to do. Hung, the one thing it was named for can happen. Both
+  // heights and the argument between them are in `HANGS`.
+  const hangs = HANGS[guardian.kind];
+  const y = hangs
+    ? (middle.y + middle.h - hangs) * TILE_SIZE
     : (middle.y + middle.h - 2) * TILE_SIZE - spec.size.h;
   world.husks = [
     {
@@ -1568,7 +1714,7 @@ export function keliOnPath(
   seed: number,
   items: readonly string[] = [],
 ): Keli | undefined {
-  return drawKeli(makeRng((seed ^ hashOf(path.id)) >>> 0), items);
+  return drawKeli(makeRng((seed ^ hashOf(path.id)) >>> 0), items, poolFor(seed));
 }
 
 /** The screens a path is laid from, for auditing the chain. */

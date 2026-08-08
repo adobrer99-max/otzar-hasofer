@@ -28,6 +28,8 @@ export type EntityKind =
   | "word-gate"
   /** A vessel on its pedestal — see `items.ts`. */
   | "vessel"
+  /** A hidden thing in its chamber, kept past the seal — see `relics.ts`. */
+  | "relic"
   /** Where a road divides. Resh returns you here. */
   | "fork";
 
@@ -141,6 +143,15 @@ export interface Mark extends Body {
   splits?: boolean;
   /** It has weight, and falls as it flies. */
   arcs?: boolean;
+  /**
+   * Ticks it will go on hanging where it stops — the Scoring's blind line,
+   * which every letter hangs from. Carried from the throw and counted down only
+   * once the flight is over, so it is a mark's afterlife rather than its reach.
+   */
+  hangs?: number;
+  /** Whether it turns for home when its life runs out, and whether it has. */
+  returns?: boolean;
+  turned?: boolean;
   /** The letter written, for the renderer. */
   glyph: string;
 }
@@ -157,6 +168,7 @@ export type RoomKind =
   | "shrine"
   | "house"
   | "vessel"
+  | "relic"
   | "exit";
 
 /**
@@ -297,6 +309,19 @@ export interface World {
   orGathered: number;
   veilings: number;
   marksSet: number;
+  /** Whether the Wrapper's one mercy has been spent on this rung. */
+  spared?: boolean;
+  /** Whether the Lampstand's middle light has already refused to go out. */
+  relit?: boolean;
+  /** Whether Aaron's rod has already budded a lamp back on this rung. */
+  budded?: boolean;
+  /**
+   * Whether the fire of the altar has been spent — **once a climb**, not once a
+   * rung, which is the only reason this leaves the world at all: the page reads
+   * it when the rung ends and writes `relicsSpent` on the record, so a reload
+   * cannot hand it back. Nothing else in `World` outlives its own rung.
+   */
+  everlasting?: boolean;
   /**
    * Which kinds this rung draws its klipot from.
    *

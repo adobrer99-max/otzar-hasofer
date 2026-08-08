@@ -85,7 +85,11 @@ const pastThePrologue = async (page) => {
 };
 
 const sealFromTheMap = async (page) => {
-  const seal = page.getByRole("button", { name: /Seal the ascent/ }).first();
+  // Either ending's button — they are deliberately different words for
+  // deliberately different acts, and this walks whichever the map is offering.
+  const seal = page
+    .getByRole("button", { name: /Seal the ascent|Present yourself at the crown/ })
+    .first();
   await seal.waitFor({ state: "visible", timeout: 10000 }).catch(() => {});
   if (await seal.count()) await seal.click();
 };
@@ -184,6 +188,27 @@ const SCRIPTS = [
     until: (p) => p.housesMet > 0 || p.finished,
     seconds: 180,
     driver: { seekHouse: true },
+  },
+  {
+    name: "crown-presented",
+    about: "The other ending — a crown nothing is holding, and a Tree still mostly dark.",
+    /**
+     * **The branch that shipped unreachable.** `SealedPlate` has carried a
+     * whole "The crown is reached" face since the linear road was retired, and
+     * nothing in the game could raise it: the map offered sealing only to a
+     * Scribe with all ten Sefirot lit, so `sealedAt`'s own promise of "the
+     * crown, *or* all ten kindled" was half a lie.
+     *
+     * `freed` without `lit` is exactly that standing: every guardian broken —
+     * which at Keter means Behemot — and not one Sefirah bought. What this
+     * photographs is a real second ending rather than a shortcut: the same
+     * plea, graded the same four ways, on a climb that went up rather than
+     * across.
+     */
+    warp: { rung: 10, letters: "all", lamps: 3, witnesses: 4, seed: 5, freed: 1 },
+    enter: sealFromTheMap,
+    until: (p) => p.plate === "sealed",
+    seconds: 90,
   },
   {
     name: "crown-whole",
@@ -423,6 +448,84 @@ const SCRIPTS = [
     seconds: 60,
   },
   {
+    name: "beyond",
+    about: "Past the seventh seal — the seven become seven days to choose between.",
+    /**
+     * **The end of the arc, which used to be the end of everything.** The Seven
+     * Encounters were this game's whole long progression and they run out:
+     * the eighth climb read "Beyond the seven" and was played on the game's own
+     * numbers with nothing acting on it. Seven sealed climbs is a fortnight for
+     * anybody enjoying themselves.
+     *
+     * Seven sealed records are written straight in, because reaching this
+     * honestly is seven whole climbs. What it photographs is the choice, and
+     * that choosing one actually writes it onto the next record — the rule
+     * being *offered* and the rule being *played* are two different claims and
+     * only the second one matters.
+     */
+    warp: {},
+    noPlay: true,
+    enter: async (page) => {
+      await page.evaluate(async () => {
+        const req = indexedDB.open("otzar-hasofer");
+        const db = await new Promise((res, rej) => {
+          req.onsuccess = () => res(req.result);
+          req.onerror = () => rej(req.error);
+        });
+        const tx = db.transaction("ascents", "readwrite");
+        for (let i = 1; i <= 7; i += 1) {
+          const when = `2026-0${i}-01T00:00:00.000Z`;
+          tx.objectStore("ascents").put({
+            id: `beyond-${i}`, seed: i, seedLabel: `climb ${i}`,
+            createdAt: when, updatedAt: when, sealedAt: when,
+            regionIndex: 10, at: "keter", pathsWalked: ["malchut-yesod"],
+            lettersHeld: ["peh"], or: 0, regionsCleared: [], housesMet: [],
+            guardiansBroken: ["keter"], encounterNumber: i,
+            endingPlea: "alone", witnessSefirot: [],
+          });
+        }
+        await new Promise((res) => { tx.oncomplete = res; });
+      });
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(900);
+      const front = (await page.textContent("body")) ?? "";
+      if (!/Beyond the seven/.test(front)) throw new Error("the seven are not behind this Scribe");
+      if (!/Choose the day you climb under/.test(front)) {
+        throw new Error(`no choice was offered: ${front.replace(/\s+/g, " ").slice(0, 300)}`);
+      }
+      // The Fourth is the fourth lamp, which is the easiest to see acting.
+      const fourth = page.getByRole("button", { name: /^Luminaries/ });
+      if (!(await fourth.count())) throw new Error("the Fourth cannot be chosen");
+      await fourth.first().click();
+      await page.waitForTimeout(300);
+      const said = (await page.textContent("body")) ?? "";
+      if (!/A fourth lamp burns/.test(said)) throw new Error("choosing said nothing");
+      await page.screenshot({ path: join(outDir, "beyond-choice.png") });
+      // **And it is played, not merely offered.** Begin, then read the record.
+      await page.getByRole("button", { name: /^Begin/ }).first().click();
+      await page.waitForTimeout(500);
+      await pastThePrologue(page);
+      await page.waitForTimeout(600);
+      const chosen = await page.evaluate(async () => {
+        const req = indexedDB.open("otzar-hasofer");
+        const db = await new Promise((res) => { req.onsuccess = () => res(req.result); });
+        // `getAll()` is a request, not a promise — awaiting it hands back the
+        // request object, whose `.filter` is exactly as undefined as it sounds.
+        const request = db.transaction("ascents").objectStore("ascents").getAll();
+        const all = await new Promise((res, rej) => {
+          request.onsuccess = () => res(request.result);
+          request.onerror = () => rej(request.error);
+        });
+        return all.filter((a) => !a.sealedAt && !a.abandonedAt).map((a) => a.ruleNumber);
+      });
+      if (!chosen.includes(4)) {
+        throw new Error(`the chosen rule never reached the record: ${JSON.stringify(chosen)}`);
+      }
+    },
+    until: () => true,
+    seconds: 30,
+  },
+  {
     name: "going-out",
     about: "One lamp, and a Scribe who does not fight back. The kingdom comes up.",
     warp: { rung: 7, letters: "as-of-rung", lamps: 1, seed: 13 },
@@ -430,6 +533,545 @@ const SCRIPTS = [
     seconds: 120,
     // Walk into everything, write nothing.
     driver: { strike: false, reckless: true },
+  },
+  {
+    name: "book",
+    about: "The Book of Ascents — three climbs of different shapes, read back.",
+    /**
+     * **The one surface that looks backwards**, and therefore the one no
+     * ordinary run can reach: it needs a *history*, and a warp is a single
+     * climb. So three sealed records are written straight into the store —
+     * a lit Tree, a crown taken with three paths, and one in the pre-P0 shape
+     * with no frozen ending at all, which the Book has to derive. Plus a
+     * climb that was put down, because that happened too and is counted.
+     *
+     * If this run ever stops showing three pages, either the folds have
+     * drifted from the record or the record has drifted from history — and
+     * the third one is the interesting case, since a Scribe's old climbs are
+     * the thing this game can least afford to lose.
+     */
+    warp: {},
+    enter: async (page) => {
+      await page.evaluate(async () => {
+        const req = indexedDB.open("otzar-hasofer");
+        const db = await new Promise((res, rej) => {
+          req.onsuccess = () => res(req.result);
+          req.onerror = () => rej(req.error);
+        });
+        const tx = db.transaction("ascents", "readwrite");
+        const store = tx.objectStore("ascents");
+        const ALL = [
+          "malchut", "yesod", "hod", "netzach", "tiferet",
+          "gevurah", "chesed", "binah", "chochmah", "keter",
+        ];
+        store.put({
+          id: "book-lit", seed: 3, seedLabel: "14 Nisan 5786",
+          createdAt: "2026-03-01T00:00:00.000Z", updatedAt: "2026-03-01T00:00:00.000Z",
+          sealedAt: "2026-03-01T00:00:00.000Z", regionIndex: 10, at: "keter",
+          pathsWalked: [
+            "malchut-yesod", "yesod-hod", "gevurah-hod", "gevurah-tiferet",
+            "netzach-tiferet", "malchut-netzach", "yesod-tiferet", "tiferet-keter",
+            "binah-keter", "chochmah-keter", "binah-chesed", "chesed-chochmah",
+          ],
+          lettersHeld: ["aleph", "bet", "gimel", "peh"], or: 40,
+          regionsCleared: [], housesMet: [], sefirotLit: ALL, guardiansBroken: ALL,
+          falls: 2, encounterNumber: 1, endingPlea: "alone", witnessSefirot: [],
+          wordsFormed: [{
+            letterIds: ["nun", "kaf", "lamed"], hebrew: "נכל", transliteration: "nêkel",
+            gloss: "deceit", wasTarget: true, regionIndex: 6,
+          }],
+        });
+        store.put({
+          id: "book-crown", seed: 5, seedLabel: "3 Iyyar 5786",
+          createdAt: "2026-02-01T00:00:00.000Z", updatedAt: "2026-02-01T00:00:00.000Z",
+          sealedAt: "2026-02-01T00:00:00.000Z", regionIndex: 10, at: "keter",
+          pathsWalked: ["malchut-yesod", "yesod-tiferet", "tiferet-keter"],
+          lettersHeld: ["aleph", "bet", "peh"], or: 12, regionsCleared: [], housesMet: [],
+          sefirotLit: [], guardiansBroken: ALL, falls: 0, encounterNumber: 2,
+          endingPlea: "heard", witnessSefirot: ["malchut", "hod"],
+        });
+        // No `endingPlea`, no `witnessSefirot` — the shape every record had
+        // before P0 froze the ending. The Book derives it.
+        store.put({
+          id: "book-old", seed: 9, seedLabel: "9 Av 5785",
+          createdAt: "2025-08-01T00:00:00.000Z", updatedAt: "2025-08-01T00:00:00.000Z",
+          sealedAt: "2025-08-01T00:00:00.000Z", regionIndex: 10,
+          pathsWalked: ["malchut-hod"], lettersHeld: ["aleph"], or: 3,
+          regionsCleared: [], housesMet: [],
+        });
+        store.put({
+          id: "book-putdown", seed: 1, seedLabel: "1 Elul 5786",
+          createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z",
+          abandonedAt: "2026-01-02T00:00:00.000Z", regionIndex: 2,
+          lettersHeld: [], or: 0, regionsCleared: [], housesMet: [],
+        });
+        await new Promise((res) => { tx.oncomplete = res; });
+      });
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(900);
+      // **The threshold remembers.** It used to say every climb "reached the
+      // crown" — the linear road's only ending — and nothing at all about the
+      // plea, which is the thing the whole climb was for. The newest sealed
+      // record here is the lit one, which pleaded alone.
+      const front = (await page.textContent("body")) ?? "";
+      if (!/Last time: the Tree stood lit/.test(front)) {
+        throw new Error(`the threshold forgot the last climb: ${front.replace(/\s+/g, " ").slice(0, 300)}`);
+      }
+      const door = page.getByRole("button", { name: /The Book of Ascents/ });
+      if (!(await door.count())) throw new Error("the threshold offered no Book");
+      await door.first().click();
+      await page.waitForTimeout(500);
+      // Case-folded, because `innerText` returns *rendered* text and the
+      // section headings are `text-transform: uppercase` — "The Lexicon" comes
+      // back as "THE LEXICON", which cost one run to work out.
+      const text = (await page.locator('[role="dialog"]').innerText()).toLowerCase();
+      for (const wanted of [
+        "All ten kindled",
+        "The crown reached",
+        // The derived one: a climb with no Peh pleaded without a mouth, and
+        // nothing about that was ever written on its record.
+        "You arrived without a mouth",
+        "one climb was put down",
+        "The Lexicon",
+        // What a Scribe has *become*, which is the only thing here that can
+        // still be added to: the lit climb broke all ten, and the crown climb
+        // broke all ten again, so those are at tier two.
+        "What you have broken",
+        "tier 2 of 3",
+      ]) {
+        if (!text.includes(wanted.toLowerCase())) {
+          throw new Error(
+            `the Book never said "${wanted}" — it said: ${text.replace(/\s+/g, " ").slice(0, 600)}`,
+          );
+        }
+      }
+      await page.screenshot({ path: join(outDir, "book-shelf.png") });
+    },
+    noPlay: true,
+    until: () => true,
+    seconds: 30,
+  },
+  {
+    name: "arenas",
+    about: "All ten guardians' rooms, one screenshot each — the terrain, the palette and the creature.",
+    /**
+     * **The ten rooms, looked at.**
+     *
+     * Nine of the ten fights shared one empty box until the arenas were
+     * authored, and every claim about the new terrain is a claim about a
+     * picture: whether Yesod's Nefilim reads as hanging from the mass above it,
+     * whether Gevurah's vault looks like a weight, whether the ten palettes are
+     * ten places or one place ten times. None of that is a thing a duel probe
+     * can answer — it counts ticks and lamps, and it would count them happily
+     * in a room drawn entirely in mud.
+     *
+     * A record per Sefirah, seeded rather than climbed, and the map's own
+     * "Face …" button to go in — which is the door a player uses. `noPlay`,
+     * because nothing here is meant to be fought: the frame wanted is the one
+     * before anything happens.
+     */
+    warp: {},
+    noPlay: true,
+    enter: async (page) => {
+      const ROOMS = [
+        ["malchut", 1], ["yesod", 2], ["hod", 3], ["netzach", 4], ["tiferet", 5],
+        ["gevurah", 6], ["chesed", 7], ["binah", 8], ["chochmah", 9], ["keter", 10],
+      ];
+      const ALL = [
+        "aleph", "bet", "gimel", "dalet", "heh", "vav", "zayin", "chet", "tet", "yod",
+        "kaf", "lamed", "mem", "nun", "samech", "ayin", "peh", "tzadi", "kuf", "resh",
+        "shin", "tav",
+      ];
+      const missing = [];
+      for (const [sefirah, index] of ROOMS) {
+        await page.evaluate(
+          async ({ sefirah, index, ALL }) => {
+            const req = indexedDB.open("otzar-hasofer");
+            const db = await new Promise((res, rej) => {
+              req.onsuccess = () => res(req.result);
+              req.onerror = () => rej(req.error);
+            });
+            const now = new Date().toISOString();
+            const tx = db.transaction("ascents", "readwrite");
+            // One record at a time, cleared between rooms, so the game always
+            // resumes the climb this loop is looking at.
+            tx.objectStore("ascents").clear();
+            tx.objectStore("ascents").put({
+              id: "playtest-arena",
+              seed: 7,
+              seedLabel: "playtest",
+              createdAt: now,
+              updatedAt: now,
+              regionIndex: index,
+              at: sefirah,
+              pathsWalked: ["malchut-yesod"],
+              lettersHeld: ALL,
+              or: 0,
+              regionsCleared: [],
+              housesMet: [],
+              sefirotLit: [],
+            });
+            await new Promise((res) => { tx.oncomplete = res; });
+          },
+          { sefirah, index, ALL },
+        );
+        await page.reload({ waitUntil: "domcontentloaded" });
+        await page.waitForTimeout(700);
+        await pastThePrologue(page);
+        const face = page.getByRole("button", { name: /^Face / });
+        if (!(await face.count())) {
+          missing.push(sefirah);
+          continue;
+        }
+        await face.first().click();
+        await page.waitForTimeout(400);
+        // **Walk in.** A guardian's room is three rooms — an entrance, the
+        // fight, and the way out — and the Scribe appears in the first one,
+        // which is plain by design. The first pass of this script photographed
+        // ten identical porches and called it a sweep. Thirty tiles of holding
+        // right is what puts the camera on the middle room, which is the one
+        // that was authored.
+        await page.keyboard.down(KEYS.right);
+        await page.waitForTimeout(5200);
+        await page.keyboard.up(KEYS.right);
+        await page.waitForTimeout(500);
+        await page.screenshot({ path: join(outDir, `arena-${index}-${sefirah}.png`) });
+      }
+      if (missing.length) {
+        throw new Error(`no way into the room at: ${missing.join(", ")}`);
+      }
+    },
+    until: () => true,
+    seconds: 30,
+  },
+  {
+    name: "vessel",
+    about: "A pedestal offers, and the offer is taken — the plate that could never rise.",
+    /**
+     * **The script that would have caught it, had it existed.**
+     *
+     * `GameCanvas` threaded `onVessel` through its props, stored it in
+     * `callbacks.current`, and never assigned it onto the step context. `step`
+     * calls `ctx.onVessel?.(e.ref)`; optional chaining on `undefined` is a
+     * no-op; so the pedestal never spoke and **no vessel could be picked up in
+     * the shipped game.** No type error, no runtime error, and every test green:
+     * the fight and economy probes build their own `StepContext` and pass
+     * `items` straight in, so they were measuring a game nobody could play.
+     *
+     * The reason no script covered it is worth keeping too, because it is a
+     * general one: **the driver climbs nothing.** A vessel sits on a shelf two
+     * rows off the floor, so even a script written for it would have walked
+     * under the pedestal and reported a clean run. Hence `Probe.vessel` and
+     * `seekVessel` — the probe says where the pedestal is and the driver turns
+     * around and jumps at it, exactly as `seekHouse` already did for the
+     * figures of the Dorot.
+     *
+     * And it asserts **taking**, not offering: `p.items` rather than
+     * `p.plate === "vessel"`. A plate that rises and cannot be answered would
+     * be the same bug one layer up.
+     *
+     * **Yesod, the whole alphabet, and the way back down** — three choices, and
+     * every one of them is the driver's inability to climb wearing a different
+     * hat. Worth writing down, because the next collectible will meet all three.
+     *
+     * `rowsFor` gives a rung of four or more *two* storeys and the vessel room
+     * can land on the upper one: at rung 5 the probe read the pedestal at
+     * `dy: -535`, which is not a shelf but a floor, and no amount of jumping
+     * reaches it. A single-storey rung puts it on the Scribe's own level.
+     *
+     * `toward: "Malchut"` is the way back down out of Yesod, so the ground is
+     * the kingdom's — the gentlest in the game.
+     *
+     * And `letters: "all"` rather than `as-of-rung`, which is the one that
+     * actually mattered: holding only Malchut's two letters the driver spent
+     * every run of four minutes bouncing off a three-tile pillar with a klipah
+     * behind it, reaching eight per cent of the rung. Photographed, it is
+     * unmistakable — the contact sheet is twelve frames of the same pillar. The
+     * suite's own traversal probe crosses that ground holding nothing; this
+     * driver is a worse player than the one the tests guarantee, which is
+     * already written down against `up`. With the alphabet it reaches the
+     * pedestal on every run.
+     *
+     * The debt is unchanged and is now named twice: whoever teaches this driver
+     * to take a shaft gets the vessels on every rung, the Houses and the vows
+     * in one go.
+     */
+    warp: { rung: 2, letters: "all", lamps: 3, seed: 3 },
+    toward: "Malchut",
+    until: (p) => p.items.length > 0 || p.finished,
+    // Generous, because this driver is a real browser on a wall clock rather
+    // than a deterministic probe: the same seed takes a different number of
+    // seconds each run, and the pedestal sits a long way into the rung.
+    seconds: 260,
+    driver: { seekVessel: true },
+    onPlate: async (page, plate) => {
+      if (plate !== "vessel") return;
+      const take = page.getByRole("button", { name: /Take it up/i });
+      if (await take.count()) await take.first().click();
+    },
+  },
+  {
+    name: "reliquary",
+    about: "A hidden thing found behind the Eye, climbed to, and taken up.",
+    /**
+     * **The chamber, played rather than asserted** — and the first screen in
+     * this game behind *two* gates.
+     *
+     * `chamber.test.ts` proves the ground: the lane runs clear the whole width,
+     * every rise is a plain jump, the staircase is veiled stone, and a held
+     * relic leaves the room standing and empty with the tiles byte-identical.
+     * What a test cannot do is press a key. The relic is seven tiles up behind
+     * three steps that **do not exist** until Ayin is pressed, so this needed
+     * the driver taught two things at once: `openTheEye`, which presses act on
+     * a beat until `p.revealed` says it landed, and `seekRelic`, which is
+     * `seekVessel`'s mechanism pointed at the niche.
+     *
+     * The three concessions are the vessel script's, unchanged and for the same
+     * reason — **this driver climbs nothing.** A single-storey rung so the
+     * chamber lands on the Scribe's own level; `toward: "Malchut"` for the
+     * kingdom's gentle ground; and `letters: "all"`, which here is not a
+     * concession at all but the whole point, since Ayin is in the alphabet and
+     * without it there is no staircase.
+     *
+     * **No relics in the warp**, deliberately: this is the finding, and a
+     * Scribe already carrying the thing would meet an empty room. The empty
+     * room is `chamber.test.ts`'s claim; a full one is this script's.
+     *
+     * And it asserts **taking**, not offering — `p.relics` rather than
+     * `p.plate === "relic"` — because a plate that rises and cannot be answered
+     * is the same bug one layer up. That is the lesson `vessel` was written to
+     * hold and it applies twice as hard here: a relic is the only thing in this
+     * game that outlives the seal.
+     */
+    warp: { rung: 2, letters: "all", lamps: 3, seed: 3 },
+    toward: "Malchut",
+    until: (p) => p.relics.length > 0 || p.finished,
+    seconds: 260,
+    driver: { seekRelic: true },
+    onPlate: async (page, plate) => {
+      if (plate !== "relic") return false;
+      const take = page.getByRole("button", { name: /Take it up/i });
+      if (await take.count()) await take.first().click();
+      return true;
+    },
+    check: (p) => {
+      if (!p.revealed) throw new Error("the Eye was never opened — there was never a staircase");
+      if (!p.relics.length) throw new Error("the chamber was reached and nothing was taken");
+    },
+  },
+  {
+    name: "bestiary",
+    about: "All twenty klipot, in their states, on both grounds — the sheet the creature pass is judged on.",
+    /**
+     * **The twenty, looked at — which nothing in this repo could do.**
+     *
+     * `arenas` photographs ten rooms and so shows the ten great ones, once
+     * each, standing still and unhurt. That is half the bestiary and one of its
+     * states. `bestiary.test.ts` answers the behavioural question — no two kinds
+     * answer a Scribe alike — and cannot answer a visual one, because it never
+     * draws anything. `husks.test.ts` enumerates the shape table and can only
+     * say the rows differ, which is a claim about numbers and not about a
+     * picture. So the pictures had no instrument at all, and a creature pass
+     * without one is redecorating in the dark.
+     *
+     * This is that instrument, and note what it does *not* do: it does not
+     * reimplement the painter. It imports the shipping module out of the dev
+     * server — Vite serves and transpiles `/src/**` on demand, so
+     * `import("/src/game/render/husks.ts")` inside the page is the same code
+     * the game runs and not a copy that would drift within a week. That is the
+     * whole reason `paintHusk` was lifted out of `draw.ts`: it takes a
+     * creature, a palette and a tick, and needs no world to be true.
+     *
+     * **Two sheets on two grounds, because they answer different questions.**
+     *
+     * `bestiary-scale-*.png` draws every kind at the zoom a room is actually
+     * framed at — a klipah is sixteen by eighteen world units and the camera
+     * runs about 1.67, so a creature is roughly twenty-seven pixels of screen.
+     * That is the only picture that can say whether a change reads *in play*,
+     * and it is brutal about detail: anything under two pixels is mud. Each is
+     * shown twice over, against open sky and against stone, because a shell is
+     * filled from the palette's own deep background and the honest question is
+     * whether it can be picked out of either.
+     *
+     * `bestiary-plate-*.png` draws the same twenty at six times, four states
+     * apiece — whole, struck, half its shells gone, and mid-charge. That is the
+     * picture you author against, and the four states are there because the
+     * roadmap's complaint was precisely that a creature about to charge looks
+     * exactly like one that is not.
+     *
+     * And **both themes**, because the game ships a charcoal ground and a
+     * vellum one and a klipah is drawn entirely out of the palette.
+     *
+     * The P6 lesson is why the magnified sheet exists at all: the tile-atlas
+     * bug was four per cent of pixels against a one per cent run-to-run floor —
+     * arguable as a number, unmistakable the moment a magnified strip was put
+     * on screen.
+     */
+    warp: {},
+    noPlay: true,
+    enter: async (page) => {
+      await pastThePrologue(page);
+      const write = async (name, dataUrl) => {
+        await writeFile(join(outDir, name), Buffer.from(dataUrl.split(",")[1], "base64"));
+      };
+      for (const theme of ["dark", "light"]) {
+        await page.evaluate((t) => document.documentElement.setAttribute("data-theme", t), theme);
+        await page.waitForTimeout(150);
+        const shots = await page.evaluate(async () => {
+          const { paintHusk } = await import("/src/game/render/husks.ts");
+          const { readPalette } = await import("/src/game/render/palette.ts");
+          const { HUSKS } = await import("/src/game/combat.ts");
+          const base = readPalette();
+          const kinds = Object.keys(HUSKS);
+
+          /** A klipah standing on its own, in whatever state is asked for. */
+          const stand = (kind, state) => {
+            const spec = HUSKS[kind];
+            return {
+              id: kind,
+              kind,
+              x: -spec.size.w / 2,
+              y: -spec.size.h / 2,
+              w: spec.size.w,
+              h: spec.size.h,
+              vx: 0,
+              vy: 0,
+              shells: state === "opened" ? Math.max(1, spec.shells - 1) : spec.shells,
+              facing: 1,
+              home: { x: 3, y: 0 },
+              cooldown: 0,
+              charging: state === "charging" ? 20 : 0,
+              struck: state === "struck" ? 6 : 0,
+            };
+          };
+
+          const sheet = (w, h, paint) => {
+            const canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext("2d");
+            paint(ctx);
+            return canvas.toDataURL("image/png");
+          };
+
+          // The zoom a room is framed at, so this is the creature as seen.
+          const PLAY = 1.67;
+          const COLS = 5;
+          const CELL = 96;
+          const ROWS = Math.ceil(kinds.length / COLS);
+
+          const scaleSheet = sheet(COLS * CELL, ROWS * CELL * 2 + 24, (ctx) => {
+            // Two bands: open sky above, stone below. A shell that reads
+            // against one and not the other is still a shell nobody can see.
+            ctx.fillStyle = base.bg;
+            ctx.fillRect(0, 0, COLS * CELL, ROWS * CELL);
+            ctx.fillStyle = base.stone;
+            ctx.fillRect(0, ROWS * CELL, COLS * CELL, ROWS * CELL);
+            for (const band of [0, 1]) {
+              const top = band * ROWS * CELL;
+              kinds.forEach((kind, i) => {
+                const cx = (i % COLS) * CELL;
+                const cy = top + Math.floor(i / COLS) * CELL;
+                ctx.save();
+                ctx.translate(cx + CELL / 2, cy + CELL / 2 - 6);
+                ctx.scale(PLAY, PLAY);
+                paintHusk(ctx, stand(kind, "whole"), base, 0);
+                ctx.restore();
+                ctx.fillStyle = base.muted;
+                ctx.font = "11px monospace";
+                ctx.fillText(kind, cx + 6, cy + CELL - 8);
+              });
+            }
+            ctx.fillStyle = base.gold;
+            ctx.font = "bold 13px monospace";
+            ctx.fillText("against sky (top) and stone (bottom), at play zoom", 8, ROWS * CELL * 2 + 17);
+          });
+
+          const STATES = ["whole", "struck", "opened", "charging"];
+          const BIG = 6;
+          const ROW = 136;
+          const COL = 132;
+          const plate = sheet(COL * STATES.length + 140, ROW * kinds.length + 40, (ctx) => {
+            ctx.fillStyle = base.stone;
+            ctx.fillRect(0, 0, COL * STATES.length + 140, ROW * kinds.length + 40);
+            ctx.fillStyle = base.gold;
+            ctx.font = "bold 15px monospace";
+            STATES.forEach((state, j) => ctx.fillText(state, 140 + j * COL + 10, 26));
+            kinds.forEach((kind, i) => {
+              const cy = 40 + i * ROW;
+              ctx.fillStyle = base.text;
+              ctx.font = "13px monospace";
+              ctx.fillText(kind, 10, cy + ROW / 2);
+              ctx.fillStyle = base.muted;
+              ctx.font = "10px monospace";
+              ctx.fillText(`${HUSKS[kind].shells} shell`, 10, cy + ROW / 2 + 16);
+              STATES.forEach((state, j) => {
+                const cx = 140 + j * COL;
+                ctx.strokeStyle = base.stoneEdge;
+                ctx.lineWidth = 1;
+                ctx.strokeRect(cx + 0.5, cy + 0.5, COL - 8, ROW - 8);
+                ctx.save();
+                ctx.translate(cx + (COL - 8) / 2, cy + (ROW - 8) / 2);
+                ctx.scale(BIG, BIG);
+                paintHusk(ctx, stand(kind, state), base, 0);
+                ctx.restore();
+              });
+            });
+          });
+
+          /**
+           * **The walk, laid out as a strip** — one creature a row, eight
+           * frames across a full stride and one more standing still.
+           *
+           * A gait cannot be judged from a still, and it cannot be judged from
+           * a video either: the thing that goes wrong is two legs swinging
+           * together, and at sixty frames a second that reads as *something*
+           * being off without saying what. Side by side across one cycle it is
+           * obvious in a glance — which is the same reason animators have
+           * always drawn a walk as a row of keys rather than as a film.
+           *
+           * The last column is the same creature with no speed, which is the
+           * other half of the claim: the legs must **stop**.
+           */
+          const FRAMES = 8;
+          const walk = sheet(CELL * (FRAMES + 2), kinds.length * 52 + 30, (ctx) => {
+            ctx.fillStyle = base.bg;
+            ctx.fillRect(0, 0, CELL * (FRAMES + 2), kinds.length * 52 + 30);
+            ctx.fillStyle = base.gold;
+            ctx.font = "bold 12px monospace";
+            ctx.fillText("one full stride, then the same creature at rest", 8, 18);
+            kinds.forEach((kind, i) => {
+              const spec = HUSKS[kind];
+              const stride = spec.size.w * 1.5;
+              const cy = 30 + i * 52 + 26;
+              ctx.fillStyle = base.muted;
+              ctx.font = "10px monospace";
+              ctx.fillText(kind, 4, cy + 20);
+              for (let f = 0; f <= FRAMES; f += 1) {
+                const resting = f === FRAMES;
+                const husk = stand(kind, "whole");
+                husk.x = (stride * f) / FRAMES - spec.size.w / 2;
+                husk.vx = resting ? 0 : 60;
+                ctx.save();
+                ctx.translate(70 + f * (CELL * 0.9) - husk.x, cy - spec.size.h / 2);
+                paintHusk(ctx, husk, base, f * 7);
+                ctx.restore();
+              }
+            });
+          });
+
+          return { scaleSheet, plate, walk, count: kinds.length };
+        });
+        if (shots.count !== 20) {
+          throw new Error(`the sheet drew ${shots.count} klipot, not twenty`);
+        }
+        await write(`bestiary-scale-${theme}.png`, shots.scaleSheet);
+        await write(`bestiary-plate-${theme}.png`, shots.plate);
+        await write(`bestiary-walk-${theme}.png`, shots.walk);
+      }
+    },
+    until: () => true,
+    seconds: 30,
   },
 ];
 
@@ -465,6 +1107,20 @@ const overrides = Object.fromEntries(
   }),
 );
 const seconds = flag("seconds", undefined);
+
+/**
+ * **What machine this is pretending to be.**
+ *
+ * `--phone` is a 390×844 viewport at three device pixels to the CSS pixel with
+ * touch — an ordinary modern handset, and nine times the fill of the desktop
+ * default. `--cpu=6` throttles the main thread to a sixth of this machine's
+ * speed, which is the shape of a mid-range phone core against a developer's.
+ * Both default off, so every number taken before this still means what it said.
+ */
+const PHONE = has("phone");
+const SCREEN = PHONE ? { width: 390, height: 844 } : { width: 1280, height: 860 };
+const DPR = Number(flag("dpr", PHONE ? 3 : 1));
+const CPU = Number(flag("cpu", 1));
 
 const scripts = (wanted.length ? SCRIPTS.filter((s) => wanted.includes(s.name)) : SCRIPTS).map(
   (s) => ({
@@ -646,11 +1302,49 @@ function decide(p, look, memory, opts) {
    * and raised no plate. So the probe reports where it is (`p.house`) and this
    * turns around for it and jumps at it.
    */
-  const seek = opts?.seekHouse ? p.house : undefined;
-  const houseBehind = Boolean(seek && seek.dx < -16);
-  const houseAbove = Boolean(seek && Math.abs(seek.dx) < 110 && seek.dy < -20);
+  // **The one thing on a ledge the driver is told about.** Generalised from
+  // `seekHouse`, because the pedestal needed it worse: `VESSEL_CHUNK` puts the
+  // vessel on a shelf two rows up and no script had ever reached one, which is
+  // half of why `onVessel` could go unwired for months without anything
+  // noticing. Same mechanism either way — the probe says where it is, and this
+  // turns around for it and jumps at it.
+  const seek =
+    opts?.seekHouse ? p.house
+    : opts?.seekVessel ? p.vessel
+    : opts?.seekRelic ? p.relic
+    : undefined;
 
-  const wantJump = !backingOff && (gapAhead || wallAhead || houseAbove || memory.stuckFor > 6);
+  /**
+   * **Opening the Eye, which is a gate the driver had never met before.**
+   *
+   * The relic chamber is the first thing in the game behind *two* gates: the
+   * staircase is `Tile.Veiled` and does not exist until `reveal` is pressed, so
+   * a driver told only where the niche is jumps at empty air from the floor for
+   * four minutes and reports a clean run. The same disagreement the suite's own
+   * probe had — `routeTo` has assumed a Scribe holding Ayin stands on revealed
+   * stone since the Tree replaced the line, and neither pair of hands ever
+   * pressed the key.
+   *
+   * Ayin shares `act` with the Hook, the Edge, the Flame, the Door and the
+   * House, and which one answers depends on what is standing beside you — so
+   * this presses on a slow beat until `p.revealed` says it landed, rather than
+   * once and hopefully.
+   *
+   * **Not until the niche is in sight**, which is both truer and useful. A
+   * player reveals when they see something worth revealing; and pressed at the
+   * first tick the Eye opens two hundred tiles before the chamber, so the
+   * *unrevealed* chamber — the one everybody meets first, a hole in the wall
+   * seven tiles up with no way to it — never appears on the contact sheet at
+   * all. Waiting until the room is on screen puts both states in the pictures.
+   */
+  const inSight = Boolean(p.relic && Math.abs(p.relic.dx) < 260);
+  const openTheEye = Boolean(
+    opts?.seekRelic && inSight && !p.revealed && p.onGround && memory.tick % 11 === 0,
+  );
+  const seekBehind = Boolean(seek && seek.dx < -16);
+  const seekAbove = Boolean(seek && Math.abs(seek.dx) < 110 && seek.dy < -20);
+
+  const wantJump = !backingOff && (gapAhead || wallAhead || seekAbove || memory.stuckFor > 6);
 
   // **Jump is an edge, not a state.** `GameCanvas` reads `jump` from the keys
   // *pressed since the last frame* and `jumpHeld` from the keys still down —
@@ -667,8 +1361,8 @@ function decide(p, look, memory, opts) {
 
   return {
     // Held.
-    right: !backingOff && !houseBehind,
-    left: backingOff || houseBehind,
+    right: !backingOff && !seekBehind,
+    left: backingOff || seekBehind,
     jump: memory.jumpFor > 0,
     // **Up, on a vine and in water** — and it was hardcoded false, which meant
     // this harness could not climb a vine or rise through water at all.
@@ -717,7 +1411,10 @@ function decide(p, look, memory, opts) {
     // One Keter run spent a hundred and forty seconds oscillating between two
     // anchors at 53% across, which `step.ts` had warned in a comment was
     // exactly what happens.
-    act: memory.actFor <= 0 && !p.grappled && (barrierAhead || (!p.onGround && !groundBelow)),
+    act:
+      memory.actFor <= 0 &&
+      !p.grappled &&
+      (openTheEye || barrierAhead || (!p.onGround && !groundBelow)),
     dash: !reckless && !p.onGround && !groundBelow && memory.tick % 3 === 0,
     strike: opts?.strike !== false && husk !== undefined && husk < 220 && memory.tick % 5 === 0,
   };
@@ -731,11 +1428,32 @@ const TAP_KEYS = ["act", "dash", "strike"];
 
 async function play(script, browser) {
   const context = await browser.newContext({
-    viewport: { width: 1280, height: 860 },
-    recordVideo: has("no-video") ? undefined : { dir: outDir, size: { width: 1280, height: 860 } },
+    viewport: SCREEN,
+    deviceScaleFactor: DPR,
+    isMobile: PHONE,
+    hasTouch: PHONE,
+    recordVideo: has("no-video") ? undefined : { dir: outDir, size: SCREEN },
     reducedMotion: "no-preference",
   });
   const page = await context.newPage();
+
+  /**
+   * **The pocket, emulated rather than imagined.**
+   *
+   * P6 is gated on frame times and the gate was never armed: every number this
+   * harness has ever taken came from a 1280-wide desktop viewport at one device
+   * pixel per CSS pixel with a whole core to itself, which is the one machine
+   * the phase is *not* about. A phone multiplies the work twice over — three
+   * device pixels per CSS pixel is nine times the fill, and a mid-range core is
+   * several times slower — and those two multiply each other.
+   *
+   * `Emulation.setCPUThrottlingRate` is the only honest way to get the second
+   * one, and it is CDP rather than Playwright API, so it wants a session.
+   */
+  if (CPU > 1) {
+    const cdp = await context.newCDPSession(page);
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: CPU });
+  }
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
@@ -753,6 +1471,28 @@ async function play(script, browser) {
   } else if (Object.keys(script.warp ?? {}).length > 0) {
     // A warp stands the Scribe on the Tree; a rung is chosen, never given.
     await walkOut(page, script.toward);
+  }
+
+  /**
+   * **A script that has nothing to play.** `book` is about a surface that
+   * exists precisely when no climb does — a shelf of sealed records — so there
+   * is no world, no probe reading, and nothing for the driver to do. It has
+   * already asserted everything it came for inside `enter`. Without this it
+   * failed on "the probe never appeared", which was true and beside the point.
+   */
+  if (script.noPlay) {
+    return {
+      script: script.name,
+      about: script.about,
+      warp: script.warp,
+      startedAt: new Date().toISOString(),
+      samples: [],
+      captions: [],
+      plates: [],
+      letters: [],
+      errors,
+      ended: "the script asked for nothing to be played",
+    };
   }
 
   // Wait for the probe to answer, which is also the check that the warp took.
@@ -821,6 +1561,8 @@ async function play(script, browser) {
     if (i % 60 === 0) {
       const frames = await page.evaluate((key) => globalThis[key]?.frames?.(), PROBE_KEY);
       if (frames?.frames > 0) report.frames = frames;
+      const phases = await page.evaluate((key) => globalThis[key]?.phases?.(), PROBE_KEY);
+      if (phases && Object.keys(phases).length > 0) report.phases = phases;
     }
 
     // Record what the game says, once per thing said.
@@ -908,6 +1650,19 @@ async function play(script, browser) {
     if (sheet) await writeFile(join(outDir, `${script.name}.png`), sheet);
   }
   await writeFile(join(outDir, `${script.name}.json`), `${JSON.stringify(report, null, 2)}\n`);
+
+  /**
+   * **What the run had to have come to**, checked after the sheet and the
+   * report are on disk rather than before — a script that fails is the one
+   * whose pictures you most want to look at, and throwing first would take
+   * them with it.
+   *
+   * `until` says when to stop and this says whether stopping was the right
+   * thing. They are not the same question: a script with a generous `until`
+   * ends cleanly on a timeout and reports a tidy percentage, which is how a
+   * driver that never reached anything reads as a pass.
+   */
+  if (script.check) script.check(last ?? {});
 
   await context.close();
   const video = page.video();

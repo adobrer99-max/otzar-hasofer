@@ -57,6 +57,36 @@ export interface Guardian {
   boon: Effect;
   /** What the boon is, in the voice of the thing that gave it. */
   boonLine: string;
+  /**
+   * **What each *further* breaking is worth**, up to `TIERS`.
+   *
+   * The boons were ten booleans, and every one of them was reachable inside a
+   * single thorough climb: after that, breaking a guardian again changed a
+   * Scribe by exactly nothing, and there was no reason to walk that way twice.
+   * The meta-progression ran out before the Seven Encounters did.
+   *
+   * Authored rather than exponentiated. Repeating `boon` would have worked for
+   * the seven below — `fold` multiplies rates and adds quantities, so a second
+   * copy compounds — and it does *nothing at all* for the three great ones,
+   * whose gift is a behaviour that is had or not had. It would also have made
+   * Gevurah's third breaking a sixth lamp, doubling the body, which nobody
+   * chose. So every guardian says what its own return trip is worth, and
+   * `guardians.test.ts` walks the table to prove none of them is a no-op.
+   */
+  deepens: Effect;
+  /** What the deeper tiers are, in the same voice. */
+  deepLine: string;
+}
+
+/** How many breakings a guardian's gift keeps growing for. */
+export const TIERS = 3;
+
+/**
+ * The tier a Sefirah has reached, from the number of climbs it was broken in.
+ * Zero is a guardian never faced; `TIERS` is the ceiling and is hard.
+ */
+export function tierOf(times: number): number {
+  return Math.max(0, Math.min(TIERS, Math.floor(times)));
 }
 
 export const GUARDIANS: Record<SefirahId, Guardian> = {
@@ -66,6 +96,8 @@ export const GUARDIANS: Record<SefirahId, Guardian> = {
     because: "The kingdom is the many. What holds it is not one thing.",
     boon: { cooldown: 0.94 },
     boonLine: "You have written at a great many of them, and your hand is quicker for it.",
+    deepens: { cooldown: 0.96 },
+    deepLine: "You have come back to the many more than once. The hand is quicker still.",
   },
   yesod: {
     sefirah: "yesod",
@@ -73,6 +105,8 @@ export const GUARDIANS: Record<SefirahId, Guardian> = {
     because: "The foundation is where a fall lands, and they are named for falling.",
     boon: { iframes: 1.15 },
     boonLine: "Something came down on you and you got up. The next thing takes longer to reach you.",
+    deepens: { iframes: 1.08 },
+    deepLine: "You have got up here before. What lands on you next has longer to wait.",
   },
   hod: {
     sefirah: "hod",
@@ -81,6 +115,8 @@ export const GUARDIANS: Record<SefirahId, Guardian> = {
       "The fiery serpents were sent for ingratitude and the cure was to look up, which is the whole of what Hod is.",
     boon: { light: 1.1 },
     boonLine: "You looked up. What you gather is worth a little more than it was.",
+    deepens: { light: 1.06 },
+    deepLine: "You looked up again, knowing what was there. It is worth more again.",
   },
   netzach: {
     sefirah: "netzach",
@@ -88,6 +124,8 @@ export const GUARDIANS: Record<SefirahId, Guardian> = {
     because: "Endurance, met by the thing that will not turn.",
     boon: { speed: 1.12 },
     boonLine: "It went where it was pointed. So does what you throw now.",
+    deepens: { speed: 1.06 },
+    deepLine: "It did not turn the second time either, and neither does what you throw.",
   },
   tiferet: {
     sefirah: "tiferet",
@@ -95,6 +133,8 @@ export const GUARDIANS: Record<SefirahId, Guardian> = {
     because: "Truth, held by pride — which is its exact inversion and grows on being opposed.",
     boon: { bite: 1.15 },
     boonLine: "It got bigger every time you struck it, and you struck it anyway.",
+    deepens: { bite: 1.08 },
+    deepLine: "You came back for it knowing it would grow. What you write lands harder.",
   },
   gevurah: {
     sefirah: "gevurah",
@@ -102,6 +142,10 @@ export const GUARDIANS: Record<SefirahId, Guardian> = {
     because: "Judgment, and the last of the giants was destroyed at Edrei.",
     boon: { lamps: 1 },
     boonLine: "The ceiling came down on you often enough that you are made of one more light.",
+    // Deliberately not another whole lamp: a third breaking would double the
+    // body, which is a different game. Judgment is severe about what it gives.
+    deepens: { iframes: 1.1 },
+    deepLine: "You went back under the ceiling. It takes longer now for anything to reach you.",
   },
   chesed: {
     sefirah: "chesed",
@@ -109,6 +153,8 @@ export const GUARDIANS: Record<SefirahId, Guardian> = {
     because: "Chesed is water, and the tanninim are the first made thing the account names.",
     boon: { reach: 6 },
     boonLine: "You learned to reach across water. What you write carries further.",
+    deepens: { reach: 3 },
+    deepLine: "You crossed the water again. It carries further still.",
   },
 
   // ---------------------------------------------------------------------------
@@ -126,6 +172,11 @@ export const GUARDIANS: Record<SefirahId, Guardian> = {
     },
     boon: { homing: true },
     boonLine: "Having once drawn something out with a hook, what you throw goes looking.",
+    // A behaviour is had or not had, so the great ones deepen in a number
+    // instead — and in the number their own fight is about. Leviathan is
+    // reach: it cannot be come at without one.
+    deepens: { reach: 4 },
+    deepLine: "You went back into the sea for it. What you throw goes further out.",
   },
   chochmah: {
     sefirah: "chochmah",
@@ -138,6 +189,8 @@ export const GUARDIANS: Record<SefirahId, Guardian> = {
     },
     boon: { splits: true },
     boonLine: "What comes apart above you comes apart. So does what you throw.",
+    deepens: { speed: 1.08 },
+    deepLine: "You reached the roof twice. What you throw gets there faster.",
   },
   keter: {
     sefirah: "keter",
@@ -150,6 +203,8 @@ export const GUARDIANS: Record<SefirahId, Guardian> = {
     },
     boon: { bounces: true },
     boonLine: "Nothing stopped it. Stone no longer stops what you throw either.",
+    deepens: { bite: 1.1 },
+    deepLine: "You stopped the unstoppable thing again. What you write lands like it.",
   },
 };
 
@@ -165,7 +220,33 @@ export function isFreed(sefirah: SefirahId, broken: readonly SefirahId[]): boole
   return broken.includes(sefirah);
 }
 
-/** The boons a Scribe carries into every climb, from what they have broken. */
-export function boonsFrom(broken: readonly SefirahId[]): Effect[] {
-  return broken.map((s) => GUARDIANS[s]?.boon).filter((b): b is Effect => Boolean(b));
+/**
+ * The boons a Scribe carries into every climb, from what they have broken —
+ * **and how often.**
+ *
+ * Takes counts rather than a set, which is the whole of the tiering: the first
+ * breaking gives the guardian's `boon`, and each one after it gives `deepens`
+ * again, to a hard ceiling of `TIERS`. One climb can reach tier one everywhere;
+ * two and three are the reason to walk a way a second time, and there is no
+ * fourth. A plain array is still accepted and reads as one breaking each,
+ * because that is what an array of Sefirot means.
+ *
+ * The effects fold in `items.ts`, which multiplies rates and adds quantities —
+ * so a repeated `deepens` compounds exactly as a second vessel would, and the
+ * numbers were chosen knowing that.
+ */
+export function boonsFrom(freed: readonly SefirahId[] | Record<string, number>): Effect[] {
+  const times: Record<string, number> = Array.isArray(freed)
+    ? Object.fromEntries(freed.map((s) => [s, 1]))
+    : (freed as Record<string, number>);
+  const out: Effect[] = [];
+  for (const [sefirah, count] of Object.entries(times)) {
+    const guardian = GUARDIANS[sefirah as SefirahId];
+    if (!guardian) continue;
+    const tier = tierOf(count);
+    if (tier < 1) continue;
+    out.push(guardian.boon);
+    for (let i = 1; i < tier; i += 1) out.push(guardian.deepens);
+  }
+  return out;
 }
