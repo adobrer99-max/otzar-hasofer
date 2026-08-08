@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { lettersOnEntering, regionAt, regions, TOTAL_REGIONS } from "../regions";
-import { CHUNKS, CHUNK_H, CHUNK_W } from "./chunks";
+import { CHUNKS, CHUNK_H, CHUNK_W, chunksById, TEACH_CHUNKS } from "./chunks";
 import {
   buildPath,
   buildRegion,
@@ -213,13 +213,38 @@ describe("assembling a region", () => {
 
   it("still lays the taught porch in Malchut and nowhere else", () => {
     for (const seed of SEEDS) {
-      const taught = buildRegion(1, seed, 1, true).width;
-      const plain = buildRegion(1, seed).width;
-      // Three teaching screens — but a room is two screens, so a rung is
-      // squared up to a whole number of rooms and the porch may cost a fourth
-      // screen of plain ground. Which is a beat after the pit, and no loss.
-      expect(taught - plain, `seed ${seed}`).toBeGreaterThanOrEqual(3 * CHUNK_W);
-      expect(taught - plain, `seed ${seed}`).toBeLessThanOrEqual(4 * CHUNK_W);
+      /**
+       * **Read off the screens rather than off the width**, which is the
+       * correction the relic chamber forced and which was owed anyway.
+       *
+       * This asserted that the taught rung is three to four screens wider than
+       * the plain one. A rung is squared up to whole *rooms* of two screens, so
+       * what that arithmetic actually measures is the parity of the plain
+       * rung's screen count: an even one grows by four and an odd one by two.
+       * Both are the same three-screen porch. Malchut's count happened to be
+       * even for the whole life of the assertion, and adding one fixed screen
+       * to the rung made it odd — so a band drawn around a rounding artefact
+       * failed on a change that did not touch the porch at all.
+       *
+       * The porch is three screens. That is the claim, and `layoutOf` says it
+       * exactly.
+       */
+      const laid = layoutOf(1, seed, true).map((c) => c.id);
+      const bare = layoutOf(1, seed).map((c) => c.id);
+      expect(laid.filter((id) => id.startsWith("teach-")), `seed ${seed}`).toHaveLength(
+        TEACH_CHUNKS.length,
+      );
+      expect(bare.filter((id) => id.startsWith("teach-")), `seed ${seed}`).toEqual([]);
+      // And the porch is *prepended*: everything a Scribe stops at is exactly
+      // what it would otherwise be. Not the whole chain — a rung is squared up
+      // to whole rooms with plain ground, so three extra screens can pull one
+      // more filler screen in with them, and that is the porch costing a beat
+      // rather than the seed being disturbed.
+      const stops = (ids: string[]) =>
+        ids.filter((id) => id in chunksById && !CHUNKS.some((c) => c.id === id));
+      expect(stops(laid).filter((id) => !id.startsWith("teach-")), `seed ${seed}`).toEqual(
+        stops(bare),
+      );
     }
     for (let region = 2; region <= TOTAL_REGIONS; region += 1) {
       expect(buildRegion(region, 7, 1, true).width, `region ${region}`).toBe(

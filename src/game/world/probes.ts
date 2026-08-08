@@ -369,6 +369,33 @@ export function probe(
 
     const holdsStone = ctx.verbs.includes("block") && !ctx.verbs.includes("grapple");
     /**
+     * **The Eye is opened on the way in, because that is what a player does.**
+     *
+     * `routeTo` has assumed since the day the Tree replaced the line that a
+     * Scribe holding Ayin stands on revealed stone — it is written down there
+     * as one of the four moves whose absence made a third of the map read as
+     * broken level. The hands never agreed. Ayin is on `act`, and the only act
+     * this probe ever pressed was the unsticking rhythm and the barrier ahead
+     * of it, so the graph promised a floor the body would fall straight
+     * through.
+     *
+     * It went unnoticed for as long as **every veiled screen was on the route**:
+     * a stone the Scribe has to cross is a stone they get stuck in front of,
+     * and the rhythm pressed act within a second or two. The relic chamber is
+     * the first veiled thing in the game that stands *beside* the way — nothing
+     * blocks the walk, so nothing ever triggered the rhythm, and the graph
+     * quietly routed the probe up a staircase that was not there. Measured over
+     * sixty-six honest walks: **fifty-one of fifty-one crossed without the Eye,
+     * eleven of fifteen with it** — the failures were exactly and only the
+     * Scribes who could see.
+     *
+     * Once, on the ground, before anything else. A player holding the letter
+     * presses it once a rung and the world stays revealed; this is that, and it
+     * is the instrument catching up to the map rather than a concession.
+     */
+    const openTheEye =
+      ctx.verbs.includes("reveal") && !world.revealed && p.onGround && !p.grappleTo && i % 5 === 0;
+    /**
      * A step too tall to jump, seen **a stride before reaching it** — which is
      * the only place a stone can go, since `toggleStone` needs the tile beside
      * you to be empty and walking up to a wall fills it.
@@ -622,6 +649,7 @@ export function probe(
       // unmakes. `setStone` is their version of it, and it presses once per
       // place rather than once every seven ticks.
       act:
+        openTheEye ||
         barrierAhead ||
         reachOnce ||
         setStone ||

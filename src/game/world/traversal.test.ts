@@ -198,12 +198,12 @@ describe("walking the regions", () => {
     for (const seed of [3, 91, 555, 12345]) {
       const plain = buildRegion(1, seed);
       const taught = buildRegion(1, seed, 1, true);
-      // Three teaching screens, squared up to whole rooms — see the same
-      // reasoning in `build.test.ts`. What matters here is that the porch is
-      // laid at all and that a Scribe holding nothing can cross it.
-      expect(taught.width, `seed ${seed}: the porch is not laid`).toBeGreaterThanOrEqual(
-        plain.width + 3 * 16,
-      );
+      // That the porch is *three screens* is `build.test.ts`'s claim and is
+      // asserted there, off the laid screens — a rung is squared up to whole
+      // rooms, so a width difference measures the parity of the plain rung as
+      // much as it measures the porch. What matters here is only that the porch
+      // is laid at all, and that a Scribe holding nothing can cross it.
+      expect(taught.width, `seed ${seed}: the porch is not laid`).toBeGreaterThan(plain.width);
 
       const { finished } = probe(taught, contextFor(1), budgetFor(1));
       expect(finished, `taught Malchut, seed ${seed}, stalled`).toBe(true);

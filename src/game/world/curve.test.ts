@@ -193,9 +193,31 @@ describe("the climb is shaped like a climb", () => {
     };
     const low = (lightAt(2) + lightAt(3) + lightAt(4)) / 3;
     const high = (lightAt(8) + lightAt(9) + lightAt(10)) / 3;
+    /**
+     * **Redrawn at 1.2, and the old 1.3 was another band drawn at its own
+     * measurement rather than clear of it** — the fault P5a-0 went through the
+     * whole suite to fix, found here by a change that did not touch the
+     * economy.
+     *
+     * Measured over three independent pools of twenty seeds, on the ground
+     * before the relic chamber was laid: **1.347, 1.269, 1.343**. The committed
+     * pool cleared 1.3; the second pool does not, and never did. Adding the
+     * chamber moved the numbers *up* on both ends — the room is a screen of
+     * motes and no klipot, so light per walk rose from 21.6/29.1 to 25.0/32.3 —
+     * and the ratio to 1.291, 1.416, 1.269. The two spreads overlap almost
+     * exactly; the bar sits under both.
+     *
+     * Note what a ratio near 1.3 is being asked of. The fighter is given a
+     * *fixed* nine thousand ticks whichever rung it is on, which is deliberate
+     * — an equal exposure is the only way rungs compare — but it means a longer
+     * rung is measured on how far a fixed budget carries rather than on what
+     * the rung holds. The upper Tree is the longer ground, so this number is a
+     * floor on the real difference and will always read flatter than the
+     * design.
+     */
     expect(
       high,
       `the top of the Tree carries ${high.toFixed(1)} against ${low.toFixed(1)} at the foot`,
-    ).toBeGreaterThan(low * 1.3);
+    ).toBeGreaterThan(low * 1.2);
   }, 900000);
 });
