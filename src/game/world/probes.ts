@@ -720,7 +720,22 @@ export interface Fight {
  * the rows came on: eight runs in ten went out in Gevurah, none of it about the
  * fight.
  */
-export function fighter(world: World, ctx: StepContext, ticks: number): Fight {
+export function fighter(
+  world: World,
+  ctx: StepContext,
+  ticks: number,
+  /**
+   * **`fights: false` is the runner** — the identical walker with the writing
+   * hand taken away, and nothing else changed. It exists to answer a complaint
+   * from play that no probe in this file could: *most of the small klipot can
+   * simply be run past*. That is a question about the difference between two
+   * Scribes on the same ground, and the only honest way to ask it is with one
+   * driver and one switch. It still gives ground when something is on top of
+   * it, because a runner who walks into things measures suicide rather than
+   * running.
+   */
+  opts: { fights?: boolean } = {},
+): Fight {
   const aim = steering(world, ctx.verbs);
   let best = aim.left(world.player);
   let mark = best;
@@ -777,8 +792,13 @@ export function fighter(world: World, ctx: StepContext, ticks: number): Fight {
         nearestDy = dy;
       }
     }
-    const aimUp = nearest !== undefined && nearestDy < -TILE_SIZE * 0.75;
-    const aimDown = nearest !== undefined && nearestDy > TILE_SIZE * 0.75;
+    // Aiming is part of throwing, so a Scribe with no mark to throw does not do
+    // it — and it is not idle in this game: `up` is also what begins a climb on
+    // a vine, so a runner pressing it near a klipah would be steering as well as
+    // aiming, and the comparison would be measuring two different walkers.
+    const aiming = opts.fights !== false && nearest !== undefined;
+    const aimUp = aiming && nearestDy < -TILE_SIZE * 0.75;
+    const aimDown = aiming && nearestDy > TILE_SIZE * 0.75;
 
     // Give ground, then stand and write. The retreat has a floor as well as a
     // ceiling: a klipah that keeps walking into you re-triggers the retreat
@@ -812,7 +832,8 @@ export function fighter(world: World, ctx: StepContext, ticks: number): Fight {
       // is retreating, so a probe that throws while backing off throws every
       // mark *away* from the thing chasing it. It read as the klipot being
       // brutal and the marks being feeble; it was the bot shooting backwards.
-      strike: !backingOff && nearest !== undefined && p.markCooldown === 0,
+      strike:
+        opts.fights !== false && !backingOff && nearest !== undefined && p.markCooldown === 0,
     };
 
     step(world, input, ctx);
