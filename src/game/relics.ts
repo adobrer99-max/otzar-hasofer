@@ -1,3 +1,8 @@
+import type { Grace } from "./abilities";
+import { LAMPS } from "./combat";
+import type { EncounterRule } from "./encounter";
+import { VEIL_COST } from "./encounter";
+import type { Effect } from "./items";
 import type { SefirahId } from "../types/letter";
 
 /**
@@ -37,13 +42,86 @@ import type { SefirahId } from "../types/letter";
  * horizontals and is broken by declaration order in `EDGES`** — a different
  * answer again from the region index `curve.test.ts` uses. Do not mix them.
  *
- * **What they do — not yet.** Every relic states a bargain: one thing given and
- * one thing taken. The prose is authored here and read by the chooser and the
- * Book; the *mechanism* lands later, deliberately, because a relic acts on
- * three different layers (world generation, the scope of a run, and the
- * Scribe's own numbers) and each needs its own wiring and its own re-measured
- * bands. Nothing in this file is written and never read.
+ * **What they do.** Every relic states a bargain — one thing given and one
+ * thing taken — and every one of them makes it, on one of three layers:
+ *
+ * - **`bends`**, the day's own layer, the one the Seven Encounters occupy.
+ * - **`keeps`**, the rules that are not numbers: one flag, one site, the same
+ *   shape the six authored vessel behaviours took.
+ * - **`effect`**, the Scribe's numbers, in the vessels' and guardians' own
+ *   currency. Exactly one relic has one, which is the point.
+ *
+ * `foldRelics` at the foot of this file composes all three beside the day's
+ * rule and is the only thing that should; what it produces is wired into the
+ * world in its own slice, so that a band that moves is attributable to the
+ * wiring rather than to the table.
  */
+
+/**
+ * **What a relic bends about the climb — the day's own layer, scaled and never
+ * overwritten.**
+ *
+ * The Seven Encounters already own this layer and their fields are *absolute*:
+ * the Second Encounter says a klipah broken in a sealed room pays twice, the
+ * Seventh says a veiling costs nothing. Three relics carried beside a rule is
+ * four objects with a claim on the same numbers, and `EncounterRule` has no
+ * fold — `Effect` has one and this deliberately does not.
+ *
+ * So the precedence is stated rather than discovered: **the day sets the
+ * number, and a relic can only bend what the day left.** Every field here is a
+ * multiplier on the rule's own value, except `lamps`, which is added. Shabbat's
+ * `veilCost: 0` therefore survives any relic that would raise it, because zero
+ * times anything is zero — and that is the right answer, not an accident: a day
+ * the game declared free is not something an object in your hand overrules.
+ */
+export interface Bending {
+  /** Light gathered in the Encounter's own Sefirah, multiplied again. */
+  motes?: number;
+  /** What a klipah broken inside a sealed room pays. */
+  sealed?: number;
+  /** Light in every shell, wherever it breaks. */
+  husks?: number;
+  /** How many klipot stand on a rung. */
+  klipot?: number;
+  /** What a veiling takes — a multiplier on the day's cost, never an override. */
+  veilCost?: number;
+  /** What a Sefirah costs to kindle. No Encounter touches this; relics may. */
+  kindle?: number;
+  /** Lamps beyond the three, added. May be negative — some relics take one. */
+  lamps?: number;
+}
+
+/**
+ * **The rules a relic keeps that are not numbers** — one flag, one site.
+ *
+ * The same shape the six authored vessel behaviours took in P5b (`lingers`,
+ * `returns`, `heavy`, `spared`, `keeps`, `relights`), and for the same reason:
+ * an object whose whole line is a scalar should stay one, and an object whose
+ * line is a *rule* cannot be made into a scalar without losing it. Each of
+ * these is read at exactly one place in the game.
+ */
+export interface Keeping {
+  /** **The tablets.** A fall takes none of the light in hand. */
+  keepsLight?: boolean;
+  /** **The tablets.** The crown will not receive you — only all ten kindled. */
+  kindledOnly?: boolean;
+  /** **The foundation stone.** A fall wakes you where you set out, not lower. */
+  wakesHigh?: boolean;
+  /** **Aaron's rod.** The first lamp lost on a rung buds back, once, below the Abyss. */
+  buds?: boolean;
+  /** **The fire of the altar.** The last lamp relights itself, once a climb. */
+  perpetual?: boolean;
+  /** **The Urim.** A Word-Gate names its root, and taking that answer costs a lamp. */
+  answers?: boolean;
+  /** **The Ark.** No vessel's price is charged. */
+  bears?: boolean;
+  /** **The Ark.** Only one vessel may be lifted in a climb. */
+  oneVessel?: boolean;
+  /** **The Shamir.** Stone does not stop a mark. */
+  cuts?: boolean;
+  /** **The anointing oil.** How many kindlings are cheap before it is spent. */
+  spends?: number;
+}
 
 export interface Relic {
   id: string;
@@ -59,6 +137,17 @@ export interface Relic {
   gives: string;
   /** And the half that is a price. Every relic has one. */
   takes: string;
+  /** What it bends about the day. */
+  bends?: Bending;
+  /** What it keeps that is a rule rather than a number. */
+  keeps?: Keeping;
+  /**
+   * And what it makes of the Scribe, in the vessels' and the guardians' own
+   * currency — folded by `powersFrom` through the channel `boonsFrom` already
+   * uses. Only one relic has one, which is the point: `Effect` is a layer
+   * relics stay off wherever their line can be said another way.
+   */
+  effect?: Effect;
 }
 
 /**
@@ -81,6 +170,7 @@ export const RELICS: readonly Relic[] = [
       "They could not keep it and they dared not simply give it back, so they sent a guilt-offering along with it in a box: five golden tumours and five golden mice, the plague itself worked in gold. It came home out of the hands of the nations, and what came home with it was the price they paid.",
     gives: "What you break gives up more of the light in it.",
     takes: "You set out with one lamp fewer.",
+    bends: { husks: 1.5, lamps: -1 },
   },
   {
     id: "shetiyah",
@@ -91,7 +181,9 @@ export const RELICS: readonly Relic[] = [
     hidden:
       "It stood three fingers above the ground in the place where the Ark had been, after there was no longer an Ark. The world was begun from this stone and the world is still resting on it, which is the whole reason a thing this plain is worth hiding.",
     gives: "A fall costs you no ground — you wake where you set out from.",
-    takes: "It takes the light instead, and takes more of it.",
+    takes: "A veiling takes twice the light instead.",
+    bends: { veilCost: 2 },
+    keeps: { wakesHigh: true },
   },
   {
     id: "matteh",
@@ -101,8 +193,10 @@ export const RELICS: readonly Relic[] = [
     source: "Bamidbar 17:23 — it brought forth buds, and bloomed blossoms, and yielded almonds",
     hidden:
       "A dead stick among twelve dead sticks, laid up overnight before the testimony. In the morning it had budded and blossomed and borne almonds all at once — bud and flower and fruit on one branch, which is not how anything grows — and that ended the argument about who was chosen.",
-    gives: "The first lamp you lose on a rung comes back to you.",
-    takes: "It comes back only once, and never above the Abyss.",
+    gives: "The first lamp you lose on a rung buds back — once, and never above the Abyss.",
+    takes: "The light you gather is thinner for it.",
+    bends: { motes: 0.8, husks: 0.8 },
+    keeps: { buds: true },
   },
   {
     id: "esh",
@@ -113,7 +207,9 @@ export const RELICS: readonly Relic[] = [
     hidden:
       "It came down once and after that it was never lit again, only kept: fed through every night and carried under a copper cover on every journey. Nobody made this fire. What the priests did all their lives was refuse to let it stop.",
     gives: "Your last lamp relights itself, once in a climb.",
-    takes: "The light you gather is worth less while you carry it.",
+    takes: "Every shell you break gives up a quarter less.",
+    bends: { husks: 0.75 },
+    keeps: { perpetual: true },
   },
   {
     id: "luchot",
@@ -125,6 +221,7 @@ export const RELICS: readonly Relic[] = [
       "The whole ones and the smashed ones in the same box, and no one ever proposed throwing the smashed ones away. What was broken on the way down the mountain was carried for forty years and buried with the rest.",
     gives: "A fall takes none of the light you were carrying.",
     takes: "The crown will not receive you. Only all ten kindled will end this climb.",
+    keeps: { keepsLight: true, kindledOnly: true },
   },
   {
     id: "urim",
@@ -136,6 +233,7 @@ export const RELICS: readonly Relic[] = [
       "Letters lit in the stones of the breastplate, and a judgment that could be asked for and got. They were not in the second house. Whatever was asked after that was asked into a silence, and the answer had to be worked out.",
     gives: "A Word-Gate names the root it wants.",
     takes: "Asking costs a lamp, every time you ask.",
+    keeps: { answers: true },
   },
   {
     id: "shemen",
@@ -145,8 +243,10 @@ export const RELICS: readonly Relic[] = [
     source: "Shemot 30:31 — this shall be a holy anointing oil unto me throughout your generations",
     hidden:
       "Moses made it once, in the wilderness, twelve logs of it, and it was never made again — the recipe stands in the text and using it for anything else carries a death sentence. Everything consecrated for a thousand years was consecrated out of that one jar, and the jar did not empty.",
-    gives: "Kindling a Sefirah costs less.",
+    gives: "Kindling a Sefirah costs a third less.",
     takes: "For the first three only. After that the oil is spent.",
+    bends: { kindle: 0.66 },
+    keeps: { spends: 3 },
   },
   {
     id: "aron",
@@ -158,6 +258,7 @@ export const RELICS: readonly Relic[] = [
       "The staves were never to be taken out of the rings, so it was always ready to be lifted and never actually needed lifting: the men who bore it were held up off the ground by the thing they were holding up. Josiah put it away and it has not been seen since.",
     gives: "What you carry costs you nothing — no vessel's price is charged.",
     takes: "You may lift only one vessel in a climb.",
+    keeps: { bears: true, oneVessel: true },
   },
   {
     id: "shamir",
@@ -169,6 +270,8 @@ export const RELICS: readonly Relic[] = [
       "No bigger than a barleycorn, and no iron was lifted over the stones of the house because this went through them instead. It could not be kept in anything of metal; they carried it wrapped in wool inside a lead basket full of barley bran. It went when the house went.",
     gives: "Stone does not stop what you write.",
     takes: "The mark goes slower for the weight of it.",
+    keeps: { cuts: true },
+    effect: { speed: 0.75 },
   },
 ];
 
@@ -197,4 +300,112 @@ export function carried(chosen: readonly string[], found: readonly string[]): Re
     .filter((id) => kept.has(id) && relicById[id] && !seen.has(id) && seen.add(id))
     .slice(0, CARRIED)
     .map((id) => relicById[id]);
+}
+
+/**
+ * **How the climb reads once the day and what is carried are both accounted
+ * for.** One object, so nothing downstream has to know there were four.
+ */
+export interface Climbing {
+  /** Light in the day's own Sefirah, multiplied. */
+  motes: number;
+  /** What a klipah broken inside a sealed room pays. */
+  sealed: number;
+  /** Light in every shell, wherever it breaks. */
+  husks: number;
+  /** How many klipot stand on a rung. */
+  klipot: number;
+  /** Lamps beyond the three. Never takes the last one. */
+  lamps: number;
+  /** What a veiling takes off the light gathered. */
+  veilCost: number;
+  /** What a Sefirah costs to kindle, multiplied. */
+  kindle: number;
+  /** The day's, never a relic's — see below. */
+  guestsFree: boolean;
+  grants: readonly Grace[];
+  /** The rules, OR'd together; `spends` takes the most generous. */
+  keeps: Keeping;
+  /** Handed on to `powersFrom`'s existing boon channel. */
+  effects: readonly Effect[];
+}
+
+/**
+ * **The day, and then what is carried — in that order, and never the reverse.**
+ *
+ * Three things this settles, each of which is a way it could have gone quietly
+ * wrong:
+ *
+ * 1. **`EncounterRule` has no fold and is not given one.** `Effect` has `fold`
+ *    because a Scribe may hold many vessels; a climb has exactly one day. So
+ *    the rule's numbers are read once, absolutely, and relics multiply what is
+ *    left. That means Shabbat's `veilCost: 0` cannot be raised by an object in
+ *    your hand — zero times two is zero — which is the answer a player would
+ *    expect and would not have got from a "last one wins" policy.
+ * 2. **Relics compose *beside* the rule, never through it.** This takes an
+ *    already-resolved `EncounterRule`, so there is no way to route a relic
+ *    through `ruleNumber` — and that matters, because `ruleOf` ignores
+ *    `ruleNumber` while `encounterNumber` is set. A relic merged that way would
+ *    do nothing at all for a new Scribe's first seven climbs and then start
+ *    working on the eighth, which is the kind of bug nobody reports because
+ *    nobody could describe it.
+ * 3. **A relic grants no grace and frees no guest.** `grants` and `guestsFree`
+ *    come from the day alone. The same rule the vessels have kept since they
+ *    were written: an object may change what the numbers are, never what a body
+ *    can do. The letters own the verbs and the graces.
+ */
+export function foldRelics(
+  rule: EncounterRule | undefined,
+  relics: readonly Relic[],
+): Climbing {
+  const climb: Climbing = {
+    motes: rule?.motes ?? 1,
+    sealed: rule?.sealed ?? 1,
+    husks: rule?.husks ?? 1,
+    klipot: rule?.klipot ?? 1,
+    lamps: rule?.lamps ?? 0,
+    veilCost: rule?.veilCost ?? VEIL_COST,
+    kindle: 1,
+    guestsFree: rule?.guestsFree ?? false,
+    grants: rule?.grants ?? [],
+    keeps: {},
+    effects: [],
+  };
+  const keeps: Keeping = {};
+  const effects: Effect[] = [];
+
+  for (const relic of relics) {
+    const bends = relic.bends;
+    if (bends) {
+      climb.motes *= bends.motes ?? 1;
+      climb.sealed *= bends.sealed ?? 1;
+      climb.husks *= bends.husks ?? 1;
+      climb.klipot *= bends.klipot ?? 1;
+      climb.veilCost *= bends.veilCost ?? 1;
+      climb.kindle *= bends.kindle ?? 1;
+      climb.lamps += bends.lamps ?? 0;
+    }
+    for (const [key, value] of Object.entries(relic.keeps ?? {})) {
+      if (typeof value === "number") {
+        // The most generous wins, so carrying two things that both spend does
+        // not leave you with the meaner of the two.
+        const held = (keeps as Record<string, unknown>)[key];
+        (keeps as Record<string, unknown>)[key] = Math.max(typeof held === "number" ? held : 0, value);
+      } else if (value) {
+        (keeps as Record<string, unknown>)[key] = true;
+      }
+    }
+    if (relic.effect) effects.push(relic.effect);
+  }
+
+  // **A relic may take a lamp; it may not take the last one.** `argaz` costs
+  // one and the game is built on three, so three of a kind would leave a Scribe
+  // at zero before setting out — which is not a price, it is an ending.
+  climb.lamps = Math.max(climb.lamps, 1 - LAMPS);
+  // Rounded here rather than at the call site, because a veiling takes whole
+  // light and every reader of this would otherwise round it their own way.
+  climb.veilCost = Math.max(0, Math.round(climb.veilCost));
+  climb.keeps = keeps;
+  climb.effects = effects;
+  return climb;
 }
