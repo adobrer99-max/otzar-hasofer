@@ -144,7 +144,9 @@
   padding: var(--space-2);
   border: 1px solid var(--border-hairline);
   border-radius: var(--radius);
-  background: var(--bg-base);
+  /* `--bg-base` is not a token this project has, so the field had no fill at
+     all. `--bg-raised` is what the Herald's own fields use. */
+  background: var(--bg-raised);
   color: inherit;
   width: 100%;
 }
