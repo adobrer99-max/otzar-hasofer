@@ -500,12 +500,26 @@
   width: 100%;
 }
 
+/*
+ * **The belt fits the screen it is on.**
+ *
+ * Twenty-two letters at a fixed 1.9rem is 757px of tiles, which a 1280-wide
+ * desktop lays in one row and a 390-wide phone wraps into **three** — a sixth
+ * of the screen, permanently, above the ground the game is played on. Measured
+ * at `--phone` on a Scribe holding the whole alphabet, which is the hand the
+ * back half of every climb is walked with.
+ *
+ * The clamp is fluid rather than a breakpoint because the belt's problem is
+ * arithmetic and not a device: it needs whatever width divides into two rows.
+ * The upper bound is the size it always was, so nothing wider than about
+ * 45rem changes at all.
+ */
 .beltLetter {
-  width: 1.9rem;
-  height: 1.9rem;
+  width: clamp(1.35rem, 4.2vw, 1.9rem);
+  height: clamp(1.35rem, 4.2vw, 1.9rem);
   display: grid;
   place-items: center;
-  font-size: 1.15rem;
+  font-size: clamp(0.85rem, 2.7vw, 1.15rem);
   color: var(--accent);
   border: 1px solid var(--border-hairline);
   border-radius: var(--radius-md);
