@@ -313,6 +313,15 @@ export interface World {
   spared?: boolean;
   /** Whether the Lampstand's middle light has already refused to go out. */
   relit?: boolean;
+  /** Whether Aaron's rod has already budded a lamp back on this rung. */
+  budded?: boolean;
+  /**
+   * Whether the fire of the altar has been spent — **once a climb**, not once a
+   * rung, which is the only reason this leaves the world at all: the page reads
+   * it when the rung ends and writes `relicsSpent` on the record, so a reload
+   * cannot hand it back. Nothing else in `World` outlives its own rung.
+   */
+  everlasting?: boolean;
   /**
    * Which kinds this rung draws its klipot from.
    *

@@ -401,7 +401,44 @@ function fold(into: Powers, effect: Effect): Powers {
  * What a set of vessels amounts to — their own effects, and then whichever
  * synergies both halves of are actually held.
  */
-export function powersFrom(held: readonly string[], boons: readonly Effect[] = []): Powers {
+/**
+ * **The Ark bears what bears it.** *"The staves were never to be taken out of
+ * the rings, so it was always ready to be lifted and never actually needed
+ * lifting: the men who bore it were held up off the ground by the thing they
+ * were holding up."*
+ *
+ * So a vessel's *price* is not charged — every number a keli would make worse
+ * is dropped and its gifts are kept. Neutral is one for the rates and nought
+ * for the two quantities, and `cooldown` is the one that reads backwards:
+ * below one is faster, so above one is the cost.
+ *
+ * The behaviours are never stripped. None of them is a price — a mark that
+ * arcs or bounces is a different mark, not a worse one — and a vessel whose
+ * whole line is a behaviour would otherwise come out of the Ark as nothing.
+ */
+function unpriced(effect: Effect): Effect {
+  const kept: Effect = { ...effect };
+  for (const key of ["bite", "speed", "iframes", "light"] as const) {
+    if ((kept[key] ?? 1) < 1) delete kept[key];
+  }
+  if ((kept.cooldown ?? 1) > 1) delete kept.cooldown;
+  if ((kept.reach ?? 0) < 0) delete kept.reach;
+  if ((kept.lamps ?? 0) < 0) delete kept.lamps;
+  return kept;
+}
+
+export function powersFrom(
+  held: readonly string[],
+  boons: readonly Effect[] = [],
+  /**
+   * What the reliquary keeps that bears on this fold — today only the Ark. Note
+   * it is applied to the *vessels* and not to the boons: a guardian's grace is
+   * not carried and has no price, and the one relic with an `Effect` of its own
+   * (the Shamir's slower mark) rides the boon channel, where the Ark has no
+   * business lifting its weight.
+   */
+  keeps: { bears?: boolean } = {},
+): Powers {
   let powers = NOTHING;
   // **The boons fold first**, and they are the same shape as a vessel's effect
   // on purpose: a guardian broken in some earlier climb is a thing the Scribe
@@ -409,15 +446,16 @@ export function powersFrom(held: readonly string[], boons: readonly Effect[] = [
   // else multiplies up from. See `guardians.ts` — the Encounters change the
   // world, and these change the Scribe.
   for (const boon of boons) powers = fold(powers, boon);
+  const borne = (effect: Effect) => (keeps.bears ? unpriced(effect) : effect);
   for (const id of held) {
     const keli = keliById[id];
     if (!keli) continue;
-    powers = fold(powers, keli.effect);
+    powers = fold(powers, borne(keli.effect));
   }
   for (const id of held) {
     const keli = keliById[id];
     if (keli?.synergy && held.includes(keli.synergy.with)) {
-      powers = fold(powers, keli.synergy.effect);
+      powers = fold(powers, borne(keli.synergy.effect));
     }
   }
   return powers;

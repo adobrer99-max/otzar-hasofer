@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { Grace, Verb } from "./abilities";
 import type { Effect } from "./items";
+import type { Keeping } from "./relics";
 import { controlById, KEY_MAP, PAD_LAYOUT, type ControlId } from "./controls";
 import { drawWorld, trackCamera, type Camera } from "./render/draw";
 import { paletteOf, readPalette, type Palette } from "./render/palette";
@@ -106,6 +107,11 @@ export interface GameCanvasProps {
    * cannot be dropped, spent or declined.
    */
   boons: readonly Effect[];
+  /**
+   * What the reliquary keeps, minus anything already spent — the three rules
+   * `step.ts` reads every tick. See `relics.ts`.
+   */
+  keeps: Keeping;
   /** Suspends the loop for a plate, a pause, or an end-of-region panel. */
   paused: boolean;
   onLetter: (letterId: string) => void;
@@ -125,6 +131,7 @@ export function GameCanvas({
   verbs,
   graces,
   boons,
+  keeps,
   markGlyph,
   items,
   paused,
@@ -173,7 +180,7 @@ export function GameCanvas({
   };
 
   const ctxRef = useRef<StepContext>({ verbs, graces });
-  ctxRef.current = { verbs, graces, items, boons, markGlyph, ...forward };
+  ctxRef.current = { verbs, graces, items, boons, keeps, markGlyph, ...forward };
 
   // --- input --------------------------------------------------------------
 

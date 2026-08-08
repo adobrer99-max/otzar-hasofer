@@ -175,7 +175,7 @@ describe("the bargains are mechanical", () => {
     const gift: Relic = {
       ...RELICS[0],
       id: "a-pure-gift",
-      bends: { husks: 2, motes: 2, lamps: 1 },
+      bends: { husks: 2, light: 2, lamps: 1 },
       keeps: { perpetual: true },
       effect: { bite: 2 },
     };

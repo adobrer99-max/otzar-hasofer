@@ -1,8 +1,9 @@
 import type { Grace } from "./abilities";
 import { LAMPS } from "./combat";
 import type { EncounterRule } from "./encounter";
-import { VEIL_COST } from "./encounter";
+import { illuminedBy, VEIL_COST } from "./encounter";
 import type { Effect } from "./items";
+import type { World } from "./world/types";
 import type { SefirahId } from "../types/letter";
 
 /**
@@ -75,8 +76,18 @@ import type { SefirahId } from "../types/letter";
  * the game declared free is not something an object in your hand overrules.
  */
 export interface Bending {
-  /** Light gathered in the Encounter's own Sefirah, multiplied again. */
-  motes?: number;
+  /**
+   * **Light in every mote, wherever it lies** — and note that this is *not*
+   * `EncounterRule.motes`, which the day scopes to one Sefirah.
+   *
+   * The First Encounter's rule is "light counts double in Chesed", and
+   * `layEncounter` applies it only where `illuminedBy` says. A relic is carried
+   * up the whole Tree; a rod that made light thinner only in Chesed would be a
+   * bargain a player could not feel and could not reason about. So the two
+   * travel in separate fields all the way to `world.orPerMote` — see
+   * `Climbing.light`.
+   */
+  light?: number;
   /** What a klipah broken inside a sealed room pays. */
   sealed?: number;
   /** Light in every shell, wherever it breaks. */
@@ -195,7 +206,7 @@ export const RELICS: readonly Relic[] = [
       "A dead stick among twelve dead sticks, laid up overnight before the testimony. In the morning it had budded and blossomed and borne almonds all at once — bud and flower and fruit on one branch, which is not how anything grows — and that ended the argument about who was chosen.",
     gives: "The first lamp you lose on a rung buds back — once, and never above the Abyss.",
     takes: "The light you gather is thinner for it.",
-    bends: { motes: 0.8, husks: 0.8 },
+    bends: { light: 0.8, husks: 0.8 },
     keeps: { buds: true },
   },
   {
@@ -307,8 +318,10 @@ export function carried(chosen: readonly string[], found: readonly string[]): Re
  * for.** One object, so nothing downstream has to know there were four.
  */
 export interface Climbing {
-  /** Light in the day's own Sefirah, multiplied. */
+  /** Light in the day's own Sefirah, multiplied — the day's, and scoped. */
   motes: number;
+  /** Light in every mote everywhere, from the relics — see `Bending.light`. */
+  light: number;
   /** What a klipah broken inside a sealed room pays. */
   sealed: number;
   /** Light in every shell, wherever it breaks. */
@@ -360,6 +373,7 @@ export function foldRelics(
 ): Climbing {
   const climb: Climbing = {
     motes: rule?.motes ?? 1,
+    light: 1,
     sealed: rule?.sealed ?? 1,
     husks: rule?.husks ?? 1,
     klipot: rule?.klipot ?? 1,
@@ -377,7 +391,7 @@ export function foldRelics(
   for (const relic of relics) {
     const bends = relic.bends;
     if (bends) {
-      climb.motes *= bends.motes ?? 1;
+      climb.light *= bends.light ?? 1;
       climb.sealed *= bends.sealed ?? 1;
       climb.husks *= bends.husks ?? 1;
       climb.klipot *= bends.klipot ?? 1;
@@ -408,4 +422,63 @@ export function foldRelics(
   climb.keeps = keeps;
   climb.effects = effects;
   return climb;
+}
+
+/**
+ * **What kindling a Sefirah actually costs**, given the day, what is carried,
+ * and how much of the Tree is already lit.
+ *
+ * Takes the base rather than importing `kindleCost`, so this file stays free of
+ * storage — and, more usefully, so the map and the kindling itself cannot drift
+ * apart: `TreeMap` prices what it offers through this, and `kindleHere` charges
+ * through this, and a plate that named a cheaper number than the one taken
+ * would be the worst bug this phase could ship.
+ *
+ * `spends` is the anointing oil, which is the only relic whose price is a
+ * *count*: Moses made twelve logs of it once and it was never made again, so
+ * the third Sefirah is the last one it consecrates. Counted off `sefirotLit`
+ * rather than stored, because that is already a fold and a stored counter would
+ * be a second truth about the same fact.
+ */
+export function kindlePrice(base: number, alreadyLit: number, climb: Climbing): number {
+  const spends = climb.keeps.spends;
+  const spent = spends !== undefined && alreadyLit >= spends;
+  return Math.max(1, Math.round(base * (spent ? 1 : climb.kindle)));
+}
+
+/**
+ * **Lay the climb onto a world as it is entered.**
+ *
+ * Lifted out of `GamePage` rather than left there, and the reason is the whole
+ * of why this phase could be got wrong quietly: nothing in the suite renders
+ * the page, so a rule applied in a `useCallback` is a rule no test can see.
+ * `onVessel` was missing from the step context for the life of P5b and no test
+ * could have caught it. This is the same class of thing pointed at a system
+ * with eleven levers, so the levers are pulled here, where `relicsAct.test.ts`
+ * drives exactly the code the page runs.
+ *
+ * The light is the one number that stays in two pieces, and it stays in two
+ * pieces on purpose. `EncounterRule.motes` is **scoped** — the First's rule is
+ * "light counts double in Chesed", and `illuminedBy` says where — while a relic
+ * is carried up the whole Tree. Folded into one number, Aaron's rod would have
+ * made light thinner in Chesed and nowhere else: a bargain a player could
+ * neither feel nor reason about.
+ */
+export function layClimb(
+  world: World,
+  rule: EncounterRule | undefined,
+  climb: Climbing,
+  /** The path's two ends, which is what the day's scoped light is asked about. */
+  here: readonly SefirahId[],
+): void {
+  const lights = illuminedBy(rule);
+  const scoped = rule?.motes && lights && here.includes(lights as SefirahId) ? rule.motes : 1;
+  world.orPerMote = Math.max(1, Math.round(world.orPerMote * scoped * climb.light));
+  world.huskLight = climb.husks;
+  world.sealedLight = climb.sealed;
+  world.veilCost = climb.veilCost;
+  // Never the last one — `foldRelics` holds that floor, and this is where it
+  // lands. Three lamp-takers would leave a Scribe at zero before setting out,
+  // which is not a price but an ending.
+  world.player.lamps += climb.lamps;
 }

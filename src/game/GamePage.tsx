@@ -88,7 +88,17 @@ import { timesFreed } from "../storage/ascentRepo";
 import { TreeMap } from "./TreeMap";
 import { Book } from "./Book";
 import { lastSealed, relicsKept, timesStood } from "./book";
-import { carried, CARRIED, relicById, RELICS, type Relic } from "./relics";
+import {
+  carried,
+  CARRIED,
+  foldRelics,
+  kindlePrice,
+  layClimb,
+  relicById,
+  RELICS,
+  type Keeping,
+  type Relic,
+} from "./relics";
 import { afterWalking, crossesAbyss, nodeOf, TREE_PATHS, type TreePath } from "./tree";
 import { readWarp, warpParams, warpRecord, type WarpOptions } from "./dev/warp";
 import { frameStats, installProbe, neighbourhood, phaseStats, probeOf } from "./dev/probe";
@@ -113,12 +123,15 @@ import styles from "./GamePage.module.css";
  * a claim `sealedAt` has made for a long time and only half of which the game
  * could ever act on.
  */
-function endingOffered(ascent: AscentRecord): SealKind | undefined {
-  return sealOffered({
-    at: standingAt(ascent),
-    sefirotLit: ascent.sefirotLit ?? [],
-    guardiansBroken: ascent.guardiansBroken ?? [],
-  });
+function endingOffered(ascent: AscentRecord, keeps: Keeping = {}): SealKind | undefined {
+  return sealOffered(
+    {
+      at: standingAt(ascent),
+      sefirotLit: ascent.sefirotLit ?? [],
+      guardiansBroken: ascent.guardiansBroken ?? [],
+    },
+    keeps,
+  );
 }
 
 type Plate =
@@ -386,6 +399,20 @@ export function GamePage() {
    * which is why the mounted list and the current record are folded together
    * rather than one being trusted.
    */
+  /**
+   * **What is actually in hand this climb.** Re-run through `carried` rather
+   * than trusted, though `newRecord` wrote it: it comes off storage, and a
+   * record written by an older build or edited by hand must not be able to put
+   * a fourth relic in a hand or an id that names nothing.
+   */
+  const relics = useMemo(
+    () => carried(ascent?.reliquary ?? [], ascent?.reliquary ?? []),
+    [ascent?.reliquary],
+  );
+  const relicEffects = useMemo(
+    () => relics.flatMap((r) => (r.effect ? [r.effect] : [])),
+    [relics],
+  );
   const boons = useMemo(
     () => {
       // What this climb has broken counts too, and counts *now* — its record is
@@ -393,10 +420,44 @@ export function GamePage() {
       // should already be paying.
       const times = { ...freedEver };
       for (const s of new Set(ascent?.guardiansBroken ?? [])) times[s] = (times[s] ?? 0) + 1;
-      return boonsFrom(times);
+      /**
+       * **And a relic's `Effect` comes in by this same door.** Exactly one has
+       * one — the Shamir, a mark that passes stone and goes slower for it — and
+       * that is the point: `Effect` is the vessels' and guardians' currency,
+       * `powersFrom` folds it multiplicatively, and nine permanent stacking
+       * Effects chosen three at a time would be a second boon system with no
+       * cap. Where a relic's line can be said another way it is said another
+       * way; where it cannot, it rides the channel that already exists rather
+       * than growing a third one.
+       */
+      return [...boonsFrom(times), ...relicEffects];
     },
-    [freedEver, ascent?.guardiansBroken],
+    [freedEver, ascent?.guardiansBroken, relicEffects],
   );
+
+  /**
+   * **The climb, once the day and what is carried are both counted** — one
+   * object, folded once, and the only thing downstream reads.
+   *
+   * `foldRelics` is given an *already-resolved* rule, which is what makes
+   * routing a relic through `ruleNumber` unexpressible: `ruleOf` ignores
+   * `ruleNumber` while `encounterNumber` is set, so a relic merged that way
+   * would do nothing for a new Scribe's first seven climbs and start working on
+   * the eighth. See `relics.ts`.
+   *
+   */
+  const climbing = useMemo(() => foldRelics(ruleOf(ascent), relics), [encounter, ascent, relics]);
+  /**
+   * And what it keeps *now* — the one-shots that have already been spent this
+   * climb are taken out before the loop ever sees them. `climbing.keeps` is
+   * what the reliquary promises; this is what is left of it.
+   */
+  const keeps = useMemo(() => {
+    const spent = new Set(ascent?.relicsSpent ?? []);
+    return spent.has("esh") ? { ...climbing.keeps, perpetual: false } : climbing.keeps;
+  }, [climbing, ascent?.relicsSpent]);
+  const climbingRef = useRef(climbing);
+  climbingRef.current = climbing;
 
   const audio = useGameAudio(
     worldRef,
@@ -461,21 +522,17 @@ export function GamePage() {
    */
   const layEncounter = useCallback(
     (world: World, here: readonly SefirahId[]) => {
-      const rule = ruleOf(ascent);
-      if (!rule) return;
-      // The rule's own Sefirah, not the live Encounter's — past the seven
-      // there is no live Encounter, and a chosen First would have lit nothing.
-      const lights = illuminedBy(rule);
-      if (rule.motes && lights && here.includes(lights as SefirahId)) {
-        world.orPerMote = Math.max(1, Math.round(world.orPerMote * rule.motes));
-      }
-      if (rule.husks) world.huskLight = rule.husks;
-      if (rule.sealed) world.sealedLight = rule.sealed;
-      if (rule.veilCost !== undefined) world.veilCost = rule.veilCost;
-      if (rule.lamps) world.player.lamps += rule.lamps;
+      // **The day and what is carried, laid together** — `foldRelics` has
+      // already settled the precedence (the day is absolute, a relic bends what
+      // the day left), and `layClimb` is where it lands. Both live in
+      // `relics.ts` rather than here, because nothing in the suite renders this
+      // page: a rule applied inside a `useCallback` is a rule no test can see,
+      // which is exactly how `onVessel` went missing for the whole of P5b.
+      layClimb(world, ruleOf(ascent), climbingRef.current, here);
     },
-    [encounter],
+    [encounter, ascent],
   );
+
   layEncounterRef.current = layEncounter;
 
   /**
@@ -768,6 +825,10 @@ export function GamePage() {
    */
   const takeVessel = useCallback(
     (keliId: string) => {
+      // **The Ark carries one thing.** *"The staves were never to be taken out
+      // of the rings."* Refused here as well as hidden on the plate, because a
+      // plate is a claim and this is the rule.
+      if (keeps.oneVessel && (ascent?.items ?? []).length >= 1) return;
       const pedestal = world?.entities.find((e) => e.kind === "vessel" && e.ref === keliId);
       if (pedestal) pedestal.taken = true;
       setAscent((prev) =>
@@ -778,7 +839,7 @@ export function GamePage() {
       audio.onVessel();
       setPlate(null);
     },
-    [world, audio],
+    [world, audio, keeps, ascent?.items],
   );
 
   const onFragment = useCallback((index: number) => {
@@ -812,6 +873,28 @@ export function GamePage() {
    * true, and a hidden root costs nothing at all — so this may be tried as
    * often as the Scribe likes.
    */
+  /**
+   * **The Urim and the Tummim** — letters lit in the stones of the breastplate,
+   * and a judgment that could be asked for and got. The gate names its root at
+   * once, and asking costs a lamp.
+   *
+   * It is not the ladder's last rung by another name. That rung is reached by
+   * climbing the whole ladder and it forfeits the light the root pays; this is
+   * immediate and pays the light in full, and takes a lamp instead — which is
+   * the difference between knowing slowly and being told.
+   *
+   * **Never the last lamp.** A question that could end a climb is not a
+   * question, and the plate simply does not offer it below two. Returned rather
+   * than thrown so the plate can say why.
+   */
+  const askTheUrim = useCallback((): boolean => {
+    const w = worldRef.current;
+    if (!w || w.player.lamps <= 1) return false;
+    w.player.lamps -= 1;
+    audio.onFragment();
+    return true;
+  }, [audio]);
+
   const inscribe = useCallback(
     (letterIds: [string, string, string], hintsTaken = 0) => {
       if (!world?.wordGate) return;
@@ -988,6 +1071,7 @@ export function GamePage() {
         : undefined;
       const next: AscentRecord = {
         ...prev,
+        relicsSpent: spentHere(prev, world),
         regionsCleared: cleared,
         or: prev.or + (world?.or ?? 0),
         ...(moved
@@ -1048,7 +1132,7 @@ export function GamePage() {
         ascent.lightOfTheDay ?? time.lightOfTheDay,
         teaching,
         (ascent.pathsWalked ?? []).includes(path.id),
-        ruleOf(ascent)?.klipot ?? 1,
+        climbing.klipot,
         ascent.items ?? [],
         // **The Houses remember.** How often this rung's House has stood for
         // the Scribe at the crown decides how far into its episodes the rung
@@ -1061,7 +1145,7 @@ export function GamePage() {
         // see `RELIC_CHUNK` for why that is not optional.
         [...kept.map((r) => r.id), ...(ascent.relicsFound ?? [])],
       );
-      const carried = powersFrom(ascent.items ?? [], boons);
+      const carried = powersFrom(ascent.items ?? [], boons, keeps);
       next.player.lamps += carried.lamps;
       next.orPerMote = Math.max(1, Math.round(next.orPerMote * carried.light));
       // The path's own two ends, not the rung's capped index — see `layEncounter`.
@@ -1071,7 +1155,7 @@ export function GamePage() {
       setVow(null);
       setPlate(null);
     },
-    [ascent, time.lightOfTheDay, layEncounter, encounter, stoodFor, kept],
+    [ascent, time.lightOfTheDay, layEncounter, encounter, stoodFor, kept, climbing],
   );
 
   /**
@@ -1096,6 +1180,17 @@ export function GamePage() {
   );
 
   /** Back to the map, from the plate at the end of a path. */
+  /**
+   * The relics a rung has used up for good — see `AscentRecord.relicsSpent`.
+   * A function rather than an inline expression because both ways out of a
+   * rung have to ask it, and two copies of this would drift.
+   */
+  const spentHere = useCallback(
+    (prev: AscentRecord, w: World | null): string[] =>
+      w?.everlasting ? [...new Set([...(prev.relicsSpent ?? []), "esh"])] : (prev.relicsSpent ?? []),
+    [],
+  );
+
   const backToTree = useCallback(() => {
     setWorld(null);
     setWalking(null);
@@ -1117,14 +1212,14 @@ export function GamePage() {
     if ((ascent.guardiansBroken ?? []).includes(at)) return;
     learnTree("guardian");
     const room = buildArena(at, ascent.seed);
-    const carried = powersFrom(ascent.items ?? [], boons);
+    const carried = powersFrom(ascent.items ?? [], boons, keeps);
     room.player.lamps += carried.lamps;
     setWalking(null);
     setFacing(at);
     setWorld(room);
     setVow(null);
     setPlate(null);
-  }, [ascent, learnTree]);
+  }, [ascent, learnTree, boons, keeps]);
 
   /**
    * Kindle where you stand. The same spend the between-rungs plate offered on
@@ -1136,7 +1231,7 @@ export function GamePage() {
     setAscent((prev) => {
       if (!prev) return prev;
       const at = standingAt(prev);
-      const cost = kindleCost(regionOfSefirah(at).index);
+      const cost = kindlePrice(kindleCost(regionOfSefirah(at).index), (prev.sefirotLit ?? []).length, climbing);
       // **Light is the second gate, not the first.** A Sefirah still held is
       // not for sale, and the map says what holds it rather than greying a
       // button out with no reason on it.
@@ -1153,7 +1248,7 @@ export function GamePage() {
       audio.onKindled();
       return next;
     });
-  }, [learnTree, audio]);
+  }, [learnTree, audio, climbing]);
 
   const sealAscent = useCallback(() => {
     setAscent((prev) => {
@@ -1198,7 +1293,14 @@ export function GamePage() {
       if (!prev) return prev;
       const next: AscentRecord = {
         ...prev,
-        ...afterFalling(prev),
+        // The reliquary has a say in what a fall costs and where it puts you —
+        // the tablets keep the light, the foundation stone keeps the ground.
+        ...afterFalling(prev, climbingRef.current.keeps),
+        // **And what this rung used up that outlives it.** Today one thing:
+        // the fire of the altar, whose mercy is once a *climb*. Read at both
+        // ways out, here and at the exit, or a Scribe who spent it and then
+        // went out would wake with it in hand again.
+        relicsSpent: spentHere(prev, worldRef.current),
         updatedAt: new Date().toISOString(),
       };
       void saveAscent(next).catch(() => undefined);
@@ -1208,7 +1310,7 @@ export function GamePage() {
     setWalking(null);
     setFacing(null);
     setPlate(null);
-  }, []);
+  }, [spentHere]);
 
   /**
    * **Arriving on the Tree opens the Tree.** Standing between rungs *is* the
@@ -1490,6 +1592,7 @@ export function GamePage() {
             onFragment={onFragment}
             onWordGate={onWordGate}
             onHouse={onHouse}
+            keeps={keeps}
             onVessel={onVessel}
             onRelic={onRelic}
             onFinish={onFinish}
@@ -1535,9 +1638,11 @@ export function GamePage() {
           onTurn={turnPrologue}
           onBack={backToTree}
           onInscribe={inscribe}
+          onAsk={askTheUrim}
           onAccept={acceptOffer}
           onTakeVessel={takeVessel}
           onTakeRelic={takeRelic}
+          keeps={climbing.keeps}
           onClose={() => setPlate(null)}
         />
       )}
@@ -1551,12 +1656,13 @@ export function GamePage() {
             <TreeMap
               ascent={ascent}
               at={standingAt(ascent)}
+              climb={climbing}
               readOnly={Boolean(world)}
               onWalk={chooseWay}
               onKindle={kindleHere}
               onFace={faceGuardian}
-              onSeal={endingOffered(ascent) ? () => setPlate({ kind: "sealed" }) : undefined}
-              sealKind={endingOffered(ascent)}
+              onSeal={endingOffered(ascent, climbing.keeps) ? () => setPlate({ kind: "sealed" }) : undefined}
+              sealKind={endingOffered(ascent, climbing.keeps)}
             />
           </div>
           {/* **The map teaches itself.** The porch taught the body and then
@@ -2401,9 +2507,11 @@ function PlateOverlay({
   onTurn,
   onBack,
   onInscribe,
+  onAsk,
   onAccept,
   onTakeVessel,
   onTakeRelic,
+  keeps,
   onClose,
 }: {
   plate: Plate;
@@ -2422,11 +2530,15 @@ function PlateOverlay({
   /** Back to the overworld, at the end of a path. */
   onBack: () => void;
   onInscribe: (letterIds: [string, string, string], hintsTaken: number) => void;
+  /** The Urim answers, for a lamp. False if there is no lamp to spare. */
+  onAsk: () => boolean;
   onAccept: (offer: UshpizinOffer) => void;
   /** A vessel accepted off its pedestal. Declining is `onClose`. */
   onTakeVessel: (keliId: string) => void;
   /** A hidden thing brought out of its chamber. Declining is `onClose`. */
   onTakeRelic: (relicId: string) => void;
+  /** What the reliquary keeps — the plates must say what is actually true. */
+  keeps: Keeping;
   onClose: () => void;
 }) {
   // Every plate autofocuses its button so the game can be played without a
@@ -2478,6 +2590,9 @@ function PlateOverlay({
           <WordGatePlate
             target={world.wordGate}
             held={ascent.lettersHeld}
+            lamps={world.player.lamps}
+            keeps={keeps}
+            onAsk={onAsk}
             onInscribe={onInscribe}
             onClose={onClose}
           />
@@ -2489,7 +2604,7 @@ function PlateOverlay({
           <AbyssPlate path={plate.path} onCross={() => onWalk(plate.path)} onBack={onClose} />
         )}
         {plate.kind === "out" && ascent && (
-          <OutPlate ascent={ascent} gathered={world?.or ?? 0} onWake={onFall} />
+          <OutPlate ascent={ascent} gathered={world?.or ?? 0} keeps={keeps} onWake={onFall} />
         )}
         {plate.kind === "sealed" && ascent && (
           <SealedPlate ascent={ascent} encounter={encounter} onSeal={onSeal} />
@@ -2771,11 +2886,18 @@ function ScrollWholePlate({ onClose }: { onClose: () => void }) {
 function WordGatePlate({
   target,
   held,
+  lamps,
+  keeps,
+  onAsk,
   onInscribe,
   onClose,
 }: {
   target: WordGateTarget;
   held: readonly string[];
+  /** So the Urim can be offered only while there is a lamp to spare. */
+  lamps: number;
+  keeps: Keeping;
+  onAsk: () => boolean;
   onInscribe: (letterIds: [string, string, string], hintsTaken: number) => void;
   onClose: () => void;
 }) {
@@ -2797,6 +2919,18 @@ function WordGatePlate({
   };
   const filled = sockets.filter(Boolean).length === 3;
   const next = ladder[asked];
+  /**
+   * **The Urim, if it is carried.** The answer at once, for a lamp, with the
+   * root's light paid in full — as against the ladder, which is free of lamps
+   * and costs the light. `asked` is deliberately left where it is: this is not
+   * a rung of the ladder and must not be charged as one.
+   *
+   * Offered only while a second lamp stands behind it. A question that could
+   * end a climb is not a question.
+   */
+  const [asking, setAsking] = useState(false);
+  const oracle = ladder.find((rung) => rung.answer);
+  const urim = keeps.answers && !asking && oracle;
 
   return (
     <>
@@ -2876,6 +3010,26 @@ function WordGatePlate({
         </Button>
         <Button onClick={onClose}>Step back</Button>
       </div>
+
+      {urim && (
+        <p className={styles.hintAsk}>
+          <button
+            type="button"
+            className={styles.linkButton}
+            disabled={lamps <= 1}
+            onClick={() => {
+              if (!onAsk()) return;
+              setAsking(true);
+              if (oracle?.answer) setSockets([...oracle.answer]);
+            }}
+          >
+            Ask the Urim
+          </button>{" "}
+          {lamps <= 1 ?
+            "· not on your last lamp — the stones will not answer into the dark"
+          : "· costs a lamp, and the root still pays in full"}
+        </p>
+      )}
 
       {next && (
         <p className={styles.hintAsk}>
@@ -3229,6 +3383,7 @@ function GuardianDonePlate({
 function OutPlate({
   ascent,
   gathered,
+  keeps,
   onWake,
 }: {
   ascent: AscentRecord;
@@ -3239,11 +3394,13 @@ function OutPlate({
    * the Scribe actually just took.
    */
   gathered: number;
+  /** What the reliquary keeps about a fall — the plate must say the truth. */
+  keeps: Keeping;
   onWake: () => void;
 }) {
-  const woke = regionOfSefirah(wakeAt(ascent));
+  const woke = regionOfSefirah(wakeAt(ascent, keeps));
   const kindled = woke.sefirah !== "malchut";
-  const lost = ascent.or + gathered;
+  const lost = keeps.keepsLight ? 0 : ascent.or + gathered;
   return (
     <>
       <p className={styles.plateKicker}>The lamps are spent</p>

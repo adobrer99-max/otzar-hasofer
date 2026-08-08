@@ -1,6 +1,7 @@
 import { lettersById } from "../data/letters";
 import type { SefirahId } from "../types/letter";
 import { kindleCost, type AscentRecord } from "../storage/ascentRepo";
+import { kindlePrice, type Climbing } from "./relics";
 import { regions } from "./regions";
 import {
   crossesAbyss,
@@ -73,6 +74,7 @@ const regionOf = Object.fromEntries(regions.map((r) => [r.sefirah, r])) as Recor
 export function TreeMap({
   ascent,
   at,
+  climb,
   readOnly = false,
   onWalk,
   onKindle,
@@ -96,11 +98,16 @@ export function TreeMap({
    * a crown nothing is holding, with a case to make and no guarantee of it.
    */
   sealKind?: SealKind;
+  /** The day and what is carried, folded — see `kindlePrice`. */
+  climb: Climbing;
 }) {
   const walked = ascent.pathsWalked ?? [];
   const lit = ascent.sefirotLit ?? [];
   const here = regionOf[at];
-  const cost = kindleCost(here.index);
+  // Priced through `kindlePrice`, exactly as `kindleHere` charges through it —
+  // the map naming a cheaper number than the one taken would be the worst bug
+  // the Reliquary could ship.
+  const cost = kindlePrice(kindleCost(here.index), lit.length, climb);
   const alreadyLit = lit.includes(at);
   /**
    * **A Sefirah is held before it is bought.** Light is the second gate; the
@@ -128,7 +135,10 @@ export function TreeMap({
    */
   const gathered = ascent.lettersHeld;
   const left = regions.filter((r) => !lit.includes(r.sefirah));
-  const owed = left.reduce((sum, r) => sum + kindleCost(r.index), 0);
+  // What the rest of the Tree would cost from here — priced in the order it
+  // would actually be lit, so the oil's three cheap kindlings are counted once
+  // rather than granted to every remaining Sefirah.
+  const owed = left.reduce((sum, r, i) => sum + kindlePrice(kindleCost(r.index), lit.length + i, climb), 0);
 
   return (
     <section className={styles.overworld}>

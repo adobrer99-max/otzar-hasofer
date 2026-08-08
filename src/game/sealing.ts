@@ -54,8 +54,23 @@ export const CROWN: SefirahId = "keter";
  * underfoot, and walking back to the crown to be told so would be a toll on
  * an ending already paid for ten times over.
  */
-export function sealOffered(standing: Standing): SealKind | undefined {
+export function sealOffered(
+  standing: Standing,
+  /**
+   * **The tablets refuse the crown.** *"Only all ten kindled will end this
+   * climb."* The one relic whose price is not a number but an ending taken off
+   * the table — a Scribe who carries the broken tablets up the Tree has
+   * committed to the consummation before setting out, and `climb.test.ts`
+   * asserts that the dash fails holding them, so the price is proved to bite
+   * rather than assumed to.
+   *
+   * Note it removes only the *crown* ending. A climb can still go out, and a
+   * lit Tree still seals — this forbids the shortcut, not the climb.
+   */
+  keeps: { kindledOnly?: boolean } = {},
+): SealKind | undefined {
   if (new Set(standing.sefirotLit).size >= TOTAL_REGIONS) return "kindled";
+  if (keeps.kindledOnly) return undefined;
   if (standing.at === CROWN && standing.guardiansBroken.includes(CROWN)) return "crown";
   return undefined;
 }

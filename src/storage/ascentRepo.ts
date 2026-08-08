@@ -148,6 +148,17 @@ export interface AscentRecord {
    */
   relicsFound?: string[];
   /**
+   * The relics whose one-shot has been used up this climb — today only the fire
+   * of the altar, whose last-lamp mercy is *once a climb* rather than once a
+   * rung.
+   *
+   * On the record rather than in React state for the same reason `relicsFound`
+   * is: `currentAscent` resumes an unsealed climb, so a reload would hand the
+   * fire back and a Scribe could spend it once per reload. Written when a rung
+   * ends, from `world.everlasting`.
+   */
+  relicsSpent?: string[];
+  /**
    * The graces guests of the Houses have given on this climb — see
    * `game/ushpizinOffers.ts`. The other half of `items`: a vessel changes what
    * the numbers are, a boon changes what a body can do.

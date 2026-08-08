@@ -599,6 +599,8 @@ export function markPowers(
   graces: readonly Grace[],
   items: readonly string[] = [],
   boons: readonly Effect[] = [],
+  /** What the reliquary keeps that bears on the fold — see `powersFrom`. */
+  keeps: { bears?: boolean } = {},
 ): MarkPowers {
   // The letters are the progression and the vessels are the furnishing, and
   // the line between them is the **verb list** — nothing here may hand out a
@@ -606,7 +608,7 @@ export function markPowers(
   // always on both sides of that one, and six more behaviours join it below.
   // A vessel that only scaled a number could never be a reason to walk one
   // path rather than another, which is the whole of what the Tree is for.
-  const carried = powersFrom(items, boons);
+  const carried = powersFrom(items, boons, keeps);
   return {
     pierces: verbs.includes("cut") || carried.pierces,
     burns: verbs.includes("flame"),

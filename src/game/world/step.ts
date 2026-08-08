@@ -2,6 +2,7 @@ import type { Grace, Verb } from "../abilities";
 import { setTile, tileAt } from "./build";
 import { CHUNK_H } from "./chunks";
 import { powersFrom, type Effect } from "../items";
+import type { Keeping } from "../relics";
 import {
   isClimbable,
   isHazard,
@@ -86,6 +87,13 @@ const GRAPPLE_THROW_Y = 300;
 const GRAPPLE_THROW_X = 250;
 const GRAPPLE_COOLDOWN_TICKS = 16;
 const VEIL_TICKS = 48;
+/**
+ * The last rung below the Abyss — Chesed. Aaron's rod is barred above it, and
+ * the number is written here rather than imported because `regions.ts` has no
+ * notion of the gulf: what marks it is `overTheAbyss` on the five crossings,
+ * which is a fact about paths and not about rungs.
+ */
+const LAST_BELOW_ABYSS = 7;
 const MESSAGE_TICKS = 200;
 
 export interface StepContext {
@@ -111,6 +119,15 @@ export interface StepContext {
    * walked into — see `relics.ts`.
    */
   onRelic?: (relicId: string) => void;
+  /**
+   * **What the reliquary keeps** — the rules that are not numbers, from the
+   * relics carried this climb. Three of them are read in this file and nowhere
+   * else: the Shamir's mark that passes stone, Aaron's rod budding a lamp back,
+   * and the fire of the altar refusing to go out. See `relics.ts`; the numbers
+   * come in through the world (`huskLight`, `veilCost`, the lamps) because they
+   * are laid as the world is entered rather than asked every tick.
+   */
+  keeps?: Keeping;
   /**
    * The vessels the Scribe carries. They change numbers — the mark's bite and
    * reach, the lamps, the light — and never grant a verb, which is the whole
@@ -1107,7 +1124,7 @@ function veil(world: World, ctx: StepContext, message: string): void {
   // the ground, which is what a veiling is for; what it stops costing is the
   // light already gathered. The one vessel that answers the only price the
   // terrain is allowed to charge.
-  if (!powersFrom(ctx.items ?? [], ctx.boons).keeps) {
+  if (!powersFrom(ctx.items ?? [], ctx.boons, ctx.keeps).keeps) {
     world.or = Math.max(0, world.or - world.veilCost);
   }
 
@@ -1153,7 +1170,7 @@ const bodiesTouch = (a: { x: number; y: number; w: number; h: number }, b: typeo
 function throwMark(world: World, input: Input, ctx: StepContext): void {
   const p = world.player;
   if (!input.strike || p.markCooldown > 0 || p.veiled > 0) return;
-  const powers = markPowers(ctx.verbs, ctx.graces, ctx.items, ctx.boons);
+  const powers = markPowers(ctx.verbs, ctx.graces, ctx.items, ctx.boons, ctx.keeps);
   const up = input.up ? -0.62 : input.down ? 0.62 : 0;
   const speed = MARK_SPEED * (powers.speed ?? 1);
   world.marks.push({
@@ -1288,9 +1305,14 @@ function stepMarks(world: World, ctx: StepContext): void {
     }
 
     // Stone stops a mark. So does the edge of the world.
+    //
+    // **Unless the Scribe carries the Shamir**, in which case his own do not
+    // stop: no iron was lifted over the stones of the house because this went
+    // through them instead. A klipah's marks are unaffected, which is the whole
+    // of what `m.mine` is doing here — the stone is still a wall to the dark.
     const cx = m.x + m.w / 2;
     const cy = m.y + m.h / 2;
-    if (stone(cx, cy)) {
+    if (stone(cx, cy) && !(m.mine && ctx.keeps?.cuts)) {
       if (!m.turns) {
         // A line that was going to hang hangs where the stone stopped it,
         // which is the one place a scribe would actually rule one.
@@ -1548,7 +1570,7 @@ function coax(world: World, husk: Husk): void {
 /** A lamp goes, and the Scribe is thrown clear. At zero he goes out. */
 function wound(world: World, ctx: StepContext, away: 1 | -1): void {
   const p = world.player;
-  const powers = powersFrom(ctx.items ?? [], ctx.boons);
+  const powers = powersFrom(ctx.items ?? [], ctx.boons, ctx.keeps);
   const hit = takeHit(p.lamps, p.iframes, powers.iframes);
   if (hit.lamps === p.lamps && !hit.out) return;
 
@@ -1594,6 +1616,41 @@ function wound(world: World, ctx: StepContext, away: 1 | -1): void {
     world.relit = true;
     clear();
     say(world, "The middle light does not go out.");
+    return;
+  }
+
+  /**
+   * **Aaron's rod** — a dead stick that budded and blossomed and bore almonds
+   * all in one night. The first lamp lost on a rung grows back.
+   *
+   * Two things keep it from being the Wrapper under another name. It is barred
+   * **above the Abyss**, where the ground is longest and the klipot heaviest,
+   * so it is a kindness at the foot of the Tree and nothing at the top; and it
+   * never saves the last lamp, because a lamp that buds back has to have
+   * something to bud from. What would have ended the climb is the fire's
+   * business, below.
+   */
+  if (!hit.out && ctx.keeps?.buds && !world.budded && world.regionIndex <= LAST_BELOW_ABYSS) {
+    world.budded = true;
+    clear();
+    say(world, "The rod buds. The lamp comes back.");
+    return;
+  }
+
+  /**
+   * **The fire of the altar**, which came down once and was never lit again,
+   * only kept. Once in a *climb* — not once a rung, which is the Lampstand's —
+   * the last lamp refuses to go out.
+   *
+   * `world.everlasting` is the only flag in `World` meant to outlive its own
+   * rung: the page reads it at the exit and at the fall and writes the relic
+   * onto the record as spent, so a reload cannot hand the fire back. That is
+   * the same reason `relicsFound` lives on the record rather than in state.
+   */
+  if (hit.out && ctx.keeps?.perpetual && !world.everlasting) {
+    world.everlasting = true;
+    clear();
+    say(world, "The fire of the altar does not go out.");
     return;
   }
 
