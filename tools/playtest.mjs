@@ -779,6 +779,20 @@ const overrides = Object.fromEntries(
 );
 const seconds = flag("seconds", undefined);
 
+/**
+ * **What machine this is pretending to be.**
+ *
+ * `--phone` is a 390×844 viewport at three device pixels to the CSS pixel with
+ * touch — an ordinary modern handset, and nine times the fill of the desktop
+ * default. `--cpu=6` throttles the main thread to a sixth of this machine's
+ * speed, which is the shape of a mid-range phone core against a developer's.
+ * Both default off, so every number taken before this still means what it said.
+ */
+const PHONE = has("phone");
+const SCREEN = PHONE ? { width: 390, height: 844 } : { width: 1280, height: 860 };
+const DPR = Number(flag("dpr", PHONE ? 3 : 1));
+const CPU = Number(flag("cpu", 1));
+
 const scripts = (wanted.length ? SCRIPTS.filter((s) => wanted.includes(s.name)) : SCRIPTS).map(
   (s) => ({
     ...s,
@@ -1044,11 +1058,32 @@ const TAP_KEYS = ["act", "dash", "strike"];
 
 async function play(script, browser) {
   const context = await browser.newContext({
-    viewport: { width: 1280, height: 860 },
-    recordVideo: has("no-video") ? undefined : { dir: outDir, size: { width: 1280, height: 860 } },
+    viewport: SCREEN,
+    deviceScaleFactor: DPR,
+    isMobile: PHONE,
+    hasTouch: PHONE,
+    recordVideo: has("no-video") ? undefined : { dir: outDir, size: SCREEN },
     reducedMotion: "no-preference",
   });
   const page = await context.newPage();
+
+  /**
+   * **The pocket, emulated rather than imagined.**
+   *
+   * P6 is gated on frame times and the gate was never armed: every number this
+   * harness has ever taken came from a 1280-wide desktop viewport at one device
+   * pixel per CSS pixel with a whole core to itself, which is the one machine
+   * the phase is *not* about. A phone multiplies the work twice over — three
+   * device pixels per CSS pixel is nine times the fill, and a mid-range core is
+   * several times slower — and those two multiply each other.
+   *
+   * `Emulation.setCPUThrottlingRate` is the only honest way to get the second
+   * one, and it is CDP rather than Playwright API, so it wants a session.
+   */
+  if (CPU > 1) {
+    const cdp = await context.newCDPSession(page);
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: CPU });
+  }
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
@@ -1156,6 +1191,8 @@ async function play(script, browser) {
     if (i % 60 === 0) {
       const frames = await page.evaluate((key) => globalThis[key]?.frames?.(), PROBE_KEY);
       if (frames?.frames > 0) report.frames = frames;
+      const phases = await page.evaluate((key) => globalThis[key]?.phases?.(), PROBE_KEY);
+      if (phases && Object.keys(phases).length > 0) report.phases = phases;
     }
 
     // Record what the game says, once per thing said.

@@ -264,6 +264,8 @@ export interface ProbeApi {
   look: (radius?: number) => string[][];
   /** What a frame costs — see `frameStats`. The P6 perf gate reads this. */
   frames: () => ReturnType<typeof frameStats>;
+  /** Where the frame went — see `phaseStats`. */
+  phases: () => ReturnType<typeof phaseStats>;
 }
 
 /**
@@ -296,6 +298,29 @@ const FRAME_WINDOW = 600;
 export function recordFrame(ms: number): void {
   FRAMES.push(ms);
   if (FRAMES.length > FRAME_WINDOW) FRAMES.shift();
+}
+
+/**
+ * **Where a frame goes**, split into the two halves that can be optimised
+ * separately: the tile loop, which re-synthesizes every visible tile from
+ * vector primitives, and everything with a body in it. Temporary — this exists
+ * to point the P6 work at the right half rather than at the plausible one.
+ */
+const PHASES: Record<string, { ms: number; n: number; count: number }> = {};
+
+export function recordPhase(name: string, ms: number, count: number): void {
+  const p = (PHASES[name] ??= { ms: 0, n: 0, count: 0 });
+  p.ms += ms;
+  p.n += 1;
+  p.count = count;
+}
+
+export function phaseStats(): Record<string, { avgMs: number; frames: number; count: number }> {
+  const out: Record<string, { avgMs: number; frames: number; count: number }> = {};
+  for (const [name, p] of Object.entries(PHASES)) {
+    out[name] = { avgMs: Math.round((p.ms / p.n) * 1000) / 1000, frames: p.n, count: p.count };
+  }
+  return out;
 }
 
 /** p50 and p95 over the last ten seconds of frames, in milliseconds. */

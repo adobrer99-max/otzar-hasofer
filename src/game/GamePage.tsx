@@ -90,7 +90,7 @@ import { Book } from "./Book";
 import { lastSealed, timesStood } from "./book";
 import { afterWalking, crossesAbyss, nodeOf, TREE_PATHS, type TreePath } from "./tree";
 import { readWarp, warpParams, warpRecord, type WarpOptions } from "./dev/warp";
-import { frameStats, installProbe, neighbourhood, probeOf } from "./dev/probe";
+import { frameStats, installProbe, neighbourhood, phaseStats, probeOf } from "./dev/probe";
 import type { World } from "./world/types";
 import styles from "./GamePage.module.css";
 
@@ -651,6 +651,7 @@ export function GamePage() {
     return installProbe({
       read: () => (import.meta.env.DEV ? probeOf(worldRef.current, ascentRef.current, plateRef.current?.kind) : null),
       frames: () => frameStats(),
+      phases: () => phaseStats(),
       look: (radius) => (import.meta.env.DEV ? neighbourhood(worldRef.current, radius) : []),
     });
   }, []);
