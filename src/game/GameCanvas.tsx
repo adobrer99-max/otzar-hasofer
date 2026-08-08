@@ -60,6 +60,34 @@ export interface HudSample {
   marksSet: number;
 }
 
+/**
+ * **Every callback the step loop can make, named once and required.**
+ *
+ * This type exists because of a bug it now makes impossible. `StepContext`
+ * declares all six of these optional — rightly, since the fight probes build a
+ * context with none of them — and `ctxRef.current` was annotated `StepContext`
+ * and assembled by hand. So when `onVessel` was added, it was threaded through
+ * the props, stored in `callbacks.current`, and **never assigned onto the
+ * context**. `step.ts` calls `ctx.onVessel?.(e.ref)`; `?.` on `undefined` is a
+ * no-op; there was no type error and no runtime error, and **no vessel could be
+ * picked up in the shipped game at all** — the whole of the twelve-of-twenty
+ * daily pool, the six authored behaviours, the plate and the belt, unreachable.
+ *
+ * Nothing could have caught it. `step.ts` was correct and the suite never
+ * renders this component; the fight and economy probes construct a
+ * `StepContext` directly and pass `items` in, so they measured a game the
+ * player was not playing; and the harness driver cannot climb to a pedestal —
+ * `VESSEL_CHUNK` is a shelf two rows up, which is why the `house` script needed
+ * a `Probe.house` field to steer by.
+ *
+ * So the guard is a **type** rather than a test: `Required<Pick<…>>` cannot be
+ * satisfied with a key missing, so the forwarding object below fails `tsc` if a
+ * callback is ever added and left unwired.
+ */
+type StepCallbacks = Required<
+  Pick<StepContext, "onLetter" | "onFragment" | "onWordGate" | "onHouse" | "onVessel" | "onFinish">
+>;
+
 export interface GameCanvasProps {
   world: World;
   verbs: readonly Verb[];
@@ -126,19 +154,23 @@ export function GameCanvas({
   pausedRef.current = paused;
   callbacks.current = { onLetter, onFragment, onWordGate, onHouse, onVessel, onFinish, onSample };
 
-  const ctxRef = useRef<StepContext>({ verbs, graces });
-  ctxRef.current = {
-    verbs,
-    graces,
-    items,
-    boons,
-    markGlyph,
+  /**
+   * The forwarding half, annotated so that every callback must be here. Each
+   * reads through `callbacks.current` rather than closing over the prop, so a
+   * handler that changes identity between renders is still the one the loop
+   * calls — the loop is started once and never restarted.
+   */
+  const forward: StepCallbacks = {
     onLetter: (id) => callbacks.current.onLetter(id),
     onFragment: (i) => callbacks.current.onFragment(i),
     onWordGate: () => callbacks.current.onWordGate(),
     onHouse: (id) => callbacks.current.onHouse(id),
+    onVessel: (id) => callbacks.current.onVessel(id),
     onFinish: () => callbacks.current.onFinish(),
   };
+
+  const ctxRef = useRef<StepContext>({ verbs, graces });
+  ctxRef.current = { verbs, graces, items, boons, markGlyph, ...forward };
 
   // --- input --------------------------------------------------------------
 

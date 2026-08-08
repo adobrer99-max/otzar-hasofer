@@ -1979,6 +1979,19 @@ export const CHUNKS: Chunk[] = [
   ]),
 ];
 
+/**
+ * Every screen `layout` can deal, by id — and therefore everything the contract
+ * above is asked of, since `chunks.test.ts` sweeps exactly this.
+ *
+ * **`VESSEL_CHUNK` was missing from it**, which meant the vessel room was
+ * outside the whole contract: its dimensions, its character vocabulary, its
+ * edge profiles and — the one that matters — "screens that need more than they
+ * declare, which is a soft lock on the Tree" simply did not apply to it. It is
+ * a fixed screen in `layout`'s own list and is laid on any path that draws a
+ * vessel, so its absence here was an omission rather than a decision. The
+ * guardians' rooms are the genuine exception and have a sweep of their own; the
+ * stair screens are structural and never dealt.
+ */
 export const chunksById: Record<string, Chunk> = Object.fromEntries(
   [
     ...CHUNKS,
@@ -1992,5 +2005,6 @@ export const chunksById: Record<string, Chunk> = Object.fromEntries(
     WORD_GATE_CHUNK,
     ABYSS_GATE_CHUNK,
     HOUSE_CHUNK,
+    VESSEL_CHUNK,
   ].map((c) => [c.id, c]),
 );

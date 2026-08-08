@@ -745,6 +745,72 @@ const SCRIPTS = [
     seconds: 30,
   },
   {
+    name: "vessel",
+    about: "A pedestal offers, and the offer is taken — the plate that could never rise.",
+    /**
+     * **The script that would have caught it, had it existed.**
+     *
+     * `GameCanvas` threaded `onVessel` through its props, stored it in
+     * `callbacks.current`, and never assigned it onto the step context. `step`
+     * calls `ctx.onVessel?.(e.ref)`; optional chaining on `undefined` is a
+     * no-op; so the pedestal never spoke and **no vessel could be picked up in
+     * the shipped game.** No type error, no runtime error, and every test green:
+     * the fight and economy probes build their own `StepContext` and pass
+     * `items` straight in, so they were measuring a game nobody could play.
+     *
+     * The reason no script covered it is worth keeping too, because it is a
+     * general one: **the driver climbs nothing.** A vessel sits on a shelf two
+     * rows off the floor, so even a script written for it would have walked
+     * under the pedestal and reported a clean run. Hence `Probe.vessel` and
+     * `seekVessel` — the probe says where the pedestal is and the driver turns
+     * around and jumps at it, exactly as `seekHouse` already did for the
+     * figures of the Dorot.
+     *
+     * And it asserts **taking**, not offering: `p.items` rather than
+     * `p.plate === "vessel"`. A plate that rises and cannot be answered would
+     * be the same bug one layer up.
+     *
+     * **Yesod, the whole alphabet, and the way back down** — three choices, and
+     * every one of them is the driver's inability to climb wearing a different
+     * hat. Worth writing down, because the next collectible will meet all three.
+     *
+     * `rowsFor` gives a rung of four or more *two* storeys and the vessel room
+     * can land on the upper one: at rung 5 the probe read the pedestal at
+     * `dy: -535`, which is not a shelf but a floor, and no amount of jumping
+     * reaches it. A single-storey rung puts it on the Scribe's own level.
+     *
+     * `toward: "Malchut"` is the way back down out of Yesod, so the ground is
+     * the kingdom's — the gentlest in the game.
+     *
+     * And `letters: "all"` rather than `as-of-rung`, which is the one that
+     * actually mattered: holding only Malchut's two letters the driver spent
+     * every run of four minutes bouncing off a three-tile pillar with a klipah
+     * behind it, reaching eight per cent of the rung. Photographed, it is
+     * unmistakable — the contact sheet is twelve frames of the same pillar. The
+     * suite's own traversal probe crosses that ground holding nothing; this
+     * driver is a worse player than the one the tests guarantee, which is
+     * already written down against `up`. With the alphabet it reaches the
+     * pedestal on every run.
+     *
+     * The debt is unchanged and is now named twice: whoever teaches this driver
+     * to take a shaft gets the vessels on every rung, the Houses and the vows
+     * in one go.
+     */
+    warp: { rung: 2, letters: "all", lamps: 3, seed: 3 },
+    toward: "Malchut",
+    until: (p) => p.items.length > 0 || p.finished,
+    // Generous, because this driver is a real browser on a wall clock rather
+    // than a deterministic probe: the same seed takes a different number of
+    // seconds each run, and the pedestal sits a long way into the rung.
+    seconds: 260,
+    driver: { seekVessel: true },
+    onPlate: async (page, plate) => {
+      if (plate !== "vessel") return;
+      const take = page.getByRole("button", { name: /Take it up/i });
+      if (await take.count()) await take.first().click();
+    },
+  },
+  {
     name: "bestiary",
     about: "All twenty klipot, in their states, on both grounds — the sheet the creature pass is judged on.",
     /**
@@ -1187,11 +1253,17 @@ function decide(p, look, memory, opts) {
    * and raised no plate. So the probe reports where it is (`p.house`) and this
    * turns around for it and jumps at it.
    */
-  const seek = opts?.seekHouse ? p.house : undefined;
-  const houseBehind = Boolean(seek && seek.dx < -16);
-  const houseAbove = Boolean(seek && Math.abs(seek.dx) < 110 && seek.dy < -20);
+  // **The one thing on a ledge the driver is told about.** Generalised from
+  // `seekHouse`, because the pedestal needed it worse: `VESSEL_CHUNK` puts the
+  // vessel on a shelf two rows up and no script had ever reached one, which is
+  // half of why `onVessel` could go unwired for months without anything
+  // noticing. Same mechanism either way — the probe says where it is, and this
+  // turns around for it and jumps at it.
+  const seek = opts?.seekHouse ? p.house : opts?.seekVessel ? p.vessel : undefined;
+  const seekBehind = Boolean(seek && seek.dx < -16);
+  const seekAbove = Boolean(seek && Math.abs(seek.dx) < 110 && seek.dy < -20);
 
-  const wantJump = !backingOff && (gapAhead || wallAhead || houseAbove || memory.stuckFor > 6);
+  const wantJump = !backingOff && (gapAhead || wallAhead || seekAbove || memory.stuckFor > 6);
 
   // **Jump is an edge, not a state.** `GameCanvas` reads `jump` from the keys
   // *pressed since the last frame* and `jumpHeld` from the keys still down —
@@ -1208,8 +1280,8 @@ function decide(p, look, memory, opts) {
 
   return {
     // Held.
-    right: !backingOff && !houseBehind,
-    left: backingOff || houseBehind,
+    right: !backingOff && !seekBehind,
+    left: backingOff || seekBehind,
     jump: memory.jumpFor > 0,
     // **Up, on a vine and in water** — and it was hardcoded false, which meant
     // this harness could not climb a vine or rise through water at all.
