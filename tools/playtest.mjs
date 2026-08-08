@@ -811,6 +811,55 @@ const SCRIPTS = [
     },
   },
   {
+    name: "reliquary",
+    about: "A hidden thing found behind the Eye, climbed to, and taken up.",
+    /**
+     * **The chamber, played rather than asserted** — and the first screen in
+     * this game behind *two* gates.
+     *
+     * `chamber.test.ts` proves the ground: the lane runs clear the whole width,
+     * every rise is a plain jump, the staircase is veiled stone, and a held
+     * relic leaves the room standing and empty with the tiles byte-identical.
+     * What a test cannot do is press a key. The relic is seven tiles up behind
+     * three steps that **do not exist** until Ayin is pressed, so this needed
+     * the driver taught two things at once: `openTheEye`, which presses act on
+     * a beat until `p.revealed` says it landed, and `seekRelic`, which is
+     * `seekVessel`'s mechanism pointed at the niche.
+     *
+     * The three concessions are the vessel script's, unchanged and for the same
+     * reason — **this driver climbs nothing.** A single-storey rung so the
+     * chamber lands on the Scribe's own level; `toward: "Malchut"` for the
+     * kingdom's gentle ground; and `letters: "all"`, which here is not a
+     * concession at all but the whole point, since Ayin is in the alphabet and
+     * without it there is no staircase.
+     *
+     * **No relics in the warp**, deliberately: this is the finding, and a
+     * Scribe already carrying the thing would meet an empty room. The empty
+     * room is `chamber.test.ts`'s claim; a full one is this script's.
+     *
+     * And it asserts **taking**, not offering — `p.relics` rather than
+     * `p.plate === "relic"` — because a plate that rises and cannot be answered
+     * is the same bug one layer up. That is the lesson `vessel` was written to
+     * hold and it applies twice as hard here: a relic is the only thing in this
+     * game that outlives the seal.
+     */
+    warp: { rung: 2, letters: "all", lamps: 3, seed: 3 },
+    toward: "Malchut",
+    until: (p) => p.relics.length > 0 || p.finished,
+    seconds: 260,
+    driver: { seekRelic: true },
+    onPlate: async (page, plate) => {
+      if (plate !== "relic") return false;
+      const take = page.getByRole("button", { name: /Take it up/i });
+      if (await take.count()) await take.first().click();
+      return true;
+    },
+    check: (p) => {
+      if (!p.revealed) throw new Error("the Eye was never opened — there was never a staircase");
+      if (!p.relics.length) throw new Error("the chamber was reached and nothing was taken");
+    },
+  },
+  {
     name: "bestiary",
     about: "All twenty klipot, in their states, on both grounds — the sheet the creature pass is judged on.",
     /**
@@ -1259,7 +1308,39 @@ function decide(p, look, memory, opts) {
   // half of why `onVessel` could go unwired for months without anything
   // noticing. Same mechanism either way — the probe says where it is, and this
   // turns around for it and jumps at it.
-  const seek = opts?.seekHouse ? p.house : opts?.seekVessel ? p.vessel : undefined;
+  const seek =
+    opts?.seekHouse ? p.house
+    : opts?.seekVessel ? p.vessel
+    : opts?.seekRelic ? p.relic
+    : undefined;
+
+  /**
+   * **Opening the Eye, which is a gate the driver had never met before.**
+   *
+   * The relic chamber is the first thing in the game behind *two* gates: the
+   * staircase is `Tile.Veiled` and does not exist until `reveal` is pressed, so
+   * a driver told only where the niche is jumps at empty air from the floor for
+   * four minutes and reports a clean run. The same disagreement the suite's own
+   * probe had — `routeTo` has assumed a Scribe holding Ayin stands on revealed
+   * stone since the Tree replaced the line, and neither pair of hands ever
+   * pressed the key.
+   *
+   * Ayin shares `act` with the Hook, the Edge, the Flame, the Door and the
+   * House, and which one answers depends on what is standing beside you — so
+   * this presses on a slow beat until `p.revealed` says it landed, rather than
+   * once and hopefully.
+   *
+   * **Not until the niche is in sight**, which is both truer and useful. A
+   * player reveals when they see something worth revealing; and pressed at the
+   * first tick the Eye opens two hundred tiles before the chamber, so the
+   * *unrevealed* chamber — the one everybody meets first, a hole in the wall
+   * seven tiles up with no way to it — never appears on the contact sheet at
+   * all. Waiting until the room is on screen puts both states in the pictures.
+   */
+  const inSight = Boolean(p.relic && Math.abs(p.relic.dx) < 260);
+  const openTheEye = Boolean(
+    opts?.seekRelic && inSight && !p.revealed && p.onGround && memory.tick % 11 === 0,
+  );
   const seekBehind = Boolean(seek && seek.dx < -16);
   const seekAbove = Boolean(seek && Math.abs(seek.dx) < 110 && seek.dy < -20);
 
@@ -1330,7 +1411,10 @@ function decide(p, look, memory, opts) {
     // One Keter run spent a hundred and forty seconds oscillating between two
     // anchors at 53% across, which `step.ts` had warned in a comment was
     // exactly what happens.
-    act: memory.actFor <= 0 && !p.grappled && (barrierAhead || (!p.onGround && !groundBelow)),
+    act:
+      memory.actFor <= 0 &&
+      !p.grappled &&
+      (openTheEye || barrierAhead || (!p.onGround && !groundBelow)),
     dash: !reckless && !p.onGround && !groundBelow && memory.tick % 3 === 0,
     strike: opts?.strike !== false && husk !== undefined && husk < 220 && memory.tick % 5 === 0,
   };
@@ -1566,6 +1650,19 @@ async function play(script, browser) {
     if (sheet) await writeFile(join(outDir, `${script.name}.png`), sheet);
   }
   await writeFile(join(outDir, `${script.name}.json`), `${JSON.stringify(report, null, 2)}\n`);
+
+  /**
+   * **What the run had to have come to**, checked after the sheet and the
+   * report are on disk rather than before — a script that fails is the one
+   * whose pictures you most want to look at, and throwing first would take
+   * them with it.
+   *
+   * `until` says when to stop and this says whether stopping was the right
+   * thing. They are not the same question: a script with a generous `until`
+   * ends cleanly on a timeout and reports a tidy percentage, which is how a
+   * driver that never reached anything reads as a pass.
+   */
+  if (script.check) script.check(last ?? {});
 
   await context.close();
   const video = page.video();

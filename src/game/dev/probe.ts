@@ -60,6 +60,21 @@ export interface Probe {
    * months and could not be seen. See below.
    */
   vessel?: { dx: number; dy: number };
+  /**
+   * Where the hidden thing is, if this rung's chamber still holds one, and
+   * whether the Eye has been opened.
+   *
+   * Both, because the chamber is the first thing in the game with **two**
+   * gates: the driver has to press act to make the staircase exist and then
+   * climb it, and told only the first it would report a clean run from the
+   * floor. `revealed` is what says the press landed — Ayin is on the same key
+   * as the Hook and four other letters, and which one answers depends on what
+   * is standing beside you.
+   */
+  relic?: { dx: number; dy: number };
+  /** What this climb has brought out of a chamber — the twin of `items`. */
+  relics: string[];
+  revealed: boolean;
   marks: number;
   letters: string[];
   /** The vessels actually lifted, so a script can assert taking rather than offering. */
@@ -109,6 +124,7 @@ export function probeOf(
       ...EMPTY_WORLD,
       letters: [...ascent.lettersHeld],
       items: [...(ascent.items ?? [])],
+      relics: [...(ascent.relicsFound ?? [])],
       housesMet: ascent.housesMet.length,
       fragments: ascent.scrollFragments?.length ?? 0,
       plate,
@@ -152,6 +168,7 @@ export function probeOf(
    * watch the plate rise.
    */
   const keli = world.entities.find((e) => e.kind === "vessel" && !e.taken);
+  const hidden = world.entities.find((e) => e.kind === "relic" && !e.taken);
   return {
     tick: world.tick,
     regionIndex: world.regionIndex,
@@ -181,6 +198,11 @@ export function probeOf(
     vessel: keli
       ? { dx: Math.round(keli.x - world.player.x), dy: Math.round(keli.y - world.player.y) }
       : undefined,
+    relic: hidden
+      ? { dx: Math.round(hidden.x - world.player.x), dy: Math.round(hidden.y - world.player.y) }
+      : undefined,
+    relics: [...(ascent?.relicsFound ?? [])],
+    revealed: world.revealed,
     items: [...(ascent?.items ?? [])],
     house: house
       ? { dx: Math.round(house.x - world.player.x), dy: Math.round(house.y - world.player.y) }
@@ -229,6 +251,7 @@ const EMPTY_WORLD = {
   progress: 0,
   husks: { total: 0, standing: 0, broken: 0, nearest: undefined },
   marks: 0,
+  revealed: false,
   message: undefined,
   finished: false,
   out: false,
@@ -236,6 +259,7 @@ const EMPTY_WORLD = {
   Probe,
   | "letters"
   | "items"
+  | "relics"
   | "housesMet"
   | "fragments"
   | "plate"

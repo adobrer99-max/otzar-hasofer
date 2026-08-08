@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "../../components/ui";
 import { regionAt, TOTAL_REGIONS } from "../regions";
 import { LAMPS } from "../combat";
+import { RELICS } from "../relics";
 import { WITNESSES_POSSIBLE } from "../story";
 import {
   DEV_MARKER,
@@ -94,6 +95,34 @@ export function DevPanel({ onWarp }: { onWarp: (options: WarpOptions) => void })
           value={options.witnesses}
           onChange={(e) => set("witnesses", Number(e.target.value))}
         />
+
+        {/* **The Reliquary, by hand.** A checkbox each rather than a text
+            field of ids: nine is few enough to show, the bargains are the whole
+            point of choosing, and `carried` takes the first three — so the list
+            is what a Threshold offers with the ordering made visible. */}
+        <label htmlFor="warp-relics">Relics</label>
+        <div id="warp-relics" className={styles.relics}>
+          {RELICS.map((relic) => {
+            const chosen = options.relics.includes(relic.id);
+            return (
+              <label key={relic.id} className={styles.check} title={`${relic.gives} ${relic.takes}`}>
+                <input
+                  type="checkbox"
+                  checked={chosen}
+                  onChange={(e) =>
+                    set(
+                      "relics",
+                      e.target.checked ?
+                        [...options.relics, relic.id]
+                      : options.relics.filter((id) => id !== relic.id),
+                    )
+                  }
+                />
+                {relic.name}
+              </label>
+            );
+          })}
+        </div>
 
         <label htmlFor="warp-seed">Seed</label>
         <input
