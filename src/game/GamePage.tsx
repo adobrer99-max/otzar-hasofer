@@ -28,11 +28,13 @@ import {
   nextLesson,
   readTaught,
   readTaughtTree,
+  readSeen,
   readTold,
   retire,
   retireTree,
   treeLesson,
   writeTaught,
+  writeSeen,
   writeTaughtTree,
   writeTold,
   type LessonKey,
@@ -41,7 +43,7 @@ import {
 } from "./tutorial";
 import { GameCanvas, type HudSample } from "./GameCanvas";
 import { SceneCanvas } from "./SceneCanvas";
-import { PROLOGUE_SCENES } from "./render/scenes";
+import { PLACE_SCENES, PROLOGUE_SCENES } from "./render/scenes";
 import { regionAt, regionOfSefirah, regions, TOTAL_REGIONS } from "./regions";
 import {
   beyondTheSeven,
@@ -101,7 +103,7 @@ import {
   type Keeping,
   type Relic,
 } from "./relics";
-import { afterWalking, crossesAbyss, nodeOf, TREE_PATHS, type TreePath } from "./tree";
+import { afterWalking, crossesAbyss, nodeOf, otherEnd, TREE_PATHS, type TreePath } from "./tree";
 import { readWarp, warpParams, warpRecord, type WarpOptions } from "./dev/warp";
 import { frameStats, installProbe, neighbourhood, phaseStats, probeOf } from "./dev/probe";
 import type { World } from "./world/types";
@@ -149,6 +151,26 @@ type Plate =
   | { kind: "house"; cardId: string }
   | { kind: "vessel"; keliId: string }
   | { kind: "relic"; relicId: string }
+  /**
+   * **A place, seen from outside, the first time it is ever reached.** Raised
+   * before `path-done` and once ever — see `readSeen` in `tutorial.ts`. The
+   * ordinary plate goes on being the ledger; this is the establishing shot.
+   */
+  | {
+      kind: "first-sight";
+      sefirah: SefirahId;
+      /**
+       * The plate this sight stands in front of — the arrival ledger, usually,
+       * and nothing at all for the kingdom, which is reached by beginning.
+       *
+       * Named `after` rather than `then` on `oxlint`'s advice, and it is right:
+       * an object with a `then` on it is a *thenable*, so the day somebody
+       * writes `await` anywhere near a plate the language would try to resolve
+       * it as a promise. The field is never awaited today; the trap is free to
+       * remove and expensive to find.
+       */
+      after: Plate | null;
+    }
   | { kind: "word-gate" }
   | { kind: "word-result"; verdict: WordGateVerdict }
   | {
@@ -1004,6 +1026,51 @@ export function GamePage() {
     );
   }, []);
 
+  /**
+   * The places already seen, and the one act that adds to them.
+   *
+   * State *and* storage, the same shape `taught` has: the render needs it to
+   * decide whether to raise the plate, and the drawer needs it so that a place
+   * is new exactly once across every climb this reader ever makes.
+   */
+  const [seen, setSeen] = useState<string[]>(() => readSeen());
+  const seenRef = useRef(seen);
+  seenRef.current = seen;
+  const markSeen = useCallback((sefirah: SefirahId) => {
+    setSeen((prev) => {
+      if (prev.includes(sefirah)) return prev;
+      const next = [...prev, sefirah];
+      writeSeen(next);
+      return next;
+    });
+  }, []);
+
+  /**
+   * **The plate a place gets, if it is owed one.** Wraps whatever plate would
+   * have been raised, so the establishing shot comes first and the ledger comes
+   * after — rather than the two competing for one surface, or the arrival
+   * ledger growing a picture and six more lines at the width a phone is.
+   */
+  const firstSight = useCallback(
+    (at: SefirahId, after: Plate | null): Plate | null =>
+      seenRef.current.includes(at) ? after : { kind: "first-sight", sefirah: at, after },
+    [],
+  );
+
+  /**
+   * Going on from a first sight: the place is remembered for good, and whatever
+   * plate the sight was standing in front of takes the surface. Both halves
+   * matter — forgetting to mark it would show the same place every arrival, and
+   * forgetting the second would swallow the arrival ledger.
+   */
+  const passFirstSight = useCallback(
+    (of: { sefirah: SefirahId; after: Plate | null }) => {
+      markSeen(of.sefirah);
+      setPlate(of.after);
+    },
+    [markSeen],
+  );
+
   const onFinish = useCallback(() => {
     audio.onArrival();
 
@@ -1099,7 +1166,14 @@ export function GamePage() {
     });
     setPlate(
       walking
-        ? { kind: "path-done", path: walking, vow: vowOutcome }
+        ? // Where the path *lets you off*, which is its other end — the record
+          // has not been written back at this point, so asking it where the
+          // Scribe is would answer where they set out from.
+          firstSight(otherEnd(walking, standingAt(ascent ?? ({ at: "malchut" } as AscentRecord))), {
+            kind: "path-done",
+            path: walking,
+            vow: vowOutcome,
+          })
         : ascent?.regionIndex === TOTAL_REGIONS
           ? { kind: "sealed" }
           : // The Abyss plate used to be raised here, on the linear road's
@@ -1113,7 +1187,7 @@ export function GamePage() {
             // fallback for a world the page did not start.
             { kind: "path-done", path: TREE_PATHS[0] },
     );
-  }, [ascent?.regionIndex, world, vow, audio, walking, facing, giveBoon, freedEver]);
+  }, [ascent, world, vow, audio, walking, facing, giveBoon, freedEver, firstSight]);
 
   /**
    * Step onto a path from the overworld — which is what a rung is now.
@@ -1323,7 +1397,14 @@ export function GamePage() {
   useEffect(() => {
     // The one thing that outranks it is the telling: a stranger's first sight
     // of this game should not be ten circles behind a paragraph.
-    if (plate?.kind === "prologue") return;
+    //
+    // **And a first sight is telling too**, which the harness caught the moment
+    // the kingdom got a scene: the prologue's last page hands off to Malchut's
+    // establishing shot, the guard only knew about `prologue`, and the Tree
+    // rose behind the picture of the place the Tree is drawn on. The rule was
+    // never about which plate it is — it is about whether the game is still
+    // saying something.
+    if (plate?.kind === "prologue" || plate?.kind === "first-sight") return;
     if (!world && ascent && !ascent.sealedAt) setMapOpen(true);
     if (world) setMapOpen(false);
   }, [world, ascent, plate]);
@@ -1386,11 +1467,24 @@ export function GamePage() {
       const next = prev.page + 1;
       if (skip || next >= PROLOGUE_PAGES.length) {
         writeTold();
-        return null;
+        /**
+         * **And then the kingdom, which is the one place nobody arrives at.**
+         *
+         * The other nine are seen on walking into them; Malchut is where a
+         * Scribe *starts*, so its scene has no arrival to hang on and would
+         * otherwise be the one of the ten never shown. It goes here, after the
+         * last page of the prologue — which is also where it belongs in the
+         * telling, since the prologue's last words are the charge and the
+         * kingdom is where the charge is taken up.
+         *
+         * Skipping the prologue skips it too. Somebody who has pressed "I know
+         * why I am here" has said what they want.
+         */
+        return skip ? null : firstSight("malchut", null);
       }
       return { kind: "prologue", page: next };
     });
-  }, []);
+  }, [firstSight]);
 
   // Dismiss a plate with the keyboard, so a run never needs the mouse.
   useEffect(() => {
@@ -1438,6 +1532,10 @@ export function GamePage() {
       // had just gone out up to the next rung with three fresh ones — caught by
       // a harness run that went out in Netzach and finished in Tiferet. Both
       // the road and that bug are gone; the rule they taught is not.
+      // Not in the dismiss list above: "Go on" from a first sight leads to the
+      // arrival ledger rather than to nothing, and a plate dismissed to `null`
+      // would eat it.
+      else if (plate.kind === "first-sight") passFirstSight(plate);
       else if (plate.kind === "sealed") sealAscent();
       else if (plate.kind === "out") fall();
       // The end of a path goes back to the map, never on to a next rung — there
@@ -1451,7 +1549,7 @@ export function GamePage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [plate, sealAscent, fall, backToTree, turnPrologue]);
+  }, [plate, sealAscent, fall, backToTree, turnPrologue, passFirstSight]);
 
   // Persist letters as they are found, without writing on every frame.
   const lastSaved = useRef("");
@@ -1644,6 +1742,7 @@ export function GamePage() {
           onAccept={acceptOffer}
           onTakeVessel={takeVessel}
           onTakeRelic={takeRelic}
+          onFirstSight={passFirstSight}
           keeps={climbing.keeps}
           onClose={() => setPlate(null)}
         />
@@ -2513,6 +2612,7 @@ function PlateOverlay({
   onAccept,
   onTakeVessel,
   onTakeRelic,
+  onFirstSight,
   keeps,
   onClose,
 }: {
@@ -2539,6 +2639,8 @@ function PlateOverlay({
   onTakeVessel: (keliId: string) => void;
   /** A hidden thing brought out of its chamber. Declining is `onClose`. */
   onTakeRelic: (relicId: string) => void;
+  /** Going on from a first sight — to the ledger behind it, not to nothing. */
+  onFirstSight: (of: { sefirah: SefirahId; after: Plate | null }) => void;
   /** What the reliquary keeps — the plates must say what is actually true. */
   keeps: Keeping;
   onClose: () => void;
@@ -2575,6 +2677,9 @@ function PlateOverlay({
             onTake={onTakeVessel}
             onClose={onClose}
           />
+        )}
+        {plate.kind === "first-sight" && (
+          <FirstSightPlate sefirah={plate.sefirah} onGoOn={() => onFirstSight(plate)} />
         )}
         {plate.kind === "relic" && (
           <RelicPlate relicId={plate.relicId} onTake={onTakeRelic} onClose={onClose} />
@@ -2744,6 +2849,45 @@ function VesselPlate({
  * bargain are on the plate before the button, because a relic declined is a
  * relic that stays where it is — the chamber is not emptied by looking.
  */
+/**
+ * **A place, seen from outside, once ever.**
+ *
+ * Deliberately *not* folded into the arrival plate, which it stands in front
+ * of. That plate is a **ledger** — the path is walked, the letter was or was
+ * not lifted, so many of the twenty-two, so much light carried — and it is
+ * printed on every arrival for good reason. A picture, a name, a middah and a
+ * teaching stacked on top of all that is six more lines at the width a phone
+ * actually is, and the establishing shot would be reading as a header.
+ *
+ * So two plates, one press apart, each doing one thing: this says *where you
+ * are*, and the one behind it says *what just happened*.
+ *
+ * The scene carries no colour of its own — every one of the ten is authored as
+ * pure form and takes its palette from the Sefirah, exactly as the world does.
+ * That is the answer to the question P11 asked itself: the arenas and the
+ * palettes are met from inside at the scale of a body running past, and this is
+ * the only time the game shows a place from outside itself.
+ */
+function FirstSightPlate({ sefirah, onGoOn }: { sefirah: SefirahId; onGoOn: () => void }) {
+  const place = regionOfSefirah(sefirah);
+  const scene = PLACE_SCENES[sefirah];
+  return (
+    <>
+      <p className={styles.plateKicker}>You come to</p>
+      {scene && <SceneCanvas scene={scene} sefirah={sefirah} label={scene.label} />}
+      <h2 className={styles.plateTitle}>{place.name}</h2>
+      <p className={`${styles.plateHeb} hebrew`} lang="he">
+        {place.hebrew}
+      </p>
+      <p className={styles.plateDerivation}>{place.middah}</p>
+      <p className={styles.plateUse}>{place.teaching}</p>
+      <Button variant="primary" onClick={onGoOn} autoFocus>
+        Go on
+      </Button>
+    </>
+  );
+}
+
 function RelicPlate({
   relicId,
   onTake,

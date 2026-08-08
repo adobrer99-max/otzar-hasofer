@@ -243,6 +243,7 @@ export function forgetTaught(): void {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(TOLD_KEY);
     localStorage.removeItem(TREE_KEY);
+    localStorage.removeItem(SEEN_KEY);
   } catch {
     // Nothing to undo.
   }
@@ -315,5 +316,43 @@ export function writeTold(): void {
     localStorage.setItem(TOLD_KEY, "1");
   } catch {
     // No worse than being told twice.
+  }
+}
+
+/**
+ * **The places already seen**, which is the third thing in this drawer and
+ * belongs here for the reason the prologue does: it answers *what does this
+ * person already know*, and `forgetTaught` has to clear it or asking for the
+ * teaching again would replay the lessons and skip the ten sights.
+ *
+ * **Once ever, and not once a climb.** A place is new once. The arrival plate
+ * has printed each Sefirah's `teaching` on every single walk into it since the
+ * Tree shipped — the tenth arrival at Yesod says exactly what the first did —
+ * and a scene repeated that way would be a loading screen rather than a first
+ * sight.
+ *
+ * `localStorage` rather than a fold over sealed records, and the distinction is
+ * real: `book.ts` folds facts about the *climbs*, and this is a fact about the
+ * *reader*. It is the same drawer, the same shape and the same failure mode as
+ * `readTold` — storage denied means a scene plays again, which is a picture
+ * seen twice and not a lost one.
+ */
+const SEEN_KEY = "otzar-game-seen";
+
+export function readSeen(): string[] {
+  try {
+    const raw = localStorage.getItem(SEEN_KEY);
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+export function writeSeen(places: readonly string[]): void {
+  try {
+    localStorage.setItem(SEEN_KEY, JSON.stringify([...new Set(places)]));
+  } catch {
+    // No worse than being shown a place twice.
   }
 }

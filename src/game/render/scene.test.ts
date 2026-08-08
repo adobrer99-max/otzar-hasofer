@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { regions } from "../regions";
 import { PROLOGUE_PAGES } from "../story";
 import { readPalette } from "./palette";
 import { paintScene, type Scene, type Shape } from "./scene";
-import { PROLOGUE_SCENES } from "./scenes";
+import { ALL_SCENES, PLACE_SCENES, PROLOGUE_SCENES } from "./scenes";
 import { recorder } from "./testCanvas";
 
 /**
@@ -43,14 +44,14 @@ describe("the prologue, drawn", () => {
   });
 
   it("gives every scene an id of its own and something to say about itself", () => {
-    expect(new Set(PROLOGUE_SCENES.map((s) => s.id)).size).toBe(PROLOGUE_SCENES.length);
-    for (const scene of PROLOGUE_SCENES) {
+    expect(new Set(ALL_SCENES.map((s) => s.id)).size).toBe(ALL_SCENES.length);
+    for (const scene of ALL_SCENES) {
       // A canvas is a hole in the document. A label that is a word or two is
       // the same hole with a sign on it.
       expect(scene.label.length, `${scene.id} says nothing about itself`).toBeGreaterThan(30);
       expect(scene.shapes.length, `${scene.id} draws nothing`).toBeGreaterThan(0);
     }
-    expect(new Set(PROLOGUE_SCENES.map((s) => s.label)).size).toBe(PROLOGUE_SCENES.length);
+    expect(new Set(ALL_SCENES.map((s) => s.label)).size).toBe(ALL_SCENES.length);
   });
 
   /**
@@ -59,9 +60,9 @@ describe("the prologue, drawn", () => {
    * Six paragraphs behind six identical panels would be worse than six
    * paragraphs behind none: it would look like the game was showing something.
    */
-  it("draws six different pictures", () => {
+  it("draws sixteen different pictures", () => {
     const seen = new Map<string, string>();
-    for (const scene of PROLOGUE_SCENES) {
+    for (const scene of ALL_SCENES) {
       const picture = draw(scene, 0);
       const clash = seen.get(picture);
       expect(clash, `${scene.id} is drawn exactly like ${clash}`).toBeUndefined();
@@ -75,7 +76,7 @@ describe("the prologue, drawn", () => {
    * a canvas, a loop or a movement primitive.
    */
   it("leaves nothing standing still", () => {
-    for (const scene of PROLOGUE_SCENES) {
+    for (const scene of ALL_SCENES) {
       expect(draw(scene, 1.3), `${scene.id} is a still picture`).not.toBe(draw(scene, 0));
     }
   });
@@ -87,7 +88,7 @@ describe("the prologue, drawn", () => {
    * still would be a different picture on every mount.
    */
   it("draws the same picture twice for the same moment", () => {
-    for (const scene of PROLOGUE_SCENES) {
+    for (const scene of ALL_SCENES) {
       expect(draw(scene, 2.2)).toBe(draw(scene, 2.2));
     }
   });
@@ -100,7 +101,7 @@ describe("the prologue, drawn", () => {
    */
   it("names a still frame that has a picture in it", () => {
     const empty = draw({ id: "empty", label: "nothing at all", shapes: [] }, 0);
-    for (const scene of PROLOGUE_SCENES) {
+    for (const scene of ALL_SCENES) {
       expect(draw(scene, scene.still ?? 0), `${scene.id}'s still is blank`).not.toBe(empty);
     }
   });
@@ -114,7 +115,7 @@ describe("the prologue, drawn", () => {
    * from. What this catches is a coordinate off by a whole box.
    */
   it("authors nothing more than a little way outside the frame", () => {
-    for (const scene of PROLOGUE_SCENES) {
+    for (const scene of ALL_SCENES) {
       for (const shape of scene.shapes) {
         for (const [x, y] of points(shape)) {
           expect(x, `${scene.id} authors x = ${x}`).toBeGreaterThan(-0.3);
@@ -134,7 +135,7 @@ describe("the prologue, drawn", () => {
    * invisible-klipot bug with better manners.
    */
   it("paints entirely out of the palette in its hand", () => {
-    for (const scene of PROLOGUE_SCENES) {
+    for (const scene of ALL_SCENES) {
       for (const shape of scene.shapes) {
         for (const ink of [shape.fill, shape.stroke]) {
           expect(ink ?? "", `${scene.id} names a colour`).not.toMatch(/#|rgb|hsl/);
@@ -163,5 +164,47 @@ describe("a thing that happened, rather than a thing that repeats", () => {
     const still: Scene = { ...(fall as Scene), shapes: body };
     expect(draw(still, 40)).toBe(draw(still, 8));
     expect(draw(still, 0), "the fall was over before it began").not.toBe(draw(still, 8));
+  });
+});
+
+/**
+ * **The ten places.**
+ *
+ * A place's scene has one property the prologue's do not, and it is the whole
+ * of what makes them worth having: **they carry no colour at all.** Every one is
+ * pure form, and the panel is tinted through `paletteOf` from the Sefirah — the
+ * same mix the world is tinted with. That is the answer to the question this
+ * phase had to ask itself before a single one could be authored, which was what
+ * ten pictures say that P4's palettes and P4d's arenas do not: the arenas are
+ * met from *inside*, at the twenty-seven screen pixels a body running past is
+ * framed at, and this is the only time the game shows a place from outside.
+ */
+describe("the ten places", () => {
+  it("gives a scene to every Sefirah, and none to anywhere else", () => {
+    expect(Object.keys(PLACE_SCENES).sort()).toEqual(regions.map((r) => r.sefirah).sort());
+  });
+
+  it("counts every scene once in the sweep the whole table is held to", () => {
+    // The guard on the guard: `ALL_SCENES` is what the claims above are made
+    // over, and a place left out of it would be a picture nothing checks.
+    expect(ALL_SCENES).toHaveLength(PROLOGUE_SCENES.length + regions.length);
+    for (const scene of Object.values(PLACE_SCENES)) expect(ALL_SCENES).toContain(scene);
+  });
+
+  /**
+   * **Ten forms, and the palette does the rest.** Held to the same standard as
+   * everything else in this file — a difference rather than a picture — but
+   * asserted here on the *plain* theme, with no Sefirah tint, so that two places
+   * which differ only in colour would fail. Ten identical compositions in ten
+   * hues would photograph beautifully and say nothing.
+   */
+  it("draws ten different shapes, before any of them is given a colour", () => {
+    const seen = new Map<string, string>();
+    for (const [sefirah, scene] of Object.entries(PLACE_SCENES)) {
+      const picture = draw(scene, 0);
+      const clash = seen.get(picture);
+      expect(clash, `${sefirah} is the same shape as ${clash}, differing only in hue`).toBeUndefined();
+      seen.set(picture, sefirah);
+    }
   });
 });

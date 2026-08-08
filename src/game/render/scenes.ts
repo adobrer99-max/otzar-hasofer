@@ -1,3 +1,4 @@
+import type { SefirahId } from "../../types/letter";
 import { TREE_NODES } from "../tree";
 import type { Scene, Shape } from "./scene";
 
@@ -468,3 +469,476 @@ const CHARGE: Scene = {
  * makes it a failing test instead.
  */
 export const PROLOGUE_SCENES: readonly Scene[] = [DESK, FALL, SILENCE, KLIPOT, LAMPS, CHARGE];
+
+// ---------------------------------------------------------------------------
+// the ten places, seen from outside
+// ---------------------------------------------------------------------------
+
+/**
+ * **What a place's scene is for**, which is the question P11 asked itself and
+ * had to answer before any of these could be authored: *what do ten pictures
+ * say that P4's palettes and P4d's arenas do not already say?*
+ *
+ * The answer is **form, and the outside**. `PLACES` already leans each
+ * Sefirah's stone and sky, and every guardian has its room — but both of those
+ * are met from *inside*, at the twenty-seven screen pixels a body running past
+ * is framed at. Nothing in this game has ever shown a place from outside itself.
+ *
+ * So the colour here is deliberately **not** authored: `SceneCanvas` is handed
+ * the Sefirah and tints the whole panel through `paletteOf`, exactly as the
+ * world is tinted. What each scene contributes is a *shape* — the narrow
+ * channel, the ceiling coming down, the open tent, the long slope — read off
+ * that place's own `middah` and `teaching`, with its guardian in it where the
+ * creature is the point rather than an ornament.
+ *
+ * Kept coarse on purpose. A panel is three hundred pixels across in a plate and
+ * the picture has to say one thing before the paragraph under it says four.
+ */
+
+/** A slab of ceiling, which several of the ten need and none of the six did. */
+const ceiling = (bottom: number): Shape[] => [
+  {
+    poly: [
+      [-0.05, -0.05],
+      [1.05, -0.05],
+      [1.05, bottom],
+      [-0.05, bottom],
+    ],
+    // `ink` rather than `stone`, for Yesod's reason: a mass the same value as
+    // the air behind it is not a mass, and a ceiling that does not read as one
+    // is just a stripe that grows. `deep` was tried and is the wrong role — it
+    // is pale on vellum, so it inverted between themes.
+    fill: "ink",
+    alpha: 0.82,
+  },
+  {
+    line: [
+      [-0.05, bottom],
+      [1.05, bottom],
+    ],
+    stroke: "edge",
+    w: 0.004,
+  },
+];
+
+const PLACE_SCENE_LIST: readonly (Scene & { sefirah: SefirahId })[] = [
+  {
+    sefirah: "malchut",
+    id: "place-malchut",
+    label:
+      "A flat horizon under an open sky, one small figure standing on it, and the whole Tree faint and very far above.",
+    still: 1.2,
+    shapes: [
+      ...ground(0.8),
+      // The Tree, far off and faint — everything that is going to be climbed,
+      // seen once from the only place it can all be seen from.
+      {
+        line: [
+          [0.62, 0.66],
+          [0.62, 0.14],
+        ],
+        stroke: "gold",
+        w: 0.004,
+        alpha: 0.3,
+      },
+      ...TREE_NODES.map(
+        (node): Shape => ({
+          dot: [0.62 + node.pillar * 0.055, 0.66 - (node.row / rowsUp) * 0.5],
+          r: 0.008,
+          fill: "gold",
+          glow: 3,
+          alpha: 0.65,
+        }),
+      ),
+      // The swarm that stands here, low and near the ground.
+      ...Array.from({ length: 9 }, (_, i): Shape => ({
+        dot: [0.12 + ((i * 5) % 9) / 11, 0.7 + (i % 3) * 0.03],
+        r: 0.004,
+        fill: "ink",
+        alpha: 0.7,
+        move: { to: [0.03, -0.02], period: 2.6, phase: (i * 0.11) % 1 },
+      })),
+      ...figure(0.32, 0.8, 0.2),
+    ],
+  },
+  {
+    sefirah: "yesod",
+    id: "place-yesod",
+    label: "Two great walls almost meeting, with a narrow channel of light between them and a figure at its mouth.",
+    still: 1.0,
+    shapes: [
+      ...ground(0.86),
+      // The two walls, and the whole picture is the gap.
+      /**
+       * **Filled `ink` rather than `stone`**, which is the third time this pass
+       * has had to learn the same lesson from a photograph — and the fourth
+       * time counting the correction to the correction.
+       *
+       * On Yesod's violet the stone mix and the sky mix land within a few
+       * values of each other, so the first sheet was a flat panel with a cone
+       * of light in it and no walls at all — and the picture is *entirely* the
+       * walls. The obvious repair was `deep`, which is dark on charcoal and
+       * **pale cream on vellum**, so it made the walls darker than the sky on
+       * one theme and lighter on the other: not the same picture in a different
+       * key, two different pictures. `ink` is the role that means *the darkest
+       * value this palette has, whichever ground it is*, and it is the only one
+       * that can be asked for a mass.
+       */
+      {
+        poly: [
+          [-0.05, -0.05],
+          [0.44, -0.05],
+          [0.47, 0.86],
+          [-0.05, 0.86],
+        ],
+        fill: "ink",
+        alpha: 0.82,
+        stroke: "edge",
+        w: 0.005,
+      },
+      {
+        poly: [
+          [0.56, -0.05],
+          [1.05, -0.05],
+          [1.05, 0.86],
+          [0.53, 0.86],
+        ],
+        fill: "ink",
+        alpha: 0.82,
+        stroke: "edge",
+        w: 0.005,
+      },
+      // The light coming through it — the narrow channel everything above must
+      // pass through to reach the world.
+      {
+        poly: [
+          [0.47, 0.86],
+          [0.53, 0.86],
+          [0.56, -0.05],
+          [0.44, -0.05],
+        ],
+        fill: "bright",
+        alpha: 0.2,
+        move: { fade: [0.55, 1], period: 4 },
+      },
+      ...figure(0.5, 0.86, 0.17),
+    ],
+  },
+  {
+    sefirah: "hod",
+    id: "place-hod",
+    label: "A chasm with fire along its floor, crossed in one long arc of light from one lip to the other.",
+    still: 1.4,
+    shapes: [
+      // Two lips and the gulf between them.
+      {
+        poly: [
+          [-0.05, 0.72],
+          [0.3, 0.72],
+          [0.3, 1.05],
+          [-0.05, 1.05],
+        ],
+        fill: "stone",
+        stroke: "edge",
+        w: 0.004,
+      },
+      {
+        poly: [
+          [0.7, 0.72],
+          [1.05, 0.72],
+          [1.05, 1.05],
+          [0.7, 1.05],
+        ],
+        fill: "stone",
+        stroke: "edge",
+        w: 0.004,
+      },
+      // The fiery serpents along the floor of it.
+      ...Array.from({ length: 5 }, (_, i): Shape => ({
+        dot: [0.36 + i * 0.07, 0.99],
+        r: 0.012,
+        fill: "bright",
+        glow: 4,
+        alpha: 0.8,
+        move: { fade: [0.3, 1], period: 2.1, phase: i * 0.2 },
+      })),
+      // What cannot be walked, crossed in one motion.
+      {
+        line: [
+          [0.28, 0.72],
+          [0.42, 0.46],
+          [0.58, 0.46],
+          [0.72, 0.72],
+        ],
+        stroke: "bright",
+        w: 0.006,
+        smooth: true,
+        alpha: 0.85,
+        move: { fade: [0.35, 1], period: 3.4 },
+      },
+      ...figure(0.22, 0.72, 0.19),
+    ],
+  },
+  {
+    sefirah: "netzach",
+    id: "place-netzach",
+    label: "A long slope receding into haze with a small figure low on it, and one point of light at the top.",
+    still: 1.0,
+    shapes: [
+      // The long way up, and nothing else in the frame: endurance is not a
+      // shape, it is a distance.
+      {
+        poly: [
+          [-0.05, 1.05],
+          [-0.05, 0.92],
+          [1.05, 0.28],
+          [1.05, 1.05],
+        ],
+        fill: "stone",
+      },
+      {
+        line: [
+          [-0.05, 0.92],
+          [1.05, 0.28],
+        ],
+        stroke: "edge",
+        w: 0.004,
+      },
+      { dot: [0.96, 0.24], r: 0.012, fill: "bright", glow: 5, move: { fade: [0.6, 1], period: 4.5 } },
+      // The one that will not turn, standing across the way partway up.
+      {
+        poly: [
+          [0.6, 0.6],
+          [0.63, 0.52],
+          [0.66, 0.6],
+          [0.64, 0.63],
+          [0.62, 0.63],
+        ],
+        fill: "ink",
+        stroke: "edge",
+        w: 0.0035,
+      },
+      ...figure(0.16, 0.9, 0.17),
+    ],
+  },
+  {
+    sefirah: "tiferet",
+    id: "place-tiferet",
+    label: "Two pillars, one on each side, joined across the gap by a single lit span with a figure on it.",
+    still: 1.2,
+    shapes: [
+      ...ground(0.95),
+      ...[0.22, 0.78].map(
+        (x): Shape => ({
+          poly: [
+            [x - 0.035, 0.34],
+            [x + 0.035, 0.34],
+            [x + 0.035, 0.95],
+            [x - 0.035, 0.95],
+          ],
+          fill: "stone",
+          stroke: "edge",
+          w: 0.003,
+        }),
+      ),
+      // The hook: the one that joins, and holds. The whole scene is the span.
+      {
+        line: [
+          [0.22, 0.34],
+          [0.5, 0.28],
+          [0.78, 0.34],
+        ],
+        stroke: "bright",
+        w: 0.008,
+        smooth: true,
+        move: { fade: [0.7, 1], period: 4 },
+      },
+      ...figure(0.5, 0.3, 0.18),
+    ],
+  },
+  {
+    sefirah: "gevurah",
+    id: "place-gevurah",
+    label: "A ceiling of stone pressing down toward the floor with a figure in the narrowing space beneath it.",
+    still: 2.0,
+    shapes: [
+      ...ground(0.86),
+      // The boundary that holds, coming down. It is the only ceiling in the ten
+      // and it is the only thing in the ten that moves *toward* you.
+      ...ceiling(0.1).map(
+        (shape): Shape => ({ ...shape, move: { to: [0, 0.4], period: 5.5 } }),
+      ),
+      ...figure(0.5, 0.86, 0.2),
+    ],
+  },
+  {
+    sefirah: "chesed",
+    id: "place-chesed",
+    label: "An open tent on a shore with water reaching to the horizon and a great shape moving under it.",
+    still: 1.6,
+    shapes: [
+      // The deep that refused you.
+      {
+        poly: [
+          [-0.05, 0.6],
+          [1.05, 0.6],
+          [1.05, 1.05],
+          [-0.05, 1.05],
+        ],
+        fill: "blue",
+        alpha: 0.55,
+      },
+      {
+        line: [
+          [-0.05, 0.6],
+          [0.3, 0.62],
+          [0.6, 0.59],
+          [1.05, 0.61],
+        ],
+        stroke: "edge",
+        w: 0.004,
+        smooth: true,
+        move: { to: [0.02, 0.006], period: 5 },
+      },
+      // What is in it.
+      {
+        poly: [
+          [0.55, 0.78],
+          [0.72, 0.73],
+          [0.86, 0.79],
+          [0.72, 0.83],
+        ],
+        fill: "ink",
+        alpha: 0.55,
+        smooth: true,
+        move: { to: [-0.06, 0.02], period: 7 },
+      },
+      // The shore, and the open tent on it — given without condition, so it has
+      // no door in it at all.
+      {
+        poly: [
+          [-0.05, 0.72],
+          [0.42, 0.66],
+          [0.42, 1.05],
+          [-0.05, 1.05],
+        ],
+        fill: "stone",
+      },
+      {
+        line: [
+          [0.08, 0.7],
+          [0.2, 0.44],
+          [0.32, 0.7],
+        ],
+        stroke: "gold",
+        w: 0.007,
+      },
+      ...figure(0.2, 0.7, 0.16),
+    ],
+  },
+  {
+    sefirah: "binah",
+    id: "place-binah",
+    label: "A dark sea filling the frame with one great coiled form beneath it and a small light held inside.",
+    still: 1.8,
+    shapes: [
+      {
+        poly: [
+          [-0.05, 0.24],
+          [1.05, 0.24],
+          [1.05, 1.05],
+          [-0.05, 1.05],
+        ],
+        fill: "blue",
+        alpha: 0.7,
+      },
+      {
+        line: [
+          [-0.05, 0.24],
+          [0.35, 0.27],
+          [0.7, 0.22],
+          [1.05, 0.26],
+        ],
+        stroke: "edge",
+        w: 0.004,
+        smooth: true,
+        move: { to: [0.03, 0.008], period: 6 },
+      },
+      // The coil, most of it out of frame, which is the only honest way to draw
+      // a thing that is bigger than the picture.
+      {
+        poly: [
+          [-0.1, 0.9],
+          [0.24, 0.62],
+          [0.58, 0.86],
+          [0.9, 0.6],
+          [1.1, 0.72],
+          [1.1, 1.1],
+          [-0.1, 1.1],
+        ],
+        fill: "ink",
+        alpha: 0.6,
+        smooth: true,
+        move: { to: [0.04, 0.02], period: 9 },
+      },
+      // The hidden light, simply seen — which is what this rung is for.
+      { dot: [0.5, 0.5], r: 0.012, fill: "bright", glow: 6, move: { fade: [0.4, 1], period: 3.6 } },
+    ],
+  },
+  {
+    sefirah: "chochmah",
+    id: "place-chochmah",
+    label: "A vast empty grey with one point of light very small at its centre and a wing crossing high above.",
+    still: 1.0,
+    shapes: [
+      ...ground(0.94),
+      // The first point, the flash before the form. Almost the whole picture is
+      // what is not in it.
+      { dot: [0.5, 0.56], r: 0.009, fill: "bright", glow: 8, move: { fade: [0.35, 1], period: 5 } },
+      // The bird whose head is in the heavens, crossing above and paying no
+      // attention at all.
+      {
+        line: [
+          [0.14, 0.2],
+          [0.34, 0.12],
+          [0.56, 0.2],
+        ],
+        stroke: "ink",
+        w: 0.008,
+        alpha: 0.6,
+        smooth: true,
+        move: { to: [0.5, -0.03], period: 11 },
+      },
+      // Found by going low.
+      ...figure(0.5, 0.94, 0.13),
+    ],
+  },
+  {
+    sefirah: "keter",
+    id: "place-keter",
+    label: "Almost nothing: a level horizon, a single point of light above it, and a figure standing very still.",
+    still: 2.4,
+    shapes: [
+      ...ground(0.88),
+      // Will before thought. The crown is authored as an absence, which is what
+      // `PLACES` already says about it — its weight is the lowest of the ten
+      // because there is nearly nothing there to lean.
+      { dot: [0.5, 0.34], r: 0.016, fill: "bright", glow: 9, move: { fade: [0.55, 1], period: 6.5 } },
+      ...figure(0.5, 0.88, 0.18),
+    ],
+  },
+];
+
+/**
+ * **One scene per Sefirah, keyed by place.** A record rather than a list,
+ * because unlike the prologue there is no order to a place — a Scribe meets
+ * them in whatever order the Tree is walked, and a list would invite an index
+ * to be used as a rung number, which is exactly the confusion `regionOfPath`
+ * exists to keep straight.
+ */
+export const PLACE_SCENES: Record<SefirahId, Scene> = Object.fromEntries(
+  PLACE_SCENE_LIST.map(({ sefirah, ...scene }) => [sefirah, scene]),
+) as Record<SefirahId, Scene>;
+
+/** Every scene there is, for the sweeps that have to hold all of them. */
+export const ALL_SCENES: readonly Scene[] = [...PROLOGUE_SCENES, ...Object.values(PLACE_SCENES)];

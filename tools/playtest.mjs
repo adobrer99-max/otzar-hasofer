@@ -893,7 +893,11 @@ const SCRIPTS = [
      * a copy that would drift within a week. That is why `paintScene` takes a
      * scene, a palette, a `t` and a box, and needs no React and no world.
      *
-     * **A row per scene, five frames across it**, at 0, 1, 2, 4 and 8 seconds.
+     * **A row per scene, five frames across it**, at 0, 1, 2, 4 and 8 seconds,
+     * and the ten places are tinted through `paletteOf` exactly as the panel in
+     * the plate tints them — a place's scene is authored with no colour in it at
+     * all and takes every bit of it from the Sefirah, so photographing them on
+     * the plain theme would be photographing something nobody sees.
      * A single still cannot show motion and a video cannot be compared, so the
      * strip is the same instrument P8 built for the gaits: a row of keys is how
      * animators have always judged a walk, and it caught a figure doing the
@@ -919,7 +923,14 @@ const SCRIPTS = [
         await page.waitForTimeout(150);
         const sheet = await page.evaluate(async () => {
           const { paintScene, paintGround } = await import("/src/game/render/scene.ts");
-          const { PROLOGUE_SCENES } = await import("/src/game/render/scenes.ts");
+          const { ALL_SCENES, PLACE_SCENES } = await import("/src/game/render/scenes.ts");
+          const { paletteOf } = await import("/src/game/render/palette.ts");
+          // Which Sefirah each scene is tinted for, so the ten are photographed
+          // in the colour a player actually meets them in — a place's scene is
+          // deliberately authored without colour and gets all of it from here.
+          const placeOf = Object.fromEntries(
+            Object.entries(PLACE_SCENES).map(([sefirah, scene]) => [scene.id, sefirah]),
+          );
           const { readPalette } = await import("/src/game/render/palette.ts");
           const base = readPalette();
 
@@ -933,12 +944,12 @@ const SCRIPTS = [
 
           const canvas = document.createElement("canvas");
           canvas.width = AT.length * (W + PAD) + PAD;
-          canvas.height = PROLOGUE_SCENES.length * (H + PAD + LABEL) + PAD;
+          canvas.height = ALL_SCENES.length * (H + PAD + LABEL) + PAD;
           const ctx = canvas.getContext("2d");
           ctx.fillStyle = base.bgDeep;
           ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-          PROLOGUE_SCENES.forEach((scene, row) => {
+          ALL_SCENES.forEach((scene, row) => {
             const top = PAD + row * (H + PAD + LABEL);
             ctx.fillStyle = base.muted;
             ctx.font = "11px monospace";
@@ -950,8 +961,9 @@ const SCRIPTS = [
               ctx.beginPath();
               ctx.rect(0, 0, W, H);
               ctx.clip();
-              paintGround(ctx, base, W, H);
-              paintScene(ctx, scene, base, t, W, H);
+              const here = paletteOf(base, placeOf[scene.id]);
+              paintGround(ctx, here, W, H);
+              paintScene(ctx, scene, here, t, W, H);
               ctx.restore();
               ctx.strokeStyle = base.stoneEdge;
               ctx.lineWidth = 1;
