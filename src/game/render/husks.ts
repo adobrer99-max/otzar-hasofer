@@ -53,11 +53,45 @@ import { alpha, mix, type Palette } from "./palette";
 export type Point = readonly [number, number];
 export type Silhouette = readonly Point[];
 
+/**
+ * **How a part moves**, as a rotation about a point of its own.
+ *
+ * One primitive covers a walk, a wingbeat, a sway and a lashing tail, because
+ * all four are a part turning about where it is attached: a thigh about a hip,
+ * a wing about a shoulder, a hanging body about the ceiling it hangs from. The
+ * alternative was a keyframe per creature per state, which is twenty times the
+ * authoring and cannot be enumerated by a test.
+ *
+ * `on` is the whole of the design decision worth writing down:
+ *
+ * - **`"stride"`** is driven by *where the creature is*, not by the clock —
+ *   `sin(x / stride)`. A leg therefore swings as the creature covers ground and
+ *   **stops when the creature stops**, which is the entire difference between a
+ *   walk and a twitch, and it is stateless: nothing has to be stored on the
+ *   husk, and two creatures at the same place are at the same point of a step.
+ *   Scaled by `|vx|` so a klipah standing still stands still rather than
+ *   holding whatever pose it happened to stop in.
+ * - **`"tick"`** is the clock, and it is for the things that move while going
+ *   nowhere: a wingbeat, a hanging sway, a tail in water, a head casting about.
+ */
+export interface Move {
+  /** The joint, in the creature's own 0..1 draw box. */
+  pivot: Point;
+  /** How far it turns at full swing, in radians. */
+  swing: number;
+  on: "stride" | "tick";
+  /** Offset around the cycle, 0 to 1 — a left leg is half a turn from a right. */
+  phase?: number;
+  /** Ticks per cycle, for `"tick"` parts. Lower is faster. */
+  period?: number;
+}
+
 /** A filled part of a body — a torso, a head, a wing, a coil. */
 export interface Mass {
   poly: Silhouette;
   /** Rounded rather than cornered, for the things that are water or air. */
   smooth?: boolean;
+  move?: Move;
 }
 
 /**
@@ -70,6 +104,7 @@ export interface Mass {
 export interface Limb {
   poly: Silhouette;
   w?: number;
+  move?: Move;
 }
 
 /**
@@ -98,6 +133,31 @@ export interface Creature {
   masses: readonly Mass[];
   limbs?: readonly Limb[];
   features?: readonly Feature[];
+  /**
+   * How far the body drops as the legs spread, as a fraction of the draw box.
+   * A walk without this is a pair of scissors: the give in the knees is most of
+   * what makes a gait read as weight rather than as animation.
+   */
+  bob?: number;
+}
+
+/**
+ * **Where a creature is in its own movement**, given only itself and the clock.
+ *
+ * Pure, and exported so it can be tested — the claim that matters here is not
+ * about pixels but about what the gait is *keyed to*, and that is easy to get
+ * wrong in a way no picture would show: a walk driven by the tick looks almost
+ * right, and then a klipah standing at the edge of its ground jogs on the spot
+ * forever. Note the absence of a `tick` parameter, which is the claim itself.
+ */
+export function gaitOf(husk: Husk, phase = 0): number {
+  // One full step per stride and a half of the creature's own width, which is
+  // roughly a leg's reach, so a small thing takes small quick steps.
+  const stride = Math.max(1, husk.w * 1.5);
+  // Faded in with speed, so a creature that has stopped stands rather than
+  // holding whatever half-step it stopped on.
+  const carried = Math.min(1, Math.abs(husk.vx) / 22);
+  return Math.sin((husk.x / stride + phase) * Math.PI * 2) * carried;
 }
 
 /**
@@ -120,13 +180,16 @@ export const CREATURES: Record<HuskKind, Creature> = {
     ],
     limbs: [
       // A wide stride, because a figure that fills half its box reads as a
-      // smaller creature than the one you actually collide with.
-      { poly: [[0.44, 0.7], [0.22, 0.86], [0.08, 1]], w: 0.09 },
-      { poly: [[0.56, 0.7], [0.76, 0.86], [0.9, 1]], w: 0.09 },
-      { poly: [[0.4, 0.42], [0.2, 0.56], [0.14, 0.7]], w: 0.07 },
-      { poly: [[0.62, 0.44], [0.82, 0.58], [0.88, 0.7]], w: 0.07 },
+      // smaller creature than the one you actually collide with — and the two
+      // legs half a cycle apart, which is the whole of a walk.
+      { poly: [[0.44, 0.7], [0.22, 0.86], [0.08, 1]], w: 0.09, move: { pivot: [0.46, 0.68], swing: 0.42, on: "stride" } },
+      { poly: [[0.56, 0.7], [0.76, 0.86], [0.9, 1]], w: 0.09, move: { pivot: [0.54, 0.68], swing: 0.42, on: "stride", phase: 0.5 } },
+      // The arms swing against the legs, as they do.
+      { poly: [[0.4, 0.42], [0.2, 0.56], [0.14, 0.7]], w: 0.07, move: { pivot: [0.42, 0.42], swing: 0.3, on: "stride", phase: 0.5 } },
+      { poly: [[0.62, 0.44], [0.82, 0.58], [0.88, 0.7]], w: 0.07, move: { pivot: [0.6, 0.42], swing: 0.3, on: "stride" } },
     ],
     features: [{ dot: [0.72, 0.34], r: 0.045 }],
+    bob: 0.035,
   },
 
   /**
@@ -146,12 +209,15 @@ export const CREATURES: Record<HuskKind, Creature> = {
       { poly: [[0.4, 0.36], [0.4, 0.18], [0.6, 0.16], [0.64, 0.28], [0.58, 0.36]], smooth: true },
     ],
     limbs: [
-      { poly: [[0.4, 0.76], [0.38, 1]], w: 0.07 },
-      { poly: [[0.58, 0.76], [0.6, 1]], w: 0.07 },
-      { poly: [[0.14, 0.72], [0.14, 0.94]], w: 0.055 },
-      { poly: [[0.74, 0.72], [0.74, 0.94]], w: 0.055 },
+      { poly: [[0.4, 0.76], [0.38, 1]], w: 0.07, move: { pivot: [0.42, 0.74], swing: 0.4, on: "stride" } },
+      { poly: [[0.58, 0.76], [0.6, 1]], w: 0.07, move: { pivot: [0.56, 0.74], swing: 0.4, on: "stride", phase: 0.5 } },
+      // The two behind are a third of a cycle out, so a crowd shuffles rather
+      // than marching in step.
+      { poly: [[0.14, 0.72], [0.14, 0.94]], w: 0.055, move: { pivot: [0.14, 0.7], swing: 0.3, on: "stride", phase: 0.33 } },
+      { poly: [[0.74, 0.72], [0.74, 0.94]], w: 0.055, move: { pivot: [0.74, 0.7], swing: 0.3, on: "stride", phase: 0.66 } },
     ],
     features: [{ dot: [0.56, 0.26], r: 0.04 }],
+    bob: 0.03,
   },
 
   /**
@@ -168,15 +234,19 @@ export const CREATURES: Record<HuskKind, Creature> = {
       { poly: [[0.1, 0.88], [0.9, 0.88], [0.9, 1], [0.1, 1]] },
     ],
     limbs: [
-      { poly: [[0.26, 0.66], [0.26, 0.88]], w: 0.08 },
-      { poly: [[0.42, 0.66], [0.42, 0.88]], w: 0.08 },
-      { poly: [[0.6, 0.66], [0.6, 0.88]], w: 0.08 },
-      { poly: [[0.72, 0.66], [0.72, 0.88]], w: 0.08 },
+      // Diagonal pairs, which is how a four-legged thing actually walks: near
+      // fore with far hind. Drawn in step it reads as a pantomime horse.
+      { poly: [[0.26, 0.66], [0.26, 0.88]], w: 0.08, move: { pivot: [0.26, 0.64], swing: 0.34, on: "stride" } },
+      { poly: [[0.42, 0.66], [0.42, 0.88]], w: 0.08, move: { pivot: [0.42, 0.64], swing: 0.34, on: "stride", phase: 0.5 } },
+      { poly: [[0.6, 0.66], [0.6, 0.88]], w: 0.08, move: { pivot: [0.6, 0.64], swing: 0.34, on: "stride", phase: 0.5 } },
+      { poly: [[0.72, 0.66], [0.72, 0.88]], w: 0.08, move: { pivot: [0.72, 0.64], swing: 0.34, on: "stride" } },
       { poly: [[0.78, 0.36], [0.8, 0.24], [0.9, 0.2]], w: 0.055 },
       { poly: [[0.88, 0.36], [0.94, 0.26], [1, 0.24]], w: 0.055 },
-      { poly: [[0.18, 0.5], [0.08, 0.44], [0.04, 0.52]], w: 0.045 },
+      // The tail flicks on its own clock, because a tail does.
+      { poly: [[0.18, 0.5], [0.08, 0.44], [0.04, 0.52]], w: 0.045, move: { pivot: [0.18, 0.5], swing: 0.3, on: "tick", period: 11 } },
     ],
     features: [{ dot: [0.86, 0.46], r: 0.04 }],
+    bob: 0.025,
   },
 
   /**
@@ -191,12 +261,19 @@ export const CREATURES: Record<HuskKind, Creature> = {
       { poly: [[0.64, 0.42], [0.68, 0.26], [0.84, 0.24], [0.9, 0.34], [0.8, 0.44]], smooth: true },
     ],
     limbs: [
-      { poly: [[0.36, 0.72], [0.22, 0.86], [0.12, 0.98]], w: 0.085 },
-      { poly: [[0.5, 0.7], [0.62, 0.86], [0.74, 0.98]], w: 0.085 },
-      { poly: [[0.4, 0.46], [0.22, 0.5], [0.1, 0.44]], w: 0.07 },
-      { poly: [[0.44, 0.5], [0.28, 0.6], [0.16, 0.6]], w: 0.06 },
+      // A dead run, so the legs swing further than anything else in the
+      // table — but only just. The first pass had them at 0.6 radians each way,
+      // which is nearly seventy degrees of arc: on the walk strip the middle
+      // frames were a figure doing the splits, and at play speed that reads as
+      // a body lying down rather than one running. A swing that is striking
+      // frame by frame is already too big.
+      { poly: [[0.36, 0.72], [0.22, 0.86], [0.12, 0.98]], w: 0.085, move: { pivot: [0.4, 0.7], swing: 0.36, on: "stride" } },
+      { poly: [[0.5, 0.7], [0.62, 0.86], [0.74, 0.98]], w: 0.085, move: { pivot: [0.48, 0.7], swing: 0.36, on: "stride", phase: 0.5 } },
+      { poly: [[0.4, 0.46], [0.22, 0.5], [0.1, 0.44]], w: 0.07, move: { pivot: [0.42, 0.46], swing: 0.24, on: "stride", phase: 0.5 } },
+      { poly: [[0.44, 0.5], [0.28, 0.6], [0.16, 0.6]], w: 0.06, move: { pivot: [0.44, 0.5], swing: 0.24, on: "stride" } },
     ],
     features: [{ dot: [0.8, 0.32], r: 0.04 }],
+    bob: 0.04,
   },
 
   /**
@@ -211,12 +288,15 @@ export const CREATURES: Record<HuskKind, Creature> = {
       { poly: [[0.52, 0.32], [0.52, 0.16], [0.7, 0.14], [0.76, 0.24], [0.68, 0.34]], smooth: true },
     ],
     limbs: [
-      { poly: [[0.42, 0.7], [0.36, 0.86], [0.34, 1]], w: 0.085 },
-      { poly: [[0.58, 0.7], [0.64, 0.86], [0.68, 1]], w: 0.085 },
-      { poly: [[0.36, 0.44], [0.2, 0.34], [0.14, 0.16]], w: 0.065 },
-      { poly: [[0.14, 0.2], [0.1, 0.04]], w: 0.04 },
+      { poly: [[0.42, 0.7], [0.36, 0.86], [0.34, 1]], w: 0.085, move: { pivot: [0.44, 0.68], swing: 0.36, on: "stride" } },
+      { poly: [[0.58, 0.7], [0.64, 0.86], [0.68, 1]], w: 0.085, move: { pivot: [0.56, 0.68], swing: 0.36, on: "stride", phase: 0.5 } },
+      // The blade arm keeps its own small time whatever the legs do: what
+      // Amalek is doing while it walks is waiting.
+      { poly: [[0.36, 0.44], [0.2, 0.34], [0.14, 0.16]], w: 0.065, move: { pivot: [0.38, 0.44], swing: 0.14, on: "tick", period: 13 } },
+      { poly: [[0.14, 0.2], [0.1, 0.04]], w: 0.04, move: { pivot: [0.38, 0.44], swing: 0.14, on: "tick", period: 13 } },
     ],
     features: [{ dot: [0.68, 0.22], r: 0.04 }],
+    bob: 0.03,
   },
 
   /**
@@ -234,8 +314,10 @@ export const CREATURES: Record<HuskKind, Creature> = {
       { poly: [[0.02, 0.82], [0.34, 0.74], [0.66, 0.74], [0.98, 0.82], [0.98, 1], [0.02, 1]] },
     ],
     limbs: [
-      { poly: [[0.38, 0.5], [0.24, 0.34], [0.2, 0.12]], w: 0.07 },
-      { poly: [[0.62, 0.5], [0.76, 0.34], [0.8, 0.12]], w: 0.07 },
+      // Both arms clutching at the air, out of phase, on their own clock —
+      // whatever the rest of it is doing, this never stops.
+      { poly: [[0.38, 0.5], [0.24, 0.34], [0.2, 0.12]], w: 0.07, move: { pivot: [0.4, 0.5], swing: 0.22, on: "tick", period: 7 } },
+      { poly: [[0.62, 0.5], [0.76, 0.34], [0.8, 0.12]], w: 0.07, move: { pivot: [0.6, 0.5], swing: 0.22, on: "tick", period: 7, phase: 0.5 } },
     ],
     features: [{ dot: [0.56, 0.34], r: 0.04 }],
   },
@@ -254,8 +336,9 @@ export const CREATURES: Record<HuskKind, Creature> = {
       { poly: [[0.36, 0.2], [0.4, 0.1], [0.46, 0.16], [0.52, 0.06], [0.58, 0.16], [0.64, 0.1], [0.66, 0.2]] },
     ],
     limbs: [
-      { poly: [[0.64, 0.46], [0.82, 0.54], [0.9, 0.68]], w: 0.06 },
-      { poly: [[0.36, 0.46], [0.18, 0.54], [0.1, 0.68]], w: 0.06 },
+      // Rooted, so nothing here is keyed to the ground she covers: she sways.
+      { poly: [[0.64, 0.46], [0.82, 0.54], [0.9, 0.68]], w: 0.06, move: { pivot: [0.62, 0.46], swing: 0.12, on: "tick", period: 16 } },
+      { poly: [[0.36, 0.46], [0.18, 0.54], [0.1, 0.68]], w: 0.06, move: { pivot: [0.38, 0.46], swing: 0.12, on: "tick", period: 16, phase: 0.5 } },
     ],
     features: [{ dot: [0.58, 0.28], r: 0.04 }],
   },
@@ -274,8 +357,10 @@ export const CREATURES: Record<HuskKind, Creature> = {
     ],
     limbs: [
       { poly: [[0.62, 0.5], [0.78, 0.46], [0.9, 0.36]], w: 0.06 },
-      { poly: [[0.84, 0.42], [0.98, 0.28]], w: 0.035 },
-      { poly: [[0.84, 0.42], [0.94, 0.5]], w: 0.035 },
+      // The shears, opening and closing. The only pair of parts in the table
+      // that turn about the same joint in opposite directions.
+      { poly: [[0.84, 0.42], [0.98, 0.28]], w: 0.035, move: { pivot: [0.84, 0.42], swing: 0.26, on: "tick", period: 10 } },
+      { poly: [[0.84, 0.42], [0.94, 0.5]], w: 0.035, move: { pivot: [0.84, 0.42], swing: 0.26, on: "tick", period: 10, phase: 0.5 } },
       { poly: [[0.24, 0.96], [0.76, 0.96]], w: 0.06 },
     ],
     features: [{ dot: [0.56, 0.3], r: 0.04 }],
@@ -294,11 +379,13 @@ export const CREATURES: Record<HuskKind, Creature> = {
       { poly: [[0.52, 0.2], [0.56, 0.1], [0.62, 0.16], [0.68, 0.08], [0.72, 0.18]] },
     ],
     limbs: [
-      { poly: [[0.34, 0.76], [0.28, 0.9], [0.24, 1]], w: 0.08 },
-      { poly: [[0.48, 0.76], [0.54, 0.9], [0.58, 1]], w: 0.08 },
-      { poly: [[0.58, 0.48], [0.78, 0.58], [0.94, 0.66]], w: 0.06 },
+      { poly: [[0.34, 0.76], [0.28, 0.9], [0.24, 1]], w: 0.08, move: { pivot: [0.36, 0.74], swing: 0.34, on: "stride" } },
+      { poly: [[0.48, 0.76], [0.54, 0.9], [0.58, 1]], w: 0.08, move: { pivot: [0.46, 0.74], swing: 0.34, on: "stride", phase: 0.5 } },
+      // The arm that is already out for the light does not swing with the walk.
+      { poly: [[0.58, 0.48], [0.78, 0.58], [0.94, 0.66]], w: 0.06, move: { pivot: [0.56, 0.48], swing: 0.1, on: "tick", period: 8 } },
     ],
     features: [{ dot: [0.68, 0.28], r: 0.04 }],
+    bob: 0.03,
   },
 
   /**
@@ -312,9 +399,11 @@ export const CREATURES: Record<HuskKind, Creature> = {
     draw: [1.9, 0.95],
     masses: [
       { poly: [[0.02, 0.98], [0.06, 0.72], [0.26, 0.62], [0.44, 0.7], [0.4, 0.9], [0.2, 1]], smooth: true },
-      { poly: [[0.72, 0.14], [0.86, 0.04], [0.98, 0.12], [0.96, 0.28], [0.8, 0.3]], smooth: true },
+      { poly: [[0.72, 0.14], [0.86, 0.04], [0.98, 0.12], [0.96, 0.28], [0.8, 0.3]], smooth: true, move: { pivot: [0.26, 0.72], swing: 0.1, on: "tick", period: 14 } },
     ],
-    limbs: [{ poly: [[0.26, 0.72], [0.5, 0.62], [0.56, 0.36], [0.76, 0.2]], w: 0.09 }],
+    // The raised part of it sways from the coil, which is what a snake held up
+    // like this does; the coil on the ground is what it does *not* do.
+    limbs: [{ poly: [[0.26, 0.72], [0.5, 0.62], [0.56, 0.36], [0.76, 0.2]], w: 0.09, move: { pivot: [0.26, 0.72], swing: 0.1, on: "tick", period: 14 } }],
     features: [
       { dot: [0.88, 0.14], r: 0.035 },
       { line: [[0.98, 0.2], [1, 0.14]] },
@@ -333,12 +422,13 @@ export const CREATURES: Record<HuskKind, Creature> = {
       { poly: [[0.78, 0.5], [0.92, 0.48], [1, 0.56], [0.98, 0.66], [0.82, 0.68]], smooth: true },
     ],
     limbs: [
-      { poly: [[0.16, 0.7], [0.06, 0.58], [0.02, 0.4]], w: 0.06 },
+      // The tail, still in the water when the head is not.
+      { poly: [[0.16, 0.7], [0.06, 0.58], [0.02, 0.4]], w: 0.06, move: { pivot: [0.2, 0.7], swing: 0.26, on: "tick", period: 10 } },
       { poly: [[0.34, 0.48], [0.38, 0.2]], w: 0.04 },
       { poly: [[0.48, 0.46], [0.52, 0.12]], w: 0.04 },
       { poly: [[0.62, 0.46], [0.66, 0.18]], w: 0.04 },
-      { poly: [[0.34, 0.8], [0.3, 1]], w: 0.05 },
-      { poly: [[0.62, 0.8], [0.66, 1]], w: 0.05 },
+      { poly: [[0.34, 0.8], [0.3, 1]], w: 0.05, move: { pivot: [0.34, 0.78], swing: 0.32, on: "stride" } },
+      { poly: [[0.62, 0.8], [0.66, 1]], w: 0.05, move: { pivot: [0.62, 0.78], swing: 0.32, on: "stride", phase: 0.5 } },
     ],
     features: [{ dot: [0.86, 0.54], r: 0.03 }],
   },
@@ -355,15 +445,16 @@ export const CREATURES: Record<HuskKind, Creature> = {
       { poly: [[0.7, 0.62], [0.7, 0.36], [0.88, 0.32], [0.98, 0.42], [0.94, 0.6], [0.78, 0.64]] },
     ],
     limbs: [
-      { poly: [[0.2, 0.66], [0.18, 0.86], [0.16, 1]], w: 0.075 },
-      { poly: [[0.34, 0.66], [0.34, 1]], w: 0.075 },
-      { poly: [[0.6, 0.66], [0.62, 1]], w: 0.075 },
-      { poly: [[0.72, 0.66], [0.76, 0.86], [0.78, 1]], w: 0.075 },
+      { poly: [[0.2, 0.66], [0.18, 0.86], [0.16, 1]], w: 0.075, move: { pivot: [0.2, 0.64], swing: 0.36, on: "stride" } },
+      { poly: [[0.34, 0.66], [0.34, 1]], w: 0.075, move: { pivot: [0.34, 0.64], swing: 0.36, on: "stride", phase: 0.5 } },
+      { poly: [[0.6, 0.66], [0.62, 1]], w: 0.075, move: { pivot: [0.6, 0.64], swing: 0.36, on: "stride", phase: 0.5 } },
+      { poly: [[0.72, 0.66], [0.76, 0.86], [0.78, 1]], w: 0.075, move: { pivot: [0.72, 0.64], swing: 0.36, on: "stride" } },
       { poly: [[0.78, 0.34], [0.86, 0.16], [1, 0.08]], w: 0.055 },
       { poly: [[0.86, 0.36], [0.96, 0.22], [1, 0.2]], w: 0.05 },
-      { poly: [[0.12, 0.42], [0.02, 0.34], [0, 0.2]], w: 0.045 },
+      { poly: [[0.12, 0.42], [0.02, 0.34], [0, 0.2]], w: 0.045, move: { pivot: [0.12, 0.42], swing: 0.24, on: "tick", period: 9 } },
     ],
     features: [{ dot: [0.88, 0.46], r: 0.035 }],
+    bob: 0.03,
   },
 
   /**
@@ -376,14 +467,17 @@ export const CREATURES: Record<HuskKind, Creature> = {
     draw: [1.5, 1.15],
     masses: [
       { poly: [[0.16, 0.98], [0.2, 0.78], [0.42, 0.72], [0.5, 0.86], [0.4, 0.98]], smooth: true },
-      { poly: [[0.62, 0.2], [0.78, 0.12], [0.92, 0.2], [0.88, 0.34], [0.68, 0.34]], smooth: true },
+      { poly: [[0.62, 0.2], [0.78, 0.12], [0.92, 0.2], [0.88, 0.34], [0.68, 0.34]], smooth: true, move: { pivot: [0.34, 0.8], swing: 0.14, on: "tick", period: 8 } },
     ],
     limbs: [
-      { poly: [[0.34, 0.8], [0.46, 0.6], [0.5, 0.4], [0.66, 0.26]], w: 0.085 },
-      { poly: [[0.88, 0.28], [1, 0.24]], w: 0.035 },
-      { poly: [[0.28, 0.72], [0.24, 0.56], [0.34, 0.5]], w: 0.045 },
-      { poly: [[0.42, 0.58], [0.36, 0.42], [0.46, 0.36]], w: 0.045 },
-      { poly: [[0.54, 0.42], [0.5, 0.26], [0.58, 0.2]], w: 0.045 },
+      // Reared and weaving from the coil, which is the posture it strikes from.
+      { poly: [[0.34, 0.8], [0.46, 0.6], [0.5, 0.4], [0.66, 0.26]], w: 0.085, move: { pivot: [0.34, 0.8], swing: 0.14, on: "tick", period: 8 } },
+      { poly: [[0.88, 0.28], [1, 0.24]], w: 0.035, move: { pivot: [0.34, 0.8], swing: 0.14, on: "tick", period: 8 } },
+      // Three tongues of fire, each on its own beat, so the flame flickers
+      // rather than waving as one flag.
+      { poly: [[0.28, 0.72], [0.24, 0.56], [0.34, 0.5]], w: 0.045, move: { pivot: [0.28, 0.72], swing: 0.3, on: "tick", period: 5 } },
+      { poly: [[0.42, 0.58], [0.36, 0.42], [0.46, 0.36]], w: 0.045, move: { pivot: [0.42, 0.58], swing: 0.3, on: "tick", period: 5, phase: 0.33 } },
+      { poly: [[0.54, 0.42], [0.5, 0.26], [0.58, 0.2]], w: 0.045, move: { pivot: [0.54, 0.42], swing: 0.3, on: "tick", period: 5, phase: 0.66 } },
     ],
     features: [{ dot: [0.8, 0.22], r: 0.035 }],
   },
@@ -400,9 +494,10 @@ export const CREATURES: Record<HuskKind, Creature> = {
       { poly: [[0.06, 0.86], [0.12, 0.58], [0.34, 0.46], [0.6, 0.44], [0.84, 0.54], [0.94, 0.78], [0.8, 0.96], [0.24, 0.98]], smooth: true },
     ],
     limbs: [
-      { poly: [[0.26, 0.54], [0.2, 0.34], [0.28, 0.22]], w: 0.075 },
-      { poly: [[0.5, 0.46], [0.5, 0.24], [0.6, 0.12]], w: 0.075 },
-      { poly: [[0.74, 0.52], [0.82, 0.34], [0.94, 0.28]], w: 0.075 },
+      // Three heads, three clocks. Nothing about Rahav is in step with itself.
+      { poly: [[0.26, 0.54], [0.2, 0.34], [0.28, 0.22]], w: 0.075, move: { pivot: [0.26, 0.54], swing: 0.2, on: "tick", period: 7 } },
+      { poly: [[0.5, 0.46], [0.5, 0.24], [0.6, 0.12]], w: 0.075, move: { pivot: [0.5, 0.46], swing: 0.2, on: "tick", period: 11, phase: 0.4 } },
+      { poly: [[0.74, 0.52], [0.82, 0.34], [0.94, 0.28]], w: 0.075, move: { pivot: [0.74, 0.52], swing: 0.2, on: "tick", period: 9, phase: 0.7 } },
     ],
     features: [
       { dot: [0.28, 0.22], r: 0.035 },
@@ -424,12 +519,14 @@ export const CREATURES: Record<HuskKind, Creature> = {
       { poly: [[0.42, 0.28], [0.42, 0.12], [0.62, 0.1], [0.68, 0.22], [0.6, 0.3]], smooth: true },
     ],
     limbs: [
-      { poly: [[0.32, 0.84], [0.28, 1]], w: 0.13 },
-      { poly: [[0.68, 0.84], [0.72, 1]], w: 0.13 },
-      { poly: [[0.16, 0.44], [0.04, 0.62], [0.08, 0.82]], w: 0.1 },
-      { poly: [[0.84, 0.44], [0.96, 0.62], [0.92, 0.82]], w: 0.1 },
+      // A short swing on a very large thing, which is what slow looks like.
+      { poly: [[0.32, 0.84], [0.28, 1]], w: 0.13, move: { pivot: [0.32, 0.82], swing: 0.2, on: "stride" } },
+      { poly: [[0.68, 0.84], [0.72, 1]], w: 0.13, move: { pivot: [0.68, 0.82], swing: 0.2, on: "stride", phase: 0.5 } },
+      { poly: [[0.16, 0.44], [0.04, 0.62], [0.08, 0.82]], w: 0.1, move: { pivot: [0.18, 0.44], swing: 0.16, on: "stride", phase: 0.5 } },
+      { poly: [[0.84, 0.44], [0.96, 0.62], [0.92, 0.82]], w: 0.1, move: { pivot: [0.82, 0.44], swing: 0.16, on: "stride" } },
     ],
     features: [{ dot: [0.6, 0.2], r: 0.045 }],
+    bob: 0.045,
   },
 
   /**
@@ -442,15 +539,17 @@ export const CREATURES: Record<HuskKind, Creature> = {
     draw: [1, 1.2],
     masses: [
       { poly: [[0.34, 0.24], [0.34, 0.66], [0.44, 0.78], [0.58, 0.78], [0.66, 0.64], [0.66, 0.24]] },
-      { poly: [[0.42, 0.76], [0.42, 0.9], [0.58, 0.92], [0.62, 0.82], [0.56, 0.74]], smooth: true },
+      { poly: [[0.42, 0.76], [0.42, 0.9], [0.58, 0.92], [0.62, 0.82], [0.56, 0.74]], smooth: true, move: { pivot: [0.5, 0.6], swing: 0.16, on: "tick", period: 18 } },
     ],
     limbs: [
       // It hangs by both arms, and they are thrown wide — which is what puts
       // this across its box rather than down the middle of it.
       { poly: [[0.42, 0.26], [0.2, 0.1], [0.06, 0.02]], w: 0.08 },
       { poly: [[0.58, 0.26], [0.8, 0.1], [0.94, 0.02]], w: 0.08 },
-      { poly: [[0.44, 0.6], [0.24, 0.74], [0.16, 0.9]], w: 0.06 },
-      { poly: [[0.56, 0.6], [0.76, 0.74], [0.84, 0.9]], w: 0.06 },
+      // The legs hang and swing from the hips, slowly, the way a hanging thing
+      // does. Everything above the hips is holding on and does not move.
+      { poly: [[0.44, 0.6], [0.24, 0.74], [0.16, 0.9]], w: 0.06, move: { pivot: [0.5, 0.6], swing: 0.16, on: "tick", period: 18 } },
+      { poly: [[0.56, 0.6], [0.76, 0.74], [0.84, 0.9]], w: 0.06, move: { pivot: [0.5, 0.6], swing: 0.16, on: "tick", period: 18 } },
     ],
     features: [{ dot: [0.52, 0.86], r: 0.04 }],
   },
@@ -465,15 +564,17 @@ export const CREATURES: Record<HuskKind, Creature> = {
     draw: [1.5, 1],
     masses: [
       { poly: [[0.24, 0.66], [0.3, 0.44], [0.62, 0.38], [0.74, 0.5], [0.66, 0.7], [0.34, 0.74]], smooth: true },
-      { poly: [[0.16, 0.38], [0.5, 0.26], [0.82, 0.34], [0.7, 0.48], [0.3, 0.5]], smooth: true },
+      // The wings, and they are the fastest thing in the table: a locust's beat
+      // is the noise of it as much as the look.
+      { poly: [[0.16, 0.38], [0.5, 0.26], [0.82, 0.34], [0.7, 0.48], [0.3, 0.5]], smooth: true, move: { pivot: [0.6, 0.44], swing: 0.3, on: "tick", period: 3 } },
       { poly: [[0.72, 0.4], [0.86, 0.34], [0.94, 0.46], [0.86, 0.6], [0.74, 0.58]], smooth: true },
     ],
     limbs: [
       // The one feature a locust is legible from: the hind leg folded up above
       // the line of its own back, and then straight down to the ground.
-      { poly: [[0.42, 0.64], [0.32, 0.1], [0.16, 0.94]], w: 0.05 },
-      { poly: [[0.58, 0.68], [0.6, 0.94]], w: 0.04 },
-      { poly: [[0.7, 0.64], [0.78, 0.92]], w: 0.04 },
+      { poly: [[0.42, 0.64], [0.32, 0.1], [0.16, 0.94]], w: 0.05, move: { pivot: [0.44, 0.64], swing: 0.16, on: "tick", period: 6 } },
+      { poly: [[0.58, 0.68], [0.6, 0.94]], w: 0.04, move: { pivot: [0.58, 0.66], swing: 0.2, on: "tick", period: 6, phase: 0.5 } },
+      { poly: [[0.7, 0.64], [0.78, 0.92]], w: 0.04, move: { pivot: [0.7, 0.62], swing: 0.2, on: "tick", period: 6 } },
       { poly: [[0.9, 0.38], [1, 0.22]], w: 0.03 },
       { poly: [[0.9, 0.42], [1, 0.32]], w: 0.03 },
     ],
@@ -493,10 +594,11 @@ export const CREATURES: Record<HuskKind, Creature> = {
       { poly: [[0.82, 0.24], [0.94, 0.12], [1, 0.3], [0.98, 0.56], [0.84, 0.56]], smooth: true },
     ],
     limbs: [
-      { poly: [[0.12, 0.66], [0.02, 0.42]], w: 0.06 },
-      { poly: [[0.12, 0.7], [0.04, 0.96]], w: 0.06 },
-      { poly: [[0.34, 0.86], [0.3, 1]], w: 0.05 },
-      { poly: [[0.66, 0.82], [0.7, 0.98]], w: 0.05 },
+      // The fluke, both halves of it, sweeping on one slow beat.
+      { poly: [[0.12, 0.66], [0.02, 0.42]], w: 0.06, move: { pivot: [0.16, 0.68], swing: 0.3, on: "tick", period: 13 } },
+      { poly: [[0.12, 0.7], [0.04, 0.96]], w: 0.06, move: { pivot: [0.16, 0.68], swing: 0.3, on: "tick", period: 13 } },
+      { poly: [[0.34, 0.86], [0.3, 1]], w: 0.05, move: { pivot: [0.34, 0.84], swing: 0.24, on: "tick", period: 13, phase: 0.5 } },
+      { poly: [[0.66, 0.82], [0.7, 0.98]], w: 0.05, move: { pivot: [0.66, 0.8], swing: 0.24, on: "tick", period: 13, phase: 0.5 } },
     ],
     features: [{ dot: [0.92, 0.24], r: 0.035 }],
   },
@@ -514,13 +616,16 @@ export const CREATURES: Record<HuskKind, Creature> = {
       { poly: [[0.8, 0.66], [0.8, 0.44], [0.94, 0.42], [1, 0.52], [0.96, 0.66]] },
     ],
     limbs: [
-      { poly: [[0.2, 0.7], [0.18, 1]], w: 0.11 },
-      { poly: [[0.4, 0.7], [0.4, 1]], w: 0.11 },
-      { poly: [[0.6, 0.7], [0.6, 1]], w: 0.11 },
-      { poly: [[0.76, 0.7], [0.78, 1]], w: 0.11 },
-      { poly: [[0.08, 0.4], [0, 0.5], [0.02, 0.64]], w: 0.05 },
+      // Legs like bars of iron, and they hardly swing at all — a very large
+      // thing walking is mostly the ground moving past it.
+      { poly: [[0.2, 0.7], [0.18, 1]], w: 0.11, move: { pivot: [0.2, 0.68], swing: 0.16, on: "stride" } },
+      { poly: [[0.4, 0.7], [0.4, 1]], w: 0.11, move: { pivot: [0.4, 0.68], swing: 0.16, on: "stride", phase: 0.5 } },
+      { poly: [[0.6, 0.7], [0.6, 1]], w: 0.11, move: { pivot: [0.6, 0.68], swing: 0.16, on: "stride", phase: 0.5 } },
+      { poly: [[0.76, 0.7], [0.78, 1]], w: 0.11, move: { pivot: [0.76, 0.68], swing: 0.16, on: "stride" } },
+      { poly: [[0.08, 0.4], [0, 0.5], [0.02, 0.64]], w: 0.05, move: { pivot: [0.08, 0.42], swing: 0.2, on: "tick", period: 12 } },
     ],
     features: [{ dot: [0.92, 0.52], r: 0.035 }],
+    bob: 0.02,
   },
 
   /**
@@ -532,14 +637,16 @@ export const CREATURES: Record<HuskKind, Creature> = {
     draw: [1.8, 1.1],
     masses: [
       { poly: [[0.4, 0.44], [0.5, 0.34], [0.6, 0.44], [0.58, 0.72], [0.42, 0.72]], smooth: true },
-      { poly: [[0.4, 0.42], [0.2, 0.16], [0.02, 0.26], [0.14, 0.46], [0.34, 0.54]] },
-      { poly: [[0.6, 0.42], [0.8, 0.16], [0.98, 0.26], [0.86, 0.46], [0.66, 0.54]] },
+      // Both wings on the same slow beat — a bird this size does not flap, it
+      // holds and adjusts, and each turns about its own shoulder.
+      { poly: [[0.4, 0.42], [0.2, 0.16], [0.02, 0.26], [0.14, 0.46], [0.34, 0.54]], move: { pivot: [0.4, 0.44], swing: 0.22, on: "tick", period: 15 } },
+      { poly: [[0.6, 0.42], [0.8, 0.16], [0.98, 0.26], [0.86, 0.46], [0.66, 0.54]], move: { pivot: [0.6, 0.44], swing: -0.22, on: "tick", period: 15 } },
       { poly: [[0.46, 0.34], [0.46, 0.2], [0.6, 0.18], [0.64, 0.28], [0.56, 0.36]], smooth: true },
     ],
     limbs: [
       { poly: [[0.64, 0.24], [0.74, 0.28], [0.68, 0.34]], w: 0.03 },
-      { poly: [[0.46, 0.7], [0.44, 0.9], [0.38, 1]], w: 0.04 },
-      { poly: [[0.54, 0.7], [0.56, 0.9], [0.62, 1]], w: 0.04 },
+      { poly: [[0.46, 0.7], [0.44, 0.9], [0.38, 1]], w: 0.04, move: { pivot: [0.48, 0.7], swing: 0.14, on: "tick", period: 15 } },
+      { poly: [[0.54, 0.7], [0.56, 0.9], [0.62, 1]], w: 0.04, move: { pivot: [0.52, 0.7], swing: -0.14, on: "tick", period: 15 } },
     ],
     features: [{ dot: [0.58, 0.25], r: 0.035 }],
   },
@@ -614,6 +721,40 @@ export function paintHusk(
   const py = (fy: number) => oy + fy * dh;
 
   /**
+   * **The movement**, and it is applied in pixels rather than in the box.
+   *
+   * The draw box is not square — Leviathan's is more than twice as wide as it
+   * is tall — so a rotation done in normalised coordinates shears the part it
+   * turns. Turning after the mapping costs one extra sine and gets a limb that
+   * swings rather than one that stretches.
+   */
+  const step = gaitOf(husk);
+  /** The body drops as the legs spread, which is where a gait gets its weight. */
+  const drop = (creature?.bob ?? 0) * Math.abs(step) * dh;
+  const turn = (move: Move | undefined) => {
+    if (!move) return 0;
+    const signal =
+      move.on === "tick"
+        ? Math.sin(tick / (move.period ?? 9) + (move.phase ?? 0) * Math.PI * 2)
+        : gaitOf(husk, move.phase ?? 0);
+    // Mirrored with the body, or a creature walking left swings its legs the
+    // wrong way and reads as moonwalking.
+    return move.swing * signal * (husk.facing < 0 ? -1 : 1);
+  };
+  /** One point of a part, mapped, turned about its joint, and dropped with the body. */
+  const place = (fx: number, fy: number, move: Move | undefined, sink: number): Point => {
+    const x = px(fx);
+    const y = py(fy) + sink;
+    const angle = turn(move);
+    if (!move || angle === 0) return [x, y];
+    const jx = px(move.pivot[0]);
+    const jy = py(move.pivot[1]) + sink;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    return [jx + (x - jx) * cos - (y - jy) * sin, jy + (x - jx) * sin + (y - jy) * cos];
+  };
+
+  /**
    * **About to come at you.** `charging` was drawn exactly as not-charging: on
    * the magnified sheet the two columns were the same picture, pixel for pixel,
    * for every kind that commits to a charge. A creature winding up is the one
@@ -669,6 +810,10 @@ export function paintHusk(
   ctx.lineJoin = "round";
   for (const limb of creature?.limbs ?? []) {
     const width = (limb.w ?? 0.07) * dw;
+    // A leg hangs off the body, so it drops with it; a wing and a hanging arm
+    // are attached to the world above rather than to the torso, and their own
+    // pivots hold them where they are.
+    const sink = limb.move?.on === "tick" ? 0 : drop;
     for (const [style, extra] of [
       [bodyRim, 4],
       [bodyInk, 0],
@@ -677,8 +822,9 @@ export function paintHusk(
       ctx.lineWidth = Math.max(1, width + extra);
       ctx.beginPath();
       limb.poly.forEach(([fx, fy], i) => {
-        if (i === 0) ctx.moveTo(px(fx), py(fy));
-        else ctx.lineTo(px(fx), py(fy));
+        const [x, y] = place(fx, fy, limb.move, sink);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
       });
       ctx.stroke();
     }
@@ -689,7 +835,7 @@ export function paintHusk(
   ctx.fillStyle = bodyInk;
   ctx.lineWidth = 2;
   for (const mass of creature?.masses ?? []) {
-    trace(ctx, mass.poly, px, py, mass.smooth === true);
+    trace(ctx, mass.poly, (fx, fy) => place(fx, fy, mass.move, drop), mass.smooth === true);
     ctx.fill();
     ctx.stroke();
   }
@@ -714,16 +860,19 @@ export function paintHusk(
   ctx.fillStyle = alpha(lit, 0.9);
   ctx.lineWidth = Math.max(0.8, dw * 0.03);
   for (const feature of creature?.features ?? []) {
+    // The eye rides with the head, which rides with the body.
     if (feature.dot) {
+      const [x, y] = place(feature.dot[0], feature.dot[1], undefined, drop);
       ctx.beginPath();
-      ctx.arc(px(feature.dot[0]), py(feature.dot[1]), dw * (feature.r ?? 0.04), 0, Math.PI * 2);
+      ctx.arc(x, y, dw * (feature.r ?? 0.04), 0, Math.PI * 2);
       ctx.fill();
     }
     if (feature.line) {
       ctx.beginPath();
       feature.line.forEach(([fx, fy], i) => {
-        if (i === 0) ctx.moveTo(px(fx), py(fy));
-        else ctx.lineTo(px(fx), py(fy));
+        const [x, y] = place(fx, fy, undefined, drop);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
       });
       ctx.stroke();
     }
@@ -773,14 +922,14 @@ export function paintHusk(
 function trace(
   ctx: CanvasRenderingContext2D,
   shape: Silhouette,
-  px: (fx: number) => number,
-  py: (fy: number) => number,
+  at0: (fx: number, fy: number) => Point,
   smooth: boolean,
 ): void {
   ctx.beginPath();
   const at = (i: number): [number, number] => {
     const [fx, fy] = shape[(i + shape.length) % shape.length];
-    return [px(fx), py(fy)];
+    const [x, y] = at0(fx, fy);
+    return [x, y];
   };
   if (!smooth) {
     const [sx, sy] = at(0);

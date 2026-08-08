@@ -904,13 +904,55 @@ const SCRIPTS = [
             });
           });
 
-          return { scaleSheet, plate, count: kinds.length };
+          /**
+           * **The walk, laid out as a strip** — one creature a row, eight
+           * frames across a full stride and one more standing still.
+           *
+           * A gait cannot be judged from a still, and it cannot be judged from
+           * a video either: the thing that goes wrong is two legs swinging
+           * together, and at sixty frames a second that reads as *something*
+           * being off without saying what. Side by side across one cycle it is
+           * obvious in a glance — which is the same reason animators have
+           * always drawn a walk as a row of keys rather than as a film.
+           *
+           * The last column is the same creature with no speed, which is the
+           * other half of the claim: the legs must **stop**.
+           */
+          const FRAMES = 8;
+          const walk = sheet(CELL * (FRAMES + 2), kinds.length * 52 + 30, (ctx) => {
+            ctx.fillStyle = base.bg;
+            ctx.fillRect(0, 0, CELL * (FRAMES + 2), kinds.length * 52 + 30);
+            ctx.fillStyle = base.gold;
+            ctx.font = "bold 12px monospace";
+            ctx.fillText("one full stride, then the same creature at rest", 8, 18);
+            kinds.forEach((kind, i) => {
+              const spec = HUSKS[kind];
+              const stride = spec.size.w * 1.5;
+              const cy = 30 + i * 52 + 26;
+              ctx.fillStyle = base.muted;
+              ctx.font = "10px monospace";
+              ctx.fillText(kind, 4, cy + 20);
+              for (let f = 0; f <= FRAMES; f += 1) {
+                const resting = f === FRAMES;
+                const husk = stand(kind, "whole");
+                husk.x = (stride * f) / FRAMES - spec.size.w / 2;
+                husk.vx = resting ? 0 : 60;
+                ctx.save();
+                ctx.translate(70 + f * (CELL * 0.9) - husk.x, cy - spec.size.h / 2);
+                paintHusk(ctx, husk, base, f * 7);
+                ctx.restore();
+              }
+            });
+          });
+
+          return { scaleSheet, plate, walk, count: kinds.length };
         });
         if (shots.count !== 20) {
           throw new Error(`the sheet drew ${shots.count} klipot, not twenty`);
         }
         await write(`bestiary-scale-${theme}.png`, shots.scaleSheet);
         await write(`bestiary-plate-${theme}.png`, shots.plate);
+        await write(`bestiary-walk-${theme}.png`, shots.walk);
       }
     },
     until: () => true,

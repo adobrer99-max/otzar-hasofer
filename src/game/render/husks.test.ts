@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { HUSKS, type HuskKind } from "../combat";
 import type { Husk } from "../world/types";
 import { alpha, readPalette } from "./palette";
-import { CREATURES, paintHusk, type Point } from "./husks";
+import { CREATURES, gaitOf, paintHusk, type Point } from "./husks";
 
 /**
  * **A bestiary you can tell apart.**
@@ -139,6 +139,111 @@ describe("the creatures", () => {
       const features = CREATURES[kind].features ?? [];
       expect(features.length, `${kind} has no eye`).toBeGreaterThan(0);
       expect(features.length, `${kind} wears a badge rather than a face`).toBeLessThanOrEqual(3);
+    }
+  });
+});
+
+/**
+ * **The movement, and the one claim about it that a picture cannot check.**
+ *
+ * A gait can be keyed to two things, and only one of them is right. Keyed to
+ * the **clock** it looks almost correct — and then a klipah that has walked to
+ * the edge of its ground and stopped goes on jogging on the spot for the rest
+ * of the climb, and a room full of pacers marches in perfect unison because
+ * they all read the same tick. Keyed to **where the creature is**, a leg swings
+ * because ground went past under it, stops when the creature stops, and two
+ * klipot at different places are at different points of a step without anything
+ * being stored anywhere.
+ *
+ * That is a claim about an argument list as much as about arithmetic — note
+ * that `gaitOf` cannot see the tick — so it is asserted here rather than looked
+ * for on a contact sheet, which could not show it.
+ */
+describe("the walk", () => {
+  const walker = (x: number, vx: number): Husk => ({
+    id: "cain",
+    kind: "cain",
+    x,
+    y: 0,
+    w: 16,
+    h: 18,
+    vx,
+    vy: 0,
+    shells: 2,
+    facing: 1,
+    home: { x: 3, y: 0 },
+    cooldown: 0,
+    charging: 0,
+    struck: 0,
+  });
+
+  it("is driven by the ground covered rather than by the clock", () => {
+    // The same creature in the same place is at the same point of its step,
+    // whatever the tick — which is what makes the legs stop when it does.
+    expect(gaitOf(walker(100, 40))).toBe(gaitOf(walker(100, 40)));
+    // And a quarter of a stride later the leg is at the far end of its swing.
+    // Measured at a *quarter* deliberately: half a cycle from a zero crossing
+    // is another zero crossing, and the first version of this test compared
+    // 0 with 0 and would have passed against a gait that never moved at all.
+    const stride = 16 * 1.5;
+    expect(Math.abs(gaitOf(walker(0, 40))), "the cycle does not start at rest").toBeLessThan(0.01);
+    expect(
+      Math.abs(gaitOf(walker(stride / 4, 40))),
+      "a quarter of a stride on and the leg has not moved",
+    ).toBeGreaterThan(0.9);
+  });
+
+  it("stands still when the creature does", () => {
+    // Not merely small — nothing. A klipah at rest with a leg frozen mid-swing
+    // is the pose it happened to stop in, which reads as a statue of a walk.
+    expect(Math.abs(gaitOf(walker(37, 0)))).toBe(0);
+    expect(Math.abs(gaitOf(walker(37, 3))), "a creature barely drifting is striding").toBeLessThan(
+      0.2,
+    );
+  });
+
+  /**
+   * Two legs in the same phase are a pair of scissors rather than a walk, and
+   * it is the single easiest thing to get wrong when the movement is authored
+   * as a table: the rows look right and the creature hops.
+   */
+  it("never swings a creature's legs together", () => {
+    for (const kind of Object.keys(HUSKS) as HuskKind[]) {
+      const strides = (CREATURES[kind].limbs ?? []).filter((l) => l.move?.on === "stride");
+      if (strides.length < 2) continue;
+      const phases = new Set(strides.map((l) => l.move?.phase ?? 0));
+      expect(phases.size, `${kind} moves every limb on the same beat — it hops`).toBeGreaterThan(1);
+    }
+  });
+
+  /** Nothing in the bestiary is a statue. */
+  it("leaves nothing entirely still", () => {
+    for (const kind of Object.keys(HUSKS) as HuskKind[]) {
+      const creature = CREATURES[kind];
+      const moving = [...creature.masses, ...(creature.limbs ?? [])].filter((p) => p.move);
+      expect(moving.length, `${kind} never moves at all`).toBeGreaterThan(0);
+    }
+  });
+
+  /**
+   * And the thing that walks must **look different when it has walked**, which
+   * is the end-to-end version of all of the above: the table can be right and
+   * the painter can still be ignoring it.
+   */
+  it("draws a creature mid-stride differently from one standing still", () => {
+    for (const kind of Object.keys(HUSKS) as HuskKind[]) {
+      if (!(CREATURES[kind].limbs ?? []).some((l) => l.move?.on === "stride")) continue;
+      const at = (x: number, vx: number) => {
+        const { ctx, log } = recorder();
+        const husk = { ...walker(x, vx), kind, w: HUSKS[kind].size.w, h: HUSKS[kind].size.h };
+        paintHusk(ctx, husk as Husk, readPalette(), 0);
+        return log();
+      };
+      const stride = HUSKS[kind].size.w * 1.5;
+      expect(
+        at(stride * 0.25, 60),
+        `a ${kind} in mid-step is drawn exactly like one standing still`,
+      ).not.toBe(at(stride * 0.25, 0));
     }
   });
 });
