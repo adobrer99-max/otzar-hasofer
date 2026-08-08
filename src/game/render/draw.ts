@@ -954,6 +954,63 @@ function drawEntity(ctx: CanvasRenderingContext2D, e: Entity, palette: Palette, 
       ctx.fill();
       break;
     }
+    case "relic": {
+      // A hidden thing in its niche. Drawn as a *wrapped* object rather than
+      // as itself — a bound bundle standing on end, sealed with a cord — for
+      // the reason the collection is named after: these were put away, not
+      // displayed. What it is, the plate says; what the room says is only that
+      // something is here.
+      //
+      // Read against the vessel, which is the only other thing in the game
+      // offered rather than walked into: the pedestal is lit from *beneath*
+      // and this is lit from *behind*, so the two are told apart at the
+      // twenty-odd pixels a room is actually framed at, before either plate
+      // rises.
+      if (e.taken) break;
+      const breathe = 0.42 + Math.sin(tick / 34) * 0.14;
+      const top = e.y + 3;
+      const foot = e.y + TILE_SIZE;
+
+      // The light behind it, in the recess.
+      const back = ctx.createRadialGradient(cx, cy, 1, cx, cy, 22);
+      back.addColorStop(0, alpha(palette.goldBright, breathe * 0.55));
+      back.addColorStop(1, alpha(palette.goldBright, 0));
+      ctx.fillStyle = back;
+      ctx.fillRect(cx - 22, cy - 22, 44, 44);
+
+      // The bundle: narrower at the head, where the wrapping is gathered.
+      //
+      // **One fill for both grounds, and it is gold rather than ink.** The
+      // first pass took the klipot's rule — the darkest value the palette has —
+      // and on vellum a wrapped bundle at seventy per cent ink is a black wedge
+      // standing in a niche: it read as a hole in the wall rather than as a
+      // thing in it. The klipot are dark because they are the dark; a relic is
+      // treasure, and belongs to the same gold as the letters, the motes and
+      // the vessel. What separates it from the pedestal is the silhouette and
+      // where the light comes from, not the colour.
+      ctx.fillStyle = alpha(palette.gold, 0.3);
+      ctx.strokeStyle = palette.goldBright;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(cx - 3, top);
+      ctx.lineTo(cx + 3, top);
+      ctx.lineTo(cx + 7, foot);
+      ctx.lineTo(cx - 7, foot);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Two turns of cord, which is the whole of what says "bound".
+      ctx.strokeStyle = alpha(palette.goldBright, 0.85);
+      ctx.lineWidth = 1;
+      for (const dy of [7, 13]) {
+        ctx.beginPath();
+        ctx.moveTo(cx - 4.2 - dy * 0.16, top + dy);
+        ctx.lineTo(cx + 4.2 + dy * 0.16, top + dy);
+        ctx.stroke();
+      }
+      break;
+    }
     case "house": {
       // A figure standing in the region: a robed silhouette, no face. The
       // Houses are met, not depicted.

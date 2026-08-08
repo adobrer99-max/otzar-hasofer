@@ -106,6 +106,12 @@ export interface StepContext {
   /** Raised when a vessel is lifted off its pedestal. */
   onVessel?: (keliId: string) => void;
   /**
+   * Raised at a hidden thing in its chamber. Unlike every other pickup this
+   * one outlives the climb, so it is *offered* the way a vessel is rather than
+   * walked into — see `relics.ts`.
+   */
+  onRelic?: (relicId: string) => void;
+  /**
    * The vessels the Scribe carries. They change numbers — the mark's bite and
    * reach, the lamps, the light — and never grant a verb, which is the whole
    * line between an object and a letter. See `items.ts`.
@@ -837,7 +843,14 @@ function stepRooms(world: World): void {
     !room.cleared &&
     !room.entrance &&
     room.kind !== "exit" &&
-    room.kind !== "vessel";
+    room.kind !== "vessel" &&
+    // ...and not the relic chamber, for the vessel's reason sharpened. Both
+    // rooms hold an *offer* rather than a fight, and a door that shuts on a
+    // Scribe reaching for something they are free to decline is a trap. The
+    // chamber has the stronger claim of the two: its ground lane runs clear the
+    // whole width precisely so that a Scribe with no Ayin and no interest walks
+    // past it, and a seal writes stone across that lane.
+    room.kind !== "relic";
   world.inSealedRoom = closes;
 
   if (!standing) {
@@ -962,6 +975,25 @@ function touchEntities(world: World, ctx: StepContext): void {
       } else if (!e.active) {
         e.active = true;
         if (e.ref) ctx.onVessel?.(e.ref);
+      }
+      continue;
+    }
+
+    /**
+     * A hidden thing, offered on the same terms and for a stronger reason: a
+     * relic is kept past the seal, so taking one is the only decision in a
+     * climb whose consequence is not spent by the end of it. Level-triggered
+     * exactly as the pedestal is — `active` means "standing at it" — so
+     * stepping away and coming back offers it again.
+     *
+     * `taken` is set by the page, when the Scribe says yes.
+     */
+    if (e.kind === "relic") {
+      if (!near) {
+        e.active = false;
+      } else if (!e.active) {
+        e.active = true;
+        if (e.ref) ctx.onRelic?.(e.ref);
       }
       continue;
     }

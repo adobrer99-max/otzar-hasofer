@@ -88,7 +88,7 @@ import { timesFreed } from "../storage/ascentRepo";
 import { TreeMap } from "./TreeMap";
 import { Book } from "./Book";
 import { lastSealed, relicsKept, timesStood } from "./book";
-import { carried, CARRIED, RELICS, type Relic } from "./relics";
+import { carried, CARRIED, relicById, RELICS, type Relic } from "./relics";
 import { afterWalking, crossesAbyss, nodeOf, TREE_PATHS, type TreePath } from "./tree";
 import { readWarp, warpParams, warpRecord, type WarpOptions } from "./dev/warp";
 import { frameStats, installProbe, neighbourhood, phaseStats, probeOf } from "./dev/probe";
@@ -133,6 +133,7 @@ type Plate =
   | { kind: "scroll-whole" }
   | { kind: "house"; cardId: string }
   | { kind: "vessel"; keliId: string }
+  | { kind: "relic"; relicId: string }
   | { kind: "word-gate" }
   | { kind: "word-result"; verdict: WordGateVerdict }
   | {
@@ -716,6 +717,46 @@ export function GamePage() {
   }, []);
 
   /**
+   * A chamber opened. Offered rather than taken, exactly as a pedestal is —
+   * and with more reason, since this is the one thing in a climb whose
+   * consequence outlives it.
+   */
+  const onRelic = useCallback((relicId: string) => {
+    setPlate({ kind: "relic", relicId });
+  }, []);
+
+  /**
+   * A hidden thing brought out. Written to the record rather than held in
+   * React state, because `currentAscent` resumes an unsealed climb: a reload
+   * with the relic in state alone would lose it *and* rebuild the chamber, so
+   * the same seed would then lay different ground — the abandon-and-resume
+   * shape that `variant` was invented to close.
+   *
+   * What is written is only "this climb found it". It joins the reliquary a
+   * Scribe may actually carry when the climb **seals**, because `relicsKept`
+   * folds sealed records alone — otherwise begin-again mints a fresh chamber
+   * and all nine are farmed in one sitting.
+   */
+  const takeRelic = useCallback(
+    (relicId: string) => {
+      const chamber = world?.entities.find((e) => e.kind === "relic" && e.ref === relicId);
+      if (chamber) chamber.taken = true;
+      setAscent((prev) =>
+        prev && !(prev.relicsFound ?? []).includes(relicId)
+          ? {
+              ...prev,
+              relicsFound: [...(prev.relicsFound ?? []), relicId],
+              updatedAt: new Date().toISOString(),
+            }
+          : prev,
+      );
+      audio.onVessel();
+      setPlate(null);
+    },
+    [world, audio],
+  );
+
+  /**
    * A vessel taken. Kept on the ascent exactly as a letter is, because that is
    * what makes it survive a region change and a reload — and it needs no other
    * machinery, since everything it does is a number the step already reads out
@@ -1014,6 +1055,11 @@ export function GamePage() {
         // may draw — see `cardsOpen`. A fold over sealed climbs, so it is
         // history rather than anything this climb has done.
         stoodFor[regionOfPath(path).sefirah] ?? 0,
+        // **What is already in the reliquary leaves an empty chamber** — both
+        // what past climbs sealed with and what this one has already lifted.
+        // The screen is laid either way, so this changes no tile and no draw;
+        // see `RELIC_CHUNK` for why that is not optional.
+        [...kept.map((r) => r.id), ...(ascent.relicsFound ?? [])],
       );
       const carried = powersFrom(ascent.items ?? [], boons);
       next.player.lamps += carried.lamps;
@@ -1025,7 +1071,7 @@ export function GamePage() {
       setVow(null);
       setPlate(null);
     },
-    [ascent, time.lightOfTheDay, layEncounter, encounter, stoodFor],
+    [ascent, time.lightOfTheDay, layEncounter, encounter, stoodFor, kept],
   );
 
   /**
@@ -1266,7 +1312,7 @@ export function GamePage() {
       // anything, and the Seven Encounters advanced by a keystroke. The road is
       // gone now, but the shape of the mistake is not: any plate whose buttons
       // are an *answer* belongs in this branch, not the one below.
-      if (plate.kind === "vessel" || plate.kind === "abyss") {
+      if (plate.kind === "vessel" || plate.kind === "relic" || plate.kind === "abyss") {
         if (e.key !== "Escape") return;
         e.preventDefault();
         setPlate(null);
@@ -1445,6 +1491,7 @@ export function GamePage() {
             onWordGate={onWordGate}
             onHouse={onHouse}
             onVessel={onVessel}
+            onRelic={onRelic}
             onFinish={onFinish}
             onSample={onSample}
           />
@@ -1490,6 +1537,7 @@ export function GamePage() {
           onInscribe={inscribe}
           onAccept={acceptOffer}
           onTakeVessel={takeVessel}
+          onTakeRelic={takeRelic}
           onClose={() => setPlate(null)}
         />
       )}
@@ -2355,6 +2403,7 @@ function PlateOverlay({
   onInscribe,
   onAccept,
   onTakeVessel,
+  onTakeRelic,
   onClose,
 }: {
   plate: Plate;
@@ -2376,6 +2425,8 @@ function PlateOverlay({
   onAccept: (offer: UshpizinOffer) => void;
   /** A vessel accepted off its pedestal. Declining is `onClose`. */
   onTakeVessel: (keliId: string) => void;
+  /** A hidden thing brought out of its chamber. Declining is `onClose`. */
+  onTakeRelic: (relicId: string) => void;
   onClose: () => void;
 }) {
   // Every plate autofocuses its button so the game can be played without a
@@ -2410,6 +2461,9 @@ function PlateOverlay({
             onTake={onTakeVessel}
             onClose={onClose}
           />
+        )}
+        {plate.kind === "relic" && (
+          <RelicPlate relicId={plate.relicId} onTake={onTakeRelic} onClose={onClose} />
         )}
         {plate.kind === "house" && ascent && world && (
           <HousePlate
@@ -2545,6 +2599,49 @@ function VesselPlate({
       </div>
       <p className={styles.vesselLeft}>
         Left on its pedestal it stays there, and the map goes on naming it.
+      </p>
+    </>
+  );
+}
+
+/**
+ * **A chamber opened.** Read against the vessel plate, which it deliberately
+ * echoes and deliberately differs from in one line: a vessel says what it does
+ * *this climb*, and this says what it will do *from now on*. Both halves of the
+ * bargain are on the plate before the button, because a relic declined is a
+ * relic that stays where it is — the chamber is not emptied by looking.
+ */
+function RelicPlate({
+  relicId,
+  onTake,
+  onClose,
+}: {
+  relicId: string;
+  onTake: (relicId: string) => void;
+  onClose: () => void;
+}) {
+  const relic = relicById[relicId];
+  if (!relic) return null;
+  return (
+    <>
+      <p className={styles.plateKicker}>A hidden thing</p>
+      <h2 className={styles.plateTitle}>{relic.name}</h2>
+      <p className={`${styles.plateHeb} hebrew`} lang="he">
+        {relic.hebrew}
+      </p>
+      <p className={styles.plateUse}>{relic.hidden}</p>
+      <p className={styles.vesselDoes}>{relic.gives}</p>
+      <p className={styles.offerGrants}>{relic.takes}</p>
+      <p className={styles.plateSource}>{relic.source}</p>
+      <div className={styles.plateActions}>
+        <Button variant="primary" onClick={() => onTake(relicId)} autoFocus>
+          Take it up
+        </Button>
+        <Button onClick={onClose}>Leave it hidden</Button>
+      </div>
+      <p className={styles.vesselLeft}>
+        It is yours to carry only once this climb is sealed — a climb gone out
+        keeps nothing.
       </p>
     </>
   );

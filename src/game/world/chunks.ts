@@ -766,6 +766,62 @@ export const VESSEL_CHUNK: Chunk = chunk("vessel", { demand: 1 }, [
   F,
 ]);
 
+/**
+ * **The chamber where a hidden thing lies — and the only room in this game
+ * that a Scribe is allowed not to be able to reach.**
+ *
+ * Everything else the library hangs is held to the opposite rule: a letter or a
+ * fragment out of reach is an ability lost, so both sit on the low shelf at row
+ * 14, and `traversal.test.ts` pins them there. A relic is the first thing
+ * deliberately put behind a letter, because the Reliquary's whole reason to
+ * exist is to be a reason to leave the route.
+ *
+ * **The letter is Ayin, and nothing else.** The three steps are `Tile.Veiled` —
+ * *Or HaGanuz*, the hidden light, stone only once the Eye has seen it. Without
+ * `reveal` there is no staircase and the niche is simply a hole in the wall
+ * seven tiles up; with it, every step is a plain two-tile rise, which is the
+ * library's standard letterless step. So the chamber asks exactly one question
+ * and asks it once: *did you find the Eye?* — not "how well do you jump".
+ *
+ * Three numbers here are load-bearing and each of them was chosen against a
+ * rule this library has been bitten by before:
+ *
+ * - **The lowest step is a `=` ledge, not veiled stone.** It sits at row 14,
+ *   which is inside a standing body — thirty pixels in a twenty-four pixel tile
+ *   puts the Scribe's head in row 14 — so anything *fully* solid there would
+ *   wall off the ground lane the moment Ayin was pressed. A ledge is solid from
+ *   above only and obstructs nobody walking past. `FRAGMENT_CHUNK` hangs its
+ *   niche on the same row for the same reason.
+ * - **The veiled steps start at row 12**, the first row a standing body's head
+ *   clears, and the roof at row 7 is three rows above the top step for the same
+ *   arithmetic pointed the other way.
+ * - **Rows 13–15 run clear the whole width**, which is `WORD_GATE_CHUNK`'s
+ *   discipline and the traversal guarantee: a Scribe who never opens the
+ *   chamber — no Ayin, or no interest — walks straight past at ground level.
+ *
+ * Laid on **every** path, whether or not its relic is already held. That is not
+ * indifference: `layout` computes `room = fixed.length + 2` and feeds it to
+ * `layBody`, so a screen laid conditionally would change the rung's length and
+ * every rng draw after it — the world would become a function of the
+ * *reliquary* rather than of the day, and two Scribes climbing the same Tree
+ * would walk different ground. A relic already found leaves the chamber
+ * standing and empty, which is also the truer picture.
+ */
+export const RELIC_CHUNK: Chunk = chunk("relic-chamber", { demand: 1 }, [
+  E, E, E, E, E, E, E,
+  ".....#####......",
+  E,
+  ".......R........",
+  "......VVV.......",
+  E,
+  "....VVV.........",
+  E,
+  "..=====.........",
+  E,
+  F,
+  F,
+]);
+
 /** Where the House's figure stands, in the seven lower regions. */
 export const HOUSE_CHUNK: Chunk = chunk("house", { demand: 1 }, [
   E, E, E, E, E, E, E, E, E, E, E, E, E, E,
@@ -2006,5 +2062,6 @@ export const chunksById: Record<string, Chunk> = Object.fromEntries(
     ABYSS_GATE_CHUNK,
     HOUSE_CHUNK,
     VESSEL_CHUNK,
+    RELIC_CHUNK,
   ].map((c) => [c.id, c]),
 );

@@ -28,6 +28,8 @@ export type EntityKind =
   | "word-gate"
   /** A vessel on its pedestal — see `items.ts`. */
   | "vessel"
+  /** A hidden thing in its chamber, kept past the seal — see `relics.ts`. */
+  | "relic"
   /** Where a road divides. Resh returns you here. */
   | "fork";
 
@@ -166,6 +168,7 @@ export type RoomKind =
   | "shrine"
   | "house"
   | "vessel"
+  | "relic"
   | "exit";
 
 /**

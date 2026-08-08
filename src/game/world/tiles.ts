@@ -83,7 +83,7 @@ export const TILE_CHARS: Record<string, Tile> = {
 // must not collide with a tile character, so the Word-Gate's porch is `?`,
 // which is also what it is: the place a question is asked. `Y` is a fork,
 // which is also what it looks like.
-export const MARKER_CHARS = new Set(["S", "E", "L", "*", "T", "H", "F", "?", "Y", "K"]);
+export const MARKER_CHARS = new Set(["S", "E", "L", "*", "T", "H", "F", "?", "Y", "K", "R"]);
 
 /**
  * And the klipot, which are written into a screen the same way. Kept out of

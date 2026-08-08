@@ -85,7 +85,7 @@ export interface HudSample {
  * callback is ever added and left unwired.
  */
 type StepCallbacks = Required<
-  Pick<StepContext, "onLetter" | "onFragment" | "onWordGate" | "onHouse" | "onVessel" | "onFinish">
+  Pick<StepContext, "onLetter" | "onFragment" | "onWordGate" | "onHouse" | "onVessel" | "onRelic" | "onFinish">
 >;
 
 export interface GameCanvasProps {
@@ -113,6 +113,7 @@ export interface GameCanvasProps {
   onWordGate: () => void;
   onHouse: (cardId: string) => void;
   onVessel: (keliId: string) => void;
+  onRelic: (relicId: string) => void;
   onFinish: () => void;
   onSample: (sample: HudSample) => void;
 }
@@ -132,6 +133,7 @@ export function GameCanvas({
   onWordGate,
   onHouse,
   onVessel,
+  onRelic,
   onFinish,
   onSample,
 }: GameCanvasProps) {
@@ -149,10 +151,10 @@ export function GameCanvas({
   const here = useRef<Palette>(paletteOf(palette.current, world.sefirah));
   const view = useRef({ w: 960, h: 432 });
   const pausedRef = useRef(paused);
-  const callbacks = useRef({ onLetter, onFragment, onWordGate, onHouse, onVessel, onFinish, onSample });
+  const callbacks = useRef({ onLetter, onFragment, onWordGate, onHouse, onVessel, onRelic, onFinish, onSample });
 
   pausedRef.current = paused;
-  callbacks.current = { onLetter, onFragment, onWordGate, onHouse, onVessel, onFinish, onSample };
+  callbacks.current = { onLetter, onFragment, onWordGate, onHouse, onVessel, onRelic, onFinish, onSample };
 
   /**
    * The forwarding half, annotated so that every callback must be here. Each
@@ -166,6 +168,7 @@ export function GameCanvas({
     onWordGate: () => callbacks.current.onWordGate(),
     onHouse: (id) => callbacks.current.onHouse(id),
     onVessel: (id) => callbacks.current.onVessel(id),
+    onRelic: (id) => callbacks.current.onRelic(id),
     onFinish: () => callbacks.current.onFinish(),
   };
 

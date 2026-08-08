@@ -71,9 +71,39 @@ describe("the letters and the regions", () => {
       const held = verbsOf(lettersOnEntering(i));
       const world = buildRegion(i, 1234 + i);
       expect(world.width).toBeGreaterThan(0);
-      // A veiled stone that can never be revealed would be a wall forever.
+      /**
+       * **Veiled stone is the one of the four that is checked the other way
+       * round, and this used to have it backwards.**
+       *
+       * The line here read "a veiled stone that can never be revealed would be
+       * a wall forever" and banned it outright before Ayin. That is not what
+       * `isSolid` does: `Tile.Veiled` returns `opts.revealed`, so unrevealed it
+       * is **empty air**. It can never be a wall — it can only be a *missing
+       * floor*, and only for a screen that needs it to stand on. That is
+       * guarded where it belongs, on the chunk: `veiled-span` declares
+       * `reveal`, so it is never laid before the Eye, and `route.test.ts`
+       * proves every rung crossable from what is held.
+       *
+       * The blanket ban passed for as long as every veiled stone in the game
+       * was load-bearing. The relic chamber is the first that is not — its
+       * staircase stands *beside* the way, and before Ayin it is a hole in the
+       * wall seven tiles up that obstructs nobody. Read literally the old
+       * assertion said Malchut may not hide anything, which is the opposite of
+       * what the kingdom's own chamber is for.
+       *
+       * So what is asserted is the true claim: nothing veiled is ever the
+       * floor of the lane a body walks along.
+       */
       if (!held.includes("reveal")) {
-        expect(world.tiles.includes(Tile.Veiled), `region ${i} hides stone before the Eye`).toBe(false);
+        const lane = new Set<number>();
+        for (let y = 0; y < world.height; y += 1) {
+          for (let x = 0; x < world.width; x += 1) {
+            if (world.tiles[y * world.width + x] === Tile.Veiled) lane.add(y % 18);
+          }
+        }
+        for (const row of lane) {
+          expect(row, `region ${i} hides stone in the lane a body walks`).toBeLessThan(13);
+        }
       }
       if (!held.includes("swim")) {
         expect(world.tiles.includes(Tile.Water), `region ${i} floods before the Waters`).toBe(false);

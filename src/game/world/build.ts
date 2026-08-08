@@ -43,6 +43,7 @@ import {
   HOUSE_CHUNK,
   LANDING_CHUNK,
   LETTER_CHUNK,
+  RELIC_CHUNK,
   RISE_CHUNK,
   SHRINE_HIGH,
   SHRINE_LOW,
@@ -55,6 +56,7 @@ import { HUSK_CHARS, HUSKS, kindForRole, LAMPS, type HuskKind } from "../combat"
 import { VEIL_COST } from "../encounter";
 import { drawKeli, keliFor, poolFor, type Keli } from "../items";
 import { guardianOf } from "../guardians";
+import { relicAt } from "../relics";
 import { MARKER_CHARS, Tile, TILE_CHARS, TILE_SIZE } from "./tiles";
 import { doorsOf, planFloor, roomAtPoint, ROOM_H, ROOM_W } from "./rooms";
 import { crossesAbyss, TREE_PATHS, type TreePath } from "../tree";
@@ -327,6 +329,13 @@ function layout(
     // One vessel per rung above the kingdom, on a shelf off the floor. It is
     // the only fixed screen that gives something the alphabet does not.
     ...(keli ? [VESSEL_CHUNK] : []),
+    // And the chamber, on every rung that has a hidden thing to hide — which
+    // is every Sefirah but the crown. **Unconditional on whether the relic is
+    // already held**, deliberately: `room` below is `fixed.length + 2`, so a
+    // conditional fixed screen would change the rung's length and every draw
+    // after it, and the Tree would become a function of the Scribe's reliquary
+    // rather than of the day. A relic already found leaves the chamber empty.
+    ...(relicAt(region.sefirah) ? [RELIC_CHUNK] : []),
   ];
 
   // Every fixed screen is entered and left on the ground, so they may only be
@@ -344,7 +353,21 @@ function layout(
   // them. `length` becomes the floor rather than the whole story, and a rung
   // is exactly as long as its own content asks — Keter, carrying two plates,
   // does not grow at all.
-  const room = fixed.length + 2;
+  //
+  // **And the chamber is not one of them**, which is the whole reason it can
+  // be afforded. `room` is a rule about *plates*: a screen you stop on wants a
+  // screen of game on either side of it. The relic chamber is the one fixed
+  // screen a Scribe walks straight through — its ground lane is clear the whole
+  // width by construction, and it raises nothing unless you climb to it. Counted
+  // as a plate it grew every rung by twelve per cent and Chochmah by a third
+  // (eighteen screens to twenty-four), because `room` feeds the body's length
+  // *and* the padding loop *and* the squaring, so one screen compounds into
+  // three. Measured over sixty-six honest walks with the klipot standing, that
+  // cost the fighter nine points of finish rate and **two and a half times the
+  // goings-out** — a price paid by every climb for a room most of them never
+  // enter. So it is slotted like a fixed screen and lengthens nothing.
+  const stopping = fixed.filter((c) => c.id !== RELIC_CHUNK.id).length;
+  const room = Math.max(fixed.length, stopping + 2);
   const quota = banded.some(asksForALetter)
     ? gatedQuota(Math.max(region.length, room), region.demand)
     : 0;
@@ -843,6 +866,13 @@ function paint(
    * across every sealed climb — see `cardsOpen`.
    */
   cardDepth = 0,
+  /**
+   * The hidden things this Scribe has already found, across every sealed
+   * climb. The chamber is laid either way — see `RELIC_CHUNK` — so this decides
+   * only whether anything stands in it, which changes no tile and therefore no
+   * ground. An empty chamber is the picture of a thing already taken.
+   */
+  relicsFound: readonly string[] = [],
 ): World {
   // The screens are dealt into a floor before anything is written. One row is
   // a corridor and is exactly what every rung was before rooms existed, so
@@ -925,6 +955,18 @@ function paint(
               break;
             case "K": {
               if (keli) entities.push({ id: `e${entityId++}`, kind: "vessel", x: px, y: py, ref: keli.id });
+              break;
+            }
+            case "R": {
+              // Keyed off the Sefirah alone, with no draw of any kind: the
+              // chamber's contents must not touch this rng, because `drawKeli`
+              // is its first consumer and `keliOnPath` recreates that draw to
+              // tell the map which vessel a path holds. Nothing here is random
+              // anyway — a place hides one thing, always the same thing.
+              const relic = relicAt(sefirah);
+              if (relic && !relicsFound.includes(relic.id)) {
+                entities.push({ id: `e${entityId++}`, kind: "relic", x: px, y: py, ref: relic.id });
+              }
               break;
             }
             default:
@@ -1515,6 +1557,12 @@ export function buildPath(
    * (`timesStood` in `book.ts`) and the generator knows nothing about storage.
    */
   cardDepth = 0,
+  /**
+   * The hidden things already in the Scribe's reliquary, so a chamber whose
+   * relic is one of them stands empty. It changes nothing about the ground —
+   * see `RELIC_CHUNK` on why the screen is laid either way.
+   */
+  relicsFound: readonly string[] = [],
 ): World {
   const region = regionOfPath(path, held, klipot);
   // Seeded by the path rather than the region, so walking Malchut→Hod is not
@@ -1543,6 +1591,7 @@ export function buildPath(
     laid.length > 0 ? 1 : 0,
     keli,
     cardDepth,
+    relicsFound,
   );
 }
 

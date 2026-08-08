@@ -69,6 +69,7 @@ const KIND_OF: Record<string, RoomKind> = {
   "shrine-high": "shrine",
   house: "house",
   vessel: "vessel",
+  "relic-chamber": "relic",
   end: "exit",
   // The crossing's way out is a gate *and* an exit, and it is named for the
   // exit — because the one thing the kind is asked functionally is whether the
