@@ -8,6 +8,7 @@ import {
   lastSealed,
   lexicon,
   marks,
+  relicsKept,
   pagesOf,
   tally,
   timesStood,
@@ -350,5 +351,63 @@ describe("the marks of mastery", () => {
       );
     expect(ids(stood(6))).not.toContain("remembered");
     expect(ids(stood(7))).toContain("remembered");
+  });
+});
+
+
+/**
+ * **The Reliquary**, and the one thing about it that is not bookkeeping.
+ *
+ * Folding over sealed climbs rather than over all of them is the whole defence
+ * against a real exploit: beginning again mints a fresh `variant` and therefore
+ * fresh ground, so a Reliquary counted over every record could be filled in one
+ * sitting by starting nine climbs and walking to nine chambers. It is the same
+ * hole `variant` itself was invented to close for light, and the same rule
+ * `sealedCount` already uses for the Seven Encounters.
+ */
+describe("the Reliquary", () => {
+  const sealed = (relicsFound: string[]) =>
+    climb({ sealedAt: "2026-01-01T00:00:00.000Z", relicsFound });
+
+  it("keeps what was found on a climb that was carried to its ending", () => {
+    expect(relicsKept([sealed(["shamir", "aron"])]).map((r) => r.id)).toEqual(["shamir", "aron"]);
+  });
+
+  it("keeps nothing from a climb that was abandoned or went out", () => {
+    expect(relicsKept([climb({ relicsFound: ["shamir"] })]), "an open climb filled the Reliquary").toEqual(
+      [],
+    );
+    expect(
+      relicsKept([climb({ relicsFound: ["shamir"], abandonedAt: "2026-01-01T00:00:00.000Z" })]),
+      "beginning again is a way to farm relics",
+    ).toEqual([]);
+  });
+
+  it("keeps a relic once however often it is found", () => {
+    expect(relicsKept([sealed(["shamir"]), sealed(["shamir"])]).map((r) => r.id)).toEqual(["shamir"]);
+  });
+
+  /**
+   * Oldest first, because "when did I find this" is what a collection gets
+   * asked and `listAscents` hands them back newest first.
+   */
+  it("reads in the order they were first found", () => {
+    const first = { ...sealed(["aron"]), updatedAt: "2026-01-01T00:00:00.000Z" };
+    const then = { ...sealed(["shamir"]), updatedAt: "2026-02-01T00:00:00.000Z" };
+    expect(relicsKept([then, first]).map((r) => r.id)).toEqual(["aron", "shamir"]);
+  });
+
+  /**
+   * A record written before this table said what it says now. The scroll
+   * fragments are the precedent and the warning: a ref out of range once
+   * granted the Mouth, so an id that names nothing is skipped rather than
+   * shown as a blank.
+   */
+  it("skips a relic it can no longer name", () => {
+    expect(relicsKept([sealed(["a-thing-that-was-cut", "shamir"])]).map((r) => r.id)).toEqual(["shamir"]);
+  });
+
+  it("reads a record written before any of this existed", () => {
+    expect(relicsKept([climb({ sealedAt: "2026-01-01T00:00:00.000Z" })])).toEqual([]);
   });
 });

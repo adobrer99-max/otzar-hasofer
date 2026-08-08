@@ -87,7 +87,8 @@ import { boonsFrom, guardianOf, TIERS } from "./guardians";
 import { timesFreed } from "../storage/ascentRepo";
 import { TreeMap } from "./TreeMap";
 import { Book } from "./Book";
-import { lastSealed, timesStood } from "./book";
+import { lastSealed, relicsKept, timesStood } from "./book";
+import { carried, CARRIED, RELICS, type Relic } from "./relics";
 import { afterWalking, crossesAbyss, nodeOf, TREE_PATHS, type TreePath } from "./tree";
 import { readWarp, warpParams, warpRecord, type WarpOptions } from "./dev/warp";
 import { frameStats, installProbe, neighbourhood, phaseStats, probeOf } from "./dev/probe";
@@ -230,6 +231,14 @@ export function GamePage() {
    */
   const [chosenRule, setChosenRule] = useState<number | undefined>(undefined);
   /**
+   * The relics picked up off the threshold for the next climb. Held here and
+   * frozen onto the record at Begin, exactly as `chosenRule` is: a choice kept
+   * only in a component's lifetime would be lost on a reload, and since a relic
+   * changes what is generated, the same seed would then build different ground.
+   */
+  const [chosenRelics, setChosenRelics] = useState<readonly string[]>([]);
+
+  /**
    * **Every climb ever, held rather than folded once and dropped.**
    *
    * This list was already being read at load for `sealedCount` and
@@ -240,6 +249,13 @@ export function GamePage() {
   const [history, setHistory] = useState<AscentRecord[]>([]);
   /** How often each Sefirah's House has stood at the crown, across every climb. */
   const stoodFor = useMemo(() => timesStood(history), [history]);
+  /**
+   * Everything ever brought out of a chamber, folded over sealed climbs — see
+   * `relicsKept`. A fold rather than a store, like every other across-run fact
+   * in this game.
+   */
+  const kept = useMemo(() => relicsKept(history), [history]);
+
   /**
    * **How many climbs each Sefirah has been freed in** — counts rather than a
    * set, because the boons are tiered off the count now (`guardians.ts`). A
@@ -512,9 +528,13 @@ export function GamePage() {
         // Only past the seven, and only if one was picked — inside them the
         // unfolding order is not a choice, and `ruleOf` would ignore it anyway.
         ruleNumber: beyondTheSeven(sealedBefore) ? chosenRule : undefined,
+        // Filtered rather than trusted: `carried` drops anything not actually
+        // found, anything the table no longer names, and anything past the
+        // third. What is written down is what will be carried.
+        reliquary: carried(chosenRelics, kept.map((r) => r.id)).map((r) => r.id),
       };
     },
-    [time, sealedBefore, chosenRule],
+    [time, sealedBefore, chosenRule, chosenRelics, kept],
   );
 
   /**
@@ -1327,6 +1347,9 @@ export function GamePage() {
           onBook={() => setBookOpen(true)}
           chosenRule={chosenRule}
           onChooseRule={setChosenRule}
+          kept={kept}
+          chosenRelics={chosenRelics}
+          onChooseRelics={setChosenRelics}
           onBegin={beginAscent}
         />
       )}
@@ -1630,6 +1653,9 @@ function Threshold({
   onBook,
   chosenRule,
   onChooseRule,
+  kept,
+  chosenRelics,
+  onChooseRelics,
   onBegin,
 }: {
   /** The most recent sealed climb, if there is one — see `book.ts`. */
@@ -1646,6 +1672,10 @@ function Threshold({
   /** Which of the seven rules the next climb is set to, past the seventh seal. */
   chosenRule: number | undefined;
   onChooseRule: (number: number | undefined) => void;
+  /** Every relic ever brought out of a chamber — see `relicsKept` in `book.ts`. */
+  kept: readonly Relic[];
+  chosenRelics: readonly string[];
+  onChooseRelics: (ids: readonly string[]) => void;
   onBegin: () => void;
 }) {
   return (
@@ -1716,6 +1746,12 @@ function Threshold({
             the chooser states it. */}
         {encounter && <TheRule rule={ruleOf({ encounterNumber: encounter.number })} />}
         {!encounter && <TheDay chosen={chosenRule} onChoose={onChooseRule} />}
+        {/* Offered only once there is something to choose between. A Scribe who
+            has never opened a chamber is shown nothing, for the same reason the
+            Book is not offered until something is written in it. */}
+        {kept.length > 0 && (
+          <TheReliquary kept={kept} chosen={chosenRelics} onChoose={onChooseRelics} />
+        )}
       </div>
     </section>
   );
@@ -1749,6 +1785,70 @@ function Threshold({
  * a choice a person who has finished it may well want, and a menu with no way
  * out of it is not a choice.
  */
+/**
+ * **What to carry out of the Reliquary**, chosen before the climb rather than
+ * during it — which is the whole of what makes a relic a decision.
+ *
+ * Three at a time out of nine, so taking one is declining another. The bargain
+ * is stated on the face of every one of them, both halves, because a permanent
+ * object whose price is discovered later is a trap rather than a choice.
+ *
+ * Reuses the day-chooser's own controls, which is not laziness: these are the
+ * same act at the same moment — the two things a Scribe settles while still
+ * standing on the threshold.
+ */
+function TheReliquary({
+  kept,
+  chosen,
+  onChoose,
+}: {
+  kept: readonly Relic[];
+  chosen: readonly string[];
+  onChoose: (ids: readonly string[]) => void;
+}) {
+  const take = (id: string) => {
+    if (chosen.includes(id)) {
+      onChoose(chosen.filter((held) => held !== id));
+      return;
+    }
+    // The oldest choice gives way rather than the click being refused: a full
+    // hand that simply stops responding reads as a broken button.
+    onChoose([...chosen, id].slice(-CARRIED));
+  };
+  return (
+    <div className={styles.dayChoice}>
+      <p className={styles.dayKicker}>
+        The Reliquary — {kept.length} of {RELICS.length} found. Carry {CARRIED}.
+      </p>
+      <ul className={styles.relics}>
+        {kept.map((relic) => {
+          const held = chosen.includes(relic.id);
+          return (
+            <li key={relic.id}>
+              <button
+                type="button"
+                aria-pressed={held}
+                className={held ? styles.relicOn : styles.relic}
+                onClick={() => take(relic.id)}
+              >
+                <span className={styles.relicName}>
+                  {relic.name}{" "}
+                  <span className="hebrew" lang="he" aria-hidden="true">
+                    {relic.hebrew}
+                  </span>
+                </span>
+                <span className={styles.relicBargain}>
+                  {relic.gives} {relic.takes}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 function TheDay({
   chosen,
   onChoose,

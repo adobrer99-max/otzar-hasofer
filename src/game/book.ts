@@ -1,6 +1,7 @@
 import { dorotCardsById, dorotHousesById } from "../data/dorot";
 import { timesFreed, type AscentRecord, type FormedWord } from "../storage/ascentRepo";
 import type { SefirahId } from "../types/letter";
+import { relicById, type Relic } from "./relics";
 import { sealKindOf, type SealKind } from "./sealing";
 import { endingOf } from "./story";
 import type { PleaKind } from "./story";
@@ -224,6 +225,39 @@ export function timesStood(ascents: readonly AscentRecord[]): Record<string, num
     for (const sefirah of page.witnesses) stood[sefirah] = (stood[sefirah] ?? 0) + 1;
   }
   return stood;
+}
+
+/**
+ * **The Reliquary — every relic ever brought out of a chamber**, in the order
+ * they were first found.
+ *
+ * A fold rather than a store, like everything else in this file, and folded
+ * over **sealed climbs only**. That is not tidiness, it is the exploit: a climb
+ * abandoned and begun again mints a fresh `variant` and therefore fresh ground,
+ * so a Reliquary counted over every record could be filled in one sitting by
+ * beginning nine times and walking to nine chambers. Sealing is already the
+ * game's word for a climb that counts — `sealedCount` uses exactly this rule to
+ * advance the Seven Encounters, and a climb that went out is not one of them.
+ *
+ * Oldest first, because "when did I find this" is the question a collection
+ * gets asked, and `listAscents` hands them back newest first.
+ */
+export function relicsKept(ascents: readonly AscentRecord[]): Relic[] {
+  const kept: Relic[] = [];
+  const seen = new Set<string>();
+  for (const ascent of [...ascents].reverse()) {
+    if (!ascent.sealedAt) continue;
+    for (const id of ascent.relicsFound ?? []) {
+      const relic = relicById[id];
+      // An id that names nothing is a record from a build where the table said
+      // something else. Skipped rather than shown as a blank, which is what the
+      // scroll fragments taught: a ref out of range once granted the Mouth.
+      if (!relic || seen.has(id)) continue;
+      seen.add(id);
+      kept.push(relic);
+    }
+  }
+  return kept;
 }
 
 // ---------------------------------------------------------------------------

@@ -9,7 +9,8 @@ import { guardianOf, TIERS, tierOf } from "./guardians";
 import { HUSKS } from "./combat";
 import { PLEA_NAMED } from "./story";
 import { pathById, pointOf, TREE_LINES, TREE_VIEW } from "./tree";
-import { CARDS_IN_ALL, housesMet, lexicon, marks, pagesOf, tally, type BookPage } from "./book";
+import { CARDS_IN_ALL, housesMet, lexicon, marks, pagesOf, relicsKept, tally, type BookPage } from "./book";
+import { RELICS } from "./relics";
 import styles from "./Book.module.css";
 
 /** "1 path", not "1 paths" — a record of a life should read like prose. */
@@ -36,6 +37,7 @@ export function Book({ ascents, onClose }: { ascents: readonly AscentRecord[]; o
   const pages = useMemo(() => pagesOf(ascents), [ascents]);
   const houses = useMemo(() => housesMet(ascents), [ascents]);
   const roots = useMemo(() => lexicon(ascents), [ascents]);
+  const relics = useMemo(() => relicsKept(ascents), [ascents]);
   const totals = useMemo(() => tally(ascents), [ascents]);
   const freed = useMemo(() => timesFreed(ascents), [ascents]);
   const allMarks = useMemo(() => marks(ascents), [ascents]);
@@ -165,6 +167,39 @@ export function Book({ ascents, onClose }: { ascents: readonly AscentRecord[]; o
                     </li>
                   );
                 })}
+            </ul>
+          </section>
+        )}
+
+        {relics.length > 0 && (
+          <section>
+            <DecoratedRule />
+            {/* **The only things in this game that survive a seal.** Everything
+                else on this page is a record of what was done; this is a shelf
+                of what is still held. Both halves of every bargain are shown,
+                because a relic is chosen at the threshold and a price found out
+                afterwards is a trap rather than a choice. */}
+            <h3 className={styles.section}>
+              The Reliquary — {relics.length} of {RELICS.length} found
+            </h3>
+            <ul className={styles.houses}>
+              {relics.map((relic) => (
+                <li key={relic.id} className={styles.house}>
+                  <span className={styles.houseName}>
+                    {relic.name}{" "}
+                    <span className="hebrew" lang="he" aria-hidden="true">
+                      {relic.hebrew}
+                    </span>
+                  </span>
+                  <span className={styles.houseCount}>{relic.source}</span>
+                  <ul className={styles.cards}>
+                    <li>{relic.hidden}</li>
+                    <li>
+                      {relic.gives} {relic.takes}
+                    </li>
+                  </ul>
+                </li>
+              ))}
             </ul>
           </section>
         )}

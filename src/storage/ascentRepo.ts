@@ -129,6 +129,25 @@ export interface AscentRecord {
    */
   items?: string[];
   /**
+   * **The relics carried into this climb, frozen at Begin** — see
+   * `game/relics.ts`.
+   *
+   * Chosen at the threshold and written down here for the same reason
+   * `ruleNumber` is: `currentAscent` resumes an unsealed record, so a choice
+   * held only in React state would be lost on a reload — and since a relic
+   * changes what is generated, the same seed would then build different ground.
+   * That is the abandon-and-resume exploit `variant` was invented to close,
+   * wearing a new coat.
+   */
+  reliquary?: string[];
+  /**
+   * And the relics **found** on this climb. The Reliquary itself is a fold over
+   * these across sealed climbs (`relicsKept` in `game/book.ts`) rather than a
+   * store of its own — but the find has to be written down somewhere, because
+   * there is nothing already on the record it could be derived from.
+   */
+  relicsFound?: string[];
+  /**
    * The graces guests of the Houses have given on this climb — see
    * `game/ushpizinOffers.ts`. The other half of `items`: a vessel changes what
    * the numbers are, a boon changes what a body can do.

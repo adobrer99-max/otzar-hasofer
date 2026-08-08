@@ -142,6 +142,72 @@
   color: var(--text);
 }
 
+/* ---- the Reliquary, chosen from on the threshold ------------------------- */
+
+/**
+ * Its own shape rather than the day-chooser's chips, which is what it wore
+ * first. A chip is right for "The Third Encounter"; a relic carries its whole
+ * bargain — what it gives and what it takes, both of which have to be readable
+ * before the choice is made — and photographed at that length the chips wrapped
+ * to three centred lines apiece and stopped reading as controls at all. A row
+ * with the name on its own line and the price under it is the same information
+ * and is plainly a thing you press.
+ */
+.relics {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.relic,
+.relicOn {
+  display: block;
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  /* **Tokens that exist.** The first draft drew this off `--rule` and then off
+     `--gold-ink`, and an unchosen relic had no edge at all either time: neither
+     token is defined anywhere in this project, so the whole declaration was
+     invalid and dropped. Seven of the names this stylesheet uses are dead —
+     see the note on `.startKicker`. */
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: var(--radius-md);
+  background: none;
+  font: inherit;
+  /* A button centres its own text; everything else on the threshold is
+     centred too, so this had to be said twice to be believed. */
+  text-align: left;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.relic:hover,
+.relic:focus-visible {
+  border-color: var(--accent-bright);
+  color: var(--text);
+}
+
+.relicOn {
+  border-color: var(--accent-bright);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--text);
+}
+
+.relicName {
+  display: block;
+  font-size: 0.86rem;
+  color: var(--accent);
+}
+
+.relicBargain {
+  display: block;
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
 /* ---- standing on the Tree, behind the map ------------------------------- */
 
 .standing {
