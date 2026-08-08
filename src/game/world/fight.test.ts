@@ -3,8 +3,9 @@ import { abilityByLetter } from "../abilities";
 import { LAMPS, markBite, markPowers } from "../combat";
 import { KELIM } from "../items";
 import { boonsFrom, TIERS } from "../guardians";
-import { lettersOnEntering, regions, TOTAL_REGIONS } from "../regions";
-import { buildRegion, rowsFor, verbsOf } from "./build";
+import { lettersOnEntering, regionOfSefirah, regions, TOTAL_REGIONS } from "../regions";
+import { TREE_PATHS } from "../tree";
+import { buildPath, regionOfPath, rowsFor, verbsOf } from "./build";
 import type { StepContext } from "./step";
 import { fighter, type Fight } from "./probes";
 
@@ -16,15 +17,25 @@ import { fighter, type Fight } from "./probes";
  * one husk test, and it is the mirror image: with the klipot standing and the
  * lamps set to ninety-nine, can a Scribe who never strikes still get across?
  *
- * Nothing has ever measured a Scribe who fights. Every number in `combat.ts`
- * is a first-pass guess, and the only evidence for any of them has been a
- * browser bot whose deaths turned out, twice today, to be its own driving.
- * This is the deterministic instrument: same seeds, same result, every run.
+ * Nothing had ever measured a Scribe who fights. Every number in `combat.ts`
+ * was a first-pass guess, and the only evidence for any of them was a browser
+ * bot whose deaths turned out, twice, to be its own driving. This is the
+ * deterministic instrument: same seeds, same result, every run.
  *
  * It asserts a band rather than a number, because the point is not to freeze
  * today's balance — it is to catch the two ways the fight can stop being a
  * fight. Too soft and a Scribe crosses ten rungs without losing a lamp; too
  * hard and the klipot become the wall the terrain is guaranteed not to be.
+ *
+ * **And it measures the ground a climb actually walks**, which it did not until
+ * now. Every number in this file used to come from `buildRegion` — the pre-Tree
+ * linear road, an honest generator for one Sefirah's ground and not the thing
+ * anybody plays. P1 recorded the migration as done and it was not; `GamePage`
+ * carried a comment saying so. The two fixtures differ enough to matter: a
+ * region lays its own four kinds, and a *path* lays the union of both its ends,
+ * so the Saraf that made a rung permanently alight showed up on paths as one
+ * klipah in six and here as four across twenty seeds. Every band below was
+ * re-measured on path ground when the fixture changed.
  */
 
 function contextFor(regionIndex: number): StepContext {
@@ -38,39 +49,81 @@ function contextFor(regionIndex: number): StepContext {
 }
 
 /**
+ * **The paths that arrive at a rung** — a Scribe reaches a Sefirah by walking a
+ * path whose *upper* end is that Sefirah. Three arrive at the crown; **none at
+ * Malchut**, which is where a climb begins rather than somewhere it is reached,
+ * so the Tree has nine rungs to measure and not ten. Malchut's klipot are not
+ * lost with it: they stand on every path out of the kingdom.
+ */
+function pathsInto(index: number) {
+  const here = regions[index - 1].sefirah;
+  return TREE_PATHS.filter(
+    (p) =>
+      p.ends.includes(here) &&
+      Math.max(regionOfSefirah(p.ends[0]).index, regionOfSefirah(p.ends[1]).index) === index,
+  );
+}
+
+/**
+ * **One path per rung per seed**, chosen by the seed rather than fixed, so a
+ * twenty-seed pool walks every way into a rung several times over and the
+ * sample stays the size it was calibrated at. Walking all of them instead would
+ * be four hundred and forty runs a cell, which is what `curve.test.ts` does
+ * because the curve is the one question worth that much arithmetic.
+ */
+function groundAt(index: number, seed: number) {
+  const paths = pathsInto(index);
+  const path = paths[seed % paths.length];
+  const held = lettersOnEntering(index);
+  return {
+    world: buildPath(path, seed, held, 1, false, false, 1, []),
+    /** The rung the generator actually laid — capped by what the hand has earned. */
+    rung: regionOfPath(path, held).index,
+  };
+}
+
+/**
  * How long a Scribe is given, by the size of the rung — the same budget the
  * traversal probe is given, for the same reason: a floor of three rows is three
- * times the ground of a corridor.
+ * times the ground of a corridor. Read off the rung the generator laid rather
+ * than the one asked for, because a path's floor is capped by the hand.
  */
-const budgetFor = (regionIndex: number) => 12000 * (rowsFor(regionIndex) + 1);
+const budgetFor = (rung: number) => 12000 * (rowsFor(rung) + 1);
 
 
 // **Twenty rather than ten, and ten rather than six, for the same reason each
 // time.** The per-rung rate is a share of these, and a share of a small sample
 // is noise being read as balance: at six seeds one unlucky layout moved a rung
 // by seventeen points, and at ten the whole-Tree rate still sat close enough to
-// its own bar that adding a screen to the chunk library crossed it. Measured
-// over three independent twenty-seed pools the going-out rate is 13.5%, 17.0%
-// and 14.0% — that three-point spread is what a reshuffle costs, and every band
-// below is set clear of it rather than against one draw.
+// its own bar that adding a screen to the chunk library crossed it. Measured on
+// path ground over three independent twenty-seed pools the going-out rate is
+// 10.0%, 10.6% and 13.3% — that three-point spread is what a reshuffle costs,
+// and every band below is set clear of it rather than against one draw.
+//
+// **And the spread is why a band is re-measured over three pools rather than
+// re-read on one.** Migrating this file to path ground left ten of its eleven
+// bands green on these seeds. The eleventh — the klipot getting heavier up the
+// Tree — was green here and green on a second pool and failed on a third, at
+// 1.40 against a bar of 1.5. A band that has only ever been checked against the
+// pool it was drawn from is not a band.
 const SEEDS = [
   3, 91, 555, 12345, 777, 40404, 8, 1234, 60606, 31337,
   17, 42, 101, 2024, 5150, 7777, 99, 4242, 314, 2718,
 ];
 
 /**
- * Every region, every seed, with a Scribe who fights. Measured once, reused —
- * and **lazily**, because `economy.test.ts` imports `fighter` from this file
- * and a hundred probe runs at module scope is eighteen seconds it does not
- * need. Nothing here is wanted until an assertion asks for it.
+ * Every rung, every seed, with a Scribe who fights. Measured once, reused — and
+ * **lazily**, because a hundred and eighty probe runs at module scope is half a
+ * minute paid by anything that so much as imports this file. Nothing here is
+ * wanted until an assertion asks for it.
  */
 let measured: { region: number; seed: number; fight: Fight }[] | undefined;
 const RUNS = () => (measured ??= (() => {
   const rows: { region: number; seed: number; fight: Fight }[] = [];
-  for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
+  for (let region = 2; region <= TOTAL_REGIONS; region += 1) {
     for (const seed of SEEDS) {
-      const world = buildRegion(region, seed);
-      rows.push({ region, seed, fight: fighter(world, contextFor(region), budgetFor(region)) });
+      const { world, rung } = groundAt(region, seed);
+      rows.push({ region, seed, fight: fighter(world, contextFor(region), budgetFor(rung)) });
     }
   }
   return rows;
@@ -95,11 +148,11 @@ describe("what the klipot cost a Scribe who fights", () => {
    * own, and a climb that could never end that way would make the three lamps
    * decoration. So this asks the other question: is going out the *exception*?
    *
-   * Measured, a Scribe who gives ground, stands, and aims goes out in about
-   * one rung in twenty — call it two climbs in five ending short of the crown,
-   * which for a game whose failure state is also its premise is about right.
-   * The band catches both ways it could rot: klipot that become a wall, and
-   * klipot nobody notices.
+   * Measured on path ground, a Scribe who gives ground, stands, and aims goes
+   * out on about one rung in nine — call it two climbs in five ending short of
+   * the crown, which for a game whose failure state is also its premise is
+   * about right. The band catches both ways it could rot: klipot that become a
+   * wall, and klipot nobody notices.
    */
   it("makes going out the exception rather than the rule", () => {
     const went = RUNS().filter((r) => r.fight.out);
@@ -109,9 +162,11 @@ describe("what the klipot cost a Scribe who fights", () => {
       .join("; ");
     // A band rather than a ceiling, because the doc above says the measurement
     // catches rot in both directions and only one of them was ever asserted.
-    // Measured 13.5 / 17.0 / 14.0 per cent over three pools of these twenty
-    // seeds; the walls are four points clear on the high side and seven on the
-    // low, which is several times the spread a reshuffle produces.
+    // Measured **10.0 / 10.6 / 13.3** per cent over three independent pools of
+    // twenty seeds on path ground — the linear road read 13.5 / 17.0 / 14.0, so
+    // the migration moved this three or four points down. The walls are eleven
+    // points clear on the high side and four on the low, which is several times
+    // the spread a reshuffle produces.
     expect(share, `${went.length} of ${RUNS().length} went out — ${where}`).toBeLessThan(0.24);
     expect(
       share,
@@ -120,53 +175,24 @@ describe("what the klipot cost a Scribe who fights", () => {
   });
 
   /**
-   * And no single rung may be the one that ends most climbs.
+   * **And no single rung may be the one that ends most climbs — asserted in
+   * `curve.test.ts`, and deliberately not here.**
    *
-   * **The ceiling was drawn from the wall it was meant to catch.** This read
-   * `< 0.6` against a comment recording Tiferet at eight of twenty — the line
-   * was set two spreads clear of the worst rung, so the worst rung passed by
-   * construction, and it went on passing while Tiferet ended more than half of
-   * all walks and every other rung ended between none and one in five. An
-   * absolute ceiling cannot tell a hard rung from a hole in the curve: it only
-   * knows how bad the worst place is allowed to be, which is the number the
-   * defect itself supplied.
+   * This file used to carry that rule and it is worth recording why it left,
+   * because the reason is the same one that moved `outOfReach` into a single
+   * function. The guard read `< 0.6` against a comment recording the worst rung
+   * at `0.4` — the line was drawn *from* the defect it was meant to catch, so
+   * the defect passed by construction. It was then rewritten as a shape, which
+   * was the right instrument on the wrong ground: this file built with
+   * `buildRegion`, so it could not see a path's klipot at a path's density and
+   * never saw the Saraf at all.
    *
-   * So the shape is what is asserted. A rung is a wall when it is far out of
-   * line with *the rest of the Tree*, whatever the absolute figure — and the
-   * median moves with the game, so this keeps meaning the same thing after a
-   * retune rather than needing to be redrawn each time.
-   *
-   * **And note what this file's ground is.** `RUNS` builds with `buildRegion`,
-   * the pre-Tree road — one Sefirah's honest ground, but not the ground a climb
-   * actually walks, which is `buildPath`. The two differ enough to matter: the
-   * Saraf's fire made Tiferet end more than half of all *path* walks and moved
-   * nothing at all here, because the old fixture lays four of them across twenty
-   * seeds where a rung lays one in six. The shipped curve is guarded in
-   * `curve.test.ts`; this one guards the fixture the rung tests are written on.
+   * Now that both files walk the same generator, keeping the rule in two places
+   * would mean two samples of the same question — and `curve.test.ts` takes the
+   * better one, four hundred and forty walks over *every* path into a rung
+   * against this file's one path per seed. A rule with two homes is a rule that
+   * gets fixed in one of them.
    */
-  it("has no rung that reliably puts a Scribe out", () => {
-    const shares = new Map<number, { out: number; of: number }>();
-    for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
-      const rows = forRegion(region);
-      if (rows.length === 0) continue;
-      shares.set(region, { out: rows.filter((r) => r.fight.out).length, of: rows.length });
-    }
-    const rates = [...shares.values()].map((s) => s.out / s.of).sort((a, b) => a - b);
-    const median = rates[Math.floor(rates.length / 2)];
-    for (const [region, s] of shares) {
-      const rate = s.out / s.of;
-      // The absolute line stays as a backstop — a Tree where *every* rung ends
-      // half the walks has no outlier and would slip through a ratio alone.
-      expect(rate, `region ${region} put ${s.out} of ${s.of} runs out`).toBeLessThan(0.5);
-      // And the shape. Measured after the Saraf's fire was cut back, the rungs
-      // run 0–25 per cent against a median near a tenth; a rung at four times
-      // the median is a hole rather than a hard place.
-      expect(
-        rate,
-        `region ${region} ends ${(rate * 100).toFixed(0)}% of its walks against a median of ${(median * 100).toFixed(0)}% — it is a wall, not a rung`,
-      ).toBeLessThan(Math.max(0.2, median * 4));
-    }
-  });
 
   /**
    * The marks have to work. A Scribe who throws at everything in reach and
@@ -180,31 +206,35 @@ describe("what the klipot cost a Scribe who fights", () => {
     // most brittle line in this file, and it is the mean that says whether the
     // marks work.
     const shares: number[] = [];
-    for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
+    for (let region = 2; region <= TOTAL_REGIONS; region += 1) {
       const rows = forRegion(region);
       const placed = mean(rows.map((r) => r.fight.broken + r.fight.standing));
       if (placed === 0) continue;
       const share = mean(rows.map((r) => r.fight.broken)) / placed;
       shares.push(share);
       // **A floor, not a target.** Measured across the Tree the share is not
-      // flat and was never going to be: the foot runs at four fifths because
-      // three slow pacers meet a Scribe with nothing else to do, and it falls
-      // to a trough of a fifth around Chesed to Tiferet, where the rungs turn
-      // into floors and the probe spends its attention on the climb. Regions
-      // four, five and six sit at 22, 27 and 19 per cent.
+      // flat and was never going to be: the foot runs at better than three
+      // quarters, because three slow pacers meet a Scribe with nothing else to
+      // do, and it falls toward a third at Binah and Chochmah, where the rungs
+      // turn into three-row floors and the probe spends its attention on the
+      // climb.
       //
-      // This line used to be drawn at a fifth, which is to say *through* that
-      // trough — so relaying the library moved a screen, region six came out at
-      // 19.4, and a suite that measures the fight reported a failure about
-      // level layout. The comment above already says the mean is what tells you
-      // the marks work. What this is for is a rung where they plainly do not,
-      // and it is set clear of the measured trough so that it says so and
-      // nothing else.
+      // **The migration moved this a long way and the floor moved with it.** On
+      // the linear road the trough was a fifth and this line sat at 0.12; a path
+      // lays both its ends' klipot at a rung's density and the probe breaks far
+      // more of them, so the same trough now reads 33 per cent — measured
+      // 33/33/42, 43/49/39 and 33/41/48 for regions eight, nine and ten over
+      // three independent pools. The line is redrawn at a fifth, thirteen points
+      // under the worst cell measured, which is where a floor belongs: clear of
+      // the spread, and still able to say that a rung where the marks plainly do
+      // not work is a rung where the marks plainly do not work.
       expect(
         share,
         `region ${region}: only ${(share * 100).toFixed(0)}% of ${placed.toFixed(1)} husks broken`,
-      ).toBeGreaterThan(0.12);
+      ).toBeGreaterThan(0.2);
     }
+    // Mean 51 / 53 / 52 per cent over the three pools; the bar is sixteen points
+    // under the lowest of them.
     expect(mean(shares), `mean ${(mean(shares) * 100).toFixed(0)}% broken`).toBeGreaterThan(0.35);
   });
 
@@ -213,11 +243,15 @@ describe("what the klipot cost a Scribe who fights", () => {
    * the klipot are scenery with a hit box and the three lamps are a HUD
    * element that never moves. Measured across the upper Tree rather than any
    * one rung, because a single region can legitimately be walked clean.
+   *
+   * 0.95 / 1.04 / 1.10 lamps over the three pools — very nearly the whole lamp
+   * this test is named for, and up from the linear road, where it sat low
+   * enough that the bar had to be drawn at 0.3 to clear the spread.
    */
   it("costs the upper Tree at least one lamp", () => {
     const upper = RUNS().filter((r) => r.region >= 6);
     const lost = mean(upper.map((r) => LAMPS - r.fight.lampsLeft));
-    expect(lost, `mean lamps lost above Tiferet: ${lost.toFixed(2)}`).toBeGreaterThan(0.3);
+    expect(lost, `mean lamps lost above Tiferet: ${lost.toFixed(2)}`).toBeGreaterThan(0.5);
   });
 
   /**
@@ -228,7 +262,7 @@ describe("what the klipot cost a Scribe who fights", () => {
    * do with the terrain.
    */
   it("never spends the whole lamp-stock on a single rung", () => {
-    for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
+    for (let region = 2; region <= TOTAL_REGIONS; region += 1) {
       const lost = mean(forRegion(region).map((r) => LAMPS - r.fight.lampsLeft));
       expect(lost, `region ${region} costs ${lost.toFixed(2)} of ${LAMPS} lamps`).toBeLessThan(
         LAMPS - 0.5,
@@ -245,7 +279,13 @@ describe("what the klipot cost a Scribe who fights", () => {
   it("gets heavier the higher the Tree is climbed", () => {
     const low = mean(RUNS().filter((r) => r.region <= 3).map((r) => r.fight.broken + r.fight.standing));
     const high = mean(RUNS().filter((r) => r.region >= 8).map((r) => r.fight.broken + r.fight.standing));
-    expect(high, `low ${low.toFixed(1)} husks, high ${high.toFixed(1)}`).toBeGreaterThan(low * 1.5);
+    // **The one band the migration caught passing on its own seeds.** At 1.5 it
+    // was green on the committed pool and green on a second, and a third pool
+    // measured 1.40. A path takes its klipot count from the *average* of its two
+    // ends, so the foot of the Tree is heavier here than it was on the linear
+    // road and the ratio is correspondingly flatter: 1.57 / 1.66 / 1.40. Drawn
+    // at 1.25, clear of the lowest of the three rather than through it.
+    expect(high, `low ${low.toFixed(1)} husks, high ${high.toFixed(1)}`).toBeGreaterThan(low * 1.25);
     // And the declared curve is what put them there.
     expect(regions[TOTAL_REGIONS - 1].klipot.count).toBeGreaterThan(regions[0].klipot.count);
   });
@@ -264,23 +304,29 @@ describe("what the klipot cost a Scribe who fights", () => {
  * reach with tempo, the Measuring Line buys certainty with speed, the Plumb
  * Line buys weight with aim.
  *
- * Measured over regions four to eight, five seeds — the trough, which is where
- * a mistake in the fight shows first:
+ * Measured on path ground over regions four to eight, fifteen seeds a cell,
+ * across three independent pools — the trough, which is where a mistake in the
+ * fight shows first:
  *
  * ```
- * bare       out 6/25   broken 3.44   reached 0.879
- * tagin      out 7/25   broken 3.64   reached 0.897
- * kav        out 3/25   broken 4.08   reached 0.906
- * mishkolet  out 4/25   broken 3.44   reached 0.861
- * sargel     out 6/25   broken 3.36   reached 0.866
- * yad        out 6/25   broken 3.08   reached 0.836
- * kulmus     out 4/25   broken 4.08   reached 0.896   (a plain gain, the control)
+ *              out /75            broken               reached
+ *   bare       11 ·  8 · 11   3.28 · 3.12 · 3.19   0.877 · 0.911 · 0.890
+ *   tagin       6 ·  4 · 12   3.47 · 3.45 · 3.43   0.908 · 0.945 · 0.899
+ *   kav         9 ·  9 · 11   3.20 · 3.21 · 3.04   0.870 · 0.897 · 0.878
+ *   mishkolet   5 ·  8 · 13   3.39 · 3.49 · 3.29   0.871 · 0.902 · 0.884
+ *   sargel      9 ·  6 · 13   3.31 · 3.36 · 3.45   0.889 · 0.910 · 0.905
+ *   yad        10 ·  8 · 16   3.16 · 3.11 · 3.12   0.882 · 0.913 · 0.878
+ *   kulmus      4 ·  5 ·  6   3.67 · 3.60 · 3.63   0.908 · 0.938 · 0.914
  * ```
+ *
+ * The Reed is the control and reads as one in every pool: a plain gain, fewest
+ * bodies and most shells. The Pointer is the other end and reads as one too —
+ * most bodies, fewest shells, in all three.
  *
  * Every one of these moved when `seal` stopped writing a door on top of the
- * Scribe — bare broke 2.12 and got 69% across before that, against 3.44 and
- * 88% after. A Scribe pinned on a threshold is a Scribe not fighting, and the
- * whole table was measuring that as much as it was measuring the vessels.
+ * Scribe — bare broke 2.12 and got 69% across before that. A Scribe pinned on a
+ * threshold is a Scribe not fighting, and the whole table was measuring that as
+ * much as it was measuring the vessels.
  *
  * Read honestly: **the bot cannot use most of what it is holding.** It does not
  * throw around corners, so a bounce is only the cooldown it cost; it does not
@@ -320,8 +366,8 @@ describe("what a vessel costs a Scribe who fights", () => {
       const rows: Fight[] = [];
       for (let region = 4; region <= 8; region += 1) {
         for (const seed of HAND_SEEDS) {
-          const world = buildRegion(region, seed);
-          rows.push(fighter(world, { ...contextFor(region), items }, budgetFor(region)));
+          const { world, rung } = groundAt(region, seed);
+          rows.push(fighter(world, { ...contextFor(region), items }, budgetFor(rung)));
         }
       }
       held.push({ hand: items.join(",") || "bare", runs: rows });
@@ -384,12 +430,13 @@ describe("what a vessel costs a Scribe who fights", () => {
    *
    * The other across-runs system, and it has the failure mode every
    * meta-progression has: earned power that quietly ends the game. Measured
-   * over the same rungs — regions four to eight, five seeds:
+   * over the same rungs and the same three pools — regions four to eight,
+   * fifteen seeds a cell:
    *
    * ```
-   * nothing broken   out 6/25   broken 3.44   lamps left 1.68   reached 0.879
-   * seven broken     out 3/25   broken 3.48   lamps left 1.72   reached 0.889
-   * all ten broken   out 1/25   broken 4.36   lamps left 2.00   reached 0.934
+   *                    out /75        broken              lamps left
+   *   nothing broken   11 · 8 · 11   3.28 · 3.12 · 3.19   1.7 · 1.8 · 1.8
+   *   all ten broken    4 · 2 ·  3   3.67 · 3.80 · 3.89   2.36 · 2.55 · 2.36
    * ```
    *
    * Which is the shape it should have: a Scribe who has broken everything is
@@ -402,12 +449,9 @@ describe("what a vessel costs a Scribe who fights", () => {
     const withAll: Fight[] = [];
     for (let region = 4; region <= 8; region += 1) {
       for (const seed of HAND_SEEDS) {
+        const { world, rung } = groundAt(region, seed);
         withAll.push(
-          fighter(
-            buildRegion(region, seed),
-            { ...contextFor(region), boons: boonsFrom(freed) },
-            budgetFor(region),
-          ),
+          fighter(world, { ...contextFor(region), boons: boonsFrom(freed) }, budgetFor(rung)),
         );
       }
     }
@@ -432,22 +476,23 @@ describe("what a vessel costs a Scribe who fights", () => {
    * carries a great deal more. Measured on the same rungs and seeds when the
    * tiers were written:
    *
-   * Measured over three independent pools of these fifteen seeds — seventy-five
-   * runs a cell, regions four to eight:
+   * Measured on path ground over three independent pools of fifteen seeds —
+   * seventy-five runs a cell, regions four to eight:
    *
    * ```
-   *            out /75        broken            lamps left
-   *   bare     14 · 15 · 12   3.24 · 3.00 · 3.08   1.79 · 1.81 · 1.93
-   *   tier 1    3 ·  8 ·  5   3.73 · 3.75 · 3.64   2.13 · 2.11 · 2.21
-   *   tier 3    4 ·  3 ·  4   4.01 · 3.91 · 3.63   2.19 · 2.31 · 2.33
+   *            out /75        broken               lamps left
+   *   bare     11 ·  8 · 11   3.28 · 3.12 · 3.19   1.70 · 1.82 · 1.80
+   *   tier 1    4 ·  2 ·  3   3.67 · 3.80 · 3.89   2.36 · 2.55 · 2.36
+   *   tier 3    3 ·  0 ·  2   3.81 · 3.87 · 4.17   2.44 · 2.59 · 2.41
    * ```
    *
    * **Read the two steps differently, because they are different sizes.**
    * Bare to tier one is large and stable on every axis in every pool. Tier one
-   * to tier three is small and only *lamps kept* moves the same way in all
-   * three — going out flips (+1, −5, −1) and shells broken flips (+0.28, +0.16,
-   * −0.01). That is the cap working, not the tiers failing: they are capped so
-   * the top of the ladder is not a different game.
+   * to tier three is small — a tenth of a lamp and a body or two — and it is the
+   * cap working rather than the tiers failing: they are capped so the top of the
+   * ladder is not a different game. On path ground it happens to move the same
+   * way on all three axes in all three pools, which the linear road did not; that
+   * is not enough to start asserting on shells, for the reason below.
    *
    * **And shells broken is not a measure of strength**, which is why it is
    * printed and not asserted. A stronger body breaks fewer, because it does not
@@ -465,12 +510,9 @@ describe("what a vessel costs a Scribe who fights", () => {
     const topped: Fight[] = [];
     for (let region = 4; region <= 8; region += 1) {
       for (const seed of HAND_SEEDS) {
+        const { world, rung } = groundAt(region, seed);
         topped.push(
-          fighter(
-            buildRegion(region, seed),
-            { ...contextFor(region), boons: boonsFrom(everyTier) },
-            budgetFor(region),
-          ),
+          fighter(world, { ...contextFor(region), boons: boonsFrom(everyTier) }, budgetFor(rung)),
         );
       }
     }
@@ -478,9 +520,8 @@ describe("what a vessel costs a Scribe who fights", () => {
     const atOne: Fight[] = [];
     for (let region = 4; region <= 8; region += 1) {
       for (const seed of HAND_SEEDS) {
-        atOne.push(
-          fighter(buildRegion(region, seed), { ...contextFor(region), boons: tierOne }, budgetFor(region)),
-        );
+        const { world, rung } = groundAt(region, seed);
+        atOne.push(fighter(world, { ...contextFor(region), boons: tierOne }, budgetFor(rung)));
       }
     }
     const rows = [

@@ -469,16 +469,18 @@ export function GamePage() {
    * (`dev/warp.ts` writes `at` and `pathsWalked`), so the road had no callers
    * left but its own plate, and a road nobody drives is a second game to keep
    * correct: it is where the Abyss keystroke bug went to seal a climb without
-   * kindling. `buildRegion` itself stays — the rung tests build with it, and it
-   * is still the honest generator for one Sefirah's ground.
+   * kindling. `buildRegion` itself stays — the terrain, room, mote and mark
+   * tests build with it, and it is still the honest generator for one Sefirah's
+   * ground.
    *
-   * **And `fight.test.ts` still builds with it**, which this comment used to
-   * claim in the past tense and should not have: the P1 item that migrated it
-   * to `buildPath` was recorded as done and was not done. It matters, and it is
-   * measured — the Saraf's fire made Tiferet end more than half of all *path*
-   * walks and moved that file's numbers by nothing at all, because the old
-   * fixture lays a quarter as many of them. The shipped curve is guarded in
-   * `world/curve.test.ts` instead; the migration is still owed.
+   * **And `fight.test.ts` builds with `buildPath` now**, which this comment
+   * claimed twice before it was true. The P1 item was recorded as done and was
+   * not; it was then recorded as still owed; it is done. It mattered: on path
+   * ground the going-out rate is 10.0 / 10.6 / 13.3 per cent against 13.5 /
+   * 17.0 / 14.0 on the road, the share of husks broken went from a fifth at the
+   * trough to a third, and one band — the klipot getting heavier up the Tree —
+   * turned out to be passing on the seeds it was drawn from. The shipped curve
+   * has its own instrument in `world/curve.test.ts`.
    */
   const newRecord = useCallback(
     (variant = 0): AscentRecord => {
