@@ -255,11 +255,17 @@ describe("what the klipot cost a Scribe who fights", () => {
   });
 
   /**
-   * And the other edge of the band. A rung that reliably takes every lamp is
-   * a rung nobody finishes, and the whole climb is ten of them in a row with
-   * the lamps carried across — so any single region taking all three, on
-   * average, would put the crown out of reach for reasons that have nothing to
-   * do with the terrain.
+   * And the other edge of the band. A rung that reliably takes every lamp is a
+   * rung nobody finishes.
+   *
+   * **And the lamps do not carry**, which this comment claimed for a long time
+   * and which changes what the number below means. `build.ts` gives every world
+   * a player with `LAMPS` lit, and `walkPath` only *adds* whatever the vessels
+   * are worth on top — so a rung is three lamps, always, and going out is a
+   * per-rung event that does not compound down a climb. That is the whole
+   * reason a tenth of walks ending short is a designed cost rather than a death
+   * spiral: what a fall takes is the light still in hand and the ground back,
+   * never a letter, a vessel, a broken guardian or a lit Sefirah.
    */
   it("never spends the whole lamp-stock on a single rung", () => {
     for (let region = 2; region <= TOTAL_REGIONS; region += 1) {
