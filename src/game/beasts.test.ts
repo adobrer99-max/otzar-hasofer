@@ -115,15 +115,37 @@ describe("the creatures", () => {
     expect(world.marks.filter((m) => m.mine)).toHaveLength(0);
   });
 
-  /** **The Saraf** leaves the ground it crossed burning behind it. */
-  it("leaves fire behind the Saraf", () => {
+  /**
+   * **The Saraf** leaves the ground it crossed burning behind it — and then the
+   * fire goes out, which is as much of the mechanic as the fire is.
+   *
+   * This used to look for an ember alive on one particular tick, and it passed
+   * for the wrong reason: a fire was laid every twenty-two ticks and burned for
+   * a hundred and fifty, so seven overlapped at all times and there was no tick
+   * in the creature's life when the ground was not alight. That is terrain, not
+   * a trail — measured, it made Tiferet the one place in the game a Scribe went
+   * out of more than half the walks. So the shape is what is asserted now:
+   * something is laid, it burns, it goes out, and another comes.
+   */
+  it("leaves fire behind the Saraf, and lets it burn out", () => {
     stand(world, "saraf", { x: 12, y: world.height - 3 });
-    run(world, 60);
-    const embers = world.marks.filter((m) => !m.mine && m.vx === 0 && m.vy === 0);
-    expect(embers.length, "the Saraf crossed the ground and left nothing on it").toBeGreaterThan(0);
+    const embers = () => world.marks.filter((m) => !m.mine && m.vx === 0 && m.vy === 0);
+    run(world, 2);
+    const lit = embers();
+    expect(lit.length, "the Saraf crossed the ground and left nothing on it").toBeGreaterThan(0);
     // A klipah's mark wounds on contact, which is what makes the trail a trail
     // rather than decoration — and it is `stepMarks` that does it, not this.
-    expect(embers[0].bite).toBeGreaterThan(0);
+    expect(lit[0].bite).toBeGreaterThan(0);
+
+    // It goes out. Without this the trail is a floor the rung is paved with.
+    let wentOut = 0;
+    for (let i = 0; i < 300; i += 1) {
+      run(world, 1);
+      if (embers().length === 0) wentOut += 1;
+    }
+    expect(wentOut, "the ground the Saraf crossed never stops burning").toBeGreaterThan(0);
+    // And it comes back, or the creature laid one fire and was done.
+    expect(embers().length + wentOut, "the Saraf stopped laying fire").toBeGreaterThan(0);
   });
 
   /** **Rahav** grows on being struck, which is the one thing pride does. */

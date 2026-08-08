@@ -119,17 +119,52 @@ describe("what the klipot cost a Scribe who fights", () => {
     ).toBeGreaterThan(0.06);
   });
 
-  /** And no single rung may be the one that ends most climbs. */
+  /**
+   * And no single rung may be the one that ends most climbs.
+   *
+   * **The ceiling was drawn from the wall it was meant to catch.** This read
+   * `< 0.6` against a comment recording Tiferet at eight of twenty — the line
+   * was set two spreads clear of the worst rung, so the worst rung passed by
+   * construction, and it went on passing while Tiferet ended more than half of
+   * all walks and every other rung ended between none and one in five. An
+   * absolute ceiling cannot tell a hard rung from a hole in the curve: it only
+   * knows how bad the worst place is allowed to be, which is the number the
+   * defect itself supplied.
+   *
+   * So the shape is what is asserted. A rung is a wall when it is far out of
+   * line with *the rest of the Tree*, whatever the absolute figure — and the
+   * median moves with the game, so this keeps meaning the same thing after a
+   * retune rather than needing to be redrawn each time.
+   *
+   * **And note what this file's ground is.** `RUNS` builds with `buildRegion`,
+   * the pre-Tree road — one Sefirah's honest ground, but not the ground a climb
+   * actually walks, which is `buildPath`. The two differ enough to matter: the
+   * Saraf's fire made Tiferet end more than half of all *path* walks and moved
+   * nothing at all here, because the old fixture lays four of them across twenty
+   * seeds where a rung lays one in six. The shipped curve is guarded in
+   * `curve.test.ts`; this one guards the fixture the rung tests are written on.
+   */
   it("has no rung that reliably puts a Scribe out", () => {
+    const shares = new Map<number, { out: number; of: number }>();
     for (let region = 1; region <= TOTAL_REGIONS; region += 1) {
       const rows = forRegion(region);
-      const out = rows.filter((r) => r.fight.out).length;
-      // Measured worst rung over three pools of twenty seeds: Tiferet at 8 of
-      // 20. The line is set two spreads clear of that, so it says "this rung
-      // ends most climbs" and not "this rung came out badly on one draw".
-      expect(out / rows.length, `region ${region} put ${out} of ${rows.length} runs out`).toBeLessThan(
-        0.6,
-      );
+      if (rows.length === 0) continue;
+      shares.set(region, { out: rows.filter((r) => r.fight.out).length, of: rows.length });
+    }
+    const rates = [...shares.values()].map((s) => s.out / s.of).sort((a, b) => a - b);
+    const median = rates[Math.floor(rates.length / 2)];
+    for (const [region, s] of shares) {
+      const rate = s.out / s.of;
+      // The absolute line stays as a backstop — a Tree where *every* rung ends
+      // half the walks has no outlier and would slip through a ratio alone.
+      expect(rate, `region ${region} put ${s.out} of ${s.of} runs out`).toBeLessThan(0.5);
+      // And the shape. Measured after the Saraf's fire was cut back, the rungs
+      // run 0–25 per cent against a median near a tenth; a rung at four times
+      // the median is a hole rather than a hard place.
+      expect(
+        rate,
+        `region ${region} ends ${(rate * 100).toFixed(0)}% of its walks against a median of ${(median * 100).toFixed(0)}% — it is a wall, not a rung`,
+      ).toBeLessThan(Math.max(0.2, median * 4));
     }
   });
 

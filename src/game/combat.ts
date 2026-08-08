@@ -359,7 +359,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     light: 3,
     size: { w: 18, h: 16 },
     notices: 240,
-    throws: 22,
+    throws: 90,
   },
   rahav: {
     kind: "rahav",

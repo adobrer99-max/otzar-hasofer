@@ -1874,7 +1874,7 @@ function stepHusks(world: World, ctx: StepContext): void {
             h: MARK_SIZE,
             vx: 0,
             vy: 0,
-            life: 150,
+            life: SARAF_FIRE,
             pierces: false,
             bite: 1,
             draws: false,
@@ -2114,6 +2114,11 @@ function pace(world: World, ctx: StepContext, husk: Husk, speed: number, gentle 
  * simply a pacer with an entrance. Against `throws: 345` the two together take
  * the creature from sixteen per cent of its life above ground to forty-three.
  */
+/**
+ * How long a Saraf's fire stays on the ground where it was laid.
+ */
+const SARAF_FIRE = 40;
+
 const RISE = 54;
 const SETTLE = 90;
 
