@@ -744,6 +744,178 @@ const SCRIPTS = [
     until: () => true,
     seconds: 30,
   },
+  {
+    name: "bestiary",
+    about: "All twenty klipot, in their states, on both grounds — the sheet the creature pass is judged on.",
+    /**
+     * **The twenty, looked at — which nothing in this repo could do.**
+     *
+     * `arenas` photographs ten rooms and so shows the ten great ones, once
+     * each, standing still and unhurt. That is half the bestiary and one of its
+     * states. `bestiary.test.ts` answers the behavioural question — no two kinds
+     * answer a Scribe alike — and cannot answer a visual one, because it never
+     * draws anything. `husks.test.ts` enumerates the shape table and can only
+     * say the rows differ, which is a claim about numbers and not about a
+     * picture. So the pictures had no instrument at all, and a creature pass
+     * without one is redecorating in the dark.
+     *
+     * This is that instrument, and note what it does *not* do: it does not
+     * reimplement the painter. It imports the shipping module out of the dev
+     * server — Vite serves and transpiles `/src/**` on demand, so
+     * `import("/src/game/render/husks.ts")` inside the page is the same code
+     * the game runs and not a copy that would drift within a week. That is the
+     * whole reason `paintHusk` was lifted out of `draw.ts`: it takes a
+     * creature, a palette and a tick, and needs no world to be true.
+     *
+     * **Two sheets on two grounds, because they answer different questions.**
+     *
+     * `bestiary-scale-*.png` draws every kind at the zoom a room is actually
+     * framed at — a klipah is sixteen by eighteen world units and the camera
+     * runs about 1.67, so a creature is roughly twenty-seven pixels of screen.
+     * That is the only picture that can say whether a change reads *in play*,
+     * and it is brutal about detail: anything under two pixels is mud. Each is
+     * shown twice over, against open sky and against stone, because a shell is
+     * filled from the palette's own deep background and the honest question is
+     * whether it can be picked out of either.
+     *
+     * `bestiary-plate-*.png` draws the same twenty at six times, four states
+     * apiece — whole, struck, half its shells gone, and mid-charge. That is the
+     * picture you author against, and the four states are there because the
+     * roadmap's complaint was precisely that a creature about to charge looks
+     * exactly like one that is not.
+     *
+     * And **both themes**, because the game ships a charcoal ground and a
+     * vellum one and a klipah is drawn entirely out of the palette.
+     *
+     * The P6 lesson is why the magnified sheet exists at all: the tile-atlas
+     * bug was four per cent of pixels against a one per cent run-to-run floor —
+     * arguable as a number, unmistakable the moment a magnified strip was put
+     * on screen.
+     */
+    warp: {},
+    noPlay: true,
+    enter: async (page) => {
+      await pastThePrologue(page);
+      const write = async (name, dataUrl) => {
+        await writeFile(join(outDir, name), Buffer.from(dataUrl.split(",")[1], "base64"));
+      };
+      for (const theme of ["dark", "light"]) {
+        await page.evaluate((t) => document.documentElement.setAttribute("data-theme", t), theme);
+        await page.waitForTimeout(150);
+        const shots = await page.evaluate(async () => {
+          const { paintHusk } = await import("/src/game/render/husks.ts");
+          const { readPalette } = await import("/src/game/render/palette.ts");
+          const { HUSKS } = await import("/src/game/combat.ts");
+          const base = readPalette();
+          const kinds = Object.keys(HUSKS);
+
+          /** A klipah standing on its own, in whatever state is asked for. */
+          const stand = (kind, state) => {
+            const spec = HUSKS[kind];
+            return {
+              id: kind,
+              kind,
+              x: -spec.size.w / 2,
+              y: -spec.size.h / 2,
+              w: spec.size.w,
+              h: spec.size.h,
+              vx: 0,
+              vy: 0,
+              shells: state === "opened" ? Math.max(1, spec.shells - 1) : spec.shells,
+              facing: 1,
+              home: { x: 3, y: 0 },
+              cooldown: 0,
+              charging: state === "charging" ? 20 : 0,
+              struck: state === "struck" ? 6 : 0,
+            };
+          };
+
+          const sheet = (w, h, paint) => {
+            const canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext("2d");
+            paint(ctx);
+            return canvas.toDataURL("image/png");
+          };
+
+          // The zoom a room is framed at, so this is the creature as seen.
+          const PLAY = 1.67;
+          const COLS = 5;
+          const CELL = 96;
+          const ROWS = Math.ceil(kinds.length / COLS);
+
+          const scaleSheet = sheet(COLS * CELL, ROWS * CELL * 2 + 24, (ctx) => {
+            // Two bands: open sky above, stone below. A shell that reads
+            // against one and not the other is still a shell nobody can see.
+            ctx.fillStyle = base.bg;
+            ctx.fillRect(0, 0, COLS * CELL, ROWS * CELL);
+            ctx.fillStyle = base.stone;
+            ctx.fillRect(0, ROWS * CELL, COLS * CELL, ROWS * CELL);
+            for (const band of [0, 1]) {
+              const top = band * ROWS * CELL;
+              kinds.forEach((kind, i) => {
+                const cx = (i % COLS) * CELL;
+                const cy = top + Math.floor(i / COLS) * CELL;
+                ctx.save();
+                ctx.translate(cx + CELL / 2, cy + CELL / 2 - 6);
+                ctx.scale(PLAY, PLAY);
+                paintHusk(ctx, stand(kind, "whole"), base, 0);
+                ctx.restore();
+                ctx.fillStyle = base.muted;
+                ctx.font = "11px monospace";
+                ctx.fillText(kind, cx + 6, cy + CELL - 8);
+              });
+            }
+            ctx.fillStyle = base.gold;
+            ctx.font = "bold 13px monospace";
+            ctx.fillText("against sky (top) and stone (bottom), at play zoom", 8, ROWS * CELL * 2 + 17);
+          });
+
+          const STATES = ["whole", "struck", "opened", "charging"];
+          const BIG = 6;
+          const ROW = 136;
+          const COL = 132;
+          const plate = sheet(COL * STATES.length + 140, ROW * kinds.length + 40, (ctx) => {
+            ctx.fillStyle = base.stone;
+            ctx.fillRect(0, 0, COL * STATES.length + 140, ROW * kinds.length + 40);
+            ctx.fillStyle = base.gold;
+            ctx.font = "bold 15px monospace";
+            STATES.forEach((state, j) => ctx.fillText(state, 140 + j * COL + 10, 26));
+            kinds.forEach((kind, i) => {
+              const cy = 40 + i * ROW;
+              ctx.fillStyle = base.text;
+              ctx.font = "13px monospace";
+              ctx.fillText(kind, 10, cy + ROW / 2);
+              ctx.fillStyle = base.muted;
+              ctx.font = "10px monospace";
+              ctx.fillText(`${HUSKS[kind].shells} shell`, 10, cy + ROW / 2 + 16);
+              STATES.forEach((state, j) => {
+                const cx = 140 + j * COL;
+                ctx.strokeStyle = base.stoneEdge;
+                ctx.lineWidth = 1;
+                ctx.strokeRect(cx + 0.5, cy + 0.5, COL - 8, ROW - 8);
+                ctx.save();
+                ctx.translate(cx + (COL - 8) / 2, cy + (ROW - 8) / 2);
+                ctx.scale(BIG, BIG);
+                paintHusk(ctx, stand(kind, state), base, 0);
+                ctx.restore();
+              });
+            });
+          });
+
+          return { scaleSheet, plate, count: kinds.length };
+        });
+        if (shots.count !== 20) {
+          throw new Error(`the sheet drew ${shots.count} klipot, not twenty`);
+        }
+        await write(`bestiary-scale-${theme}.png`, shots.scaleSheet);
+        await write(`bestiary-plate-${theme}.png`, shots.plate);
+      }
+    },
+    until: () => true,
+    seconds: 30,
+  },
 ];
 
 // --- arguments ---------------------------------------------------------------

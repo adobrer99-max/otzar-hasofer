@@ -2,13 +2,12 @@ import { lettersById } from "../../data/letters";
 import { tileAt } from "../world/build";
 import { Tile, TILE_SIZE } from "../world/tiles";
 import type { Entity, World } from "../world/types";
-import { alpha, mix, type Palette } from "./palette";
+import { alpha, type Palette } from "./palette";
 import { ROOM_H, ROOM_W } from "../world/rooms";
 import { outOfReach } from "../world/step";
 import { recordPhase } from "../dev/probe";
 import { faceCount, paletteKey, setFaceScale, stamp } from "./faces";
-import { HUSKS, type HuskKind } from "../combat";
-import { SILHOUETTES, SMOOTH } from "./husks";
+import { paintHusk } from "./husks";
 
 /**
  * The Ascent, drawn.
@@ -1193,103 +1192,14 @@ function drawHusks(ctx: CanvasRenderingContext2D, world: World, palette: Palette
     // while it spends standing in the open afterwards counted as buried and
     // the creature was not painted — which would have made the one moment it
     // can be answered the one moment a player cannot see it.
+    //
+    // This and the tick are the whole of what a klipah's picture needs from
+    // the world; the rest is the creature itself, and lives in `husks.ts`
+    // beside its shape. Keeping the two apart is what let the silhouettes be
+    // enumerated by a test while the painting around them could not be.
     if (outOfReach(husk, world)) continue;
-    const spec = HUSKS[husk.kind];
-    const cx = husk.x + husk.w / 2;
-    const cy = husk.y + husk.h / 2;
-    const opened = 1 - husk.shells / spec.shells;
-
-    // What is trapped inside, brighter as the shell gives way.
-    ctx.fillStyle = alpha(palette.goldBright, 0.18 + opened * 0.4);
-    ctx.beginPath();
-    ctx.arc(cx, cy, husk.w * 0.38, 0, Math.PI * 2);
-    ctx.fill();
-
-    /**
-     * The shell. White for a moment when struck, so a hit reads.
-     *
-     * **The edge is drawn well above the stone it used to borrow.** A husk was
-     * `bgDeep` filled and `stoneEdge` stroked, which are the sky and the hairline
-     * around the rock — so against open air a klipah was very nearly invisible,
-     * and standing thirty pixels from one it could not be picked out of the
-     * background at all. That was tolerable while every creature was one of four
-     * shapes and the shape said nothing; it is not tolerable now that the shape
-     * *is* the creature. Found by photographing one at play scale.
-     */
-    ctx.strokeStyle =
-      husk.struck > 0 ? palette.goldBright : alpha(mix(palette.stoneEdge, palette.silver, 0.5), 0.95);
-    ctx.fillStyle = alpha(palette.bgDeep, 0.9 - opened * 0.3);
-    ctx.lineWidth = 2;
-    // **Its own shape.** This was four silhouettes chosen by `role` — a
-    // circle, a diamond, a slab — so the Locust and Leviathan were the same
-    // circle and the bestiary was invisible as a bestiary. See `husks.ts`.
-    silhouette(ctx, husk.kind, husk.x, husk.y, husk.w, husk.h, husk.facing);
-    ctx.fill();
-    ctx.stroke();
-
-    // A crack for every shell already taken off.
-    ctx.strokeStyle = alpha(palette.goldBright, 0.5 + opened * 0.4);
-    ctx.lineWidth = 1;
-    for (let i = 0; i < spec.shells - husk.shells; i += 1) {
-      const a = (i / spec.shells) * Math.PI * 2 + husk.home.x;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx + Math.cos(a) * husk.w * 0.5, cy + Math.sin(a) * husk.h * 0.5);
-      ctx.stroke();
-    }
+    paintHusk(ctx, husk, palette, world.tick);
   }
-}
-
-/**
- * One klipah's outline, in its own box.
- *
- * The table is normalised — both coordinates run 0 to 1 — so this is the only
- * place that knows about pixels, and a creature's shape stays a row of numbers
- * that a test can enumerate. Mirrored to whichever way it is facing, because a
- * wedge that leans forward has to lean the way the thing is going or it reads
- * as retreating.
- *
- * The rounded ones are smoothed with quadratics through their own midpoints:
- * the same polygon, no second table, and the four or five creatures that are
- * bodies of water or air stop having corners.
- */
-function silhouette(
-  ctx: CanvasRenderingContext2D,
-  kind: HuskKind,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  facing: number,
-): void {
-  const shape = SILHOUETTES[kind];
-  ctx.beginPath();
-  if (!shape || shape.length < 3) {
-    ctx.roundRect(x, y, w, h, 4);
-    return;
-  }
-  const at = (i: number): [number, number] => {
-    const [px, py] = shape[(i + shape.length) % shape.length];
-    return [x + (facing < 0 ? 1 - px : px) * w, y + py * h];
-  };
-  if (!SMOOTH.has(kind)) {
-    const [sx, sy] = at(0);
-    ctx.moveTo(sx, sy);
-    for (let i = 1; i < shape.length; i += 1) ctx.lineTo(...at(i));
-    ctx.closePath();
-    return;
-  }
-  const mid = (i: number): [number, number] => {
-    const [ax, ay] = at(i);
-    const [bx, by] = at(i + 1);
-    return [(ax + bx) / 2, (ay + by) / 2];
-  };
-  ctx.moveTo(...mid(shape.length - 1));
-  for (let i = 0; i < shape.length; i += 1) {
-    const [qx, qy] = at(i);
-    ctx.quadraticCurveTo(qx, qy, ...mid(i));
-  }
-  ctx.closePath();
 }
 
 /** A mark in flight: the Scribe's letter, or the dark Jezebel sent. */
