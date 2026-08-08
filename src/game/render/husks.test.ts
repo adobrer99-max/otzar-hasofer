@@ -3,6 +3,7 @@ import { HUSKS, type HuskKind } from "../combat";
 import type { Husk } from "../world/types";
 import { alpha, readPalette } from "./palette";
 import { CREATURES, gaitOf, paintHusk, type Point } from "./husks";
+import { recorder } from "./testCanvas";
 
 /**
  * **A bestiary you can tell apart.**
@@ -247,33 +248,6 @@ describe("the walk", () => {
     }
   });
 });
-
-/**
- * **A recording canvas**, because the interesting claims about `paintHusk` are
- * claims about what it *draws* and nothing in this suite has a canvas: the
- * renderer's helpers run under node. Every call and every style set is written
- * down in order, which is enough to say whether two pictures are the same
- * picture without being able to look at either.
- */
-function recorder(): { ctx: CanvasRenderingContext2D; log: () => string } {
-  const calls: string[] = [];
-  const round = (v: unknown) => (typeof v === "number" ? Math.round(v * 100) / 100 : v);
-  const target = {} as Record<string, unknown>;
-  const ctx = new Proxy(target, {
-    get(_, prop: string) {
-      if (prop in target) return target[prop];
-      return (...args: unknown[]) => {
-        calls.push(`${prop}(${args.map(round).join(",")})`);
-      };
-    },
-    set(_, prop: string, value) {
-      target[prop] = value;
-      calls.push(`${prop}=${String(value)}`);
-      return true;
-    },
-  }) as unknown as CanvasRenderingContext2D;
-  return { ctx, log: () => calls.join("\n") };
-}
 
 /**
  * **No state may look like another** — which is the fault this phase was built

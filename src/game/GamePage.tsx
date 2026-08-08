@@ -40,6 +40,8 @@ import {
   type TreeLessonKey,
 } from "./tutorial";
 import { GameCanvas, type HudSample } from "./GameCanvas";
+import { SceneCanvas } from "./SceneCanvas";
+import { PROLOGUE_SCENES } from "./render/scenes";
 import { regionAt, regionOfSefirah, regions, TOTAL_REGIONS } from "./regions";
 import {
   beyondTheSeven,
@@ -2626,11 +2628,27 @@ function PlateOverlay({
  * only honest way to put a story in front of a person who did not ask for one:
  * the whole of it stays behind Esc for as long as the game exists.
  */
+/**
+ * **The prologue, drawn.**
+ *
+ * The panel is added *above* the words and nothing else about this plate moves:
+ * the kicker, the paragraph, the page dots, "Go on" and the skip link are all
+ * exactly where P2 put them. That is the whole design decision — the words stay
+ * words for a screen reader, the skip stays where a hand already looks for it,
+ * and **nothing goes on a timer**. A page is turned by a press, as every page in
+ * this game has been.
+ *
+ * The picture is keyed to the page rather than to the plate, so going back a
+ * page goes back a scene and `SceneCanvas` restarts its clock — which is what
+ * makes the fall a fall on the second reading as well as the first.
+ */
 function ProloguePlate({ page, onTurn }: { page: number; onTurn: (skip?: boolean) => void }) {
   const last = page >= PROLOGUE_PAGES.length - 1;
+  const scene = PROLOGUE_SCENES[page];
   return (
     <>
       <p className={styles.plateKicker}>{PROLOGUE.kicker}</p>
+      {scene && <SceneCanvas scene={scene} label={scene.label} />}
       <p className={styles.prologuePage}>{PROLOGUE_PAGES[page]}</p>
       <ul className={styles.prologueDots} aria-label={`Page ${page + 1} of ${PROLOGUE_PAGES.length}`}>
         {PROLOGUE_PAGES.map((text, i) => (

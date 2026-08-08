@@ -79,6 +79,21 @@ const KEYS = {
 const pastThePrologue = async (page) => {
   const skip = page.getByRole("button", { name: /^Skip/ });
   if (await skip.count()) {
+    /**
+     * **The one place every script sees the prologue**, so it is where the
+     * panel is checked — once, cheaply, for everybody.
+     *
+     * A scene is a `<canvas>` inside a plate, which is a hole in the document
+     * with an `aria-label` on it. Neither `scene.test.ts` nor the `scenes`
+     * sheet can say whether it was ever *mounted*: the first tests the painter
+     * and the second calls it directly. This asks the shipped page, and it is
+     * exactly the class of thing that went unnoticed for the whole life of P5b
+     * when `onVessel` was threaded through props and never assigned.
+     */
+    const panel = page.locator('[role="dialog"] canvas[role="img"]');
+    if (!(await panel.count())) throw new Error("the prologue plate has no scene in it");
+    const said = await panel.first().getAttribute("aria-label");
+    if (!said || said.length < 30) throw new Error(`the prologue's scene says "${said}"`);
     await skip.first().click();
     await page.waitForTimeout(500);
   }
@@ -858,6 +873,99 @@ const SCRIPTS = [
       if (!p.revealed) throw new Error("the Eye was never opened — there was never a staircase");
       if (!p.relics.length) throw new Error("the chamber was reached and nothing was taken");
     },
+  },
+  {
+    name: "scenes",
+    about: "Every cut scene, across its own motion, on both grounds — the sheet this pass is judged on.",
+    /**
+     * **The scenes, looked at**, which is the only way a picture can be judged.
+     *
+     * `scene.test.ts` can say that six scenes are six different pictures and
+     * that each of them moves, because a recording canvas can say that much. It
+     * cannot say whether a wedge and a dot read as a scribe at a desk, and P4b
+     * is the standing lesson on what happens when a table of drawn things has
+     * only the first kind of test: twenty silhouettes passed "no two rows
+     * match" while every creature on screen was a blob.
+     *
+     * Built exactly like `bestiary` and for the same reason — it imports
+     * `/src/game/render/scene.ts` and `/src/game/render/scenes.ts` **out of the
+     * dev server**, so what is photographed is the shipping painter rather than
+     * a copy that would drift within a week. That is why `paintScene` takes a
+     * scene, a palette, a `t` and a box, and needs no React and no world.
+     *
+     * **A row per scene, five frames across it**, at 0, 1, 2, 4 and 8 seconds.
+     * A single still cannot show motion and a video cannot be compared, so the
+     * strip is the same instrument P8 built for the gaits: a row of keys is how
+     * animators have always judged a walk, and it caught a figure doing the
+     * splits that sixty frames a second had hidden. Eight seconds is on the end
+     * deliberately — it is where a `once` drift has long since landed, and the
+     * fall is meant to *stay* fallen.
+     *
+     * And **both grounds**, because a scene is painted entirely out of the
+     * palette and the two are not the same picture with different numbers: on
+     * vellum `ink` is the text colour and on charcoal it is the background. That
+     * is the exact shape of the bug P8 shipped, and this is the sheet that would
+     * have caught it.
+     */
+    warp: {},
+    noPlay: true,
+    enter: async (page) => {
+      await pastThePrologue(page);
+      const write = async (name, dataUrl) => {
+        await writeFile(join(outDir, name), Buffer.from(dataUrl.split(",")[1], "base64"));
+      };
+      for (const theme of ["dark", "light"]) {
+        await page.evaluate((t) => document.documentElement.setAttribute("data-theme", t), theme);
+        await page.waitForTimeout(150);
+        const sheet = await page.evaluate(async () => {
+          const { paintScene, paintGround } = await import("/src/game/render/scene.ts");
+          const { PROLOGUE_SCENES } = await import("/src/game/render/scenes.ts");
+          const { readPalette } = await import("/src/game/render/palette.ts");
+          const base = readPalette();
+
+          // The panel's own aspect, so what is photographed is the composition
+          // a reader gets rather than a crop of it.
+          const W = 300;
+          const H = 120;
+          const AT = [0, 1, 2, 4, 8];
+          const PAD = 4;
+          const LABEL = 16;
+
+          const canvas = document.createElement("canvas");
+          canvas.width = AT.length * (W + PAD) + PAD;
+          canvas.height = PROLOGUE_SCENES.length * (H + PAD + LABEL) + PAD;
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = base.bgDeep;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          PROLOGUE_SCENES.forEach((scene, row) => {
+            const top = PAD + row * (H + PAD + LABEL);
+            ctx.fillStyle = base.muted;
+            ctx.font = "11px monospace";
+            ctx.fillText(`${scene.id}  ·  ${AT.join("s  ")}s`, PAD, top + 11);
+            AT.forEach((t, col) => {
+              const left = PAD + col * (W + PAD);
+              ctx.save();
+              ctx.translate(left, top + LABEL);
+              ctx.beginPath();
+              ctx.rect(0, 0, W, H);
+              ctx.clip();
+              paintGround(ctx, base, W, H);
+              paintScene(ctx, scene, base, t, W, H);
+              ctx.restore();
+              ctx.strokeStyle = base.stoneEdge;
+              ctx.lineWidth = 1;
+              ctx.strokeRect(left + 0.5, top + LABEL + 0.5, W - 1, H - 1);
+            });
+          });
+          return canvas.toDataURL("image/png");
+        });
+        await write(`scenes-${theme}.png`, sheet);
+      }
+      await page.evaluate(() => document.documentElement.removeAttribute("data-theme"));
+    },
+    until: () => true,
+    seconds: 20,
   },
   {
     name: "bestiary",
