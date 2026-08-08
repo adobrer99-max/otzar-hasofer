@@ -330,9 +330,9 @@ export const ARENA_TEETH_B: Chunk = chunk("arena-teeth", { demand: 1 }, [
  * **Hod — the Saraf.** Somewhere to stand that is not the ground.
  *
  * The bite is not what kills; what kills is the ground you have to go back over,
- * because the Saraf leaves a burning mark behind it that lives a hundred and
- * fifty ticks. In an empty room the answer to a burning floor is to walk to the
- * other end of the burning floor. A shelf two tiles up is the other answer —
+ * because the Saraf leaves burning marks behind it — forty ticks apiece, laid
+ * every ninety, so the floor it has crossed is alight in patches. In an empty
+ * room the answer to a burning floor is to walk to the other end of it. A shelf two tiles up is the other answer —
  * off it entirely — and two tiles is exactly a plain running jump's rise, so
  * the shelf is offered to every Scribe and not only to one holding the Breath.
  *

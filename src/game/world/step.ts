@@ -1176,7 +1176,7 @@ function nearestHusk(world: World, ctx: StepContext, m: Mark): Husk | undefined 
   let best: Husk | undefined;
   let bestAt = Infinity;
   for (const husk of world.husks) {
-    if (husk.broken || outOfReach(husk)) continue;
+    if (husk.broken || outOfReach(husk, world)) continue;
     if (!canBeStruck(hiddenAt(world, husk), ctx.verbs)) continue;
     const at = Math.hypot(husk.x - m.x, husk.y - m.y);
     if (at < bestAt) {
@@ -1311,7 +1311,7 @@ function stepMarks(world: World, ctx: StepContext): void {
 
     if (m.mine) {
       for (const husk of world.husks) {
-        if (husk.broken || outOfReach(husk) || !bodiesTouch(m, husk)) continue;
+        if (husk.broken || outOfReach(husk, world) || !bodiesTouch(m, husk)) continue;
         if (!canBeStruck(hiddenAt(world, husk), ctx.verbs)) continue;
         strikeHusk(world, husk, m.bite, m.draws ? -1 : 1, m.x);
         // What is broken throws two shards out of it, up and away on both
@@ -1456,7 +1456,21 @@ export function strikeHusk(
  * inside the ground, and that is the only part of the cycle a mark should pass
  * through.
  */
-export function outOfReach(husk: Husk): boolean {
+export function outOfReach(husk: Husk, world?: World): boolean {
+  /**
+   * **The Tannin holds the water.** Three places said so — its own line on the
+   * plate a player reads, the case that steers it, and the test that proves it
+   * leaves the water at all — and nothing implemented it: a mark landing on a
+   * submerged Tannin took a shell off it like any other. The sentence "it stays
+   * in the water, where nothing can touch it, and comes out of it at you" was
+   * the creature's whole shape, and the fight it describes — catch it in the
+   * air, because the air is the only place it can be written on — did not exist.
+   *
+   * `world` is optional because most callers are asking about a klipah rather
+   * than about a place; without one this answers the question it always
+   * answered, which keeps the pure-husk callers honest.
+   */
+  if (husk.kind === "tannin") return world ? inWater(world, husk) : false;
   if (husk.kind !== "korach") return false;
   if (husk.charging > 0) return false;
   return husk.cooldown <= (HUSKS.korach.throws ?? 0) - RISE - SETTLE;
@@ -1478,8 +1492,8 @@ export function outOfReach(husk: Husk): boolean {
  * arriving on one seed in six: a klipah that had been unbreakable became
  * unbreakable and twice as costly, which is the opposite of the change.
  */
-function harmful(husk: Husk): boolean {
-  if (outOfReach(husk)) return false;
+function harmful(husk: Husk, world: World): boolean {
+  if (outOfReach(husk, world)) return false;
   return husk.kind !== "korach" || husk.charging > 0;
 }
 
@@ -2056,7 +2070,7 @@ function stepHusks(world: World, ctx: StepContext): void {
 
     moveHusk(world, ctx, husk);
 
-    if (p.veiled === 0 && !world.out && harmful(husk) && bodiesTouch(husk, p)) {
+    if (p.veiled === 0 && !world.out && harmful(husk, world) && bodiesTouch(husk, p)) {
       // Almost all of them take a lamp, because that is what a husk is.
       // Delilah takes what you gathered instead — nothing you feel at the time.
       if (spec.takes === "light") coax(world, husk);
@@ -2078,7 +2092,7 @@ const solidFor = (world: World, ctx: StepContext) => ({
 
 /**
  * Walking a ledge and turning at its edge — the oldest of the behaviours, and
- * now shared, because four of the ten do it when they are doing nothing else.
+ * now shared, because eight of the twenty do it when they are doing nothing else.
  */
 function pace(world: World, ctx: StepContext, husk: Husk, speed: number, gentle = false): void {
   const spec = HUSKS[husk.kind];
@@ -2113,14 +2127,22 @@ function pace(world: World, ctx: StepContext, husk: Husk, speed: number, gentle 
  * that a Scribe who is looking has time to answer, short enough that it is not
  * simply a pacer with an entrance. Against `throws: 345` the two together take
  * the creature from sixteen per cent of its life above ground to forty-three.
+ *
+ * Three phases because burrowing is the third: rise, stand, and go back under.
  */
-/**
- * How long a Saraf's fire stays on the ground where it was laid.
- */
-const SARAF_FIRE = 40;
-
 const RISE = 54;
 const SETTLE = 90;
+
+/**
+ * How long a Saraf's fire stays on the ground where it was laid, against a
+ * `throws: 90` cadence — two-thirds of a second alight, a second and a half
+ * between. It was a hundred and fifty ticks laid every twenty-two, which put
+ * seven fires down at once and meant the ground around the creature was never
+ * not burning: measured, that made Tiferet end fifty-three per cent of all
+ * walks against four to nineteen everywhere else. A trail with gaps in it is
+ * the thing its own line always described.
+ */
+const SARAF_FIRE = 40;
 
 /** The nearest loose mote, for the klipah that hunts them. */
 function nearestMote(world: World, husk: Husk): Entity | undefined {

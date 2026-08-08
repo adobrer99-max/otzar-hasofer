@@ -91,8 +91,9 @@ export function paletteKey(palette: Palette): string {
  * Module state, set once a frame by `drawWorld` before the tile loop. Drawing
  * is synchronous and single-threaded, so this is a parameter that would
  * otherwise be threaded through six call sites that care about nothing else;
- * it is quantised to halves so that a window dragged across a hundred widths
- * asks for a handful of scales rather than a hundred.
+ * it is rounded to thousandths, which is enough to keep floating-point noise in
+ * the transform from minting a new face sixty times a second and no more: the
+ * scale itself only changes when the window does.
  */
 let faceScale = 1;
 
@@ -114,7 +115,7 @@ export function setFaceScale(scale: number): void {
 /**
  * How many faces may be held. Each is one tile square at the face scale — at
  * three device pixels to the world unit that is 72×72, about twenty kilobytes,
- * so a hundred and twenty of them is a couple of megabytes at worst. The cap is
+ * so a hundred and sixty of them is three megabytes at worst. The cap is
  * a backstop against a key that turns out to vary more than its author thought:
  * an unbounded cache on a phone is a slower bug than the one it replaced.
  */

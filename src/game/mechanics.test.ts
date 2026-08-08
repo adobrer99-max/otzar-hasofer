@@ -146,3 +146,48 @@ describe("the Ushpizin's bargains", () => {
     expect(vowKept("no-mark", { orGathered: 0, veilings: 0, marksSet: 1 })).toBe(false);
   });
 });
+
+/**
+ * **The day turns, and the game has to notice.**
+ *
+ * A climb is seeded from the Hebrew date, and `GamePage` reads that date once
+ * into state — so a session left open across the turn of the day would go on
+ * building yesterday's Tree until something told it otherwise. P0 gave it an
+ * interval and a `visibilitychange` listener, and neither is testable from
+ * node; what *is* testable is the thing they exist to catch, which is that the
+ * seed genuinely changes and that a same-day reading is stable.
+ *
+ * Worth writing down because the phase called it "midnight rollover" and a
+ * Hebrew day is usually reckoned from sunset: measured across every hour of a
+ * civil day, this implementation turns at **civil midnight**. If that ever
+ * becomes sunset-reckoned, the first assertion here is what will say so.
+ */
+describe("the turn of the day", () => {
+  const at = (y: number, m: number, d: number, h: number) =>
+    readAscentTime(new Date(Date.UTC(y, m, d, h, 0, 0)));
+
+  it("gives one seed for the whole of a day", () => {
+    const morning = at(2026, 7, 8, 1);
+    const night = at(2026, 7, 8, 23);
+    expect(night.seedLabel, "the day changed inside itself").toBe(morning.seedLabel);
+    expect(night.seed).toBe(morning.seed);
+  });
+
+  it("gives the next day a different one", () => {
+    const before = at(2026, 7, 8, 23);
+    const after = at(2026, 7, 9, 1);
+    expect(after.seedLabel, "the day did not turn").not.toBe(before.seedLabel);
+    expect(after.seed, "a new day built the same Tree").not.toBe(before.seed);
+  });
+
+  /**
+   * And the variant is what keeps two climbs of the *same* day from being the
+   * same ground — the abandon-and-restart light reset P0 closed.
+   */
+  it("gives two climbs of one day different ground", () => {
+    const first = readAscentTime(new Date(Date.UTC(2026, 7, 8, 12)), "galut", 0);
+    const second = readAscentTime(new Date(Date.UTC(2026, 7, 8, 12)), "galut", 1);
+    expect(second.seedLabel, "the day's name changed with the variant").toBe(first.seedLabel);
+    expect(second.seed, "beginning again rebuilt the same Tree").not.toBe(first.seed);
+  });
+});

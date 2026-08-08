@@ -18,7 +18,7 @@ import type { ControlId } from "./controls";
  * Only the porch is scripted. Every other control belongs to a letter, and a
  * letter teaches itself the moment it is found — `abilities.ts` now carries a
  * `press` line for all twenty-two, and the acquisition plate prints it. So
- * there are five lessons here, not twenty-two.
+ * there are six lessons here, not twenty-two.
  */
 
 export type LessonKey = "move" | "leap" | "lower" | "write" | "act" | "ways";

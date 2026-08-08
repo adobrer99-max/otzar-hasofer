@@ -80,7 +80,7 @@ describe("the creatures", () => {
   });
 
   /**
-   * **The Tannin** holds the water, where `submerged` forbids a mark from
+   * **The Tannin** holds the water, where `outOfReach` forbids a mark from
    * reaching it, and comes out of it. If it never came out there would be
    * nothing to fight — so what is asserted is that it leaves the water at all.
    */
@@ -97,6 +97,64 @@ describe("the creatures", () => {
       highest = Math.min(highest, beast.y);
     }
     expect(highest, "the Tannin never left the water").toBeLessThan(surface * TILE_SIZE);
+  });
+
+  /**
+   * **And nothing can touch it while it is in there**, which is the other half
+   * of the same sentence and was the half nobody had written.
+   *
+   * Its line on the plate a player reads has always said "it stays in the
+   * water, where nothing can touch it, and comes out of it at you", and the
+   * case that steers it has always said the fight is about catching it in the
+   * air "which is the only place it can be written on". Neither was true: the
+   * rule that was supposed to enforce it, `outOfReach`, opened with a check for
+   * Korach and returned false for everything else, so a mark landing on a
+   * submerged Tannin took a shell off it like any other klipah. The creature's
+   * whole shape was a comment.
+   *
+   * Found in a copy sweep rather than by playing, which is the argument for
+   * doing them: a line that promises a mechanic is a bug report with no stack
+   * trace.
+   */
+  it("lets nothing touch the Tannin while it holds the water", () => {
+    const surface = world.height - 6;
+    for (let y = surface; y < world.height - 1; y += 1) {
+      for (let x = 10; x < 20; x += 1) setTile(world, x, y, Tile.Water);
+    }
+    const beast = stand(world, "tannin", { x: 14, y: surface + 2 });
+    const shells = beast.shells;
+
+    /** One of the Scribe's marks, laid exactly on it. */
+    const write = () => {
+      world.marks = [
+        {
+          id: "m",
+          mine: true,
+          x: beast.x,
+          y: beast.y,
+          w: 10,
+          h: 10,
+          vx: 0,
+          vy: 0,
+          life: 30,
+          pierces: false,
+          bite: 1,
+          draws: false,
+          glyph: "א",
+        },
+      ];
+      run(world, 1);
+    };
+
+    // Written on where it lives. Nothing comes off it.
+    write();
+    expect(beast.shells, "the water did not protect it").toBe(shells);
+
+    // And out of the water it breaks like anything else — or the creature
+    // would be scenery rather than a fight.
+    beast.y = (surface - 3) * TILE_SIZE;
+    write();
+    expect(beast.shells, "it cannot be written on out of the water either").toBeLessThan(shells);
   });
 
   /**

@@ -603,7 +603,7 @@ export function markPowers(
   // The letters are the progression and the vessels are the furnishing, and
   // the line between them is the **verb list** — nothing here may hand out a
   // thirteenth verb. It is not a line between kind and quantity: `pierces` was
-  // always on both sides of that one, and four more behaviours join it below.
+  // always on both sides of that one, and six more behaviours join it below.
   // A vessel that only scaled a number could never be a reason to walk one
   // path rather than another, which is the whole of what the Tree is for.
   const carried = powersFrom(items, boons);

@@ -26,7 +26,7 @@ export type Silhouette = readonly Point[];
 
 /**
  * Round creatures get their polygon smoothed rather than a separate code
- * path — the four things in the game that read as bodies of water or air are
+ * path — the five things in the game that read as bodies of water or air are
  * exactly the ones a hard edge is wrong for.
  */
 export const SMOOTH: ReadonlySet<HuskKind> = new Set<HuskKind>([

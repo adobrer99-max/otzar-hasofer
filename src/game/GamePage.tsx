@@ -469,9 +469,16 @@ export function GamePage() {
    * (`dev/warp.ts` writes `at` and `pathsWalked`), so the road had no callers
    * left but its own plate, and a road nobody drives is a second game to keep
    * correct: it is where the Abyss keystroke bug went to seal a climb without
-   * kindling, and where `fight.test.ts` was measuring ground that no longer
-   * ships. `buildRegion` itself stays — the rung tests build with it, and it
+   * kindling. `buildRegion` itself stays — the rung tests build with it, and it
    * is still the honest generator for one Sefirah's ground.
+   *
+   * **And `fight.test.ts` still builds with it**, which this comment used to
+   * claim in the past tense and should not have: the P1 item that migrated it
+   * to `buildPath` was recorded as done and was not done. It matters, and it is
+   * measured — the Saraf's fire made Tiferet end more than half of all *path*
+   * walks and moved that file's numbers by nothing at all, because the old
+   * fixture lays a quarter as many of them. The shipped curve is guarded in
+   * `world/curve.test.ts` instead; the migration is still owed.
    */
   const newRecord = useCallback(
     (variant = 0): AscentRecord => {
@@ -1161,10 +1168,24 @@ export function GamePage() {
     const onKey = (e: KeyboardEvent) => {
       if (plate) return;
       if (e.key === "Tab") {
-        // Or focus leaves for the browser's own furniture, which on a full
-        // window is nothing the Scribe wants.
+        /**
+         * **Only where Tab is doing the map's job.**
+         *
+         * This used to `preventDefault` first and ask afterwards, so the key
+         * was swallowed on every surface — including the start screen, which is
+         * five ordinary buttons and a link. Measured in a browser: six presses
+         * of Tab left focus on "Begin" every time, which means a keyboard could
+         * not reach the sound prompt, the way back to the Treasury, the
+         * controls, or the sound toggle at all.
+         *
+         * Standing in a climb the old reasoning holds — the canvas is the whole
+         * surface and focus leaving for the browser's own furniture is nothing
+         * the Scribe wants. Standing anywhere else it is simply someone else's
+         * key, and taking it strands them.
+         */
+        if (paused || !ascent) return;
         e.preventDefault();
-        if (!paused && ascent) setMapOpen((open) => !open);
+        setMapOpen((open) => !open);
         return;
       }
       if (e.key !== "Escape") return;

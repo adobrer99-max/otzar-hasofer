@@ -1193,7 +1193,7 @@ function drawHusks(ctx: CanvasRenderingContext2D, world: World, palette: Palette
     // while it spends standing in the open afterwards counted as buried and
     // the creature was not painted — which would have made the one moment it
     // can be answered the one moment a player cannot see it.
-    if (outOfReach(husk)) continue;
+    if (outOfReach(husk, world)) continue;
     const spec = HUSKS[husk.kind];
     const cx = husk.x + husk.w / 2;
     const cy = husk.y + husk.h / 2;

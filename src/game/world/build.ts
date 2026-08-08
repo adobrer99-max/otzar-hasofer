@@ -554,8 +554,9 @@ function structural(c: Chunk): boolean {
  * Without this the seed is free to fill a region entirely with screens that
  * ask nothing but walking and jumping — and it did: measured across the upper
  * Tree, better than half of all assemblies could be crossed holding only the
- * two movement keys, because the nine letterless screens in the library were
- * enough to build a whole region out of. A region that gives you twelve verbs
+ * two movement keys, because the letterless screens in the library were enough
+ * to build a whole region out of — nine of them when this was measured, and
+ * sixteen since the library grew. A region that gives you twelve verbs
  * and then never asks for one is the flat feeling this whole change is about.
  */
 function gatedQuota(length: number, band: { min: number }): number {

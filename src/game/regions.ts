@@ -93,8 +93,8 @@ export interface Region {
    * a Yesod of Cain and the Brothers alone: not one run of ten reached the way
    * out.
    *
-   * The counts climb, with one dip, and the dip is measured rather than
-   * decorative: **Binah stands six where Chesed stands seven**, because the
+   * The counts climb, with two dips, and both are measured rather than
+   * decorative. **Binah stands six where Chesed stands seven**, because the
    * three that meet there — the earth opening, what Jezebel sent, and Athaliah
    * putting the light out before you reach it — cost more between them than any
    * other rung's three. At seven it put half of every ten runs out. What a rung
