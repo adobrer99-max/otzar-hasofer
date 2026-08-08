@@ -1525,9 +1525,39 @@ export function outOfReach(husk: Husk, world?: World): boolean {
    * answered, which keeps the pure-husk callers honest.
    */
   if (husk.kind === "tannin") return world ? inWater(world, husk) : false;
+  return buried(husk);
+}
+
+/** Korach's own half of the rule: inside the earth, where nothing follows it. */
+function buried(husk: Husk): boolean {
   if (husk.kind !== "korach") return false;
   if (husk.charging > 0) return false;
   return husk.cooldown <= (HUSKS.korach.throws ?? 0) - RISE - SETTLE;
+}
+
+/**
+ * **Whether there is anything there to paint** — which is *not* the same
+ * question as whether a mark can reach it, and was answered as though it were.
+ *
+ * `drawHusks` skipped exactly what `outOfReach` skipped, deliberately and with
+ * a test holding it there: P5c found three places asking "is Korach in the
+ * ground?" and all three answering it wrongly, so the rule was given one home
+ * and the renderer was made to ask it. That was right about Korach and wrong as
+ * a general law, and P7 walked straight into the difference — it taught
+ * `outOfReach` that a submerged Tannin cannot be marked, which is true and is
+ * the whole of that creature's fight, and thereby **stopped the Tannin being
+ * drawn at all while it was in the water**. Measured on its own bench: painted
+ * on 58% of ticks, absent for the other 42, which are precisely the ticks a
+ * player would need to see it coming.
+ *
+ * The two questions come apart cleanly once they are asked separately. Korach
+ * inside the earth is *not there*. The Tannin under the water **is** there — it
+ * is simply out of reach, the way a thing on the far side of a river is, and a
+ * fight whose rule is "catch it when it leaves the water" cannot be played
+ * against something invisible until it arrives.
+ */
+export function unseen(husk: Husk): boolean {
+  return buried(husk);
 }
 
 /**
@@ -1815,7 +1845,33 @@ function stepHusks(world: World, ctx: StepContext): void {
         const chase = Math.abs(home) > TILE_SIZE * 12 ? home : toward;
         husk.vy = 90;
         husk.vx = Math.sign(chase) * spec.speed;
-        if (Math.abs(toward) < TILE_SIZE && husk.cooldown === 0 && spec.throws) {
+        /**
+         * **Out of the ground under him — not out of him.**
+         *
+         * This read `husk.y = p.y + p.h + TILE_SIZE * 2.5`, which is the same
+         * thing exactly as long as the Scribe is *standing* on something: his
+         * feet are the surface. Off the ground it is not the same thing at
+         * all, and a Scribe is off the ground for a good part of every rung.
+         * Reported from play as "the creature that comes out of the stone is
+         * stuck", and reproduced: triggered under a Scribe six tiles up, it
+         * rose to his height, hit the settling phase — which is deliberately
+         * weightless, since `flies` means gravity would drop it through the
+         * world — and **hung there motionless in mid-air** for ninety ticks
+         * before vanishing. Not stuck in the geometry; stuck in the sky.
+         *
+         * So the eruption is anchored to the earth, which is the thing it is
+         * named for. `surfaceUnder` finds the ground beneath the Scribe's
+         * column, and if there is none within eight tiles there is nothing to
+         * open: it stays under and keeps waiting, which is the honest answer
+         * for a Scribe hanging on a vine over a chasm.
+         */
+        const surface = surfaceUnder(world, ctx, p.x + p.w / 2, p.y + p.h);
+        if (
+          Math.abs(toward) < TILE_SIZE &&
+          husk.cooldown === 0 &&
+          spec.throws &&
+          surface !== undefined
+        ) {
           husk.charging = RISE;
           husk.cooldown = spec.throws;
           // **Under the feet, not in them.** Surfacing at the Scribe's own
@@ -1823,7 +1879,7 @@ function stepHusks(world: World, ctx: StepContext): void {
           // the earth opening cost a lamp with nothing to react to — measured,
           // Gevurah put eight runs in ten out. It comes up from below, and the
           // moment of rising is the moment to be somewhere else.
-          husk.y = p.y + p.h + TILE_SIZE * 2.5;
+          husk.y = surface + DEPTH;
         }
         break;
       }
@@ -2221,6 +2277,44 @@ function pace(world: World, ctx: StepContext, husk: Husk, speed: number, gentle 
  */
 const RISE = 54;
 const SETTLE = 90;
+
+/**
+ * How deep under the surface an eruption begins.
+ *
+ * `RISE` ticks at ninety-five a second carry it eighty-five and a half pixels,
+ * so it comes up through this sixty and stands a quarter of a tile proud of the
+ * ground — which is not slack, it is where a flat mark flies. That was measured
+ * the hard way once already: at forty-two ticks the rise stopped at the
+ * Scribe's waist, two pixels under the line, and every mark ever thrown at the
+ * creature sailed over it. **Do not tidy the overshoot away.** Tried, and the
+ * bench went straight back to never breaking one.
+ */
+const DEPTH = TILE_SIZE * 2.5;
+
+/**
+ * The top of the ground beneath a point — the surface an eruption would come
+ * through, or `undefined` if there is nothing under it worth calling earth.
+ *
+ * Ledges count, and that is deliberate: a ledge is ground you are standing on,
+ * and Korach passes through everything anyway, so what this is really asking is
+ * "is there a floor here to open" rather than "would a body be stopped".
+ */
+function surfaceUnder(
+  world: World,
+  ctx: StepContext,
+  x: number,
+  fromY: number,
+  within = 8,
+): number | undefined {
+  const solid = { verbs: ctx.verbs, crawling: false, revealed: world.revealed };
+  const column = Math.floor(x / TILE_SIZE);
+  const first = Math.floor(fromY / TILE_SIZE);
+  for (let row = first; row <= first + within; row += 1) {
+    const tile = tileAt(world, column, row);
+    if (isSolid(tile, solid) || isLedge(tile)) return row * TILE_SIZE;
+  }
+  return undefined;
+}
 
 /**
  * How long a Saraf's fire stays on the ground where it was laid, against a

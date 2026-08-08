@@ -162,6 +162,21 @@ function lay(world: World, kind: HuskKind): Husk {
 }
 
 /**
+ * **The room and its one klipah, handed out** — for a test that needs a
+ * creature standing in the element it was authored for and has a question the
+ * seven postures do not answer.
+ *
+ * Exported rather than copied, because the element is half the behaviour and a
+ * second hand-built pool beside this one would drift from it within a phase:
+ * the Tannin's whole rule is about being in water, and a test that laid it on
+ * dry stone would prove whatever it liked.
+ */
+export function laid(kind: HuskKind): { world: World; husk: Husk } {
+  const world = room(kind);
+  return { world, husk: lay(world, kind) };
+}
+
+/**
  * Runs one kind against one posture and writes down what it did.
  *
  * The Scribe is pinned every tick rather than driven, because the question is
@@ -357,7 +372,20 @@ export function breakIn(kind: HuskKind, ticks = 4000): number {
     // is, is somewhere else. Two tiles off its shoulder and level with its
     // middle — the place a player ends up after chasing it.
     p.x = husk.x - TILE_SIZE * 2;
-    p.y = husk.y + husk.h / 2 - p.h / 2;
+    /**
+     * **...but never inside the earth.** Keeping station is right for a klipah
+     * that hangs from a ceiling or swims; it is nonsense for the one that
+     * travels *under the floor*, and it put the Scribe twelve tiles below the
+     * room with the whole world above his head. That was harmless while the
+     * eruption was measured from his own body — it simply opened wherever he
+     * was — and stopped being harmless the moment it was anchored to the
+     * ground, because there is no ground beneath a Scribe who is under it: the
+     * creature never surfaced at all and read as unbreakable.
+     *
+     * A Scribe stands on things. The floor of the bench is its bottom row.
+     */
+    const standing = (world.height - 1) * TILE_SIZE - p.h;
+    p.y = Math.min(husk.y + husk.h / 2 - p.h / 2, standing);
     p.vx = 0;
     p.vy = 0;
     p.lamps = 99;

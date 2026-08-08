@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { HUSKS, type HuskKind } from "../combat";
-import { bench, breakIn, POSTURES, reachable, signature } from "./bench";
-import { outOfReach } from "./step";
-import type { Husk } from "./types";
+import { bench, breakIn, laid, POSTURES, reachable, signature } from "./bench";
+import { outOfReach, step, unseen, type StepContext } from "./step";
+import { TILE_SIZE } from "./tiles";
+import { NO_INPUT, type Husk } from "./types";
 
 /**
  * **The bestiary, held to the same standard as the silhouettes.**
@@ -137,17 +138,29 @@ describe("nothing hides for most of its life", () => {
 
 
 /**
- * **And what can be hit must be visible.**
+ * **And what can be hit must be visible — but not everything visible can be
+ * hit**, which is the correction this describe block carries and the reason it
+ * now asks two questions instead of one.
  *
  * Three separate places asked "is Korach in the ground?" and all three answered
  * it by reading `charging`, which counts only the rise: the mark loop, the
  * contact check, and the renderer. Fixing the first two and not the third would
  * have made the creature's one answerable moment its one *invisible* moment —
- * a player throwing at empty air where something is standing.
+ * a player throwing at empty air where something is standing. So the rule was
+ * given one home and the renderer was made to ask it.
  *
- * So the rule has one home and everything asks it. This test is the coupling
- * written down: `drawHusks` skips exactly what `outOfReach` skips, and if the
- * renderer ever grows its own opinion again, the shapes here stop agreeing.
+ * That was right about Korach and wrong as a law, because it welded two
+ * questions together that only coincide for one creature. P7 then gave the
+ * Tannin the water — `outOfReach` says no mark follows it there, which is that
+ * creature's whole fight — and thereby **stopped it being painted while it was
+ * in the water**: measured on its own bench, on screen for fifty-eight per cent
+ * of its life, gone for the forty-two per cent a player would need to see it
+ * coming. Nothing failed, because the coupling below was the only thing
+ * watching and it was watching the wrong thing.
+ *
+ * The two questions come apart cleanly once they are asked apart. Korach inside
+ * the earth is **not there**. The Tannin under the water **is** there and is
+ * simply out of reach.
  */
 describe("the rule about being reachable has one home", () => {
   const korach = (charging: number, cooldown: number): Husk => ({
@@ -181,5 +194,125 @@ describe("the rule about being reachable has one home", () => {
   it("says nothing about anything else", () => {
     expect(outOfReach({ ...korach(0, 0), kind: "cain" })).toBe(false);
     expect(outOfReach({ ...korach(0, 0), kind: "livyatan" })).toBe(false);
+  });
+
+  /**
+   * **The renderer's question, which is a different question.** Korach under
+   * the earth is the only thing in the bestiary that is not there to be drawn;
+   * everything else that a mark cannot reach is standing in plain sight, and
+   * saying otherwise is how the Tannin lost half its life on screen.
+   */
+  it("hides a buried Korach, and hides nothing else at all", () => {
+    expect(unseen(korach(0, 120))).toBe(true);
+    expect(unseen(korach(20, 300))).toBe(false);
+    expect(unseen(korach(0, 260))).toBe(false);
+    for (const kind of Object.keys(HUSKS) as HuskKind[]) {
+      if (kind === "korach") continue;
+      expect(unseen({ ...korach(0, 0), kind }), `${kind} is not painted`).toBe(false);
+    }
+  });
+});
+
+/**
+ * **The earth opens in the earth.**
+ *
+ * Reported from play as "the creature that comes out of the stone is stuck",
+ * and it was not stuck in any geometry — `flies` means nothing in the world can
+ * hold it. It was stuck in the *sky*. The eruption was placed at
+ * `p.y + p.h + 2.5 tiles`, which is the surface exactly as long as the Scribe
+ * is standing on something and is a point in mid-air the moment he is not; the
+ * creature then rose to his height, entered the settling phase — deliberately
+ * weightless, since gravity would drop a thing the rock does not hold straight
+ * through the floor — and hung there motionless for ninety ticks.
+ *
+ * Every measurement the creature has ever been given was taken with a Scribe
+ * standing still, which is why nothing caught it: **a Scribe is off the ground
+ * for a good part of every rung**, and this is the posture no bench has.
+ */
+describe("Korach comes up out of the ground, wherever the Scribe is", () => {
+  it("never stands still in the air under a jumping Scribe", () => {
+    const { world, husk } = laid("korach");
+    const ctx: StepContext = { verbs: [], graces: [] };
+    const p = world.player;
+    const floor = (world.height - 1) * TILE_SIZE;
+    let surfaced = 0;
+    let highest = 0;
+    for (let t = 0; t < 900; t += 1) {
+      p.vx = 0;
+      p.vy = 0;
+      p.lamps = 99;
+      p.iframes = 0;
+      p.x = husk.home.x;
+      // Six tiles up, and held there — the top of a jump, stretched.
+      p.y = floor - p.h - 6 * TILE_SIZE;
+      step(world, NO_INPUT, ctx);
+      // Out of the ground and no longer rising: the moment it is answerable,
+      // and the moment it used to be hanging in the sky.
+      if (unseen(husk) || husk.charging > 0) continue;
+      surfaced += 1;
+      highest = Math.max(highest, floor - (husk.y + husk.h));
+    }
+    expect(surfaced, "it never came up at all").toBeGreaterThan(100);
+    // A quarter of a tile proud of the ground is where the rise leaves it, and
+    // that is deliberate — it is the line a flat mark flies along. Six tiles is
+    // the bug.
+    expect(highest / TILE_SIZE, "it settled in the air").toBeLessThan(0.5);
+  });
+
+  /**
+   * And where there is no earth, nothing opens. A Scribe on a vine over a
+   * chasm is not standing on anything, and the honest answer is that the
+   * creature stays under and keeps waiting — not that the ground appears.
+   */
+  it("does not open under a Scribe with nothing beneath him", () => {
+    const { world, husk } = laid("korach");
+    const ctx: StepContext = { verbs: [], graces: [] };
+    const p = world.player;
+    for (let t = 0; t < 900; t += 1) {
+      p.vx = 0;
+      p.vy = 0;
+      p.lamps = 99;
+      p.iframes = 0;
+      p.x = husk.home.x;
+      // Above the floor by more than the depth any earth is looked for in.
+      p.y = 0;
+      step(world, NO_INPUT, ctx);
+      expect(husk.charging, "it erupted out of thin air").toBe(0);
+    }
+  });
+});
+
+/**
+ * **The Tannin, seen in its own water** — the claim the coupling above used to
+ * make impossible, made against the shipped step rather than against a shape.
+ *
+ * It is asserted as a *share of a life* rather than as "true at tick 40",
+ * because what went wrong was not one frame: the creature was absent for every
+ * tick it spent in the element it is authored to live in, and any single-tick
+ * claim would have been about whichever tick was picked.
+ */
+describe("a klipah out of reach is still a klipah on screen", () => {
+  it("paints the Tannin for the whole of its life, water and all", () => {
+    const { world, husk } = laid("tannin");
+    const ctx: StepContext = { verbs: [], graces: [] };
+    const p = world.player;
+    let painted = 0;
+    let submerged = 0;
+    const ticks = 900;
+    for (let t = 0; t < ticks; t += 1) {
+      p.vx = 0;
+      p.vy = 0;
+      p.lamps = 99;
+      p.iframes = 0;
+      p.x = 6 * TILE_SIZE;
+      p.y = (world.height - 3) * TILE_SIZE;
+      step(world, NO_INPUT, ctx);
+      if (!unseen(husk)) painted += 1;
+      if (outOfReach(husk, world)) submerged += 1;
+    }
+    // It spends a real part of its life unreachable — without which the claim
+    // below is about a creature that never went in the water.
+    expect(submerged, "the Tannin never went under").toBeGreaterThan(ticks * 0.2);
+    expect(painted, "the Tannin is not drawn while it is in the water").toBe(ticks);
   });
 });

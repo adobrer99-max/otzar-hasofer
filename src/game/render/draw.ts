@@ -4,7 +4,7 @@ import { Tile, TILE_SIZE } from "../world/tiles";
 import type { Entity, World } from "../world/types";
 import { alpha, type Palette } from "./palette";
 import { ROOM_H, ROOM_W } from "../world/rooms";
-import { outOfReach } from "../world/step";
+import { unseen } from "../world/step";
 import { recordPhase } from "../dev/probe";
 import { faceCount, paletteKey, setFaceScale, stamp } from "./faces";
 import { paintHusk } from "./husks";
@@ -1244,17 +1244,21 @@ function drawHusks(ctx: CanvasRenderingContext2D, world: World, palette: Palette
     // Korach inside the ground is not drawn at all. It is not hidden by a
     // trick of the light — it is not there yet.
     //
-    // **Asked of the same rule the marks are asked of**, and it used to read
-    // `charging === 0` here as well. `charging` counts only the rise, so the
-    // while it spends standing in the open afterwards counted as buried and
-    // the creature was not painted — which would have made the one moment it
-    // can be answered the one moment a player cannot see it.
+    // **`unseen`, not `outOfReach`**, and the difference cost the Tannin its
+    // visibility for a whole phase. This asked the marks' own rule, on the
+    // argument that what can be hit must be visible — right about Korach,
+    // whose two answers coincide, and wrong the moment a second creature had a
+    // reason to be unreachable. The Tannin holds the water, so `outOfReach`
+    // says no mark may follow it there, so this stopped painting it there:
+    // fifty-eight per cent of its life on screen, and the missing forty-two
+    // were exactly the ticks a player needs to see it coming. `unseen` asks
+    // the question a renderer actually has — is there anything there.
     //
     // This and the tick are the whole of what a klipah's picture needs from
     // the world; the rest is the creature itself, and lives in `husks.ts`
     // beside its shape. Keeping the two apart is what let the silhouettes be
     // enumerated by a test while the painting around them could not be.
-    if (outOfReach(husk, world)) continue;
+    if (unseen(husk)) continue;
     paintHusk(ctx, husk, palette, world.tick);
   }
 }
