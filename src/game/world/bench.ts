@@ -358,10 +358,21 @@ const ALL_GRACES: Grace[] = Object.values(abilityByLetter)
  * regions for the whole life of the creature tier and could not be broken by
  * anybody, and every instrument the game had reported it as merely difficult.
  */
-export function breakIn(kind: HuskKind, ticks = 4000): number {
+export function breakIn(
+  kind: HuskKind,
+  ticks = 4000,
+  /**
+   * A narrower hand, for the one question the full alphabet cannot ask: whether
+   * a creature's gate is the *letter* it is said to be. Leviathan opens out of
+   * the water and nowhere else, and Vav is what puts it there — so "can it be
+   * broken" and "can it be broken without the Hook" are two measurements, and
+   * only the second says the lock is real.
+   */
+  verbs: readonly Verb[] = ALL_VERBS,
+): number {
   const world = room(kind);
   const husk = lay(world, kind);
-  const ctx: StepContext = { verbs: ALL_VERBS, graces: ALL_GRACES };
+  const ctx: StepContext = { verbs, graces: ALL_GRACES };
   const p = world.player;
 
   for (let t = 0; t < ticks; t += 1) {
@@ -415,6 +426,72 @@ export function breakIn(kind: HuskKind, ticks = 4000): number {
   return -1;
 }
 
+
+/** What a duel with one klipah came to. */
+export interface Duel {
+  /** Ticks to break it, or -1 if it outlived the budget. */
+  broke: number;
+  /** Lamps it took off the Scribe on the way. */
+  cost: number;
+  /** Marks thrown to do it — how much of the answer was aim and how much was volume. */
+  marks: number;
+}
+
+/**
+ * **What it costs to break one**, which is a different question from whether it
+ * can be broken and is the one a player is asking when they say a creature is
+ * too easy.
+ *
+ * `breakIn` refills the Scribe's lamps every tick and zeroes his i-frames,
+ * deliberately: it is asking whether the *game* can break a kind at all, and a
+ * probe that dies half way through answers "no" for the wrong reason. The price
+ * of that is that it cannot see a creature which dies in a second and a half
+ * and never touches anybody. Both of the things a player calls "too easy" —
+ * dying too fast, and costing nothing while it does — are invisible to it.
+ *
+ * So this is the same duel with the lamps left alone. Three lamps, the number a
+ * rung starts with; if he goes out, that is a creature worth its light.
+ */
+export function duel(kind: HuskKind, ticks = 2000): Duel {
+  const world = room(kind);
+  const husk = lay(world, kind);
+  const ctx: StepContext = { verbs: ALL_VERBS, graces: ALL_GRACES };
+  const p = world.player;
+  p.lamps = 3;
+  let cost = 0;
+  let marks = 0;
+  let lamps = p.lamps;
+
+  for (let t = 0; t < ticks; t += 1) {
+    // The same station-keeping as `breakIn`, and for the same reason — the
+    // question is what the creature costs a Scribe who is answering it, not
+    // whether a fixed pair of feet happens to be in the right place.
+    p.x = husk.x - TILE_SIZE * 2;
+    const standing = (world.height - 1) * TILE_SIZE - p.h;
+    p.y = Math.min(husk.y + husk.h / 2 - p.h / 2, standing);
+    p.vx = 0;
+    p.vy = 0;
+    p.facing = husk.x + husk.w / 2 > p.x + p.w / 2 ? 1 : -1;
+    const line = p.y + p.h / 2;
+    const before = world.marks.length;
+    step(
+      world,
+      {
+        ...NO_INPUT,
+        strike: true,
+        up: husk.y + husk.h < line - 3,
+        down: husk.y > line + 3,
+      },
+      ctx,
+    );
+    marks += Math.max(0, world.marks.length - before);
+    if (p.lamps < lamps) cost += lamps - p.lamps;
+    lamps = p.lamps;
+    if (world.out) return { broke: -1, cost, marks };
+    if (husk.broken || world.husks.length === 0) return { broke: t, cost, marks };
+  }
+  return { broke: -1, cost, marks };
+}
 
 /**
  * **How much of its life a mark can touch it at all**, as a fraction.

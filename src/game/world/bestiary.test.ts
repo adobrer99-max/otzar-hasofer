@@ -34,13 +34,19 @@ import { NO_INPUT, type Husk } from "./types";
 const KINDS = Object.keys(HUSKS) as HuskKind[];
 
 /**
- * The two the Scribe cannot simply write on, and why. Leviathan has to be drawn
- * out of the water with the Hook before a mark means anything, and Behemoth has
- * to be stopped with a stone the Scribe set — *he that made him can make his
- * sword approach unto him*, and the sword is not a pen. Both are proved beaten
- * in `guardianFight.test.ts`, in the rooms they were authored for.
+ * The one the Scribe cannot simply write on: Behemoth has to be stopped with a
+ * stone he set — *he that made him can make his sword approach unto him*, and
+ * the sword is not a pen. It is proved beaten in `guardianFight.test.ts`, in the
+ * room it was authored for.
+ *
+ * **Behemoth alone**, and Leviathan's removal from this set is a correction.
+ * Both were here, and Leviathan's place was earned by a bug: a piercing mark
+ * re-struck it every tick it was inside it, and an unopened great one takes
+ * `struck = 12` from every blow rather than a shell, so the thing was pinned in
+ * the water sixty times a second and never left it. It leaves the water on its
+ * own — that is its whole fight — and is broken when it does.
  */
-const NOT_BY_WRITING: ReadonlySet<HuskKind> = new Set<HuskKind>(["livyatan", "behemot"]);
+const NOT_BY_WRITING: ReadonlySet<HuskKind> = new Set<HuskKind>(["behemot"]);
 
 describe("the twenty, each its own creature", () => {
   /**
@@ -82,7 +88,7 @@ describe("everything in the table can be broken", () => {
    * *in the way*, which is a different and much easier question, and it is the
    * question every instrument this game had was already answering.
    */
-  it("breaks eighteen of the twenty by writing alone", () => {
+  it("breaks nineteen of the twenty by writing alone", () => {
     for (const kind of KINDS) {
       if (NOT_BY_WRITING.has(kind)) continue;
       const at = breakIn(kind);
@@ -93,10 +99,52 @@ describe("everything in the table can be broken", () => {
     }
   }, 600000);
 
-  it("leaves the two whose gate is not a mark", () => {
-    for (const kind of NOT_BY_WRITING) {
-      expect(breakIn(kind), `${kind} is broken by writing, which is its whole gate`).toBe(-1);
-    }
+  /**
+   * **One, not two — and the second was a lie the shredder was telling.**
+   *
+   * This asserted that neither Leviathan nor Behemoth could be broken by a
+   * station-keeping Scribe, and it passed. It passed for the wrong reason.
+   * `breakIn` hands over all twenty-two letters, and Vav is among them, so
+   * every mark it throws **draws** — which is exactly Leviathan's gate: out of
+   * the water and only out of it, and the Hook is what puts it there. A Scribe
+   * with the Hook pulling it ashore and then writing on it is not a loophole,
+   * it is the fight the creature was authored for.
+   *
+   * What was actually happening: a piercing mark was not consumed by what it
+   * hit and struck the same body every tick it was inside it, and an unopened
+   * great one takes `struck = 12` from every blow instead of a shell. So the
+   * thing was re-frozen sixty times a second and could never leave the water at
+   * all. The creature read as unbreakable because it was being *held down*.
+   *
+   * Behemoth is the one whose gate is genuinely not a mark: it opens only while
+   * stopped, and only a set stone stops it — Bet, a verb no amount of writing
+   * substitutes for.
+   */
+  it("leaves Behemoth, whose gate is a stone and not a mark", () => {
+    expect(breakIn("behemot"), "Behemoth is broken by writing, which is its whole gate").toBe(-1);
+  }, 300000);
+
+  /**
+   * **And the water is a price rather than a gate**, which is the other half of
+   * the same correction and is worth stating rather than inferring.
+   *
+   * Leviathan is not locked behind Vav: it comes out of the water at you, and a
+   * Scribe with no Hook at all can wait and answer it — measured at a hundred
+   * and twenty-two ticks against the four to thirty-five everything else in the
+   * table takes. What the Hook buys is not permission but *time*, by dragging
+   * it ashore instead of waiting for it to come. Asserted as a difference,
+   * because the two numbers are exact and would have to be rewritten by any
+   * retune that touched either.
+   */
+  it("makes Leviathan cost the water, and makes the Hook worth carrying", () => {
+    const landed = breakIn("livyatan");
+    const waited = breakIn("livyatan", 4000, ["cut", "flame"]);
+    expect(landed, "Leviathan cannot be broken at all").toBeGreaterThan(-1);
+    expect(waited, "Leviathan cannot be answered without the Hook").toBeGreaterThan(-1);
+    // Slower than anything else in the table that is not underground, either way.
+    expect(landed, `Leviathan is as cheap as an ordinary klipah (${landed})`).toBeGreaterThan(40);
+    // And the Hook is worth a third of it, which is why a Scribe carries one.
+    expect(landed, `the Hook buys nothing (${landed} against ${waited})`).toBeLessThan(waited * 0.8);
   }, 300000);
 });
 

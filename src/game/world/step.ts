@@ -1367,12 +1367,18 @@ function stepMarks(world: World, ctx: StepContext): void {
       for (const husk of world.husks) {
         if (husk.broken || outOfReach(husk, world) || !bodiesTouch(m, husk)) continue;
         if (!canBeStruck(hiddenAt(world, husk), ctx.verbs)) continue;
+        // **Once each.** See `Mark.through` — a mark that pierces is not
+        // consumed, and without this it went on biting the same body every tick
+        // it was inside it, which is five hits from one letter and was the whole
+        // of why nearly the entire bestiary died to a single mark.
+        if (m.through?.includes(husk.id)) continue;
         strikeHusk(world, husk, m.bite, m.draws ? -1 : 1, m.x);
         // What is broken throws two shards out of it, up and away on both
         // sides — coverage rather than a second throw, which is why they are
         // short-lived and never split again.
         if (m.splits) shards.push(...splitOf(m));
-        if (!m.pierces) m.life = 0;
+        if (m.pierces) (m.through ??= []).push(husk.id);
+        else m.life = 0;
         break;
       }
     } else if (p.veiled === 0 && bodiesTouch(m, p)) {
@@ -2187,8 +2193,35 @@ function stepHusks(world: World, ctx: StepContext): void {
         // the fight to a Scribe with no Staff and makes the letter a
         // suggestion. So it holds its height and drops what it is carrying,
         // and the only question left is how far you can throw.
+        /**
+         * **It crosses; it does not hover.** The line above is the design and
+         * it is kept — what changes is that it used to fly *at* the Scribe's
+         * column and sit there, which is the one place in the room a mark can
+         * never arrive: a mark aimed up climbs diagonally, so from directly
+         * beneath something eight tiles up there is no throw that reaches, at
+         * any reach. The creature was removing its own window.
+         *
+         * That went unseen because a mark that pierced was not consumed by what
+         * it hit and struck the same body every tick it was inside it — so the
+         * single contact the Scribe got on the *approach*, while the angle was
+         * still open, took all six shells at once. With one hit per mark the
+         * fight needs three of those windows, and the Ziz was granting one.
+         *
+         * So it holds a heading, turns at the walls, and turns again once it is
+         * well past the Scribe — a bird patrolling a roof. Every crossing is a
+         * window at exactly the distance the Staff was made for, which is the
+         * fight the line describes and a great deal closer to it than parking
+         * overhead was.
+         */
         const roof = husk.home.y;
-        husk.vx = Math.sign(toward || 1) * spec.speed;
+        const edge = TILE_SIZE * 3;
+        const far = world.width * TILE_SIZE - edge;
+        if (husk.x < edge) husk.facing = 1;
+        else if (husk.x + husk.w > far) husk.facing = -1;
+        else if (toward * husk.facing < -TILE_SIZE * 8) {
+          husk.facing = (husk.facing * -1) as 1 | -1;
+        }
+        husk.vx = husk.facing * spec.speed;
         husk.vy = Math.max(-spec.speed, Math.min(spec.speed, (roof - husk.y) * 3));
         if (husk.cooldown === 0 && spec.throws) {
           husk.cooldown = spec.throws;
