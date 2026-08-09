@@ -31,7 +31,13 @@ export type EntityKind =
   /** A hidden thing in its chamber, kept past the seal — see `relics.ts`. */
   | "relic"
   /** Where a road divides. Resh returns you here. */
-  | "fork";
+  | "fork"
+  /**
+   * **The floor of a chamber that was never a chamber** — see `GATE_FALL`.
+   * Touching it ends the rung the way the last lamp does: the light in hand
+   * goes out, and the Scribe wakes at the highest Sefirah still lit.
+   */
+  | "opening";
 
 export interface Entity {
   id: string;

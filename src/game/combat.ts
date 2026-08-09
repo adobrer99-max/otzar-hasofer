@@ -701,3 +701,20 @@ export function takeHit(lamps: number, iframes: number, grace = 1): Hit {
  * that means.
  */
 export const GOING_OUT = "The light goes out of you, and the kingdom comes up to meet you.";
+
+/**
+ * **The other way a rung ends**, and the only one that is not about lamps.
+ *
+ * A Word-Gate is answered by *inscribing* — the Scribe writes a root and the
+ * barrier opens. That is the office: *you wrote what was said and you said
+ * nothing, and that was the whole of it, and it was enough.* Sometimes what is
+ * behind the door is the rest of that sentence.
+ *
+ * It costs exactly what the last lamp costs and not a thing more, because page
+ * five of the prologue already taught this rule and a trap that invented a new
+ * one would be a cheat: *the light still in your hand goes out with you… you
+ * wake at the highest one of them.* Nothing here is new. It is the fall, in the
+ * one place the Scribe did the thing he was cast out for doing.
+ */
+export const THE_OPENING =
+  "You wrote, and the floor was not there. You do not remember the fall this time either.";

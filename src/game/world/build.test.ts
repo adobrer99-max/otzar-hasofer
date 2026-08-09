@@ -13,6 +13,9 @@ import {
   verbsOf,
 } from "./build";
 import { TREE_PATHS } from "../tree";
+import { step } from "./step";
+import { NO_INPUT } from "./types";
+import { THE_OPENING } from "../combat";
 import { ROOM_H, ROOM_W } from "./rooms";
 import { TILE_SIZE } from "./tiles";
 import { cardsByHouse, dorotHouses, dorotHousesById, housesBySefirah } from "../../data/dorot";
@@ -459,6 +462,18 @@ describe("what a screen says about its own light", () => {
 describe("the rooms behind a Word-Gate", () => {
   const OUTSIDE = new Set(["word-gate"]);
 
+  /** A path and day whose gate is the one that opens underneath. */
+  const buildFall = () => {
+    for (const path of TREE_PATHS) {
+      for (let day = 0; day < 90; day += 1) {
+        if (gateRoomFor(path.id, day).id !== "word-gate-fall") continue;
+        const world = buildPath(path, day, lettersOnEntering(5), 1, false, false, 1, []);
+        if (world.entities.some((e) => e.kind === "opening")) return world;
+      }
+    }
+    throw new Error("no path on any day laid the fall room");
+  };
+
   /**
    * **Identical outside the chamber, to the tile.** The ledge, the porch, the
    * barrier and the clear ground lane are not decoration — they are the
@@ -497,8 +512,10 @@ describe("the rooms behind a Word-Gate", () => {
     );
     expect(overDays.size, "one path holds the same thing for ever").toBeGreaterThan(1);
     // And all four are actually reachable, or one of them is decoration.
+    // All five are reachable, or one of them is decoration. Taken over a wide
+    // sweep because the fall is laid at one gate in nine — see `GATE_ODDS`.
     const everywhere = new Set(
-      TREE_PATHS.flatMap((p) => Array.from({ length: 40 }, (_, d) => gateRoomFor(p.id, d).id)),
+      TREE_PATHS.flatMap((p) => Array.from({ length: 60 }, (_, d) => gateRoomFor(p.id, d).id)),
     );
     expect(everywhere.size).toBe(GATE_ROOMS.length);
     void OUTSIDE;
@@ -522,6 +539,50 @@ describe("the rooms behind a Word-Gate", () => {
         expect(pedestal.ref, `${path.id} seed ${seed}`).toBe(onTheMap?.id);
       }
     }
+  });
+
+  /**
+   * **The floor was not there**, and it costs exactly what the last lamp costs.
+   *
+   * The owner's reasoning for putting a trap behind a door somebody *answered*
+   * is that it has to do with why the Scribe fell in the first place: a
+   * Word-Gate is crossed by **inscribing**, and writing what was said is the
+   * office he was cast out of. What makes it fair rather than a cheat is that
+   * it invents no rule — page five of the prologue teaches this one before the
+   * first rung, and `afterFalling` has always applied it.
+   *
+   * Asserted through the shipped `step` rather than by reading the table,
+   * because a marker with no case is this repo's most repeated bug and the one
+   * that hid seventy-eight motes for the whole life of the library.
+   */
+  it("ends the rung for a Scribe who reaches the back of the wrong chamber", () => {
+    const world = buildFall();
+    const opening = world.entities.find((e) => e.kind === "opening");
+    expect(opening, "the fall room laid no opening").toBeDefined();
+    const p = world.player;
+    p.x = (opening as { x: number }).x;
+    p.y = (opening as { y: number }).y;
+    p.vx = 0;
+    p.vy = 0;
+    expect(world.out, "it was already over").toBeFalsy();
+    step(world, NO_INPUT, { verbs: [], graces: [] });
+    expect(world.out, "the floor held").toBe(true);
+    expect(world.message?.text).toBe(THE_OPENING);
+  });
+
+  /**
+   * And it is rare. A trap at one gate in five is a tax rather than a trap:
+   * measured over the full tour at even odds it took one seed from ten Sefirot
+   * lit to four and got a letter credited to the probe, which is the one
+   * concession the tour is forbidden to pass on.
+   */
+  it("lays the fall at about one gate in nine", () => {
+    const drawn = TREE_PATHS.flatMap((path) =>
+      Array.from({ length: 90 }, (_, day) => gateRoomFor(path.id, day).id),
+    );
+    const falls = drawn.filter((id) => id === "word-gate-fall").length;
+    expect(falls / drawn.length, `${falls} of ${drawn.length}`).toBeGreaterThan(0.05);
+    expect(falls / drawn.length, `${falls} of ${drawn.length}`).toBeLessThan(0.2);
   });
 
   /**

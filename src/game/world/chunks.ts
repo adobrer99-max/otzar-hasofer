@@ -761,6 +761,42 @@ export const GATE_DEN: Chunk = chunk("word-gate-den", { demand: 1 }, [
 ]);
 
 /**
+ * **The floor was not there.**
+ *
+ * The one outcome that is not a reward, and the owner's own reasoning for why
+ * it belongs behind a door somebody *answered*: it has to do with why the
+ * Scribe fell in the first place. A Word-Gate is crossed by **inscribing** — he
+ * writes a root and the barrier opens — and writing what was said is the whole
+ * of the office he was cast out of. *You wrote what was said and you said
+ * nothing, and that was the whole of it, and it was enough.*
+ *
+ * So the light is laid where light is always laid, and the tile it is standing
+ * on is an `X`. It costs precisely what the last lamp costs and not a thing
+ * more: page five of the prologue already taught this rule — *the light still
+ * in your hand goes out with you… you wake at the highest one of them* — and a
+ * trap that invented a new rule would be a cheat rather than a fall. Nothing
+ * here is new. It is the same fall, in the one place he did the thing again.
+ *
+ * **The mouth is not baited past what the room is worth.** One mote at the near
+ * end, standing on ordinary floor, so a Scribe who takes the safe one and turns
+ * round has lost nothing at all; the opening is under the pair at the back,
+ * which is where a hoard keeps its own.
+ */
+export const GATE_FALL: Chunk = chunk("word-gate-fall", { demand: 1 }, [
+  E, E, E, E, E, E, E, E,
+  "......########..",
+  ".....##......#..",
+  "......W....**#..",
+  ".....?W..*.XX#..",
+  ".....#########..",
+  E,
+  "...==...........",
+  E,
+  F,
+  F,
+]);
+
+/**
  * **What a gate opens onto.** One screen per outcome, because a room's *shape*
  * is part of what it holds — a den wants its floor cluttered and a figure wants
  * standing room, and a single screen with a swappable pixel could express
@@ -777,6 +813,30 @@ export const GATE_ROOMS: readonly Chunk[] = [
   GATE_HOARD,
   GATE_HOUSE,
   GATE_DEN,
+  GATE_FALL,
+];
+
+/**
+ * **How often each is laid** — the table `gateRoomFor` actually draws from, with
+ * the four that reward a Scribe twice over and the one that does not once.
+ *
+ * A trap at one gate in five is not a trap, it is a tax: measured over the full
+ * tour at even odds, the falls it caused took one seed from ten Sefirot lit to
+ * four and got a letter credited to the probe, which is the one concession the
+ * tour is forbidden to pass on. At one in nine it is a thing that happens
+ * sometimes, which is what it is for — and a Scribe who has met one knows the
+ * room can be that, which is the whole of the tension the other four rooms buy.
+ */
+export const GATE_ODDS: readonly Chunk[] = [
+  WORD_GATE_CHUNK,
+  GATE_HOARD,
+  GATE_HOUSE,
+  GATE_DEN,
+  WORD_GATE_CHUNK,
+  GATE_HOARD,
+  GATE_HOUSE,
+  GATE_DEN,
+  GATE_FALL,
 ];
 
 /**

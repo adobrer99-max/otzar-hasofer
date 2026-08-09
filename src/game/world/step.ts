@@ -18,6 +18,7 @@ import {
   BEND_TOWARD,
   canBeStruck,
   GOING_OUT,
+  THE_OPENING,
   HUSKS,
   kindForRole,
   MARK_HUNT,
@@ -976,6 +977,26 @@ function touchEntities(world: World, ctx: StepContext): void {
           // forty-two regions that way before the floors were even climbable.
           storeyOf(p.y + p.h - 1) === storeyOf(e.y)
         : overlaps(p, e, e.kind === "mote" ? pull : 0);
+
+    /**
+     * **The floor of the chamber that was never one.**
+     *
+     * Ends the rung exactly as the last lamp does — `world.out`, and the page
+     * does the rest through `afterFalling`: the light in hand goes out and the
+     * Scribe wakes at the highest Sefirah still lit. Nothing new is invented,
+     * which is the whole of why this is fair: the prologue's fifth page taught
+     * this rule before the first rung, and a trap with a rule of its own would
+     * be a cheat rather than a fall.
+     *
+     * Taken before anything else in the loop, so a mote sharing the tile cannot
+     * be collected on the way down; and `taken` is set so it fires once.
+     */
+    if (e.kind === "opening" && overlaps(p, e, 0)) {
+      e.taken = true;
+      world.out = true;
+      say(world, THE_OPENING);
+      return;
+    }
 
     // The Word-Gate's porch is a place you *stand* — so it must be triggered
     // on arriving, not on every tick you remain there. Level-triggering it

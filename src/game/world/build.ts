@@ -52,7 +52,7 @@ import {
   VESSEL_CHUNK,
   GATE_HOARD,
   GATE_HOUSE,
-  GATE_ROOMS,
+  GATE_ODDS,
   WORD_GATE_CHUNK,
 } from "./chunks";
 import { HUSK_CHARS, HUSKS, kindForRole, LAMPS, type HuskKind } from "../combat";
@@ -1011,6 +1011,10 @@ function paint(
             case "T":
               entities.push({ id: `e${entityId++}`, kind: "mark", x: px, y: py });
               break;
+            /** The floor of the chamber that was never one — see `GATE_FALL`. */
+            case "X":
+              entities.push({ id: `e${entityId++}`, kind: "opening", x: px, y: py });
+              break;
             /**
              * **A mote of light, where a screen said to put one.**
              *
@@ -1550,8 +1554,8 @@ export const SPENT_LIGHT = 0.15;
  * day and the path are known, and a hash cannot be got out of order.
  */
 export function gateRoomFor(pathId: string, seed: number): Chunk {
-  const at = (hashOf(`${pathId}:gate:${seed}`) >>> 0) % GATE_ROOMS.length;
-  return GATE_ROOMS[at];
+  const at = (hashOf(`${pathId}:gate:${seed}`) >>> 0) % GATE_ODDS.length;
+  return GATE_ODDS[at];
 }
 
 /** Every letter the Tree carries — the default, so a bare call sizes nothing down. */

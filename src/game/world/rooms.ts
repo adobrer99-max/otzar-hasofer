@@ -71,6 +71,7 @@ const KIND_OF: Record<string, RoomKind> = {
   "word-gate-hoard": "gate",
   "word-gate-house": "gate",
   "word-gate-den": "gate",
+  "word-gate-fall": "gate",
   "shrine-low": "shrine",
   "shrine-high": "shrine",
   house: "house",
