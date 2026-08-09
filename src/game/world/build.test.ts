@@ -12,6 +12,7 @@ import {
 } from "./build";
 import { TREE_PATHS } from "../tree";
 import { ROOM_H, ROOM_W } from "./rooms";
+import { TILE_SIZE } from "./tiles";
 import { cardsByHouse, dorotHouses, dorotHousesById, housesBySefirah } from "../../data/dorot";
 
 const SEEDS = [3, 91, 555, 12345, 777];
@@ -353,5 +354,87 @@ describe("how far into a House a rung may draw", () => {
       expect(inside.has(figure.ref), `${figure.ref} is past the window`).toBe(true);
     }
     expect(seen, "no seed put a figure on this rung at all").toBeGreaterThan(0);
+  });
+});
+
+/**
+ * **A screen that says where the light is, and is obeyed.**
+ *
+ * `"*"` is a member of `MARKER_CHARS`, so every authored mote entered `paint`'s
+ * marker switch, matched no case, fell to `default` and was eaten by the
+ * `continue` — with the block that would have laid it sitting a few lines below,
+ * unreachable. Seventy-eight of them across forty-nine of the seventy-four
+ * screens, none ever laid.
+ *
+ * Nothing looked wrong, and that is the part worth remembering: `scatterMotes`
+ * tops a rung up to the day's budget, so the light was never *missing*. It was
+ * **moved** — off the ledge somebody put it on and onto whatever standable
+ * ground the shuffle picked, which is mostly the walking line. A count would
+ * have reported the game healthy; only a claim about *where* could fail.
+ *
+ * So the claim is about the one place a player is guaranteed to look. Reported
+ * from play as the Word-Gate offering nothing when it opens, and that is the
+ * sharpest case of it: the chamber holds two of these, and it is the one screen
+ * in the game that asks a Scribe to *know* something before it opens.
+ */
+describe("what a screen says about its own light", () => {
+  const SEEDS = [3, 91, 555, 12345, 777, 40404, 8, 1234, 60606, 31337];
+
+  /** The motes standing within the chamber's reach of a gate, either hand. */
+  const chamberOf = (world: ReturnType<typeof buildPath>, gate: { x: number; y: number }) =>
+    world.entities.filter(
+      (e) =>
+        e.kind === "mote" &&
+        Math.abs(e.x - gate.x) <= TILE_SIZE * 4 &&
+        Math.abs(e.y - gate.y) <= TILE_SIZE,
+    ).length;
+
+  it("puts something behind a Word-Gate that has been answered", () => {
+    let gates = 0;
+    let held = 0;
+    for (const path of TREE_PATHS) {
+      for (const seed of SEEDS) {
+        const world = buildPath(path, seed, lettersOnEntering(5), 1, false, false, 1, []);
+        for (const gate of world.entities.filter((e) => e.kind === "word-gate")) {
+          gates += 1;
+          if (chamberOf(world, gate) > 0) held += 1;
+        }
+      }
+    }
+    expect(gates, "no path laid a Word-Gate at all").toBeGreaterThan(50);
+    // Measured at 187 of 220 with the marker laid and 117 of 220 without it —
+    // about half of every answered gate opened on an empty room. A share rather
+    // than a count, and drawn clear of both: the chamber is inside the scatter's
+    // reach, so a few will always be filled by luck and a few missed by it.
+    expect(held / gates, `${held} of ${gates} chambers hold anything`).toBeGreaterThan(0.7);
+  });
+
+  /**
+   * **And the ledges empty when the ground has been gleaned.** The moment
+   * authored motes started existing they were a farm — `SPENT_LIGHT` is applied
+   * to the day's light on its way to `scatterMotes`'s budget and nothing else,
+   * so a star would have stood at full value on every re-walk forever.
+   * `economy.test.ts`'s re-walk band caught it on the first run; this says the
+   * same thing about the one screen, where it can be read.
+   */
+  it("empties the chamber of a path already walked", () => {
+    let first = 0;
+    let again = 0;
+    for (const path of TREE_PATHS) {
+      for (const seed of SEEDS) {
+        const fresh = buildPath(path, seed, lettersOnEntering(5), 1, false, false, 1, []);
+        const walked = buildPath(path, seed, lettersOnEntering(5), 1, false, true, 1, []);
+        for (const gate of fresh.entities.filter((e) => e.kind === "word-gate")) {
+          first += chamberOf(fresh, gate);
+        }
+        for (const gate of walked.entities.filter((e) => e.kind === "word-gate")) {
+          again += chamberOf(walked, gate);
+        }
+      }
+    }
+    expect(first, "no light behind any gate on a first walk").toBeGreaterThan(0);
+    expect(again, `a re-walk holds ${again} against ${first} — the farm is open`).toBeLessThan(
+      first * 0.5,
+    );
   });
 });

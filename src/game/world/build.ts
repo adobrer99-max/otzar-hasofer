@@ -873,6 +873,23 @@ function paint(
    * ground. An empty chamber is the picture of a thing already taken.
    */
   relicsFound: readonly string[] = [],
+  /**
+   * **Whether this ground has been gleaned already**, which the authored motes
+   * have to know and `lightOfTheDay` cannot tell them.
+   *
+   * A re-walk pays `SPENT_LIGHT` — but that multiplier is applied to the *day's*
+   * light before it arrives here, and it only ever reached `scatterMotes`'s
+   * budget. Authored motes are laid unconditionally and earlier, so the moment
+   * they started existing they were a farm: walk a path, take its light, walk it
+   * again and every star is still standing at full value. `economy.test.ts`'s
+   * re-walk band caught it on the first run, which is what that band is for.
+   *
+   * It cannot be inferred from the light that arrives, either, and that is why
+   * this is a parameter rather than a division: a dim festival day and a path
+   * already walked reach `paint` looking identical, and only one of them should
+   * empty the ledges.
+   */
+  spent = false,
 ): World {
   // The screens are dealt into a floor before anything is written. One row is
   // a corridor and is exactly what every rung was before rooms existed, so
@@ -887,6 +904,8 @@ function paint(
   const husks: Husk[] = [];
   let letterCursor = 0;
   let authored = 0;
+  /** Authored motes seen so far — see the `"*"` case, and `spent`. */
+  let stars = 0;
   let fragmentCursor = firstFragmentIndex;
   let entityId = 0;
 
@@ -946,6 +965,45 @@ function paint(
             case "T":
               entities.push({ id: `e${entityId++}`, kind: "mark", x: px, y: py });
               break;
+            /**
+             * **A mote of light, where a screen said to put one.**
+             *
+             * This case did not exist, and the block that lays it — `if (ch ===
+             * "*")`, a few lines below — is *unreachable*: `"*"` is a member of
+             * `MARKER_CHARS`, so every star entered the switch above, matched
+             * nothing, fell to `default` and was consumed by the `continue`.
+             * Dead code under a live guard, which is why it read as correct.
+             *
+             * Seventy-eight authored motes across forty-nine of the seventy-four
+             * screens, none of them ever laid. Nothing looked wrong, because
+             * `scatterMotes` tops a rung up to the day's budget: the light was
+             * never *missing*, it was **moved** — off the ledge somebody put it
+             * on and onto whatever standable ground the shuffle picked, which is
+             * mostly the walking line.
+             *
+             * Reported from play as the Word-Gate offering nothing, and that is
+             * the sharpest case: its chamber holds two of these and is the one
+             * screen in the game that asks a Scribe to *know* something.
+             * Measured over 220 gates, a symmetric four-tile window: **117 held
+             * anything against 187, and 0.68 motes a gate against 1.89.** About
+             * half of every answered gate opened on an empty room.
+             *
+             * Authored motes are pushed here, before `scatterMotes` runs, so
+             * they are never crowded out by the budget — the day decides how
+             * much light a rung holds, and the screens decide where it is.
+             */
+            case "*":
+              // **One in seven survives a re-walk**, which is `SPENT_LIGHT`
+              // stated as a count rather than a multiplier — there is no
+              // fraction of a mote. By index and not by a draw, because the
+              // main generator's first consumer is `drawKeli` and `keliOnPath`
+              // recreates that draw to tell the map which vessel a path holds:
+              // anything that reaches for it here moves every screen after it.
+              if (!spent || stars % 7 === 0) {
+                entities.push({ id: `e${entityId++}`, kind: "mote", x: px, y: py });
+              }
+              stars += 1;
+              break;
             case "Y":
               // Where the road divides. Resh returns the Scribe here.
               entities.push({ id: `e${entityId++}`, kind: "fork", x: px, y: py });
@@ -972,12 +1030,6 @@ function paint(
             default:
               break;
           }
-          continue;
-        }
-
-        if (ch === "*") {
-          tiles[worldY * width + worldX] = Tile.Empty;
-          entities.push({ id: `e${entityId++}`, kind: "mote", x: px, y: py });
           continue;
         }
 
@@ -1592,6 +1644,7 @@ export function buildPath(
     keli,
     cardDepth,
     relicsFound,
+    spent,
   );
 }
 
