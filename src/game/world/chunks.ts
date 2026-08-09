@@ -625,19 +625,159 @@ export const FRAGMENT_CHUNK: Chunk = chunk("genizah-niche", { demand: 1 }, [
  * who never solves a gate — or never wants to — walks straight past at ground
  * level. That is not politeness, it is the traversal guarantee: a gate that
  * could bar the exit would be a soft-lock the moment a clue proved too hard.
+ *
+ * **The chamber is a room now, and it used to be a cupboard.** Three tiles wide
+ * and two tall is a hole with two motes in it, and it could never have held
+ * anything else — so an answered gate had exactly one thing to say however many
+ * times it was answered. Widened to six by seven, into space this screen was
+ * already wasting: rows 0–8 were empty air. The mouth, the porch, the barrier
+ * and the ground lane are all in the tiles they have always been in, which is
+ * the point — the *approach* is unchanged, so nothing about reaching a gate or
+ * walking past one moves.
+ *
+ * Everything the chamber can hold is a variant of this screen (`GATE_ROOMS`),
+ * because the alternative was a companion screen and a companion screen is a
+ * second entry in `layout`'s `fixed[]` — which is P9d's trap exactly: `room =
+ * max(fixed.length, stopping + 2)` feeds the body's length *and* the padding
+ * *and* the squaring, so one screen compounds into three. The relic chamber
+ * cost nine points of the fighter's finish rate before it was excluded from
+ * that count. A variant costs nothing, because it *is* the same screen.
  */
 export const WORD_GATE_CHUNK: Chunk = chunk("word-gate", { demand: 1 }, [
-  E, E, E, E, E, E, E, E, E,
-  ".....######.....",
-  "......W...#.....",
-  ".....?W.**#.....",
-  ".....######.....",
+  E, E, E, E, E, E, E, E,
+  "......########..",
+  ".....##......#..",
+  "......W....*.#..",
+  ".....?W....*.#..",
+  ".....#########..",
   E,
   "...==...........",
   E,
   F,
   F,
 ]);
+
+/**
+ * **What a gate opens onto** — one screen per outcome, and the reason they are
+ * whole screens rather than a marker `paint` resolves is that a room's *shape*
+ * is part of what it holds: a den wants its floor cluttered, a figure wants
+ * standing room, and a fall wants nothing underfoot but the thing that gives
+ * way. A single screen with a swappable pixel could express none of that.
+ *
+ * All four are the same screen outside the chamber, to the tile. That is a test
+ * rather than a convention (`chunks.test.ts`), because the approach, the porch
+ * and the ground lane are the traversal guarantee and a variant that quietly
+ * moved the mouth would move it for one path in four and nowhere else.
+ */
+/**
+ * **Light, and twice what an ordinary chamber holds.** The plainest outcome,
+ * and the one that has to be worth answering for on its own — four motes, half
+ * of them at the far end, so crossing the room is the price of the rest.
+ *
+ * **Four rather than six, and the number was measured rather than chosen.**
+ * `scatterMotes` tops a rung up to the day's budget, so every authored mote
+ * *displaces* a strewn one: light in a chamber is light taken off the walking
+ * line. At six the hoard moved enough of it that the tour — whose probe answers
+ * every gate and then walks straight past the open door, because it steers to
+ * the exit and nothing else — needed 202 walks against a cap of 200. The four
+ * rooms now divert 2.25 motes a gate on average against the 2 the single
+ * chamber diverted, which is the variety without the tax.
+ */
+export const GATE_HOARD: Chunk = chunk("word-gate-hoard", { demand: 1 }, [
+  E, E, E, E, E, E, E, E,
+  "......########..",
+  ".....##...**.#..",
+  "......W......#..",
+  ".....?W....**#..",
+  ".....#########..",
+  E,
+  "...==...........",
+  E,
+  F,
+  F,
+]);
+
+/**
+ * **A figure of the Dorot, behind a door somebody had to know a word to open.**
+ *
+ * The Houses have always stood on ledges off the walking line, and it has cost
+ * them: the `house` playtest script has never once met a figure in its whole
+ * life, `seekHouse` was written for it and still could not reach one, and the
+ * measurement recorded against that script is that the marker sits 174 and 392
+ * pixels above the Scribe's head. A gate is the one place in a rung where a
+ * Scribe is guaranteed to be standing still with a reason to look.
+ *
+ * **It moves the rung's figure rather than adding one.** `paint` draws exactly
+ * one `dorotCardId`, so a second `H` on the same screen-set would stand the
+ * same person twice; and on the three rungs that carry no House at all the card
+ * is undefined and the marker would lay nothing. So `layout` suppresses
+ * `HOUSE_CHUNK` when this room is chosen, and never chooses it where there is
+ * no figure to move — which also makes the gate worth answering for something
+ * other than light, since refusing it now costs a testimony.
+ */
+export const GATE_HOUSE: Chunk = chunk("word-gate-house", { demand: 1 }, [
+  E, E, E, E, E, E, E, E,
+  "......########..",
+  ".....##......#..",
+  "......W...H..#..",
+  ".....?W..*...#..",
+  ".....#########..",
+  E,
+  "...==...........",
+  E,
+  F,
+  F,
+]);
+
+/**
+ * **A den.** The light is at the back and there are two things between the
+ * Scribe and it — which is the one shape in this game that can *ask for a
+ * fight* without endangering anything. The no-soft-lock guarantee is proved on
+ * terrain alone and nothing forces anybody through a Word-Gate, so this room is
+ * off the guaranteed ground entirely: refuse it and the rung is exactly the
+ * rung it was. That is the whole reason it is safe to put a demand here and
+ * nowhere else.
+ *
+ * Written as a **role** rather than a kind (`k` is the pacer — see
+ * `HUSK_CHARS`), so a den in Gevurah holds Gevurah's creatures and a den in the
+ * kingdom holds Cain.
+ *
+ * It does not seal, and must not: `stepRooms` now exempts the gate kind, or the
+ * room would shut on a Scribe who had merely walked into the screen and hold
+ * itself closed with creatures behind a barrier they had not answered.
+ */
+export const GATE_DEN: Chunk = chunk("word-gate-den", { demand: 1 }, [
+  E, E, E, E, E, E, E, E,
+  "......########..",
+  ".....##......#..",
+  "......W.k...*#..",
+  ".....?W...k.*#..",
+  ".....#########..",
+  E,
+  "...==...........",
+  E,
+  F,
+  F,
+]);
+
+/**
+ * **What a gate opens onto.** One screen per outcome, because a room's *shape*
+ * is part of what it holds — a den wants its floor cluttered and a figure wants
+ * standing room, and a single screen with a swappable pixel could express
+ * neither.
+ *
+ * All of them are the same screen outside the chamber, to the tile: the ledge,
+ * the porch, the barrier and the clear ground lane. That is a test rather than
+ * a convention, because those tiles *are* the traversal guarantee and a variant
+ * that quietly moved the mouth would move it for one path in four and nowhere
+ * else.
+ */
+export const GATE_ROOMS: readonly Chunk[] = [
+  WORD_GATE_CHUNK,
+  GATE_HOARD,
+  GATE_HOUSE,
+  GATE_DEN,
+];
 
 /**
  * The way out of a crossing: **the gate is the door.**
@@ -2058,7 +2198,7 @@ export const chunksById: Record<string, Chunk> = Object.fromEntries(
     SHRINE_HIGH,
     LETTER_CHUNK,
     FRAGMENT_CHUNK,
-    WORD_GATE_CHUNK,
+    ...GATE_ROOMS,
     ABYSS_GATE_CHUNK,
     HOUSE_CHUNK,
     VESSEL_CHUNK,

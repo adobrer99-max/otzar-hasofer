@@ -65,6 +65,12 @@ const KIND_OF: Record<string, RoomKind> = {
   "letter-alcove": "letter",
   "genizah-niche": "niche",
   "word-gate": "gate",
+  // Every room a gate can open onto is still a gate room — see `GATE_ROOMS`.
+  // The kind is asked exactly one functional question, which is whether the
+  // room may close behind the Scribe, and the answer is the same for all four.
+  "word-gate-hoard": "gate",
+  "word-gate-house": "gate",
+  "word-gate-den": "gate",
   "shrine-low": "shrine",
   "shrine-high": "shrine",
   house: "house",

@@ -867,7 +867,27 @@ function stepRooms(world: World): void {
     // chamber has the stronger claim of the two: its ground lane runs clear the
     // whole width precisely so that a Scribe with no Ayin and no interest walks
     // past it, and a seal writes stone across that lane.
-    room.kind !== "relic";
+    room.kind !== "relic" &&
+    /**
+     * **...and not a gate, which is the same argument again and is now load
+     * bearing.** A gate's chamber is a walled box behind a barrier, and a den
+     * (`word-gate-den`) stands klipot inside it deliberately. Without this the
+     * room would seal the moment a Scribe walked into *any part of it* — the
+     * ground lane included — held shut by creatures on the far side of a
+     * barrier they may not have answered yet. The one screen in the game whose
+     * whole promise is that it can be refused would become the one that shuts
+     * you in.
+     *
+     * The den does not need sealing to ask for a fight, which is the point of
+     * putting it there: it is a box with the light at the back and three things
+     * in the way, entered on purpose through a door you had to know a word to
+     * open. The geometry is the demand. Nothing has to close.
+     *
+     * It was not free before the den, either — measured over 440 builds, three
+     * chambers already had a klipah scattered into them by luck, and none of
+     * the three happened to be a kind that can hold a door.
+     */
+    room.kind !== "gate";
   world.inSealedRoom = closes;
 
   if (!standing) {

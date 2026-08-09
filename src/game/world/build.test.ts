@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { lettersOnEntering, regionAt, regions, TOTAL_REGIONS } from "../regions";
-import { CHUNKS, CHUNK_H, CHUNK_W, chunksById, TEACH_CHUNKS } from "./chunks";
+import { CHUNKS, CHUNK_H, CHUNK_W, chunksById, GATE_ROOMS, TEACH_CHUNKS } from "./chunks";
 import {
   buildPath,
   buildRegion,
   cardsOpen,
   CARDS_PER_STANDING,
   FIRST_CARDS,
+  gateRoomFor,
+  keliOnPath,
   layoutOf,
   verbsOf,
 } from "./build";
@@ -380,12 +382,20 @@ describe("how far into a House a rung may draw", () => {
 describe("what a screen says about its own light", () => {
   const SEEDS = [3, 91, 555, 12345, 777, 40404, 8, 1234, 60606, 31337];
 
-  /** The motes standing within the chamber's reach of a gate, either hand. */
+  /**
+   * The motes inside the chamber, either hand — a screen is laid mirrored as
+   * often as not, which puts the room on the other side of its own porch.
+   *
+   * At least a tile away and at most eight, on the porch's own row: the chamber
+   * runs cols 7-12 of a screen whose porch is col 5, and the approach ledge and
+   * the ground lane are three rows and more below it.
+   */
   const chamberOf = (world: ReturnType<typeof buildPath>, gate: { x: number; y: number }) =>
     world.entities.filter(
       (e) =>
         e.kind === "mote" &&
-        Math.abs(e.x - gate.x) <= TILE_SIZE * 4 &&
+        Math.abs(e.x - gate.x) >= TILE_SIZE &&
+        Math.abs(e.x - gate.x) <= TILE_SIZE * 8 &&
         Math.abs(e.y - gate.y) <= TILE_SIZE,
     ).length;
 
@@ -436,5 +446,102 @@ describe("what a screen says about its own light", () => {
     expect(again, `a re-walk holds ${again} against ${first} — the farm is open`).toBeLessThan(
       first * 0.5,
     );
+  });
+});
+
+/**
+ * **What a gate opens onto.**
+ *
+ * The chamber was three tiles by two — a cupboard with two motes in it, and the
+ * same two motes every time anybody answered anything. It is a room now, and
+ * there are four of them.
+ */
+describe("the rooms behind a Word-Gate", () => {
+  const OUTSIDE = new Set(["word-gate"]);
+
+  /**
+   * **Identical outside the chamber, to the tile.** The ledge, the porch, the
+   * barrier and the clear ground lane are not decoration — they are the
+   * traversal guarantee, which is why the screen's own doc says rows 13-15 do
+   * nothing. A variant that moved the mouth by a tile would move it for one
+   * path in four and nowhere else, which is the hardest kind of fault to see.
+   */
+  it("changes nothing outside the chamber", () => {
+    const base = chunksById["word-gate"];
+    for (const room of GATE_ROOMS) {
+      expect(room.rows).toHaveLength(base.rows.length);
+      room.rows.forEach((row, y) => {
+        [...row].forEach((ch, x) => {
+          // The chamber is cols 7-12 of rows 9-11; everything else is contract.
+          const inside = x >= 7 && x <= 12 && y >= 9 && y <= 11;
+          if (inside) return;
+          expect(ch, `${room.id} differs at (${x},${y})`).toBe(base.rows[y][x]);
+        });
+      });
+    }
+  });
+
+  /**
+   * **Chosen by the day and the path, and by nothing else.** Everyone answering
+   * the same gate on the same day finds the same thing behind it; the same path
+   * tomorrow holds something else.
+   */
+  it("gives a path the same room twice and different paths different rooms", () => {
+    for (const path of TREE_PATHS) {
+      expect(gateRoomFor(path.id, 7).id).toBe(gateRoomFor(path.id, 7).id);
+    }
+    const onADay = new Set(TREE_PATHS.map((p) => gateRoomFor(p.id, 7).id));
+    expect(onADay.size, "every path holds the same thing on a given day").toBeGreaterThan(1);
+    const overDays = new Set(
+      Array.from({ length: 40 }, (_, d) => gateRoomFor(TREE_PATHS[0].id, d).id),
+    );
+    expect(overDays.size, "one path holds the same thing for ever").toBeGreaterThan(1);
+    // And all four are actually reachable, or one of them is decoration.
+    const everywhere = new Set(
+      TREE_PATHS.flatMap((p) => Array.from({ length: 40 }, (_, d) => gateRoomFor(p.id, d).id)),
+    );
+    expect(everywhere.size).toBe(GATE_ROOMS.length);
+    void OUTSIDE;
+  });
+
+  /**
+   * **The vessel is untouched**, which is the one thing that could not be seen
+   * by looking. `buildPath` seeds one generator and `drawKeli` is its first
+   * consumer; `keliOnPath` recreates exactly that draw so the Tree map can name
+   * a path's vessel without building it. A room chosen off that generator would
+   * move every screen on every path — so it is hashed instead, and this is the
+   * claim that says the hashing held.
+   */
+  it("leaves every path holding the vessel the map says it holds", () => {
+    for (const path of TREE_PATHS) {
+      for (const seed of [3, 91, 555, 12345]) {
+        const world = buildPath(path, seed, lettersOnEntering(5), 1, false, false, 1, []);
+        const onTheMap = keliOnPath(path, seed, []);
+        const pedestal = world.entities.find((e) => e.kind === "vessel");
+        if (!pedestal) continue;
+        expect(pedestal.ref, `${path.id} seed ${seed}`).toBe(onTheMap?.id);
+      }
+    }
+  });
+
+  /**
+   * **A figure behind a gate is a second figure, not the same one twice.** The
+   * rung's own House stands where it always did — taking the screen away would
+   * shorten the rung, which is what `room = max(fixed.length, stopping + 2)`
+   * does to anything removed from `fixed[]`, and it put the tour two walks over
+   * its cap the first time it was tried.
+   */
+  it("never stands the same person twice on one rung", () => {
+    let rungsWithTwo = 0;
+    for (const path of TREE_PATHS) {
+      for (const seed of [3, 91, 555, 12345, 777, 40404]) {
+        const world = buildPath(path, seed, lettersOnEntering(5), 1, false, false, 1, []);
+        const figures = world.entities.filter((e) => e.kind === "house");
+        const refs = new Set(figures.map((f) => f.ref));
+        expect(refs.size, `${path.id} seed ${seed} stands one person twice`).toBe(figures.length);
+        if (figures.length > 1) rungsWithTwo += 1;
+      }
+    }
+    expect(rungsWithTwo, "no gate ever held a figure").toBeGreaterThan(0);
   });
 });
