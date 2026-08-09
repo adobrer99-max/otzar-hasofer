@@ -58,6 +58,21 @@ export interface Trace {
   threwOver: number;
   /** Whether it ever reached the Scribe. */
   touched: boolean;
+  /**
+   * **What the touching cost**, in gathered light.
+   *
+   * Almost every klipah takes a lamp; exactly one — Delilah — takes `or`
+   * instead, which is the whole of that creature and the reason its contact has
+   * no i-frames behind it. The bench could not see it: `touched` records that a
+   * body arrived and nothing recorded what arriving *did*, so the one property
+   * that separates Delilah from any other floater was invisible to the table
+   * that asserts no two kinds are alike.
+   *
+   * It went unnoticed for as long as the shell counts happened to keep the two
+   * traces apart. Raising them collided `nachash` and `delilah` — which read as
+   * the shells breaking the bench and was the bench admitting a hole.
+   */
+  drained: number;
   /** Times it turned around. */
   turns: number;
   /**
@@ -256,6 +271,10 @@ export function bench(kind: HuskKind, posture: Posture, ticks = 420): Trace {
   let wasX = husk.x;
   let wasShells = husk.shells;
   let selfHarm = 0;
+  // Something to take, so that taking it can be seen. Fifty is plenty and the
+  // number does not matter: what is recorded is how much went.
+  world.or = 50;
+  const purse = world.or;
 
   for (let t = 0; t < ticks; t += 1) {
     place(t);
@@ -300,6 +319,7 @@ export function bench(kind: HuskKind, posture: Posture, ticks = 420): Trace {
     threw,
     threwOver,
     touched,
+    drained: purse - world.or,
     turns,
     selfHarm,
   };
@@ -327,7 +347,10 @@ export function signature(kind: HuskKind): string {
     const air = t.rose > 1 ? "rises" : t.fell > 1 ? "drops" : "level";
     const arms = t.threw === 0 ? "-" : t.threwOver > t.threw / 2 ? "overhead" : "underfoot";
     const own = t.selfHarm > 0 ? "/breaks-itself" : "";
-    return `${posture}:${came}/${busy}/${air}/${arms}/${t.touched ? "reaches" : "-"}${own}`;
+    // What the touching cost, which is the one thing that separates the klipah
+    // that takes gathered light from every other thing that reaches you.
+    const took = t.drained > 0 ? "/drains" : "";
+    return `${posture}:${came}/${busy}/${air}/${arms}/${t.touched ? "reaches" : "-"}${own}${took}`;
   }).join(" ");
 }
 

@@ -113,12 +113,30 @@ describe("the klipot", () => {
     }
   });
 
+  /**
+   * **Nothing sturdier is ever worth less**, which is the claim, and it is
+   * stated as a comparison rather than as a sorted list because the sorted list
+   * was quietly asserting something else.
+   *
+   * `sort` is stable, so kinds with equal shells came out in the order they are
+   * declared in — and the check then required the *declaration order* of every
+   * tie group to be non-decreasing in light. That is a fact about where somebody
+   * typed a creature, not about the design. It only ever passed because the
+   * shell counts happened to have few ties; giving the small klipot a floor of
+   * three made nine of them the same size and the test failed on an ordering
+   * nobody had ever chosen.
+   */
   it("makes the sturdier shells worth more light", () => {
-    const bySize = (Object.keys(HUSKS) as HuskKind[]).sort(
-      (a, b) => HUSKS[a].shells - HUSKS[b].shells,
-    );
-    const light = bySize.map((k) => HUSKS[k].light);
-    expect([...light].sort((a, b) => a - b)).toEqual(light);
+    const kinds = Object.keys(HUSKS) as HuskKind[];
+    for (const a of kinds) {
+      for (const b of kinds) {
+        if (HUSKS[a].shells <= HUSKS[b].shells) continue;
+        expect(
+          HUSKS[a].light,
+          `${a} has more shells than ${b} and is worth less light`,
+        ).toBeGreaterThanOrEqual(HUSKS[b].light);
+      }
+    }
   });
 
   it("writes each role with a character no tile already uses", () => {

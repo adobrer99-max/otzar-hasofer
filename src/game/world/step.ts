@@ -1507,7 +1507,37 @@ export function strikeHusk(
     if (push < 0) husk.vx += push * (husk.x < from ? -1 : 1) * 90;
     return;
   }
-  husk.shells -= bite;
+  /**
+   * **Nothing comes apart at the first word.**
+   *
+   * Reported from play, twice, and the second time with the case: *the monsters
+   * that hold the gate are still way too easy to kill — Saraf got one shot.* It
+   * did. A Scribe holding Shin throws at `bite` two, and nine of the twenty
+   * kinds carry two shells or fewer — so half the bestiary died to a single
+   * press, with no exchange and nothing to react to.
+   *
+   * The obvious fix is more shells, and it was measured and thrown away: a
+   * floor of three costs the *probe* far more than it costs a player, because a
+   * body that needs longer to break a thing stands next to it longer. Even at
+   * the minimum it put the dash over its whole two-hundred-walk budget on one
+   * seed in three and the tour two walks past its cap on another. The fight's
+   * margin was already spent by the piercing fix.
+   *
+   * So the rule is stated where it belongs, on the blow rather than on the
+   * table: a klipah at its full number of shells is never taken to nothing by
+   * one mark. It is left with one, and the second blow breaks it. **Nothing
+   * with three shells or more is affected at all** — those already needed two —
+   * so the whole of the change lands exactly on the creatures the report was
+   * about, and the measured bands for everything else are untouched.
+   *
+   * **And a klipah with one shell keeps dying to one blow**, which is not an
+   * exception so much as the rule read properly: a single shell is the whole of
+   * what those three are, and the Arbeh is the guardian a beginner meets at
+   * Malchut holding *nothing at all*. Clamping it broke that room on the first
+   * run — the one fight in the game that has to be winnable bare-handed.
+   */
+  const full = husk.shells >= HUSKS[husk.kind].shells && husk.shells > 1;
+  husk.shells = full ? Math.max(1, husk.shells - bite) : husk.shells - bite;
   husk.struck = 8;
   husk.vx += push * (husk.x < from ? -1 : 1) * 90;
   if (husk.shells > 0) return;
