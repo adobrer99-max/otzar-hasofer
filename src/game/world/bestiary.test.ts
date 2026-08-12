@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HUSKS, type HuskKind } from "../combat";
-import { bench, breakIn, laid, POSTURES, reachable, signature } from "./bench";
+import { bench, breakIn, duel, laid, POSTURES, reachable, signature } from "./bench";
 import { outOfReach, step, unseen, type StepContext } from "./step";
 import { TILE_SIZE } from "./tiles";
 import { NO_INPUT, type Husk } from "./types";
@@ -146,6 +146,45 @@ describe("everything in the table can be broken", () => {
     // And the Hook is worth a third of it, which is why a Scribe carries one.
     expect(landed, `the Hook buys nothing (${landed} against ${waited})`).toBeLessThan(waited * 0.8);
   }, 300000);
+
+  /**
+   * **The same fight, with the satchel the report was actually carrying.**
+   *
+   * `duel` had no way to hold a vessel until now and neither did anything else
+   * in the suite — see the ceiling's note in `combat.ts`. Handed the three that
+   * sharpen the nib, `markBite` comes to six, and without a ceiling that breaks
+   * every kind in the table in **two words**, the Arbeh and Behemoth alike.
+   *
+   * Measured with the ceiling in: two words for the small ones, three for the
+   * five-and-six-shell kinds, four to five for the great ones — against two,
+   * three and five to six for the same Scribe carrying nothing. So the vessels
+   * are still plainly worth walking for, and they are no longer the whole
+   * answer, which is what "too easy in certain cases" was reporting.
+   *
+   * Asserted as a shape rather than as the numbers: a floor of two words on
+   * everything, a floor of three on everything made of five shells or more, and
+   * the satchel never worth more than half the fight. Any of the three failing
+   * means the nib has gone back to being a skeleton key.
+   */
+  it("does not become a skeleton key when the satchel is full", () => {
+    const SHARP = ["kulmus", "izmel", "mishkolet"];
+    for (const kind of KINDS) {
+      if (NOT_BY_WRITING.has(kind)) continue;
+      const bare = duel(kind, 3000);
+      const kit = duel(kind, 3000, SHARP);
+      expect(kit.broke, `${kind} outlived a sharpened nib`).toBeGreaterThan(-1);
+      expect(kit.marks, `${kind} came apart in ${kit.marks} word(s)`).toBeGreaterThan(1);
+      if (HUSKS[kind].shells >= 5) {
+        expect(kit.marks, `${kind} has ${HUSKS[kind].shells} shells and took ${kit.marks} words`)
+          .toBeGreaterThan(2);
+      }
+      // And the sharpest satchel in the game may not more than halve the fight.
+      expect(
+        kit.marks,
+        `${kind}: ${kit.marks} words with the satchel against ${bare.marks} without`,
+      ).toBeGreaterThanOrEqual(bare.marks / 2);
+    }
+  }, 600000);
 });
 
 describe("nothing hides for most of its life", () => {

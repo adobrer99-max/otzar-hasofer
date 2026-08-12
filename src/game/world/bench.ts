@@ -73,6 +73,22 @@ export interface Trace {
    * the shells breaking the bench and was the bench admitting a hole.
    */
   drained: number;
+  /**
+   * **How much of its life it spent over the Scribe's head**, as a share.
+   *
+   * The bench records where a klipah went relative to *where it started* —
+   * `rose` and `fell` — and nothing about where it went relative to the body it
+   * is fighting. Two creatures that both patrol on the level and drop things
+   * underfoot therefore read identically, however differently they are placed:
+   * the Saraf walks the floor and the Ziz holds a roof eight tiles up, out of
+   * an ordinary mark's reach, which is that creature's entire fight.
+   *
+   * It only surfaced when the Ziz stopped tracking the Scribe's column and
+   * simply swept the room, which made its trace a pacer's. The trace was always
+   * a pacer's; the thing that had been hiding it was a behaviour that had to be
+   * removed for the room to be winnable at all.
+   */
+  overhead: number;
   /** Times it turned around. */
   turns: number;
   /**
@@ -261,6 +277,7 @@ export function bench(kind: HuskKind, posture: Posture, ticks = 420): Trace {
   const startNear = Math.hypot(husk.x - p.x, husk.y - p.y);
   let travelled = 0;
   let moved = 0;
+  let over = 0;
   let rose = 0;
   let fell = 0;
   let turns = 0;
@@ -294,6 +311,7 @@ export function bench(kind: HuskKind, posture: Posture, ticks = 420): Trace {
     // creature took off itself.
     if (husk.shells < wasShells && posture !== "struck") selfHarm += wasShells - husk.shells;
     wasShells = husk.shells;
+    if (husk.y + husk.h < p.y) over += 1;
     travelled += Math.abs(husk.x - wasX);
     if (Math.abs(husk.x - wasX) > 0.2 || Math.abs(husk.vy) > 20) moved += 1;
     wasX = husk.x;
@@ -319,6 +337,7 @@ export function bench(kind: HuskKind, posture: Posture, ticks = 420): Trace {
     threw,
     threwOver,
     touched,
+    overhead: ROUND(over / ticks),
     drained: purse - world.or,
     turns,
     selfHarm,
@@ -350,7 +369,10 @@ export function signature(kind: HuskKind): string {
     // What the touching cost, which is the one thing that separates the klipah
     // that takes gathered light from every other thing that reaches you.
     const took = t.drained > 0 ? "/drains" : "";
-    return `${posture}:${came}/${busy}/${air}/${arms}/${t.touched ? "reaches" : "-"}${own}${took}`;
+    // Where it keeps station, which is the difference between a thing that
+    // walks the floor and a thing that holds a roof out of a mark's reach.
+    const held = t.overhead > 0.6 ? "/overhead" : t.overhead > 0.1 ? "/partly-over" : "";
+    return `${posture}:${came}/${busy}/${air}/${arms}/${t.touched ? "reaches" : "-"}${own}${took}${held}`;
   }).join(" ");
 }
 
@@ -474,11 +496,20 @@ export interface Duel {
  *
  * So this is the same duel with the lamps left alone. Three lamps, the number a
  * rung starts with; if he goes out, that is a creature worth its light.
+ *
+ * **And it can be handed vessels**, which nothing in this repo could do before.
+ * Every probe in the suite fights with an empty satchel — `fight.test.ts`,
+ * `curve.test.ts` and the tour all build their context out of the letters
+ * alone — so the whole measured fight is the *un-furnished* Scribe, and the one
+ * a player walks the back half of a climb with had never been put in a room
+ * with anything. That is where "too easy to kill in certain cases" lives: the
+ * three vessels that sharpen the nib fold multiplicatively and Shin doubles the
+ * result, so the certain case is a satchel.
  */
-export function duel(kind: HuskKind, ticks = 2000): Duel {
+export function duel(kind: HuskKind, ticks = 2000, items: readonly string[] = []): Duel {
   const world = room(kind);
   const husk = lay(world, kind);
-  const ctx: StepContext = { verbs: ALL_VERBS, graces: ALL_GRACES };
+  const ctx: StepContext = { verbs: ALL_VERBS, graces: ALL_GRACES, items };
   const p = world.player;
   p.lamps = 3;
   let cost = 0;

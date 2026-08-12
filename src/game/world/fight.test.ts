@@ -222,20 +222,74 @@ describe("what the klipot cost a Scribe who fights", () => {
       // **The migration moved this a long way and the floor moved with it.** On
       // the linear road the trough was a fifth and this line sat at 0.12; a path
       // lays both its ends' klipot at a rung's density and the probe breaks far
-      // more of them, so the same trough now reads 33 per cent — measured
-      // 33/33/42, 43/49/39 and 33/41/48 for regions eight, nine and ten over
-      // three independent pools. The line is redrawn at a fifth, thirteen points
-      // under the worst cell measured, which is where a floor belongs: clear of
-      // the spread, and still able to say that a rung where the marks plainly do
-      // not work is a rung where the marks plainly do not work.
+      // more of them, so the same trough read 33 per cent — measured 33/33/42,
+      // 43/49/39 and 33/41/48 for regions eight, nine and ten over three
+      // independent pools.
+      //
+      // **And then the table moved, and this is a share of a fixed budget, so
+      // it moved mechanically.** Every klipah gained a shell; the probe is given
+      // the same ticks whichever rung it is on, so it breaks proportionally
+      // fewer of things that take proportionally longer. That is arithmetic and
+      // not a fault, and the distinction matters because the two are
+      // indistinguishable in this number — **which is why the claim that the
+      // marks work is asserted separately, below, on a quantity that does not
+      // move with the shell count at all.** This one keeps only the coarse job
+      // it can still do honestly: a rung where almost nothing breaks.
+      //
+      // Re-measured over the same three pools on the new table, regions two
+      // through ten: 69/59/43/31/24/43/30/**19**/30, 74/46/38/29/24/43/27/22/29
+      // and 72/50/41/28/23/35/20/**16**/27. The floor is redrawn at a tenth —
+      // six points under the worst cell measured, the same share of the trough
+      // the old line kept — rather than at the old fifth, which two of the three
+      // pools now fail by construction.
       expect(
         share,
         `region ${region}: only ${(share * 100).toFixed(0)}% of ${placed.toFixed(1)} husks broken`,
-      ).toBeGreaterThan(0.2);
+      ).toBeGreaterThan(0.1);
     }
-    // Mean 51 / 53 / 52 per cent over the three pools; the bar is sixteen points
-    // under the lowest of them.
-    expect(mean(shares), `mean ${(mean(shares) * 100).toFixed(0)}% broken`).toBeGreaterThan(0.35);
+    // Mean 39 / 37 / 35 per cent over the three pools — it was 51 / 53 / 52 on
+    // the old table — and the bar keeps its distance from the lowest of them
+    // rather than its old value.
+    expect(mean(shares), `mean ${(mean(shares) * 100).toFixed(0)}% broken`).toBeGreaterThan(0.24);
+  });
+
+  /**
+   * **And the question the share above was named for, asked so that the shell
+   * count cannot answer it.**
+   *
+   * "The marks have to work" is a claim about reach, speed and bite — whether a
+   * thrown mark lands on the thing it was thrown at. A *share of husks broken*
+   * confounds that with how much life a husk has, and the confound is not
+   * hypothetical: raising every klipah by one shell dropped the trough from 33
+   * per cent to 16 without a single mark behaving differently. A band that
+   * cannot tell those apart is a band that will one day be loosened for the
+   * wrong reason, which is exactly what happened to this file's per-rung guard
+   * before `curve.test.ts` took it.
+   *
+   * So the invariant is **shells taken per husk placed** rather than husks
+   * broken per husk placed. A klipah with more shells contributes more of them,
+   * so a rung whose creatures merely got sturdier holds this number still; a
+   * rung where the marks stop landing drops it. Measured on the committed pool
+   * at 1.89 / 1.72 / 1.38 / 1.09 / 0.95 / 1.51 / 1.08 / 0.99 / 1.19 shells a
+   * husk placed for regions two through ten — flat across the Tree, which is
+   * what an instrument reading the *marks* rather than the table should look
+   * like, and nothing like the share above, which runs from 69 down to 19 over
+   * the same nine cells. The floor is at a half.
+   */
+  it("lands its marks, whatever the klipot are made of", () => {
+    for (let region = 2; region <= TOTAL_REGIONS; region += 1) {
+      const rows = forRegion(region);
+      const placed = mean(rows.map((r) => r.fight.broken + r.fight.standing));
+      if (placed === 0) continue;
+      // Every broken husk is all of its shells; the ones left standing have had
+      // some taken off them too, and those are not counted — so this is a floor
+      // on the floor, and it may be read as one.
+      const shells = mean(rows.map((r) => r.fight.shellsTaken)) / placed;
+      expect(
+        shells,
+        `region ${region}: ${shells.toFixed(2)} shells taken per husk placed`,
+      ).toBeGreaterThan(0.5);
+    }
   });
 
   /**

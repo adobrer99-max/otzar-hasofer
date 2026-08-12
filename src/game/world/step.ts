@@ -35,6 +35,7 @@ import {
   markPowers,
   SHARD_LIFE,
   SHARD_SPEED,
+  shellsTaken,
   takeHit,
 } from "../combat";
 
@@ -1516,19 +1517,28 @@ export function strikeHusk(
    * kinds carry two shells or fewer — so half the bestiary died to a single
    * press, with no exchange and nothing to react to.
    *
-   * The obvious fix is more shells, and it was measured and thrown away: a
-   * floor of three costs the *probe* far more than it costs a player, because a
-   * body that needs longer to break a thing stands next to it longer. Even at
-   * the minimum it put the dash over its whole two-hundred-walk budget on one
-   * seed in three and the tour two walks past its cap on another. The fight's
-   * margin was already spent by the piercing fix.
-   *
-   * So the rule is stated where it belongs, on the blow rather than on the
+   * The rule is stated where it belongs, on the blow rather than on the
    * table: a klipah at its full number of shells is never taken to nothing by
    * one mark. It is left with one, and the second blow breaks it. **Nothing
    * with three shells or more is affected at all** — those already needed two —
    * so the whole of the change lands exactly on the creatures the report was
    * about, and the measured bands for everything else are untouched.
+   *
+   * **The table moved as well, by exactly one shell, and the number is the
+   * probe's rather than the design's.** More shells costs the *probe* far more
+   * than it costs a player, because a body that needs longer to break a thing
+   * stands next to it longer — so the tour, which is thirty to fifty fighting
+   * walks chained end to end, is where a shell floor is paid for. Swept over
+   * the whole table: at **+1** the tour finishes inside its cap on every seed;
+   * at **+2** it hits the cap on seed 555 with a hundred and seventy-eight
+   * falls against the base table's eighteen, and shaping the increase (more on
+   * the small ones, less on the great) moves *which* seed collapses and not
+   * whether one does. That is a cliff and not a knife edge: once a fighting
+   * probe goes out more often than it kindles, a fall wipes the purse and the
+   * tour never affords the crown. **+1 is the measured headroom of the
+   * instrument, not a claim about what a player can take** — and it is enough
+   * for the thing that was reported, because at +1 nothing in the bestiary
+   * dies to one word even before the rule above.
    *
    * **And a klipah with one shell keeps dying to one blow**, which is not an
    * exception so much as the rule read properly: a single shell is the whole of
@@ -1536,8 +1546,9 @@ export function strikeHusk(
    * Malchut holding *nothing at all*. Clamping it broke that room on the first
    * run — the one fight in the game that has to be winnable bare-handed.
    */
+  const take = shellsTaken(bite, HUSKS[husk.kind].shells);
   const full = husk.shells >= HUSKS[husk.kind].shells && husk.shells > 1;
-  husk.shells = full ? Math.max(1, husk.shells - bite) : husk.shells - bite;
+  husk.shells = full ? Math.max(1, husk.shells - take) : husk.shells - take;
   husk.struck = 8;
   husk.vx += push * (husk.x < from ? -1 : 1) * 90;
   if (husk.shells > 0) return;
@@ -2287,11 +2298,23 @@ function stepHusks(world: World, ctx: StepContext): void {
         const roof = husk.home.y;
         const edge = TILE_SIZE * 3;
         const far = world.width * TILE_SIZE - edge;
+        /**
+         * **It turns at the walls and nowhere else.**
+         *
+         * The first version also turned once it was well past the Scribe, which
+         * looks like the same thing and is not: against a wall there is no room
+         * to *get* past him, so it turned at once and hung there — inside the
+         * one distance a mark aimed up can never reach. Traced at eleven
+         * shells: three hits in the first five hundred ticks while it was still
+         * crossing, then twenty thousand with the Scribe pinned in the corner
+         * and the bird oscillating overhead.
+         *
+         * A full sweep gives a window on every pass, wherever the Scribe is
+         * standing, which is what the line always described — it holds its
+         * height and crosses, and the only question is how far you can throw.
+         */
         if (husk.x < edge) husk.facing = 1;
         else if (husk.x + husk.w > far) husk.facing = -1;
-        else if (toward * husk.facing < -TILE_SIZE * 8) {
-          husk.facing = (husk.facing * -1) as 1 | -1;
-        }
         husk.vx = husk.facing * spec.speed;
         husk.vy = Math.max(-spec.speed, Math.min(spec.speed, (roof - husk.y) * 3));
         if (husk.cooldown === 0 && spec.throws) {

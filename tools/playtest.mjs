@@ -568,6 +568,19 @@ const SCRIPTS = [
     seconds: 120,
     // Walk into everything, write nothing.
     driver: { strike: false, reckless: true },
+    /**
+     * **The claim, rather than the timeout.** This script has an `until` that
+     * says when to stop and, until now, nothing that said whether stopping was
+     * the right thing — so when `WarpOptions.lamps` turned out to be parsed and
+     * applied nowhere, the Scribe walked the whole two minutes on the full three
+     * lamps, never went out, and reported *the clock ran out* as a clean run.
+     * The one script whose subject is a climb ending had never seen one end.
+     */
+    check: (p) => {
+      if (!p.out && p.plate !== "out") {
+        throw new Error("the last lamp never went out — the kingdom never came up");
+      }
+    },
   },
   {
     name: "book",

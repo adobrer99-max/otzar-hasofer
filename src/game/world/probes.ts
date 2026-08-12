@@ -685,6 +685,23 @@ export interface Fight {
   lampsLeft: number;
   broken: number;
   standing: number;
+  /**
+   * **Shells actually taken off, which is the same question as `broken` asked
+   * so the shell count cannot answer it.**
+   *
+   * A share of husks broken is a share of a fixed tick budget, so it falls when
+   * the klipot merely get sturdier and falls when the marks stop landing, and
+   * nothing in it tells those apart — raising every kind by one shell dropped
+   * the worst rung's share from a third to a sixth without a single mark
+   * behaving differently. Shells taken rises with the table instead of falling
+   * with it, so a band on it measures the marks. See `fight.test.ts`.
+   *
+   * Counted as the per-tick fall in the shells still standing, so it takes no
+   * new field on `World`. Only decreases count, which means a tick that both
+   * lays a klipah and takes a shell off another one is missed — the figured
+   * stone's pacer is the only thing that lays one mid-rung, so this is a floor.
+   */
+  shellsTaken: number;
   veilings: number;
   ticks: number;
   /**
@@ -743,6 +760,9 @@ export function fighter(
   let holdJump = 0;
   let backAway = 0;
   let i = 0;
+  const standingShells = () => world.husks.reduce((a, h) => a + Math.max(0, h.shells), 0);
+  let shellsTaken = 0;
+  let shellsStanding = standingShells();
 
   for (; i < ticks && !world.finished && !world.out; i += 1) {
     const p = world.player;
@@ -864,6 +884,10 @@ export function fighter(
     };
 
     step(world, input, ctx);
+
+    const now = standingShells();
+    if (now < shellsStanding) shellsTaken += shellsStanding - now;
+    shellsStanding = now;
   }
 
   return {
@@ -873,6 +897,7 @@ export function fighter(
     lampsLeft: world.player.lamps,
     broken: world.husksBroken,
     standing: world.husks.length,
+    shellsTaken,
     veilings: world.veilings,
     ticks: i,
     or: world.or,

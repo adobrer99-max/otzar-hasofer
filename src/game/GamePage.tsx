@@ -694,6 +694,29 @@ export function GamePage() {
    */
   const warped = useRef<string | null>(null);
 
+  /**
+   * **How many lamps a warped Scribe carries, and it had never been applied.**
+   *
+   * `WarpOptions.lamps` is parsed from the URL, clamped, written back into the
+   * URL and shown on the dev panel — and read by nothing. `warpRecord` does not
+   * carry it and no world was ever built with it, so every warp has always
+   * started on the full three however the harness asked.
+   *
+   * The script it silenced is the one whose whole subject it is: `going-out`
+   * warps with `lamps: 1` and a Scribe who never strikes, waiting for the
+   * kingdom to come up. On three lamps it never went out, ran its two minutes,
+   * and reported *the clock ran out* — which reads as a pass, because the
+   * script has an `until` and no `check`. The one script that exists to watch a
+   * climb end has never once watched one.
+   *
+   * A ref rather than a field on the record: lamps are a state of the body and
+   * not a fact about the climb, and nothing dev-only belongs in what is
+   * persisted and folded across climbs. It is read where `powersFrom`'s carried
+   * lamps are added, so both ways into a world — a path and an arena — get it,
+   * and it is `undefined` for everything that is not a warp.
+   */
+  const warpLamps = useRef<number | undefined>(undefined);
+
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     void import("./dev/DevPanel").then((m) => setDevPanel(() => m.DevPanel)).catch(() => undefined);
@@ -710,6 +733,7 @@ export function GamePage() {
       if (!import.meta.env.DEV) return;
       const written = warpParams(options);
       warped.current = written;
+      warpLamps.current = options.lamps;
       setParams(written, { replace: true });
       // A Scribe warped to Gevurah holding twenty-two letters does not need to
       // be told which key walks. State only — never `writeTaught`, so using
@@ -1222,7 +1246,7 @@ export function GamePage() {
         [...kept.map((r) => r.id), ...(ascent.relicsFound ?? [])],
       );
       const carried = powersFrom(ascent.items ?? [], boons, keeps);
-      next.player.lamps += carried.lamps;
+      next.player.lamps = (warpLamps.current ?? next.player.lamps) + carried.lamps;
       next.orPerMote = Math.max(1, Math.round(next.orPerMote * carried.light));
       // The path's own two ends, not the rung's capped index — see `layEncounter`.
       layEncounter(next, path.ends);
@@ -1289,7 +1313,7 @@ export function GamePage() {
     learnTree("guardian");
     const room = buildArena(at, ascent.seed);
     const carried = powersFrom(ascent.items ?? [], boons, keeps);
-    room.player.lamps += carried.lamps;
+    room.player.lamps = (warpLamps.current ?? room.player.lamps) + carried.lamps;
     setWalking(null);
     setFacing(at);
     setWorld(room);

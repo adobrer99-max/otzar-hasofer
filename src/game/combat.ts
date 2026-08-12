@@ -170,9 +170,9 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     is: "It walks its ground and turns at the edge. It has never once looked up.",
     reading: "The first murder, and the sentence for it: to go back and forth over the same earth forever.",
     role: "pacer",
-    shells: 2,
+    shells: 3,
     speed: 42,
-    light: 2,
+    light: 3,
     size: { w: 16, h: 18 },
     notices: Infinity,
   },
@@ -184,9 +184,9 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     is: "Alone it hangs back. It is braver for every other one of them still standing.",
     reading: "Not one of them would have done it by himself, and that is the whole of what they are.",
     role: "pacer",
-    shells: 1,
+    shells: 2,
     speed: 30,
-    light: 2,
+    light: 3,
     size: { w: 16, h: 18 },
     // Close range on purpose. They close on what comes to them and go back to
     // their ground after — a klipah that dogs a Scribe's heels the length of a
@@ -203,9 +203,9 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     is: "It does nothing whatever until you strike it. Then it never stops.",
     reading: "An idol is harmless until you grant it your attention, and then it has all of it.",
     role: "charger",
-    shells: 4,
+    shells: 5,
     speed: 128,
-    light: 5,
+    light: 6,
     size: { w: 22, h: 22 },
     notices: Infinity,
   },
@@ -217,9 +217,9 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     is: "It runs you down over open ground, and gives up the moment you are above it.",
     reading: "He sold what was higher for what was in front of him, and he has not learned to look up since.",
     role: "charger",
-    shells: 3,
+    shells: 4,
     speed: 148,
-    light: 4,
+    light: 5,
     size: { w: 20, h: 24 },
     notices: 165,
   },
@@ -231,9 +231,9 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     is: "It comes at your back, and stands still as stone while you face it.",
     reading: "The attack that will not be met — it waits for the moment your attention is elsewhere.",
     role: "pacer",
-    shells: 2,
+    shells: 3,
     speed: 92,
-    light: 3,
+    light: 4,
     size: { w: 16, h: 20 },
     notices: 240,
   },
@@ -245,9 +245,9 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     is: "It travels inside the ground, and comes up under you — and for a moment after, it is out in the open and still.",
     reading: "The dispute that is not for the sake of heaven: it goes down out of sight and surfaces where you stand.",
     role: "floater",
-    shells: 3,
+    shells: 4,
     speed: 72,
-    light: 4,
+    light: 5,
     size: { w: 18, h: 20 },
     notices: 300,
     throws: 345,
@@ -261,9 +261,9 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     is: "Rooted where she stands. What she sends is slow, and it lingers after her.",
     reading: "She never went anywhere. Everything she did, she did at a distance and by other hands.",
     role: "thrower",
-    shells: 2,
+    shells: 3,
     speed: 0,
-    light: 3,
+    light: 4,
     size: { w: 18, h: 22 },
     notices: 260,
     throws: 165,
@@ -276,9 +276,9 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     is: "It costs you no lamp at all. It costs you what you had gathered.",
     reading: "Nothing is taken by force. It is coaxed out, a little at a time, and the loss is only visible later.",
     role: "floater",
-    shells: 1,
+    shells: 2,
     speed: 46,
-    light: 2,
+    light: 3,
     size: { w: 18, h: 18 },
     notices: 260,
     flies: true,
@@ -292,9 +292,9 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     is: "It goes for the loose light before you can, and puts it out.",
     reading: "She did not want the throne so much as she wanted no one else to have it.",
     role: "pacer",
-    shells: 2,
+    shells: 3,
     speed: 96,
-    light: 3,
+    light: 4,
     size: { w: 18, h: 20 },
     notices: Infinity,
   },
@@ -306,9 +306,9 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     is: "Slow, and it does not stop, and stone is nothing to it.",
     reading: "The first of them and the shape of all the rest: it never hurries, because it has never needed to.",
     role: "floater",
-    shells: 4,
+    shells: 5,
     speed: 46,
-    light: 5,
+    light: 6,
     size: { w: 20, h: 20 },
     notices: Infinity,
     flies: true,
@@ -326,9 +326,9 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     is: "It stays in the water, where nothing can touch it, and comes out of it at you.",
     reading: "The great sea-creatures are the first thing the account of creation bothers to say was made — and they were made, which is the whole of what they are.",
     role: "floater",
-    shells: 3,
+    shells: 4,
     speed: 88,
-    light: 4,
+    light: 5,
     size: { w: 20, h: 20 },
     notices: 220,
   },
@@ -340,9 +340,9 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     is: "It runs one line and will not turn. Stand aside and it goes into the wall.",
     reading: "Not malice. It has never once been asked to reconsider, and it would not know how.",
     role: "charger",
-    shells: 3,
+    shells: 4,
     speed: 196,
-    light: 5,
+    light: 6,
     size: { w: 24, h: 20 },
     notices: 280,
   },
@@ -354,9 +354,9 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     is: "The ground it has crossed goes on burning after it.",
     reading: "The bite is not what kills. What kills is the ground you have to go back over.",
     role: "pacer",
-    shells: 2,
+    shells: 3,
     speed: 76,
-    light: 3,
+    light: 4,
     size: { w: 18, h: 16 },
     notices: 240,
     throws: 90,
@@ -369,9 +369,9 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     is: "Every shell you take off it makes it bigger and faster.",
     reading: "Pride does not diminish when it is opposed. It is the one thing that grows on being struck.",
     role: "charger",
-    shells: 4,
+    shells: 5,
     speed: 62,
-    light: 5,
+    light: 6,
     size: { w: 18, h: 20 },
     notices: 300,
   },
@@ -383,9 +383,9 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     is: "Slow, and enormous, and its step brings the ceiling down where you stand.",
     reading: "The last of the giants, and what is dangerous about him is not that he is quick.",
     role: "pacer",
-    shells: 5,
+    shells: 6,
     speed: 34,
-    light: 6,
+    light: 7,
     size: { w: 26, h: 28 },
     notices: Infinity,
     // **Measured.** At 140 with a reach of eighteen tiles he was a barrage
@@ -404,9 +404,9 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     is: "It hangs where it is and does nothing until you are underneath it.",
     reading: "They are named for the one thing they did. Everything else about them is waiting.",
     role: "floater",
-    shells: 2,
+    shells: 3,
     speed: 0,
-    light: 4,
+    light: 5,
     size: { w: 20, h: 22 },
     notices: 150,
   },
@@ -418,9 +418,9 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     is: "One of them is nothing. There are never one of them.",
     reading: "The eighth plague is the only one that is a number rather than a thing.",
     role: "floater",
-    shells: 1,
+    shells: 2,
     speed: 68,
-    light: 2,
+    light: 3,
     size: { w: 12, h: 12 },
     notices: 320,
     flies: true,
@@ -444,7 +444,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     is: "Nothing touches it in the water. The question the book asks is whether you can get it out.",
     reading: "The verse is not a riddle and it is not rhetorical either. It is a list of what you cannot do, and the Hook is the first item on it.",
     role: "floater",
-    shells: 6,
+    shells: 7,
     speed: 78,
     light: 10,
     size: { w: 34, h: 26 },
@@ -458,7 +458,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     is: "Nothing stops it while it is moving, and nothing marks it either.",
     reading: "Only the one who made it can bring a blade near it — so the answer is not a blade. It is something set in the way.",
     role: "charger",
-    shells: 7,
+    shells: 8,
     speed: 214,
     light: 12,
     size: { w: 34, h: 30 },
@@ -472,7 +472,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     is: "It never comes down. Whether you reach it is a question about how far you can throw.",
     reading: "The verse says only that it is His. Everything else about it is midrash, and all of the midrash agrees that it is enormous and that it is above you.",
     role: "floater",
-    shells: 6,
+    shells: 7,
     speed: 104,
     light: 10,
     size: { w: 30, h: 24 },
@@ -629,6 +629,38 @@ export function markPowers(
 /** How many shells one mark takes off, given what the Scribe carries. */
 export function markBite(powers: MarkPowers): number {
   return Math.max(1, Math.round((powers.burns ? 2 : 1) * (powers.bite ?? 1)));
+}
+
+/**
+ * **And no word takes more than a third of what a thing was made with.**
+ *
+ * `markBite` folds Shin's doubling into the vessels' `bite`, and `powersFrom`
+ * folds the vessels *multiplicatively* — so the three that sharpen the nib
+ * (1.5, 1.2 and 1.6) come to 2.88 together, and with Shin to **six**. Nothing
+ * in the game has eight shells, so at that point every klipah on the Tree and
+ * all three of the great ones come apart in two words: the first blow is held
+ * at one shell by the rule below, and the second one is the fight.
+ *
+ * **No band has ever seen this**, and that is the durable part. Every probe in
+ * the suite fights with `items: []` — `fight.test.ts`, `curve.test.ts` and the
+ * tour all build their `StepContext` out of the letters alone — so the whole
+ * measured economy is the *un-furnished* case, at bite one or two. The Scribe
+ * a player actually walks the back half of a climb with was never measured, and
+ * it is the one the report came from.
+ *
+ * The ceiling is stated against the creature rather than against the nib,
+ * because a rule that capped the bite itself would make the three vessels
+ * worthless to anybody holding Shin — and a vessel that stops mattering the
+ * moment you earn a letter is not a vessel. A third of a thing means the great
+ * ones take three words however sharp the nib and the Arbeh still takes one.
+ *
+ * **The floor of two is what keeps every measured band exactly where it is.**
+ * The ceiling can never be less than two, so it cannot bind at bite one or two
+ * — which is every probe in the suite. Nothing that has been measured moves;
+ * the change lands entirely on the case that never was.
+ */
+export function shellsTaken(bite: number, full: number): number {
+  return Math.min(bite, Math.max(2, Math.ceil(full / 3)));
 }
 
 /**

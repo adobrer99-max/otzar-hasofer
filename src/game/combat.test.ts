@@ -11,6 +11,7 @@ import {
   LAMPS,
   markBite,
   markPowers,
+  shellsTaken,
   takeHit,
   type HuskKind,
 } from "./combat";
@@ -213,5 +214,77 @@ describe("lamps, and going out", () => {
 
   it("starts with more than one, so a mistake is not the run", () => {
     expect(LAMPS).toBeGreaterThan(1);
+  });
+});
+
+/**
+ * **What the nib comes to when the satchel is full — the case no band measures.**
+ *
+ * Reported from play as *too easy to kill in certain cases*, and the certain
+ * case turned out to be arithmetic rather than a creature. `powersFrom` folds
+ * the vessels **multiplicatively** and `markBite` folds Shin's doubling on top
+ * of the result, so the three that sharpen the nib come to six shells a word
+ * together — more than anything in the bestiary is made of.
+ *
+ * The reason it survived four phases of measurement is that **every probe in
+ * this suite fights with an empty satchel.** `fight.test.ts`, `curve.test.ts`,
+ * `climb.test.ts` and the bench all build their context out of the letters
+ * alone, so the entire measured economy is the un-furnished Scribe at bite one
+ * or two. The hand a player actually holds for the back half of a climb was
+ * never in a room with anything, which is the same shape as `onVessel` going
+ * missing for the whole life of P5b: not a wrong number, an unasked question.
+ */
+describe("a satchel is not a skeleton key", () => {
+  /** The sharpest nib the game can put in a hand: the three that bite, and the Flame. */
+  const SHARP = ["kulmus", "izmel", "mishkolet"];
+  const sharpest = markBite(markPowers(["flame"], [], SHARP));
+  const shells = Object.values(HUSKS).map((h) => h.shells);
+
+  /**
+   * Stated as the two numbers side by side rather than as a constant, because
+   * the claim is the *relation*. A full-health husk is left standing with one
+   * shell by `strikeHusk`'s first-blow rule, so the fight is two words long
+   * whenever one word can take **half** of what the thing is made of — and at
+   * six, one word takes half of the largest thing in the game with three to
+   * spare. That is the ceiling's whole reason for existing, and any retune of
+   * either side has to come back here.
+   */
+  it("reaches six shells a word, which is half again of the largest thing there is", () => {
+    expect(sharpest).toBe(6);
+    expect(Math.max(...shells)).toBeLessThanOrEqual(sharpest * 2);
+  });
+
+  /**
+   * **The floor of two is what keeps every committed band exactly where it is**,
+   * and it is asserted rather than reasoned about, because the whole value of
+   * the ceiling is that it is invisible to the instruments. If this ever fails,
+   * every measured number in `fight`, `curve`, `economy` and `climb` was taken
+   * on different ground than the one they were drawn on.
+   */
+  it("cannot bind on a Scribe carrying nothing, which is every probe there is", () => {
+    for (const spec of Object.values(HUSKS)) {
+      expect(shellsTaken(1, spec.shells), spec.kind).toBe(1);
+      expect(shellsTaken(2, spec.shells), spec.kind).toBe(2);
+    }
+  });
+
+  /**
+   * And the consequence, as a difference rather than a table: at the sharpest
+   * the nib gets, the biggest things in the game still cost more than one word
+   * than the smallest do. Without the ceiling every shell count from two to
+   * eight collapses to the same two words and the size of a creature stops
+   * meaning anything.
+   */
+  it("keeps a great one dearer than an Arbeh however sharp the nib", () => {
+    const small = shellsTaken(sharpest, Math.min(...shells));
+    for (const spec of Object.values(HUSKS)) {
+      const words = Math.ceil((spec.shells - 1) / shellsTaken(sharpest, spec.shells)) + 1;
+      expect(words, `${spec.kind} of ${spec.shells} shells`).toBeGreaterThanOrEqual(2);
+    }
+    const biggest = Object.values(HUSKS).find((h) => h.shells === Math.max(...shells))!;
+    expect(
+      shellsTaken(sharpest, biggest.shells) / biggest.shells,
+      `${biggest.kind} loses as large a share to one word as the smallest does`,
+    ).toBeLessThan(small / Math.min(...shells));
   });
 });
