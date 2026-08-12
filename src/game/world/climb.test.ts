@@ -144,7 +144,7 @@ interface Ledger {
  * hundred, where every seed converges comfortably; five hundred is the smallest
  * round number above the measurement with real headroom.
  */
-const CAP = 500;
+const CAP = 200;
 
 const fresh = (): Ledger => ({
   at: "malchut",

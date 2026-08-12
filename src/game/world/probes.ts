@@ -803,10 +803,36 @@ export function fighter(
     // Give ground, then stand and write. The retreat has a floor as well as a
     // ceiling: a klipah that keeps walking into you re-triggers the retreat
     // every tick, and a probe that only ever retreats backs down the whole
-    // region without throwing a single mark. Twelve ticks of giving ground,
-    // then at least twelve of standing — which is when the marks go out.
+    // region without throwing a single mark. Ten ticks of giving ground, then
+    // at least fourteen of standing — which is when the marks go out.
+    /**
+     * **Two and a half tiles, and it was one.**
+     *
+     * The probe's fighting became the binding constraint on the game's own
+     * standing proof — the tour cost 402 walks on one seed, 380 of them falls —
+     * so it was opened up and asked how it was dying. Over 220 walks and 246
+     * lamps lost: **241 of them to *contact*, five to a thrown mark, at a
+     * median distance of 1.2 tiles.** It was not being out-fought. It was
+     * walking into things while throwing at them.
+     *
+     * `p.w * 1.5` is twenty-four pixels — one tile, centre to centre, between
+     * two bodies that are sixteen and eighteen wide. By the time it fired the
+     * klipah was already touching. Measured at two and a half tiles: goings out
+     * **48 of 220 to 29**, and the tour's worst seed from 402 walks and 380
+     * falls to **29 walks and 3 falls**. Every band held, and the walk cap came
+     * back down from the five hundred it had needed to the two hundred it was.
+     *
+     * **And giving ground is the whole of the fix — standing off is not.** The
+     * obvious companion was to stop advancing while anything stood inside a
+     * mark's carry, and let it come. It cut the lamps lost further, to 150, and
+     * made the probe *worse*: 2.03 klipot broken a rung against 2.72, no seed
+     * reaching the consummation, and four of six climbs unable to kindle where
+     * they landed. A probe that will not close measures a game nobody plays. It
+     * gives ground and comes straight back.
+     */
     backAway -= 1;
-    if (nearest !== undefined && nearest < p.w * 1.5 && backAway <= -12) backAway = 12;
+    if (nearest !== undefined && nearest < TILE_SIZE * 2.5 && backAway <= -14) backAway = 10;
+
 
     const backingOff = backAway > 0 || (stuckFor > 90 && stuckFor % 150 < 45);
     const wantJump =
@@ -816,6 +842,7 @@ export function fighter(
 
     const input: Input = {
       ...NO_INPUT,
+      // Give ground, hold ground, or walk on — in that order.
       right: backingOff ? towards < 0 : towards > 0,
       left: backingOff ? towards > 0 : towards < 0,
       jump: wantJump,

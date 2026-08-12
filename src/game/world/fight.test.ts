@@ -418,16 +418,20 @@ describe("what a vessel costs a Scribe who fights", () => {
    * **It was a sixth, and the sixth was drawn against a fight where half the
    * bestiary died to one mark.** Once nothing comes apart at the first word,
    * the vessels that trade bite for something else pay for it twice: the
-   * Scoring measured 2.36 against 2.72 bare-handed — thirteen per cent, against
-   * a bar at ten. That is the bar reading the old fight rather than the vessel
-   * getting worse, and a quarter is clear of it with room to spare while still
-   * forbidding the thing the claim is about.
+   * Scoring measures 2.27 against 2.85 bare-handed, a fifth. That is the bar
+   * reading the old fight rather than the vessel getting worse, and a quarter
+   * is clear of it while still forbidding the thing the claim is about.
+   *
+   * The message printed the bare-handed figure by dividing the floor by *nine
+   * tenths* while the floor was a sixth off — so every failure this band ever
+   * reported quoted a bare-hand number that was never measured. Fixed here
+   * rather than noted, since it is the only number a reader has to go on.
    */
   it("charges a price without taking the fight away", () => {
     const floor = mean(bare().map((r) => r.broken)) * 0.75;
     for (const { hand, runs } of HANDS_MEASURED()) {
       const broken = mean(runs.map((r) => r.broken));
-      expect(broken, `holding [${hand}] broke ${broken.toFixed(2)}, bare-handed is ${(floor / 0.9).toFixed(2)}`)
+      expect(broken, `holding [${hand}] broke ${broken.toFixed(2)}, bare-handed is ${(floor / 0.75).toFixed(2)}`)
         .toBeGreaterThanOrEqual(floor);
     }
   });
