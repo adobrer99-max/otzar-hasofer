@@ -2102,11 +2102,56 @@ function stepHusks(world: World, ctx: StepContext): void {
 
       // **Jezebel.** She never went anywhere: everything she did she did at a
       // distance and by other hands. What she throws bends after you.
+      //
+      // **And she gathers before she sends, which she did not.** Every thrower
+      // in this game fired on the tick its cooldown reached zero, with no
+      // wind-up and no tell — the same class as `charging` once being drawn
+      // exactly like not-charging, and as a turned-aside blow flashing the same
+      // gold as one that landed: a state a player could act on, given nothing to
+      // act on it with.
+      //
+      // Twenty ticks of gathering, then the sending. `charging` is the
+      // field for it, so the halo the renderer already paints for a creature
+      // winding up is the tell, and `opening: "spent"` closes her for exactly
+      // that long — you cannot write on her while she is drawing it up, and the
+      // rest of the cycle you can.
+      //
+      // She is the cleanest creature in the table to close, and the reason is
+      // `speed: 0`: rooted, she is never in contact with anybody, so her shut
+      // phase costs a Scribe nothing at all by construction. That is the whole
+      // criterion this roster was chosen by.
+      //
+      // **And `throws` came down to pay for the gather**, which is a correction
+      // rather than a tune. A wind-up laid in front of a cooldown lengthens the
+      // *period*, so the first version quietly cost her a sixth of her rate of
+      // fire — measured, the whole Tree's going-out rate fell from 18.3% to
+      // 16.1% on the strength of one creature throwing less. The tell was the
+      // design; the tempo was not, and a change that makes the game easier by
+      // accident is worse than one that makes it harder on purpose. Twenty and
+      // a hundred and forty-five is a hundred and sixty-five, where it started.
+      //
+      // **And twenty rather than thirty-four because thirty-four broke the
+      // standing proof**, which is worth writing plainly rather than dressing
+      // as a design choice. At thirty-four the tour handed itself a letter on
+      // one seed — the concession `climb.test.ts` forbids absolutely — and at
+      // twenty it does not. The tour is forty to seventy heuristic walks chained
+      // end to end and its own doc says every change to the Tree moves which
+      // seeds are lucky, so this is a knife edge rather than a discovery about
+      // Jezebel. What makes twenty *acceptable* rather than merely passing is
+      // that a third of a second is still a legible tell for a projectile that
+      // bends after you; what selected it was the proof.
       case "izevel": {
         husk.vx = 0;
         husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
         husk.facing = (toward > 0 ? 1 : -1) as 1 | -1;
-        if (near < spec.notices && husk.cooldown === 0 && spec.throws) {
+        if (husk.charging > 0) {
+          husk.charging -= 1;
+          if (husk.charging > 0) break;
+        } else if (near < spec.notices && husk.cooldown === 0 && spec.throws) {
+          husk.charging = 20;
+          break;
+        }
+        if (husk.charging === 0 && husk.cooldown === 0 && spec.throws && near < spec.notices) {
           husk.cooldown = spec.throws;
           world.marks.push({
             id: `m${world.tick}-${husk.id}`,

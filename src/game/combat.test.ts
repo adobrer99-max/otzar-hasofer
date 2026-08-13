@@ -194,7 +194,7 @@ describe("when a klipah is open to a mark", () => {
       .filter((s) => s.opening !== "always")
       .map((s) => s.kind)
       .sort();
-    expect(conditional).toEqual(["behemot", "calf", "livyatan", "nefilim", "reem"]);
+    expect(conditional).toEqual(["behemot", "calf", "izevel", "livyatan", "nefilim", "reem"]);
     // For the two great ones the condition is something a letter *arranges in
     // the world* rather than a permission a letter grants — Vav puts Leviathan
     // ashore, Bet stops Behemoth. That is the difference between a puzzle and a
@@ -214,6 +214,12 @@ describe("when a klipah is open to a mark", () => {
     expect(HUSKS.reem.opening).toBe("spent");
     expect(HUSKS.calf.opening).toBe("spent");
     expect(HUSKS.nefilim.opening).toBe("spent");
+    // **Jezebel is the fourth, and the cleanest of them.** *She never went
+    // anywhere: everything she did, she did at a distance and by other hands* —
+    // `speed: 0`, so she is never in contact with anybody, and her shut phase
+    // therefore costs a Scribe nothing by construction. She gathers before she
+    // sends, and a Scribe cannot write on her while she is drawing it up.
+    expect(HUSKS.izevel.opening).toBe("spent");
   });
 });
 
