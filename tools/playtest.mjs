@@ -1324,11 +1324,13 @@ const SCRIPTS = [
      * filled from the palette's own deep background and the honest question is
      * whether it can be picked out of either.
      *
-     * `bestiary-plate-*.png` draws the same twenty at six times, four states
-     * apiece — whole, struck, half its shells gone, and mid-charge. That is the
-     * picture you author against, and the four states are there because the
-     * roadmap's complaint was precisely that a creature about to charge looks
-     * exactly like one that is not.
+     * `bestiary-plate-*.png` draws the same twenty at six times, six states
+     * apiece — whole, struck, half its shells gone, mid-charge, shut, and shut
+     * *while being struck*. That is the picture you author against, and the
+     * states are there because each was once drawn identically to its
+     * neighbour: a creature about to charge looked exactly like one that is
+     * not, and a blow that a shut creature turned aside looked exactly like a
+     * blow that took a shell off it.
      *
      * And **both themes**, because the game ships a charcoal ground and a
      * vellum one and a klipah is drawn entirely out of the palette.
@@ -1372,7 +1374,7 @@ const SCRIPTS = [
               home: { x: 3, y: 0 },
               cooldown: 0,
               charging: state === "charging" ? 20 : 0,
-              struck: state === "struck" ? 6 : 0,
+              struck: state === "struck" || state === "shut-struck" ? 6 : 0,
             };
           };
 
@@ -1406,7 +1408,16 @@ const SCRIPTS = [
                 ctx.save();
                 ctx.translate(cx + CELL / 2, cy + CELL / 2 - 6);
                 ctx.scale(PLAY, PLAY);
-                paintHusk(ctx, stand(kind, "whole"), base, 0);
+                // **Open on the sky band, shut on the stone band.** The two
+                // bands were the same picture twice against two grounds, which
+                // answered "can it be picked out" and could not answer "can its
+                // state be read" — and the second is the question P14 turns on.
+                // The plate sheet at six times is where a tell is authored; this
+                // is the only place that can say whether it survives being
+                // twenty-seven pixels, which is the size it is actually played
+                // at. The two questions still both get answered, because a shut
+                // klipah is the same silhouette with a ring round it.
+                paintHusk(ctx, stand(kind, "whole"), base, 0, band === 1);
                 ctx.restore();
                 ctx.fillStyle = base.muted;
                 ctx.font = "11px monospace";
@@ -1415,10 +1426,19 @@ const SCRIPTS = [
             }
             ctx.fillStyle = base.gold;
             ctx.font = "bold 13px monospace";
-            ctx.fillText("against sky (top) and stone (bottom), at play zoom", 8, ROWS * CELL * 2 + 17);
+            ctx.fillText("open against sky (top), shut against stone (bottom), at play zoom", 8, ROWS * CELL * 2 + 17);
           });
 
-          const STATES = ["whole", "struck", "opened", "charging"];
+          // **Six, and the last two are the pair P14c exists for.** `shut` is
+          // a klipah no mark can take a shell off — the two great ones' own
+          // condition today, and eighteen more kinds' as P14d lands them — and
+          // `shut-struck` is the one that matters most, because `strikeHusk`
+          // sets `struck` on a blow that was turned aside exactly as on one
+          // that landed. Those two cells side by side with `struck` are the
+          // whole judgement: gold means a shell came off, silver means it did
+          // not, and if a sheet cannot show that at six times it will not show
+          // it at twenty-seven pixels either.
+          const STATES = ["whole", "struck", "opened", "charging", "shut", "shut-struck"];
           const BIG = 6;
           const ROW = 136;
           const COL = 132;
@@ -1444,7 +1464,7 @@ const SCRIPTS = [
                 ctx.save();
                 ctx.translate(cx + (COL - 8) / 2, cy + (ROW - 8) / 2);
                 ctx.scale(BIG, BIG);
-                paintHusk(ctx, stand(kind, state), base, 0);
+                paintHusk(ctx, stand(kind, state), base, 0, state.startsWith("shut"));
                 ctx.restore();
               });
             });

@@ -314,6 +314,45 @@ describe("the states a klipah can be in", () => {
   });
 
   /**
+   * **And a fifth state, which is the one the shipped game had no picture for.**
+   *
+   * `strikeHusk` sets `struck` on *every* blow, including the ones on an
+   * unopened great one — where it takes no shell and exists only to drag
+   * Leviathan landward. So a mark on a creature that cannot yet be hurt flashed
+   * the same gold rim as a mark that took a shell off it, and a player throwing
+   * at a submerged Leviathan or an un-stopped Behemoth could not tell the fight
+   * from the futility. This is P8's charging fault again, exactly: a state the
+   * player has something to do about, drawn identically to the state they do
+   * not.
+   *
+   * Asserted for **every** kind rather than for the two that are conditional
+   * today, because `paintHusk` takes the answer rather than deriving it, and
+   * P14d's whole job is to make more kinds pass `true`. A creature whose shut
+   * picture is its open picture would ship as a creature nobody can read.
+   *
+   * A difference rather than a particular picture — the rule P8 settled — so it
+   * survives any retune of what the three channels actually draw.
+   */
+  it("draws a shut klipah differently from an open one, struck or not", () => {
+    for (const kind of kinds) {
+      for (const state of ["whole", "struck"] as const) {
+        const shot = (shut: boolean) => {
+          const { ctx, log } = recorder();
+          paintHusk(ctx, stand(kind, state), readPalette(), 0, shut);
+          return log();
+        };
+        const open = shot(false);
+        const closed = shot(true);
+        expect(closed.length, `a shut ${kind} drew nothing at all`).toBeGreaterThan(0);
+        expect(
+          closed,
+          `a ${kind} that is shut looks exactly like one that is open, while ${state}`,
+        ).not.toBe(open);
+      }
+    }
+  });
+
+  /**
    * And a klipah must be **dark on both grounds**. The shell was filled from
    * `bgDeep`, which is a near-black on charcoal and a pale cream on vellum, so
    * on the light theme the creatures were very nearly not there — pale shapes

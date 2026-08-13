@@ -4,7 +4,7 @@ import { Tile, TILE_SIZE } from "../world/tiles";
 import type { Entity, World } from "../world/types";
 import { alpha, type Palette } from "./palette";
 import { ROOM_H, ROOM_W } from "../world/rooms";
-import { unseen } from "../world/step";
+import { opened, unseen } from "../world/step";
 import { recordPhase } from "../dev/probe";
 import { faceCount, paletteKey, setFaceScale, stamp } from "./faces";
 import { paintHusk } from "./husks";
@@ -1254,12 +1254,19 @@ function drawHusks(ctx: CanvasRenderingContext2D, world: World, palette: Palette
     // were exactly the ticks a player needs to see it coming. `unseen` asks
     // the question a renderer actually has — is there anything there.
     //
-    // This and the tick are the whole of what a klipah's picture needs from
-    // the world; the rest is the creature itself, and lives in `husks.ts`
-    // beside its shape. Keeping the two apart is what let the silhouettes be
-    // enumerated by a test while the painting around them could not be.
+    // This, the tick and **whether a mark would take a shell off it** are the
+    // whole of what a klipah's picture needs from the world; the rest is the
+    // creature itself, and lives in `husks.ts` beside its shape. Keeping the
+    // two apart is what let the silhouettes be enumerated by a test while the
+    // painting around them could not be.
+    //
+    // `opened` is the third and it is new, and it was missing for the whole
+    // life of the two conditions that already ship: a blow on a submerged
+    // Leviathan or an un-stopped Behemoth takes no shell and looked exactly
+    // like a blow that did. Both are questions about the *room* rather than
+    // about the creature, which is why they are asked here and not there.
     if (unseen(husk)) continue;
-    paintHusk(ctx, husk, palette, world.tick);
+    paintHusk(ctx, husk, palette, world.tick, !opened(world, husk));
   }
 }
 
