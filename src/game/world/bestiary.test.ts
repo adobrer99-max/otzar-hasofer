@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HUSKS, type HuskKind } from "../combat";
-import { bench, breakIn, duel, laid, POSTURES, reachable, signature, unfair } from "./bench";
+import { bench, breakIn, duel, laid, openness, POSTURES, reachable, signature, unfair } from "./bench";
 import { outOfReach, step, unseen, type StepContext } from "./step";
 import { TILE_SIZE } from "./tiles";
 import { NO_INPUT, type Husk } from "./types";
@@ -240,6 +240,41 @@ describe("nothing hides for most of its life", () => {
       if (kind === "korach" || kind === "tannin") continue;
       expect(reachable(kind), `${kind} has started hiding`).toBe(1);
     }
+  }, 600000);
+
+  /**
+   * **And the other half of the same question, which is not the same question.**
+   *
+   * `reachable` asks whether a mark *arrives*. This asks whether arriving
+   * counts. A Korach inside the earth is not there to be hit; an unopened
+   * Behemoth is very much there, and a blow staggers it and takes nothing —
+   * which is not a technicality, it is exactly how Leviathan is dragged out of
+   * the water by a Hook that never takes a shell off it.
+   *
+   * Measured through the shipped rule: **eighteen kinds open at every moment of
+   * their lives**, Leviathan at 0.63, and Behemoth at **zero** on plain ground,
+   * rising once a stone is set in front of it. That zero is the whole of that
+   * fight and it had never been a number.
+   *
+   * The eighteen are the subject of P14 rather than a background fact, so they
+   * are asserted at exactly 1 and the two exceptions are named. A kind that
+   * gains a condition has to be taken out of this set on purpose.
+   */
+  it("opens eighteen of the twenty at every moment, and names the two that do not", () => {
+    for (const kind of KINDS) {
+      if (HUSKS[kind].opening !== "always") continue;
+      expect(openness(kind), `${kind} has started closing`).toBe(1);
+    }
+    // Out of the water and only out of it — so it is open for the part of its
+    // cycle it spends ashore, and that is neither none of it nor all of it.
+    expect(openness("livyatan"), "Leviathan never comes ashore").toBeGreaterThan(0.2);
+    expect(openness("livyatan"), "Leviathan no longer holds the water").toBeLessThan(0.9);
+    // And the one whose gate is a stone: never open until the Scribe sets one.
+    expect(openness("behemot"), "Behemoth opens without a stone being set").toBe(0);
+    expect(
+      openness("behemot", 3000, "blocked"),
+      "a set stone no longer stops Behemoth",
+    ).toBeGreaterThan(0.5);
   }, 600000);
 
   /**

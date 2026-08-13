@@ -1,7 +1,7 @@
 import { abilityByLetter, type Grace, type Verb } from "../abilities";
 import { HUSKS, type HuskKind } from "../combat";
 import { buildRegion, setTile } from "./build";
-import { answerable, harmful, outOfReach, step, strikeHusk, type StepContext } from "./step";
+import { answerable, harmful, opened, outOfReach, step, strikeHusk, type StepContext } from "./step";
 import { Tile, TILE_SIZE } from "./tiles";
 import { NO_INPUT, type Husk, type World } from "./types";
 
@@ -589,6 +589,44 @@ export function reachable(kind: HuskKind, ticks = 3000): number {
     if (!outOfReach(husk, world)) out += 1;
   }
   return Math.round((out / ticks) * 100) / 100;
+}
+
+/**
+ * **The share of a creature's life in which a mark takes a shell off it** —
+ * `HuskSpec.opening`, measured rather than declared.
+ *
+ * The twin of `reachable`, and the two are asking different questions on
+ * purpose. `reachable` is whether a mark *arrives*; this is whether arriving
+ * counts. A Korach inside the earth is not there to be hit; an unopened
+ * Behemoth is very much there, and a blow staggers it and takes nothing — which
+ * is not a technicality, it is how Leviathan is dragged out of the water by a
+ * Hook that never takes a shell off it.
+ *
+ * Takes a posture because one of the two conditions cannot be met in an empty
+ * room: Behemoth opens only while stopped and only a stone the Scribe set stops
+ * it, so its openness is **zero** on plain ground and rises once `"blocked"`
+ * puts a placed stone in front of it. That zero is the fight, stated as a
+ * number for the first time.
+ */
+export function openness(kind: HuskKind, ticks = 3000, posture?: Posture): number {
+  const world = room(kind, posture);
+  const husk = lay(world, kind);
+  const ctx: StepContext = { verbs: ALL_VERBS, graces: ALL_GRACES };
+  const p = world.player;
+  const standY = (world.height - 3) * TILE_SIZE;
+  let open = 0;
+  for (let t = 0; t < ticks; t += 1) {
+    p.x = 6 * TILE_SIZE;
+    p.y = standY;
+    p.vx = 0;
+    p.vy = 0;
+    p.lamps = 99;
+    p.iframes = 0;
+    step(world, NO_INPUT, ctx);
+    if (husk.broken) break;
+    if (opened(world, husk)) open += 1;
+  }
+  return Math.round((open / ticks) * 100) / 100;
 }
 
 /**

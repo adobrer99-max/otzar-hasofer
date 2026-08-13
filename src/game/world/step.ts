@@ -1465,16 +1465,29 @@ const inWater = (world: World, body: Husk) =>
  * already a number the game keeps: `markPowers` gives the Staff sixteen more
  * ticks of mark life and nothing else in the game throws that far. A rule
  * saying so would be the same rule written twice and free to drift.
+ *
+ * **It switches on `HuskSpec.opening` rather than on `kind`, and that is the
+ * whole of what P14b changes.** As a switch over creatures it read as two
+ * bespoke cases under a `default: true` — which is to say eighteen kinds were
+ * open at every moment of their lives *by omission*, and nothing anywhere said
+ * so. As a switch over openings the table states it, two creatures that open
+ * the same way share one line, and adding a member to `Opening` is a compile
+ * error here, at the one place that has to answer for it.
+ *
+ * No condition has yet been added and none is removed: the two that existed are
+ * the two that exist, expressed once instead of twice. Every band is green
+ * because there is nothing for a band to notice.
  */
-function opened(world: World, husk: Husk): boolean {
-  switch (husk.kind) {
+export function opened(world: World, husk: Husk): boolean {
+  switch (HUSKS[husk.kind].opening) {
     // Out of the water, and only out of it. The Hook is what puts it there.
-    case "livyatan":
+    case "landed":
       return !inWater(world, husk);
-    // Stopped, and only a set stone stops it.
-    case "behemot":
+    // Stopped, and only a set stone stops it — `cooldown` is what a placed
+    // stone leaves on it, which is the one thing in the game that stops it.
+    case "stopped":
       return husk.cooldown > 0;
-    default:
+    case "always":
       return true;
   }
 }

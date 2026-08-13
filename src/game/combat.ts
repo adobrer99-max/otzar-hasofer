@@ -124,6 +124,46 @@ export const isBeast = (kind: HuskKind): boolean =>
  */
 export type HuskRole = "pacer" | "floater" | "thrower" | "charger";
 
+/**
+ * **When a mark takes a shell off it, as against merely turning it aside.**
+ *
+ * The third dial on how long a klipah takes to break, and the only one with any
+ * room left in it. The other two are measured out: a shell floor above **+1**
+ * puts the tour past its cap — at +2 it needs 202 walks on seed 555 with a
+ * hundred and seventy-eight falls against the base table's eighteen — because a
+ * body that needs longer to break a thing stands next to it longer, and the
+ * whole cost of a shell is paid in lamps. And `markBite` is capped at a third
+ * of what a thing is made with, since the vessels fold multiplicatively and a
+ * full satchel reached six shells a word.
+ *
+ * This one is different in kind: it lengthens a fight **without lengthening the
+ * time a Scribe spends being hit**, provided the closed phase is a phase the
+ * creature is not attacking in. That proviso is not advice, it is the whole
+ * economics of the thing, and it is measured — the first version of Korach's
+ * settling phase handed the creature ninety extra ticks of *contact* along with
+ * ninety ticks of being hittable, and the honest dash stopped arriving on one
+ * seed in six. `bench.ts`'s `unfair()` is the band that holds it.
+ *
+ * Two conditions exist and both are great ones, where the opening is something
+ * a **letter arranges in the world** rather than a permission the letter grants
+ * — which is the difference between a puzzle and a check, and it is why the
+ * Hook still moves Leviathan on a blow that takes no shell off it. Eighteen
+ * kinds are `"always"`, which is to say open at every moment of their lives,
+ * and closing some of them is what the rest of this phase is.
+ *
+ * Stated as a **union rather than a flag on each creature** so that the rule
+ * has one home: `opened()` switches on this and not on `kind`, so two creatures
+ * that open the same way share one line of code, and a new member of this union
+ * is a compile error at the one place that has to answer for it.
+ */
+export type Opening =
+  /** Open at every moment. Eighteen of the twenty, which is the thing to change. */
+  | "always"
+  /** Out of the water, and only out of it — Leviathan's, and Vav is what puts it there. */
+  | "landed"
+  /** Stopped, and only a stone the Scribe set stops it — Behemoth's, and that is Bet. */
+  | "stopped";
+
 export interface HuskSpec {
   kind: HuskKind;
   /** As it is written on the plate. */
@@ -138,6 +178,13 @@ export interface HuskSpec {
   role: HuskRole;
   /** Strikes to disperse it. */
   shells: number;
+  /**
+   * When a mark counts against it — see `Opening`. **Required rather than
+   * optional**, so that a kind added to the table has to say, and a kind whose
+   * answer is "at any time" says so on purpose. This table is explicit about
+   * everything else it holds; a defaulted field is a field nobody reads.
+   */
+  opening: Opening;
   /** Pixels per second it moves under its own power. */
   speed: number;
   /** How much light was trapped in it, released when it breaks. */
@@ -171,6 +218,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     reading: "The first murder, and the sentence for it: to go back and forth over the same earth forever.",
     role: "pacer",
     shells: 3,
+    opening: "always",
     speed: 42,
     light: 3,
     size: { w: 16, h: 18 },
@@ -185,6 +233,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     reading: "Not one of them would have done it by himself, and that is the whole of what they are.",
     role: "pacer",
     shells: 2,
+    opening: "always",
     speed: 30,
     light: 3,
     size: { w: 16, h: 18 },
@@ -204,6 +253,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     reading: "An idol is harmless until you grant it your attention, and then it has all of it.",
     role: "charger",
     shells: 5,
+    opening: "always",
     speed: 128,
     light: 6,
     size: { w: 22, h: 22 },
@@ -218,6 +268,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     reading: "He sold what was higher for what was in front of him, and he has not learned to look up since.",
     role: "charger",
     shells: 4,
+    opening: "always",
     speed: 148,
     light: 5,
     size: { w: 20, h: 24 },
@@ -232,6 +283,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     reading: "The attack that will not be met — it waits for the moment your attention is elsewhere.",
     role: "pacer",
     shells: 3,
+    opening: "always",
     speed: 92,
     light: 4,
     size: { w: 16, h: 20 },
@@ -246,6 +298,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     reading: "The dispute that is not for the sake of heaven: it goes down out of sight and surfaces where you stand.",
     role: "floater",
     shells: 4,
+    opening: "always",
     speed: 72,
     light: 5,
     size: { w: 18, h: 20 },
@@ -262,6 +315,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     reading: "She never went anywhere. Everything she did, she did at a distance and by other hands.",
     role: "thrower",
     shells: 3,
+    opening: "always",
     speed: 0,
     light: 4,
     size: { w: 18, h: 22 },
@@ -277,6 +331,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     reading: "Nothing is taken by force. It is coaxed out, a little at a time, and the loss is only visible later.",
     role: "floater",
     shells: 2,
+    opening: "always",
     speed: 46,
     light: 3,
     size: { w: 18, h: 18 },
@@ -293,6 +348,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     reading: "She did not want the throne so much as she wanted no one else to have it.",
     role: "pacer",
     shells: 3,
+    opening: "always",
     speed: 96,
     light: 4,
     size: { w: 18, h: 20 },
@@ -307,6 +363,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     reading: "The first of them and the shape of all the rest: it never hurries, because it has never needed to.",
     role: "floater",
     shells: 5,
+    opening: "always",
     speed: 46,
     light: 6,
     size: { w: 20, h: 20 },
@@ -327,6 +384,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     reading: "The great sea-creatures are the first thing the account of creation bothers to say was made — and they were made, which is the whole of what they are.",
     role: "floater",
     shells: 4,
+    opening: "always",
     speed: 88,
     light: 5,
     size: { w: 20, h: 20 },
@@ -341,6 +399,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     reading: "Not malice. It has never once been asked to reconsider, and it would not know how.",
     role: "charger",
     shells: 4,
+    opening: "always",
     speed: 196,
     light: 6,
     size: { w: 24, h: 20 },
@@ -355,6 +414,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     reading: "The bite is not what kills. What kills is the ground you have to go back over.",
     role: "pacer",
     shells: 3,
+    opening: "always",
     speed: 76,
     light: 4,
     size: { w: 18, h: 16 },
@@ -370,6 +430,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     reading: "Pride does not diminish when it is opposed. It is the one thing that grows on being struck.",
     role: "charger",
     shells: 5,
+    opening: "always",
     speed: 62,
     light: 6,
     size: { w: 18, h: 20 },
@@ -384,6 +445,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     reading: "The last of the giants, and what is dangerous about him is not that he is quick.",
     role: "pacer",
     shells: 6,
+    opening: "always",
     speed: 34,
     light: 7,
     size: { w: 26, h: 28 },
@@ -405,6 +467,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     reading: "They are named for the one thing they did. Everything else about them is waiting.",
     role: "floater",
     shells: 3,
+    opening: "always",
     speed: 0,
     light: 5,
     size: { w: 20, h: 22 },
@@ -419,6 +482,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     reading: "The eighth plague is the only one that is a number rather than a thing.",
     role: "floater",
     shells: 2,
+    opening: "always",
     speed: 68,
     light: 3,
     size: { w: 12, h: 12 },
@@ -445,6 +509,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     reading: "The verse is not a riddle and it is not rhetorical either. It is a list of what you cannot do, and the Hook is the first item on it.",
     role: "floater",
     shells: 7,
+    opening: "landed",
     speed: 78,
     light: 10,
     size: { w: 34, h: 26 },
@@ -459,6 +524,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     reading: "Only the one who made it can bring a blade near it — so the answer is not a blade. It is something set in the way.",
     role: "charger",
     shells: 8,
+    opening: "stopped",
     speed: 214,
     light: 12,
     size: { w: 34, h: 30 },
@@ -473,6 +539,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     reading: "The verse says only that it is His. Everything else about it is midrash, and all of the midrash agrees that it is enormous and that it is above you.",
     role: "floater",
     shells: 7,
+    opening: "always",
     speed: 104,
     light: 10,
     size: { w: 30, h: 24 },

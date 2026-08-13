@@ -158,6 +158,51 @@ describe("the klipot", () => {
   });
 });
 
+/**
+ * **When a mark counts — the third dial, stated in the table for the first
+ * time.**
+ *
+ * `opened()` used to be a switch over *creatures* with two bespoke cases under
+ * a `default: true`, which meant eighteen of the twenty kinds were open at
+ * every moment of their lives **by omission**: nothing anywhere said so, and
+ * nothing could be asked about it. It is a switch over `Opening` now, so the
+ * table states it, two creatures that open the same way share one line, and
+ * adding a member to the union is a compile error at the one site that has to
+ * answer for it.
+ *
+ * Nothing is added and nothing is removed here. The two conditions that existed
+ * are the two that exist, expressed once instead of twice — which is why every
+ * measured band is green: there is nothing for one to notice.
+ */
+describe("when a klipah is open to a mark", () => {
+  it("makes every kind say, rather than letting silence mean always", () => {
+    for (const spec of Object.values(HUSKS)) {
+      expect(spec.opening, `${spec.kind} does not say when it opens`).toBeTruthy();
+    }
+  });
+
+  /**
+   * **Named rather than counted**, because the eighteen are the subject of the
+   * phase and not a background fact. A kind that gains a condition has to be
+   * taken out of this list on purpose, with a person deciding it — which is the
+   * opposite of how it got here, where a `default:` branch decided it silently
+   * for every creature nobody had thought about.
+   */
+  it("leaves exactly the two great ones conditional, and both on the world", () => {
+    const conditional = Object.values(HUSKS)
+      .filter((s) => s.opening !== "always")
+      .map((s) => s.kind)
+      .sort();
+    expect(conditional).toEqual(["behemot", "livyatan"]);
+    // And the condition is something a letter *arranges in the world* rather
+    // than a permission a letter grants — Vav puts Leviathan ashore, Bet stops
+    // Behemoth. That is the difference between a puzzle and a check, and it is
+    // why the Hook still moves Leviathan on a blow that takes no shell off it.
+    expect(HUSKS.livyatan.opening).toBe("landed");
+    expect(HUSKS.behemot.opening).toBe("stopped");
+  });
+});
+
 describe("the Scribe's mark", () => {
   it("takes one shell bare, and two once the Flame is carried", () => {
     expect(markBite(markPowers([], []))).toBe(1);
