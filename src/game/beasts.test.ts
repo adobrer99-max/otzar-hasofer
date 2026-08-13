@@ -184,11 +184,22 @@ describe("the creatures", () => {
    * a trail — measured, it made Tiferet the one place in the game a Scribe went
    * out of more than half the walks. So the shape is what is asserted now:
    * something is laid, it burns, it goes out, and another comes.
+   *
+   * **And it gathers first**, which is why the window opens at fourteen ticks
+   * rather than two. This creature's fire is the one attack in the game with no
+   * travel and no warning — `vx: 0, vy: 0`, it simply exists under whatever is
+   * standing there — so a dozen ticks of the ground taking before it takes is
+   * the tell it never had. The two-tick window was not wrong when it was
+   * written; it is now measuring the gather, so the gather is what it asserts.
    */
-  it("leaves fire behind the Saraf, and lets it burn out", () => {
+  it("gathers, then leaves fire behind the Saraf, and lets it burn out", () => {
     stand(world, "saraf", { x: 12, y: world.height - 3 });
     const embers = () => world.marks.filter((m) => !m.mine && m.vx === 0 && m.vy === 0);
+    // Nothing yet: the ground is still taking. Asserted rather than skipped past,
+    // because a wind-up nobody can be ahead of is a wind-up that is not there.
     run(world, 2);
+    expect(embers().length, "the Saraf set fire down with no warning at all").toBe(0);
+    run(world, 12);
     const lit = embers();
     expect(lit.length, "the Saraf crossed the ground and left nothing on it").toBeGreaterThan(0);
     // A klipah's mark wounds on contact, which is what makes the trail a trail

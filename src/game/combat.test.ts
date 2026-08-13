@@ -194,7 +194,7 @@ describe("when a klipah is open to a mark", () => {
       .filter((s) => s.opening !== "always")
       .map((s) => s.kind)
       .sort();
-    expect(conditional).toEqual(["behemot", "calf", "izevel", "livyatan", "nefilim", "reem"]);
+    expect(conditional).toEqual(["behemot", "calf", "izevel", "livyatan", "nefilim", "reem", "saraf"]);
     // For the two great ones the condition is something a letter *arranges in
     // the world* rather than a permission a letter grants — Vav puts Leviathan
     // ashore, Bet stops Behemoth. That is the difference between a puzzle and a
@@ -220,6 +220,13 @@ describe("when a klipah is open to a mark", () => {
     // therefore costs a Scribe nothing by construction. She gathers before she
     // sends, and a Scribe cannot write on her while she is drawing it up.
     expect(HUSKS.izevel.opening).toBe("spent");
+    // **And the Saraf is the fifth, and the one whose tell was most owed.** Its
+    // fire has no travel — `vx: 0, vy: 0`, it exists on the tick under whatever
+    // is standing there — so it was the one attack in the game with no warning
+    // of any kind. It is also the only creature on this roster that *paces*, so
+    // its shut phase is not out of contact by construction and `unfair()` is
+    // what kept it rather than an argument: 0.20 against a band of 0.45.
+    expect(HUSKS.saraf.opening).toBe("spent");
   });
 });
 

@@ -2281,9 +2281,38 @@ function stepHusks(world: World, ctx: StepContext): void {
       // a mark of its own — the world already carries those, moves them,
       // expires them and collides them with the Scribe, so a burning floor
       // needed no new machinery at all, only something that does not fly away.
+      //
+      // **And it gathers before it sets one down, which is the fairness fix of
+      // the three throwers rather than an also-ran.** Read against the other
+      // two: Jezebel's bends after you across the room, and Og's falls seven
+      // tiles onto your head — a hundred and sixty-eight pixels at two hundred
+      // and ten a second, which is eight tenths of a second of *visible* fall
+      // and a real dodge. The Saraf's fire has `vx: 0, vy: 0`. It does not
+      // travel. It simply exists, on the tick, under whatever is standing
+      // there. This is the one attack in the game with no warning of any kind,
+      // and the roster note that called Og's the worst was wrong.
+      //
+      // Eighteen ticks of the ground gathering heat before it takes, held in
+      // `charging` so the halo says so, and `opening: "spent"` shuts it for
+      // exactly that long. **`throws` pays for the gather** — 90 to 72, so the
+      // period is where it was — for the reason Jezebel's did: a wind-up laid
+      // in front of a cooldown lengthens the cycle, and a creature that attacks
+      // less often because it now telegraphs is a nerf nobody chose.
+      //
+      // It is the one on this roster whose shut phase is **not** out of contact
+      // by construction, because unlike Jezebel it walks. Eighteen of ninety is
+      // about a fifth, against a band of 0.45, and `unfair()` is what decides
+      // whether it is kept rather than an argument.
       case "saraf": {
         pace(world, ctx, husk, spec.speed);
-        if (husk.cooldown === 0 && spec.throws) {
+        if (husk.charging > 0) {
+          husk.charging -= 1;
+          if (husk.charging > 0) break;
+        } else if (husk.cooldown === 0 && spec.throws) {
+          husk.charging = 12;
+          break;
+        }
+        if (husk.charging === 0 && husk.cooldown === 0 && spec.throws) {
           husk.cooldown = spec.throws;
           world.marks.push({
             id: `f${world.tick}-${husk.id}`,
