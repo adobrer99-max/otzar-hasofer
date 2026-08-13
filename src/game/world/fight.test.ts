@@ -167,6 +167,19 @@ describe("what the klipot cost a Scribe who fights", () => {
     // the migration moved this three or four points down. The walls are eleven
     // points clear on the high side and four on the low, which is several times
     // the spread a reshuffle produces.
+    // **Re-measured with the whole of P14 in, and this is the band the phase
+    // moved most.** Three independent twenty-seed pools read **18.3 / 15.0 /
+    // 13.9** per cent against 15.6 / 16.1 / 12.8 before the openings — so the
+    // worst pool sits 5.7 points under the ceiling where it used to sit eight.
+    //
+    // Worth stating rather than passing quietly, because it is the one thing
+    // the phase's own argument did not deliver: an opening was meant to make a
+    // fight *longer* rather than costlier, and it only does that if the closed
+    // phase is one the creature is not attacking in. A shut klipah on a rung
+    // still takes lamps — the pairing was built as a *band* (`unfair`) and not
+    // as a law, because Behemoth is the counterexample the game already ships —
+    // so time spent not killing is still time spent being hit. The band holds;
+    // the promise was kept about three quarters of the way.
     expect(share, `${went.length} of ${RUNS().length} went out — ${where}`).toBeLessThan(0.24);
     expect(
       share,
@@ -242,6 +255,11 @@ describe("what the klipot cost a Scribe who fights", () => {
       // six points under the worst cell measured, the same share of the trough
       // the old line kept — rather than at the old fifth, which two of the three
       // pools now fail by construction.
+      //
+      // Taken again with P14's three openings in, the same three pools read
+      // 69/56/43/30/24/41/30/19/26, 74/46/37/29/24/44/27/22/28 and
+      // 72/46/41/28/23/34/20/**17**/26 — so the trough moved by a point and the
+      // tenth still stands seven clear of it.
       expect(
         share,
         `region ${region}: only ${(share * 100).toFixed(0)}% of ${placed.toFixed(1)} husks broken`,
@@ -269,12 +287,19 @@ describe("what the klipot cost a Scribe who fights", () => {
    * So the invariant is **shells taken per husk placed** rather than husks
    * broken per husk placed. A klipah with more shells contributes more of them,
    * so a rung whose creatures merely got sturdier holds this number still; a
-   * rung where the marks stop landing drops it. Measured on the committed pool
-   * at 1.89 / 1.72 / 1.38 / 1.09 / 0.95 / 1.51 / 1.08 / 0.99 / 1.19 shells a
-   * husk placed for regions two through ten — flat across the Tree, which is
-   * what an instrument reading the *marks* rather than the table should look
-   * like, and nothing like the share above, which runs from 69 down to 19 over
-   * the same nine cells. The floor is at a half.
+   * rung where the marks stop landing drops it. Measured **over three
+   * independent pools**, because this band was written quoting one of them and
+   * a band checked only against the pool it was drawn from is not a band. The
+   * worst cell of the twenty-seven is **0.74** (pool three, region eight) and
+   * the best is 2.08; the committed pool runs 1.89 / 1.54 / 1.21 / 1.09 / 0.93
+   * / 1.43 / 1.08 / 0.99 / 1.08 for regions two through ten.
+   *
+   * Flat across the Tree, which is what an instrument reading the *marks*
+   * rather than the table should look like, and nothing like the share above,
+   * which runs from 69 down to 17 over the same cells. The floor stays at a
+   * half — a quarter under the worst of twenty-seven readings — and it did not
+   * move when three creatures gained openings, which is the whole claim: a
+   * mark that has to be timed still lands.
    */
   it("lands its marks, whatever the klipot are made of", () => {
     for (let region = 2; region <= TOTAL_REGIONS; region += 1) {
