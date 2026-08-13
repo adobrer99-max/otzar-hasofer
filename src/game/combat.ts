@@ -468,7 +468,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     reading: "The last of the giants, and what is dangerous about him is not that he is quick.",
     role: "pacer",
     shells: 6,
-    opening: "always",
+    opening: "spent",
     speed: 34,
     light: 7,
     size: { w: 26, h: 28 },
@@ -479,7 +479,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     // went out there against two before he arrived. He is slow — the sentence
     // is that you cannot outrun what he brings down, not that he does it
     // constantly from across the room.
-    throws: 260,
+    throws: 236,
   },
   nefilim: {
     kind: "nefilim",

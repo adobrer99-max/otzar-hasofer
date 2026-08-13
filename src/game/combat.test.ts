@@ -194,7 +194,7 @@ describe("when a klipah is open to a mark", () => {
       .filter((s) => s.opening !== "always")
       .map((s) => s.kind)
       .sort();
-    expect(conditional).toEqual(["behemot", "calf", "izevel", "livyatan", "nefilim", "reem", "saraf"]);
+    expect(conditional).toEqual(["behemot", "calf", "izevel", "livyatan", "nefilim", "og", "reem", "saraf"]);
     // For the two great ones the condition is something a letter *arranges in
     // the world* rather than a permission a letter grants — Vav puts Leviathan
     // ashore, Bet stops Behemoth. That is the difference between a puzzle and a
@@ -227,6 +227,12 @@ describe("when a klipah is open to a mark", () => {
     // its shut phase is not out of contact by construction and `unfair()` is
     // what kept it rather than an argument: 0.20 against a band of 0.45.
     expect(HUSKS.saraf.opening).toBe("spent");
+    // **Og is the sixth and the last of the throwers.** Its gather is the
+    // longest of the three because it is slow and enormous and its line is
+    // about the step. It is the one whose wind-up buys the *opening* rather
+    // than a tell it lacked: what it drops falls seven tiles, which is already
+    // eight tenths of a second of warning.
+    expect(HUSKS.og.opening).toBe("spent");
   });
 });
 

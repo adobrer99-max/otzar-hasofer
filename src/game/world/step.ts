@@ -2351,9 +2351,33 @@ function stepHusks(world: World, ctx: StepContext): void {
       // **Og.** The last of the giants, whose bedstead was nine cubits of iron.
       // What is dangerous about him is not that he is quick — it is that the
       // ceiling comes down where you are standing rather than where he is.
+      //
+      // **And it gathers before the step lands.** Twenty-four ticks, longer than
+      // the other two throwers' because this one is slow and enormous and its
+      // whole line is about the *step* — a giant that telegraphs briskly is not
+      // a giant. `throws` pays for it, 260 to 236, so the period is where it
+      // was.
+      //
+      // Honestly: this buys the **opening** rather than a tell it lacked. What
+      // it drops falls seven tiles at two hundred and ten a second, which is
+      // eight tenths of a second of visible descent — a warning, and a dodge —
+      // and the roster note that called this the worst warning-free attack in
+      // the game was reading where the debris lands rather than how it gets
+      // there. The Saraf's fire is the one with no travel at all.
+      //
+      // The debris keeps its release-time aim rather than committing to a spot
+      // when the gather begins. Committing would want a field on `Husk` that
+      // nothing else needs, and the fall is already the part a Scribe answers.
       case "og": {
         pace(world, ctx, husk, spec.speed);
-        if (husk.cooldown === 0 && spec.throws && near < TILE_SIZE * 10) {
+        if (husk.charging > 0) {
+          husk.charging -= 1;
+          if (husk.charging > 0) break;
+        } else if (husk.cooldown === 0 && spec.throws && near < TILE_SIZE * 10) {
+          husk.charging = 24;
+          break;
+        }
+        if (husk.charging === 0 && husk.cooldown === 0 && spec.throws && near < TILE_SIZE * 10) {
           husk.cooldown = spec.throws;
           world.marks.push({
             id: `o${world.tick}-${husk.id}`,
