@@ -126,6 +126,14 @@ const ROUND = (n: number) => Math.round(n * 10) / 10;
 const SWIMMERS: ReadonlySet<HuskKind> = new Set<HuskKind>(["tannin", "livyatan"]);
 /** The kinds that were authored to hang, and are inert on the floor. */
 const HANGERS: ReadonlySet<HuskKind> = new Set<HuskKind>(["nefilim", "ziz"]);
+/**
+ * **The kind whose element is the wall.** *Stone is nothing to it* — it is the
+ * one klipah that uses `flies` to mean rock rather than air — so a room with no
+ * rock in it is this creature's dry stone, and the bench measured it at 0.98
+ * reachable while its whole condition is being inside one. Same fault as
+ * Leviathan on a floor, and the same fix: put it in its element.
+ */
+const BURROWERS: ReadonlySet<HuskKind> = new Set<HuskKind>(["nachash"]);
 
 /**
  * An empty room with a floor and nothing in it — built from a real region so
@@ -146,6 +154,14 @@ function room(kind: HuskKind, posture?: Posture): World {
   if (SWIMMERS.has(kind)) {
     for (let x = 10; x < world.width; x += 1) {
       for (let y = floor - 3; y < floor; y += 1) setTile(world, x, y, Tile.Water);
+    }
+  }
+  // A wall standing between the Scribe and it, for the one that goes through
+  // walls. Full height and three tiles thick, so a creature crossing the room
+  // spends a real part of the crossing inside it rather than clipping a corner.
+  if (BURROWERS.has(kind)) {
+    for (let x = 8; x < 11; x += 1) {
+      for (let y = 0; y < floor; y += 1) setTile(world, x, y, Tile.Stone);
     }
   }
   // A stone the Scribe set, standing between him and it. This is a posture

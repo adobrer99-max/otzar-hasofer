@@ -225,19 +225,34 @@ describe("nothing hides for most of its life", () => {
    * Measured now that it can be: **Korach 0.43, the Tannin 0.63**, everything
    * else a flat 1.00.
    *
+   * **And a third joined them**, which is what the named set is for. *Slow, and
+   * it does not stop, and stone is nothing to it* — the Nachash is the one kind
+   * that uses `flies` to mean rock rather than air, and being unstopped by a
+   * wall was implemented while the other half of the sentence was not: a mark
+   * **is** stopped by the wall, so a serpent inside one is a serpent nothing can
+   * reach. It reads **0.97** on the bench and takes a third off its share broken
+   * on real ground, at no cost in lamps at all, because `harmful` opens by
+   * returning false for anything out of reach.
+   *
+   * The bench could not see it either, and for the third time in this phase the
+   * reason was the room: an empty box is this creature's dry stone. `BURROWERS`
+   * puts a wall between it and the Scribe, exactly as `SWIMMERS` puts a pool.
+   *
    * That flat 1.00 used to read as a triviality and is now the subject: eighteen
    * of the twenty kinds are open at every moment of their lives, and P14 is the
    * phase that changes it. So the assertion is kept exactly as strict, and the
    * set is named — a kind that gains a condition has to be added here on
    * purpose, with its number, rather than sliding under a band.
    */
-  it("still lets the two that hide spend real time out of reach", () => {
-    // If either of these ever reads 1, the earth has stopped opening or the
-    // water has stopped holding, and a fight has become a pacer with a good name.
+  it("still lets the three that hide spend real time out of reach", () => {
+    // If any of these ever reads 1, the earth has stopped opening, or the water
+    // has stopped holding, or the wall has — and a fight has become a pacer
+    // with a good name.
     expect(reachable("korach"), "Korach no longer hides at all").toBeLessThan(0.75);
     expect(reachable("tannin"), "the Tannin no longer holds the water").toBeLessThan(0.75);
+    expect(reachable("nachash"), "the Nachash no longer holds the stone").toBeLessThan(0.99);
     for (const kind of KINDS) {
-      if (kind === "korach" || kind === "tannin") continue;
+      if (kind === "korach" || kind === "tannin" || kind === "nachash") continue;
       expect(reachable(kind), `${kind} has started hiding`).toBe(1);
     }
   }, 600000);

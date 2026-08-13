@@ -1448,6 +1448,23 @@ const inWater = (world: World, body: Husk) =>
   inWaterAt(world, body.x + body.w / 2, body.y + body.h / 2);
 
 /**
+ * **Inside the wall**, which is the Nachash's own and nobody else's.
+ *
+ * `Tile.Stone` and `Tile.Placed` and nothing else: a wall is what a wall is
+ * made of. **Not `Tile.Veiled`**, which unrevealed is empty air rather than
+ * stone — the P9d correction — so a serpent drifting through an unlit chamber
+ * is in the open and answerable, which is true of the room a player is looking
+ * at. Not a ledge either; a ledge is a floor and this creature is not under it.
+ *
+ * Asked of the body's centre, exactly as the water is, so the two conditions in
+ * this file that are about *a place* are asked the same way.
+ */
+const inStone = (world: World, body: Husk) => {
+  const at = tileAt(world, tile(body.x + body.w / 2), tile(body.y + body.h / 2));
+  return at === Tile.Stone || at === Tile.Placed;
+};
+
+/**
  * **Whether a great one can be marked at all.**
  *
  * Everything else in this game opens to a mark thrown at it, and that is the
@@ -1633,6 +1650,23 @@ export function outOfReach(husk: Husk, world?: World): boolean {
    * answered, which keeps the pure-husk callers honest.
    */
   if (husk.kind === "tannin") return world ? inWater(world, husk) : false;
+  /**
+   * **And the Nachash holds the stone**, which is the same sentence as the
+   * Tannin's about a different element and was just as unimplemented.
+   *
+   * *Slow, and it does not stop, and stone is nothing to it.* Being unstopped by
+   * a wall is what `flies` already does for it — it is the only kind in the
+   * table that uses that field to mean stone rather than air. What was missing
+   * was the other half: a mark **is** stopped by the wall, so a serpent inside
+   * one is a serpent nothing can reach, and the fight is to answer it in the
+   * open ground between.
+   *
+   * This costs no lamps by construction, which is why it is the first of the
+   * per-creature openings rather than a later one: `harmful` opens by returning
+   * false for anything out of reach, so the moment it is unanswerable is the
+   * moment it is inside a wall and not touching anybody.
+   */
+  if (husk.kind === "nachash") return world ? inStone(world, husk) : false;
   return buried(husk);
 }
 
