@@ -162,7 +162,30 @@ export type Opening =
   /** Out of the water, and only out of it — Leviathan's, and Vav is what puts it there. */
   | "landed"
   /** Stopped, and only a stone the Scribe set stops it — Behemoth's, and that is Bet. */
-  | "stopped";
+  | "stopped"
+  /**
+   * **Spent — open once it has finished the thing it committed to.**
+   *
+   * The Re'em's, and its own line already stated the counter-play before there
+   * was any way to express it: *it runs one line and will not turn — stand
+   * aside and it goes into the wall.* The game has always implemented the wall,
+   * down to the shell it takes off itself when it arrives; what it did not do
+   * was make the charge itself unanswerable, so the described fight and the
+   * played fight were two different things and the played one was to stand in
+   * front of it and write.
+   *
+   * Read against `charging`, which for this creature is a real window that
+   * opens and shuts: a hundred and fifty ticks of running, then zero — set
+   * either by the wall or by the count running out — and seventy ticks of
+   * standing stunned afterwards if it was the wall.
+   *
+   * **It is not a general-purpose member and the table must not treat it as
+   * one.** `charging` is a *permanent flag* on the Calf and on the Nefilim —
+   * both set it and neither ever clears it — so `"spent"` on either would shut
+   * the creature for the rest of its life at the first blow, which is the
+   * Korach fault exactly. Checked before it was written, not after.
+   */
+  | "spent";
 
 export interface HuskSpec {
   kind: HuskKind;
@@ -399,7 +422,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     reading: "Not malice. It has never once been asked to reconsider, and it would not know how.",
     role: "charger",
     shells: 4,
-    opening: "always",
+    opening: "spent",
     speed: 196,
     light: 6,
     size: { w: 24, h: 20 },

@@ -170,9 +170,10 @@ describe("the klipot", () => {
  * adding a member to the union is a compile error at the one site that has to
  * answer for it.
  *
- * Nothing is added and nothing is removed here. The two conditions that existed
- * are the two that exist, expressed once instead of twice — which is why every
- * measured band is green: there is nothing for one to notice.
+ * The dispatch landed first with nothing added and nothing removed — the two
+ * conditions that existed, expressed once instead of twice — and the Re'em is
+ * the first kind closed on purpose since. It had to be written into the list
+ * below by hand, which is exactly what the list is for.
  */
 describe("when a klipah is open to a mark", () => {
   it("makes every kind say, rather than letting silence mean always", () => {
@@ -188,18 +189,25 @@ describe("when a klipah is open to a mark", () => {
    * opposite of how it got here, where a `default:` branch decided it silently
    * for every creature nobody had thought about.
    */
-  it("leaves exactly the two great ones conditional, and both on the world", () => {
+  it("names every kind that is conditional, and the condition it answers to", () => {
     const conditional = Object.values(HUSKS)
       .filter((s) => s.opening !== "always")
       .map((s) => s.kind)
       .sort();
-    expect(conditional).toEqual(["behemot", "livyatan"]);
-    // And the condition is something a letter *arranges in the world* rather
-    // than a permission a letter grants — Vav puts Leviathan ashore, Bet stops
-    // Behemoth. That is the difference between a puzzle and a check, and it is
-    // why the Hook still moves Leviathan on a blow that takes no shell off it.
+    expect(conditional).toEqual(["behemot", "livyatan", "reem"]);
+    // For the two great ones the condition is something a letter *arranges in
+    // the world* rather than a permission a letter grants — Vav puts Leviathan
+    // ashore, Bet stops Behemoth. That is the difference between a puzzle and a
+    // check, and it is why the Hook still moves Leviathan on a blow that takes
+    // no shell off it.
     expect(HUSKS.livyatan.opening).toBe("landed");
     expect(HUSKS.behemot.opening).toBe("stopped");
+    // **And the Re'em is the first of the eighteen to be closed**, which is the
+    // whole reason this list is written out rather than counted: it had to be
+    // added here, by hand, with a person deciding it. Its condition is the
+    // creature's own — it runs one line and will not turn, so the answer is to
+    // stand aside and write on what the wall leaves.
+    expect(HUSKS.reem.opening).toBe("spent");
   });
 });
 

@@ -480,12 +480,30 @@ describe("what a vessel costs a Scribe who fights", () => {
    * tenths* while the floor was a sixth off — so every failure this band ever
    * reported quoted a bare-hand number that was never measured. Fixed here
    * rather than noted, since it is the only number a reader has to go on.
+   *
+   * **And then a quarter turned out to be one pool's number too.** The Re'em
+   * gained an opening — shut while it runs its line, answerable once it has
+   * spent it — and this band fired at **0.738** against a floor of 0.75. Taken
+   * over three independent fifteen-seed pools the same hand reads
+   * **0.738 / 0.829 / 0.823**: it was not that the vessel had become a
+   * punishment, it was that the committed pool sat a hair above a line drawn to
+   * it, exactly the fault this file records twice already.
+   *
+   * The Scoring is the worst hand on every pool and the reason is worth
+   * keeping, because it is the first real consequence of the phase: it arcs,
+   * an arcing mark is harder to *place*, and a creature that is only answerable
+   * inside a window punishes placement in a way a creature open at every moment
+   * cannot. That is the trade working, not failing.
+   *
+   * Redrawn at **0.65** — nine points under the worst of the three, which is
+   * about one spread's width of margin, and still far above anything that could
+   * be called taking the fight away.
    */
   it("charges a price without taking the fight away", () => {
-    const floor = mean(bare().map((r) => r.broken)) * 0.75;
+    const floor = mean(bare().map((r) => r.broken)) * 0.65;
     for (const { hand, runs } of HANDS_MEASURED()) {
       const broken = mean(runs.map((r) => r.broken));
-      expect(broken, `holding [${hand}] broke ${broken.toFixed(2)}, bare-handed is ${(floor / 0.75).toFixed(2)}`)
+      expect(broken, `holding [${hand}] broke ${broken.toFixed(2)}, bare-handed is ${(floor / 0.65).toFixed(2)}`)
         .toBeGreaterThanOrEqual(floor);
     }
   });

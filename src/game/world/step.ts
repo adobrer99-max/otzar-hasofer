@@ -20,6 +20,7 @@ import {
   GOING_OUT,
   THE_OPENING,
   HUSKS,
+  isGreat,
   kindForRole,
   MARK_HUNT,
   KNOCKBACK_X,
@@ -1487,6 +1488,12 @@ export function opened(world: World, husk: Husk): boolean {
     // stone leaves on it, which is the one thing in the game that stops it.
     case "stopped":
       return husk.cooldown > 0;
+    // The charge is the thing it committed to, and `charging` counts it down.
+    // A wall zeroes it early and leaves seventy ticks of standing stunned; the
+    // count running out zeroes it late. Either way, what is answerable is the
+    // creature that has finished, which is the fight its own line describes.
+    case "spent":
+      return husk.charging === 0;
     case "always":
       return true;
   }
@@ -1701,7 +1708,21 @@ export function harmful(husk: Husk, world: World): boolean {
  * made the creature's one answerable moment its one invisible one.
  */
 export function answerable(world: World, husk: Husk): boolean {
-  return !outOfReach(husk, world);
+  if (outOfReach(husk, world)) return false;
+  /**
+   * **The great ones are excepted, and it is not a courtesy.** A blow on an
+   * unopened great one takes no shell and is still the fight: it sets
+   * `struck = 12` and, with the Hook, drags Leviathan landward — which is the
+   * only way that room is ever won. A probe that stopped throwing at a
+   * submerged Leviathan would never pull it ashore and `guardianFight` would
+   * report the creature unbeatable, which is the shape of the bug that phase
+   * was written to catch.
+   *
+   * For everything else an unopened blow only staggers, so a mark spent on one
+   * buys nothing but the fifteen ticks of cooldown that the open moment needed.
+   */
+  if (isGreat(husk.kind)) return true;
+  return opened(world, husk);
 }
 
 /**
