@@ -1664,9 +1664,31 @@ export function unseen(husk: Husk): boolean {
  * arriving on one seed in six: a klipah that had been unbreakable became
  * unbreakable and twice as costly, which is the opposite of the change.
  */
-function harmful(husk: Husk, world: World): boolean {
+export function harmful(husk: Husk, world: World): boolean {
   if (outOfReach(husk, world)) return false;
   return husk.kind !== "korach" || husk.charging > 0;
+}
+
+/**
+ * **Whether a mark thrown at it now would do anything at all** — the question
+ * the *probe* has to ask, and the seam the rest of P14 is built on.
+ *
+ * It is deliberately not `opened`. A blow on an unopened great one takes no
+ * shell and is still the fight: Leviathan is *drawn* by it, and the Hook
+ * dragging it out of the water is the only way that room is ever won. A klipah
+ * that staggers is a klipah something happened to. What this asks is the
+ * narrower question — is there anything there for a mark to land on — and today
+ * that is exactly `outOfReach`: a Korach inside the earth and a Tannin under
+ * the water, where the mark loop `continue`s and not one thing occurs.
+ *
+ * Given a home now, while it has one caller and one meaning, because the class
+ * of bug this codebase keeps finding is a question asked in three places and
+ * answered separately — "is Korach in the ground?" was asked by the mark loop,
+ * the contact check and the renderer, and fixing two of the three would have
+ * made the creature's one answerable moment its one invisible one.
+ */
+export function answerable(world: World, husk: Husk): boolean {
+  return !outOfReach(husk, world);
 }
 
 /**

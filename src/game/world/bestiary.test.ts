@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HUSKS, type HuskKind } from "../combat";
-import { bench, breakIn, duel, laid, POSTURES, reachable, signature } from "./bench";
+import { bench, breakIn, duel, laid, POSTURES, reachable, signature, unfair } from "./bench";
 import { outOfReach, step, unseen, type StepContext } from "./step";
 import { TILE_SIZE } from "./tiles";
 import { NO_INPUT, type Husk } from "./types";
@@ -212,13 +212,60 @@ describe("nothing hides for most of its life", () => {
     }
   }, 600000);
 
-  it("still lets the one that burrows spend real time under the ground", () => {
-    // The other side of the same band. If this ever reads 1, the earth has
-    // stopped opening and Korach has become a pacer with a good name.
+  /**
+   * **The two that hold something, and the eighteen that hold nothing.**
+   *
+   * This asserted `reachable(kind) === 1` for all nineteen non-Korach kinds and
+   * it passed — including for the Tannin, whose entire fight is that a mark does
+   * not follow it under the water. It passed because `reachable` called
+   * `outOfReach(husk)` with **no world**, and that argument is what the water is
+   * read from. The one condition in this game that is not a great one's was
+   * invisible to the one instrument built to see conditions.
+   *
+   * Measured now that it can be: **Korach 0.43, the Tannin 0.63**, everything
+   * else a flat 1.00.
+   *
+   * That flat 1.00 used to read as a triviality and is now the subject: eighteen
+   * of the twenty kinds are open at every moment of their lives, and P14 is the
+   * phase that changes it. So the assertion is kept exactly as strict, and the
+   * set is named — a kind that gains a condition has to be added here on
+   * purpose, with its number, rather than sliding under a band.
+   */
+  it("still lets the two that hide spend real time out of reach", () => {
+    // If either of these ever reads 1, the earth has stopped opening or the
+    // water has stopped holding, and a fight has become a pacer with a good name.
     expect(reachable("korach"), "Korach no longer hides at all").toBeLessThan(0.75);
+    expect(reachable("tannin"), "the Tannin no longer holds the water").toBeLessThan(0.75);
     for (const kind of KINDS) {
-      if (kind === "korach") continue;
+      if (kind === "korach" || kind === "tannin") continue;
       expect(reachable(kind), `${kind} has started hiding`).toBe(1);
+    }
+  }, 600000);
+
+  /**
+   * **A closed klipah may not also be a dangerous one** — the rule that decides
+   * whether conditions are affordable at all, and it is measured rather than
+   * asserted in a comment.
+   *
+   * The evidence is on the record: the first version of Korach's settling phase
+   * handed the creature ninety extra ticks of *contact* along with ninety ticks
+   * of being hittable, and the honest dash stopped arriving on one seed in six.
+   * A klipah that cannot be answered and can still take a lamp is the shell
+   * count raised without raising it — the probe throws on its cooldown, the
+   * marks buy nothing, it stands there longer, and the lamps go.
+   *
+   * **Zero for all twenty today, by construction**, because `harmful` opens by
+   * returning false for anything out of reach. Written down now precisely
+   * *because* it is trivially true: the second way of being closed — a mark that
+   * reaches the body and takes no shell off it — is paired by no line of code,
+   * and this is the guard that will not let one ship unpaired.
+   */
+  it("never leaves a klipah unanswerable and dangerous at once", () => {
+    for (const kind of KINDS) {
+      expect(
+        unfair(kind),
+        `${kind} spends part of its life beyond a mark and still taking lamps`,
+      ).toBe(0);
     }
   }, 600000);
 });

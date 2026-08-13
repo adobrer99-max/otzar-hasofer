@@ -1,7 +1,7 @@
 import { abilityByLetter, type Grace, type Verb } from "../abilities";
 import { HUSKS, type HuskKind } from "../combat";
 import { buildRegion, setTile } from "./build";
-import { outOfReach, step, strikeHusk, type StepContext } from "./step";
+import { answerable, harmful, outOfReach, step, strikeHusk, type StepContext } from "./step";
 import { Tile, TILE_SIZE } from "./tiles";
 import { NO_INPUT, type Husk, type World } from "./types";
 
@@ -550,17 +550,25 @@ export function duel(kind: HuskKind, ticks = 2000, items: readonly string[] = []
 /**
  * **How much of its life a mark can touch it at all**, as a fraction.
  *
- * One for nineteen of the twenty, because a klipah is a thing you write on.
- * The exception is Korach, who is inside the ground for most of his cycle and
- * is supposed to be — but "most" is a number, and nobody had ever taken it.
- * It was sixteen per cent, which is not a creature that hides, it is a creature
- * that cannot be broken: over sixty-six honest walks the fighting probe laid
- * thirty-seven and took one.
+ * Korach is inside the ground for most of his cycle and is supposed to be — but
+ * "most" is a number, and nobody had ever taken it. It was sixteen per cent,
+ * which is not a creature that hides, it is a creature that cannot be broken:
+ * over sixty-six honest walks the fighting probe laid thirty-seven and took one.
  *
  * `breakIn` does not catch this and cannot. Its Scribe keeps station, so he is
  * standing over the hole at the one moment the thing is out, and he takes it —
  * a perfect player answers a sixteen-per-cent window, and every real one walks
  * past. This is the measurement that tells them apart.
+ *
+ * **And it could not see the water.** `outOfReach`'s second argument is the
+ * world, and it is optional precisely because most callers are asking about a
+ * klipah rather than about a place — this one is asking about a place and did
+ * not pass it. So the Tannin, whose whole fight is that a mark does not follow
+ * it under the surface, measured at a flat 1.00 here, and `bestiary.test.ts`
+ * asserted that flat 1.00 as a fact about nineteen of the twenty kinds. The one
+ * condition in this game that was not a great one's was invisible to the one
+ * instrument built to see conditions — which matters far more now than it did,
+ * because the whole of P14 is authored in these units.
  */
 export function reachable(kind: HuskKind, ticks = 3000): number {
   const world = room(kind);
@@ -578,7 +586,46 @@ export function reachable(kind: HuskKind, ticks = 3000): number {
     p.iframes = 0;
     step(world, NO_INPUT, ctx);
     if (husk.broken) break;
-    if (!outOfReach(husk)) out += 1;
+    if (!outOfReach(husk, world)) out += 1;
   }
   return Math.round((out / ticks) * 100) / 100;
+}
+
+/**
+ * **The share of a creature's life in which a mark cannot touch it and it can
+ * still touch you** — the pairing rule, as a number.
+ *
+ * P14's whole affordability argument is that a klipah's closed phase must cost
+ * the Scribe nothing, and the reason is measured rather than felt: the first
+ * version of Korach's settling phase handed the creature ninety extra ticks of
+ * *contact* along with ninety ticks of being hittable, and the honest dash
+ * stopped arriving on one seed in six. A klipah that is unanswerable **and**
+ * dangerous is the shell count raised without raising it — the probe throws on
+ * its cooldown, the marks buy nothing, it stands there longer and the lamps go.
+ *
+ * Today this is **zero for all twenty by construction**, because `harmful`
+ * opens by returning false for anything out of reach. That is exactly why the
+ * band is worth writing down now: the second way of being closed — a mark that
+ * reaches and takes no shell — is not paired by any line of code, and this is
+ * the guard that will not let it ship unpaired.
+ */
+export function unfair(kind: HuskKind, ticks = 3000): number {
+  const world = room(kind);
+  const husk = lay(world, kind);
+  const ctx: StepContext = { verbs: ALL_VERBS, graces: ALL_GRACES };
+  const p = world.player;
+  const standY = (world.height - 3) * TILE_SIZE;
+  let bad = 0;
+  for (let t = 0; t < ticks; t += 1) {
+    p.x = 6 * TILE_SIZE;
+    p.y = standY;
+    p.vx = 0;
+    p.vy = 0;
+    p.lamps = 99;
+    p.iframes = 0;
+    step(world, NO_INPUT, ctx);
+    if (husk.broken) break;
+    if (!answerable(world, husk) && harmful(husk, world)) bad += 1;
+  }
+  return Math.round((bad / ticks) * 100) / 100;
 }
