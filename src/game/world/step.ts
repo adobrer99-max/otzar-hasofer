@@ -1887,14 +1887,52 @@ function stepHusks(world: World, ctx: StepContext): void {
 
       // **The Calf.** It does nothing at all — it is only beautiful — until you
       // strike it, and a room that has closed behind you is a room you have to
-      // strike it in. Then it never stops.
+      // strike it in. Then it never stops coming.
+      //
+      // **It now charges in runs rather than in one unbroken shove**, and that
+      // is a cycle rather than a softening. Roused, it used to set
+      // `charging = 30` *every tick*, which never decayed — so the field was a
+      // permanent flag saying "awake" and not a window saying "committed". A
+      // creature whose commitment never ends cannot be answered on the beat and
+      // cannot carry an `opening` at all: keyed to that flag it would have shut
+      // itself for the rest of its life at the first blow, which is the Korach
+      // fault, and it is why P14d closed one kind and not eighteen.
+      //
+      // So: twenty-four ticks of running, then forty-eight of standing spent
+      // and gathering, forever. It never gives up and never turns aside, which
+      // is what "it never stops" was always about; what it does is overrun, and
+      // the moment it is overrunning is the moment a Scribe answers it.
+      //
+      // **The split is a third, and it was a half.** At thirty and twenty-six
+      // the creature measured 0.53 shut-and-dangerous on the bench's struck
+      // posture — half its life unanswerable while it was still taking lamps,
+      // which is the proportion `unfair()` exists to forbid. Twenty-four
+      // running against forty-eight standing is the same rhythm at a third,
+      // and at a hundred and twenty-eight pixels a second a run still carries
+      // it two tiles, which is a charge rather than a lunge.
       case "calf": {
         husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
-        if (husk.shells < spec.shells) {
-          if (husk.charging === 0) husk.facing = (toward > 0 ? 1 : -1) as 1 | -1;
-          husk.charging = 30;
+        if (husk.shells >= spec.shells) {
+          husk.vx = 0;
+          break;
+        }
+        if (husk.charging > 0) {
+          husk.charging -= 1;
           husk.vx = husk.facing * spec.speed;
-        } else husk.vx = 0;
+          break;
+        }
+        // Spent. `cooldown` is set long enough at the commit to outlast the run
+        // by the width of the window, so the gap is the same whatever happens
+        // during the charge — a window whose length depends on the geometry is
+        // a window a Scribe cannot learn.
+        if (husk.cooldown > 0) {
+          husk.vx = 0;
+          break;
+        }
+        husk.facing = (toward > 0 ? 1 : -1) as 1 | -1;
+        husk.charging = 24;
+        husk.cooldown = 72;
+        husk.vx = husk.facing * spec.speed;
         break;
       }
 
@@ -2232,16 +2270,60 @@ function stepHusks(world: World, ctx: StepContext): void {
       // **The Nefilim.** They are named for the one thing they did, and
       // everything else about them is waiting. It hangs, weightless, until the
       // Scribe is underneath it — and then it is not weightless.
+      // **And it goes back up**, which it did not, and the creature was the
+      // poorer for it twice over. `charging` was set to 1 on the way down and
+      // never cleared, so after one drop a Nefilim lay on the floor with its
+      // weight still committed: furniture for the rest of the rung, and — like
+      // the Calf — a permanent flag where a window was wanted. *Everything else
+      // about them is waiting*, and a thing that has finished waiting has
+      // nothing left to be.
+      //
+      // Now the whole verse: it hangs, it falls when you are underneath, it
+      // lies where it landed for a beat, and it climbs back to the height it
+      // was at to wait again. The fall is the committed part and is the part a
+      // mark cannot touch; hanging and rising and lying spent are all
+      // answerable, which is most of its life.
       case "nefilim": {
         const under = Math.abs(toward) < husk.w && p.y > husk.y;
-        if (husk.charging > 0 || under) {
-          if (husk.charging === 0) husk.charging = 1;
-          husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
+        if (husk.charging > 0) {
           husk.vx = 0;
-        } else {
+          // `moveHusk` zeroes `vy` on stone, and this one does not fly, so a
+          // dead vertical is the ground arriving. Read rather than timed,
+          // because how far there is to fall is a fact about the screen it was
+          // laid on and not about the creature.
+          //
+          // **Asked before gravity, and counted from the second tick.** Asked
+          // after, `vy` has just been set to a non-zero number and the landing
+          // can never be seen — the first draft did exactly that and the bench
+          // reported a Nefilim falling for all fifteen hundred ticks, shut and
+          // dangerous for the whole of its life. And it has to skip the first
+          // tick, because a creature that has been hanging weightless starts
+          // its fall at a dead vertical too.
+          if (husk.charging > 1 && husk.vy === 0) {
+            husk.charging = 0;
+            husk.cooldown = 70;
+            break;
+          }
+          husk.charging += 1;
+          husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
+          break;
+        }
+        if (husk.cooldown > 0) {
           husk.vx = 0;
           husk.vy = 0;
+          break;
         }
+        if (husk.y > husk.home.y + 1) {
+          // Climbing back to the ceiling it hangs from. Slowly, because the one
+          // thing this creature has never done is hurry.
+          husk.vx = 0;
+          husk.vy = -46;
+          break;
+        }
+        husk.y = husk.home.y;
+        husk.vx = 0;
+        husk.vy = 0;
+        if (under) husk.charging = 1;
         break;
       }
 

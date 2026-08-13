@@ -194,7 +194,7 @@ describe("when a klipah is open to a mark", () => {
       .filter((s) => s.opening !== "always")
       .map((s) => s.kind)
       .sort();
-    expect(conditional).toEqual(["behemot", "livyatan", "reem"]);
+    expect(conditional).toEqual(["behemot", "calf", "livyatan", "nefilim", "reem"]);
     // For the two great ones the condition is something a letter *arranges in
     // the world* rather than a permission a letter grants — Vav puts Leviathan
     // ashore, Bet stops Behemoth. That is the difference between a puzzle and a
@@ -202,12 +202,18 @@ describe("when a klipah is open to a mark", () => {
     // no shell off it.
     expect(HUSKS.livyatan.opening).toBe("landed");
     expect(HUSKS.behemot.opening).toBe("stopped");
-    // **And the Re'em is the first of the eighteen to be closed**, which is the
-    // whole reason this list is written out rather than counted: it had to be
-    // added here, by hand, with a person deciding it. Its condition is the
-    // creature's own — it runs one line and will not turn, so the answer is to
-    // stand aside and write on what the wall leaves.
+    // **And three of the eighteen are closed now**, which is the whole reason
+    // this list is written out rather than counted: each had to be added here,
+    // by hand, with a person deciding it. All three answer to the same
+    // condition — they are shut while committed to the thing they committed to
+    // — and each got there from its own line. The Re'em runs one line and will
+    // not turn, so the answer is to stand aside and write on what the wall
+    // leaves. The Calf never stops coming, so the answer is the moment it has
+    // overrun. The Nefilim is all waiting, so the answer is any moment but the
+    // fall.
     expect(HUSKS.reem.opening).toBe("spent");
+    expect(HUSKS.calf.opening).toBe("spent");
+    expect(HUSKS.nefilim.opening).toBe("spent");
   });
 });
 

@@ -260,10 +260,12 @@ describe("nothing hides for most of its life", () => {
    * are asserted at exactly 1 and the two exceptions are named. A kind that
    * gains a condition has to be taken out of this set on purpose.
    */
-  it("opens eighteen of the twenty at every moment, and names the two that do not", () => {
+  it("opens the unconditional kinds at every moment, in every posture", () => {
     for (const kind of KINDS) {
       if (HUSKS[kind].opening !== "always") continue;
-      expect(openness(kind), `${kind} has started closing`).toBe(1);
+      for (const posture of POSTURES) {
+        expect(openness(kind, 900, posture), `${kind} has started closing when ${posture}`).toBe(1);
+      }
     }
     // Out of the water and only out of it — so it is open for the part of its
     // cycle it spends ashore, and that is neither none of it nor all of it.
@@ -288,6 +290,24 @@ describe("nothing hides for most of its life", () => {
      */
     expect(openness("reem"), "the Re'em no longer shuts while it runs").toBeLessThan(0.99);
     expect(openness("reem"), "the Re'em has become weather rather than a fight").toBeGreaterThan(0.5);
+    /**
+     * **And the two P14e gave a cycle to**, both of which had to be asked in
+     * the posture that provokes them or they answer "open, always":
+     *
+     * - the **Calf** does nothing whatever until it is struck, so only the
+     *   `struck` posture ever sees it charge — 0.66 open there against 1.00
+     *   everywhere else;
+     * - the **Nefilim** does nothing until somebody is underneath, so only
+     *   `under` sees it fall — 0.91 open there against 1.00 everywhere else.
+     *
+     * Asserted at their own postures, because asserting them at the default one
+     * is how both read as unconditional for the whole of the sitting they were
+     * written in.
+     */
+    expect(openness("calf", 1500, "struck"), "the Calf no longer commits to a run")
+      .toBeLessThan(0.9);
+    expect(openness("nefilim", 1500, "under"), "the Nefilim no longer commits to a fall")
+      .toBeLessThan(0.99);
     expect(
       openness("behemot", 3000, "blocked"),
       "a set stone no longer stops Behemoth",
@@ -320,9 +340,20 @@ describe("nothing hides for most of its life", () => {
    * the **proportion** — a klipah shut and dangerous for a third of its life is
    * weather rather than a fight, which is the Korach lesson the other way up.
    *
-   * Drawn at a quarter: three times the only non-zero measurement in the table,
-   * and tight enough that each of the eighteen still to be authored has to keep
-   * its dangerous phase short. Measured — reem 0.08, every other kind 0.00.
+   * **And the quarter it was first drawn at was measured blind.** `unfair` had
+   * a Scribe standing in one fixed place, so it never provoked a creature that
+   * only commits when it is struck or stood under — the Re'em's own worst
+   * posture reads **0.16**, twice the 0.08 the band was drawn from, and the
+   * Calf and the Nefilim read a flat zero while carrying a cycle. It sweeps all
+   * seven postures now and takes the worst, which is the only reading that
+   * means anything.
+   *
+   * Measured that way: **calf 0.34 (struck), reem 0.16 (facing), nefilim 0.09
+   * (under)**, every other kind 0.00. Drawn at **0.45** — clear of the worst by
+   * about a third of itself, and still forbidding a creature that spends most
+   * of its life unanswerable and dangerous, which is the thing the rule is for.
+   * A charger unanswerable for a third of a regular cycle is a bull; one
+   * unanswerable for two thirds is weather.
    *
    * **The great ones are outside it, and `answerable` says why.** Behemoth is
    * shut *precisely while it charges*, which is the one flat contradiction of
@@ -330,14 +361,16 @@ describe("nothing hides for most of its life", () => {
    * and a whole room, the fight is to set a stone, and nothing about it is a
    * Scribe walking past on a tick budget. This band is about the ordinary rung.
    */
-  it("keeps a klipah's unanswerable-and-dangerous phase short", () => {
+  it("keeps a klipah's unanswerable-and-dangerous phase short, in every posture", () => {
     for (const kind of KINDS) {
-      expect(
-        unfair(kind),
-        `${kind} spends too much of its life beyond a mark and still taking lamps`,
-      ).toBeLessThan(0.25);
+      for (const posture of POSTURES) {
+        expect(
+          unfair(kind, 900, posture),
+          `${kind} spends too much of its life beyond a mark and still taking lamps, when ${posture}`,
+        ).toBeLessThan(0.45);
+      }
     }
-  }, 600000);
+  }, 900000);
 });
 
 

@@ -216,33 +216,42 @@ export function laid(kind: HuskKind): { world: World; husk: Husk } {
  * are refilled each tick for the same reason — a posture that ended early
  * because he went out would measure the room's patience, not the creature.
  */
-export function bench(kind: HuskKind, posture: Posture, ticks = 420): Trace {
-  const world = room(kind, posture);
-  const husk = lay(world, kind);
-  const ctx: StepContext = { verbs: [], graces: [] };
-  const floor = world.height - 1;
-
+/**
+ * **Where the Scribe stands, for one posture — and it is shared now.**
+ *
+ * `bench` had this and `reachable`, `openness` and `unfair` each had a fixed
+ * Scribe standing in front of the creature instead. That is not a shortcut, it
+ * is a blind spot, and P14e walked straight into it: the Calf does nothing at
+ * all until it is struck and the Nefilim does nothing at all until somebody is
+ * underneath, so both measured **open at every moment of their lives** the
+ * instant they were given a cycle to be closed by. The numbers were true about
+ * the room they were taken in and said nothing about the creature.
+ *
+ * It is the same fault the bench itself was built out of — six of the twenty
+ * once answered identically because they were laid on dry stone or asked from
+ * the wrong side — and the fix is the same: ask the question in the posture
+ * that provokes it, from one place in the code.
+ *
+ * **Taken from where the klipah began, not from where it is.** Read live,
+ * `above` is a Scribe who climbs away from anything that comes up at him and
+ * `under` one who sinks away from anything that comes down — so every kind
+ * measured as ignoring him, including the three that were flying straight at
+ * him the whole time. The posture is a place in the room, not a leash.
+ */
+function poser(world: World, husk: Husk, posture: Posture | undefined) {
   const p = world.player;
+  const floor = world.height - 1;
   const standX = 6 * TILE_SIZE;
   const standY = (floor - 2) * TILE_SIZE;
-  // **Taken from where the klipah began, not from where it is.** Read live,
-  // `above` is a Scribe who climbs away from anything that comes up at him and
-  // `under` one who sinks away from anything that comes down — so every kind
-  // measured as ignoring him, including the three that were flying straight at
-  // him the whole time. The posture is a place in the room, not a leash.
   const overX = husk.x;
   const overY = husk.y;
-  const place = (t: number) => {
+  return (t: number) => {
     p.vx = 0;
     p.vy = 0;
     p.lamps = 99;
     p.iframes = 0;
     p.facing = 1;
     switch (posture) {
-      case "facing":
-        p.x = standX;
-        p.y = standY;
-        break;
       case "turned":
         p.x = standX;
         p.y = standY;
@@ -264,13 +273,21 @@ export function bench(kind: HuskKind, posture: Posture, ticks = 420): Trace {
         p.y = standY;
         p.facing = -1;
         break;
-      case "struck":
-      case "blocked":
+      default:
         p.x = standX;
         p.y = standY;
         break;
     }
   };
+}
+
+export function bench(kind: HuskKind, posture: Posture, ticks = 420): Trace {
+  const world = room(kind, posture);
+  const husk = lay(world, kind);
+  const ctx: StepContext = { verbs: [], graces: [] };
+
+  const p = world.player;
+  const place = poser(world, husk, posture);
 
   place(0);
   const startY = husk.y;
@@ -570,25 +587,36 @@ export function duel(kind: HuskKind, ticks = 2000, items: readonly string[] = []
  * instrument built to see conditions — which matters far more now than it did,
  * because the whole of P14 is authored in these units.
  */
-export function reachable(kind: HuskKind, ticks = 3000): number {
-  const world = room(kind);
+export function reachable(kind: HuskKind, ticks = 3000, posture?: Posture): number {
+  return share(kind, ticks, posture, (world, husk) => !outOfReach(husk, world));
+}
+
+/**
+ * **One loop for all three shares**, because they were three copies of the same
+ * fifteen lines differing only in the predicate — and the copies is how the
+ * posture went missing from two of them. Provokes the creature the way `bench`
+ * does: the Scribe is placed by `poser` every tick, and the one blow that
+ * rouses the Calf lands at the same moment it does there.
+ */
+function share(
+  kind: HuskKind,
+  ticks: number,
+  posture: Posture | undefined,
+  yes: (world: World, husk: Husk) => boolean,
+): number {
+  const world = room(kind, posture);
   const husk = lay(world, kind);
   const ctx: StepContext = { verbs: ALL_VERBS, graces: ALL_GRACES };
-  const p = world.player;
-  const standY = (world.height - 3) * TILE_SIZE;
-  let out = 0;
+  const place = poser(world, husk, posture);
+  let count = 0;
   for (let t = 0; t < ticks; t += 1) {
-    p.x = 6 * TILE_SIZE;
-    p.y = standY;
-    p.vx = 0;
-    p.vy = 0;
-    p.lamps = 99;
-    p.iframes = 0;
+    place(t);
+    if (posture === "struck" && t === 30) strikeHusk(world, husk, 1, 1, husk.x);
     step(world, NO_INPUT, ctx);
     if (husk.broken) break;
-    if (!outOfReach(husk, world)) out += 1;
+    if (yes(world, husk)) count += 1;
   }
-  return Math.round((out / ticks) * 100) / 100;
+  return Math.round((count / ticks) * 100) / 100;
 }
 
 /**
@@ -609,24 +637,7 @@ export function reachable(kind: HuskKind, ticks = 3000): number {
  * number for the first time.
  */
 export function openness(kind: HuskKind, ticks = 3000, posture?: Posture): number {
-  const world = room(kind, posture);
-  const husk = lay(world, kind);
-  const ctx: StepContext = { verbs: ALL_VERBS, graces: ALL_GRACES };
-  const p = world.player;
-  const standY = (world.height - 3) * TILE_SIZE;
-  let open = 0;
-  for (let t = 0; t < ticks; t += 1) {
-    p.x = 6 * TILE_SIZE;
-    p.y = standY;
-    p.vx = 0;
-    p.vy = 0;
-    p.lamps = 99;
-    p.iframes = 0;
-    step(world, NO_INPUT, ctx);
-    if (husk.broken) break;
-    if (opened(world, husk)) open += 1;
-  }
-  return Math.round((open / ticks) * 100) / 100;
+  return share(kind, ticks, posture, (world, husk) => opened(world, husk));
 }
 
 /**
@@ -647,23 +658,11 @@ export function openness(kind: HuskKind, ticks = 3000, posture?: Posture): numbe
  * reaches and takes no shell — is not paired by any line of code, and this is
  * the guard that will not let it ship unpaired.
  */
-export function unfair(kind: HuskKind, ticks = 3000): number {
-  const world = room(kind);
-  const husk = lay(world, kind);
-  const ctx: StepContext = { verbs: ALL_VERBS, graces: ALL_GRACES };
-  const p = world.player;
-  const standY = (world.height - 3) * TILE_SIZE;
-  let bad = 0;
-  for (let t = 0; t < ticks; t += 1) {
-    p.x = 6 * TILE_SIZE;
-    p.y = standY;
-    p.vx = 0;
-    p.vy = 0;
-    p.lamps = 99;
-    p.iframes = 0;
-    step(world, NO_INPUT, ctx);
-    if (husk.broken) break;
-    if (!answerable(world, husk) && harmful(husk, world)) bad += 1;
-  }
-  return Math.round((bad / ticks) * 100) / 100;
+export function unfair(kind: HuskKind, ticks = 3000, posture?: Posture): number {
+  return share(
+    kind,
+    ticks,
+    posture,
+    (world, husk) => !answerable(world, husk) && harmful(husk, world),
+  );
 }
