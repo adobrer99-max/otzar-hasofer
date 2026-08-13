@@ -50,6 +50,9 @@ import {
   START_CHUNK,
   TEACH_CHUNKS,
   VESSEL_CHUNK,
+  GATE_HOARD,
+  GATE_HOUSE,
+  GATE_ODDS,
   WORD_GATE_CHUNK,
 } from "./chunks";
 import { HUSK_CHARS, HUSKS, kindForRole, LAMPS, type HuskKind } from "../combat";
@@ -233,8 +236,36 @@ function layout(
   held: readonly string[],
   /** The vessel this rung will hold, if any — see `paint`. */
   keli?: Keli,
+  /**
+   * **Which of the gate's rooms this rung's gate opens onto.**
+   *
+   * Passed in rather than drawn here, and that is the whole of the care this
+   * needs: `buildPath`'s main generator has `drawKeli` as its first consumer,
+   * and `keliOnPath` recreates exactly that first draw to tell the map which
+   * vessel a path holds. Anything reaching for `rng` before it moves every
+   * screen on every path. So the choice is made outside, off a generator of its
+   * own — see `gateRoomFor`.
+   */
+  gateRoom: Chunk = WORD_GATE_CHUNK,
 ): { laid: Chunk[]; wordGateTarget: WordGateTarget | undefined } {
   const regionIndex = region.index;
+  /**
+   * **A figure behind a gate is only offered where there is a figure to be
+   * had.** Only the seven lower Sefirot have Houses in `dorot.ts`; above the
+   * Abyss the card is undefined and an `H` would lay nothing at all, which is
+   * an empty room behind a door somebody answered for. Narrowed here, where the
+   * region is in hand and `gateRoomFor` cannot see it.
+   *
+   * **And it adds a figure rather than moving one**, which was the first
+   * design and was wrong in a way worth writing down: suppressing `HOUSE_CHUNK`
+   * takes an entry out of `fixed[]`, and `room = max(fixed.length, stopping + 2)`
+   * feeds the body's length, the padding and the squaring — so the rung got
+   * *shorter* and every seed after it reshuffled. Measured: the tour went from
+   * inside its cap to 202 walks against 200, on the seed it had always passed.
+   * That is P9d's finding run backwards, and it is the second time the same
+   * arithmetic has caught a change nobody thought touched it.
+   */
+  const gate = gateRoom.id === GATE_HOUSE.id && !region.hasHouse ? GATE_HOARD : gateRoom;
   const verbs = verbsOf(held);
 
   /**
@@ -320,7 +351,7 @@ function layout(
     // somewhere it costs nothing and walk through the door it opened.
     // `openWordGate` dissolves every barrier in the world, and that is right:
     // there is one gate per rung, and over the gulf it is the last one.
-    ...(wordGateTarget && !overTheAbyss ? [WORD_GATE_CHUNK] : []),
+    ...(wordGateTarget && !overTheAbyss ? [gate] : []),
     // One mark per region below the Abyss, and none above it. Low at the foot
     // of the Tree where it is walked into, on a shelf higher up where taking
     // it is a choice.
@@ -873,6 +904,23 @@ function paint(
    * ground. An empty chamber is the picture of a thing already taken.
    */
   relicsFound: readonly string[] = [],
+  /**
+   * **Whether this ground has been gleaned already**, which the authored motes
+   * have to know and `lightOfTheDay` cannot tell them.
+   *
+   * A re-walk pays `SPENT_LIGHT` — but that multiplier is applied to the *day's*
+   * light before it arrives here, and it only ever reached `scatterMotes`'s
+   * budget. Authored motes are laid unconditionally and earlier, so the moment
+   * they started existing they were a farm: walk a path, take its light, walk it
+   * again and every star is still standing at full value. `economy.test.ts`'s
+   * re-walk band caught it on the first run, which is what that band is for.
+   *
+   * It cannot be inferred from the light that arrives, either, and that is why
+   * this is a parameter rather than a division: a dim festival day and a path
+   * already walked reach `paint` looking identical, and only one of them should
+   * empty the ledges.
+   */
+  spent = false,
 ): World {
   // The screens are dealt into a floor before anything is written. One row is
   // a corridor and is exactly what every rung was before rooms existed, so
@@ -887,20 +935,37 @@ function paint(
   const husks: Husk[] = [];
   let letterCursor = 0;
   let authored = 0;
+  /** Authored motes seen so far — see the `"*"` case, and `spent`. */
+  let stars = 0;
   let fragmentCursor = firstFragmentIndex;
   let entityId = 0;
 
   // The House figure, when the region has one: a card from either of the
   // Sefirah's Houses, patriarchal or matriarchal — both stand at the rung, and
   // how far into each one's episodes this Scribe has earned is `cardsOpen`.
-  let dorotCardId: string | undefined;
+  /**
+   * **Two of them, and the second costs no draw.**
+   *
+   * A rung lays one House; a gate whose room holds a figure lays another, and
+   * standing the same person twice would be worse than standing nobody. The
+   * second is simply the *next* card in the pool rather than a second
+   * `randomInt` — because every draw taken from this generator shifts the husk
+   * scatter, the motes and the figured stones that come after it, and a screen
+   * that is laid on one rung in four would then move the ground on that rung
+   * and nowhere else.
+   */
+  const dorotCards: string[] = [];
   if (hasHouse) {
     const pool = housesBySefirah(sefirah).flatMap((house) => {
       const cards = cardsByHouse(house.id);
       return cards.slice(0, cardsOpen(cards.length, cardDepth));
     });
-    if (pool.length > 0) dorotCardId = pool[randomInt(rng, pool.length)].id;
+    if (pool.length > 0) {
+      const at = randomInt(rng, pool.length);
+      dorotCards.push(pool[at].id, pool[(at + 1) % pool.length].id);
+    }
   }
+  let houseCursor = 0;
 
   floor.placements.forEach(({ chunk, x: chunkX, y: chunkY, mirrored }) => {
     const originX = chunkX * CHUNK_W;
@@ -946,12 +1011,61 @@ function paint(
             case "T":
               entities.push({ id: `e${entityId++}`, kind: "mark", x: px, y: py });
               break;
+            /** The floor of the chamber that was never one — see `GATE_FALL`. */
+            case "X":
+              entities.push({ id: `e${entityId++}`, kind: "opening", x: px, y: py });
+              break;
+            /**
+             * **A mote of light, where a screen said to put one.**
+             *
+             * This case did not exist, and the block that lays it — `if (ch ===
+             * "*")`, a few lines below — is *unreachable*: `"*"` is a member of
+             * `MARKER_CHARS`, so every star entered the switch above, matched
+             * nothing, fell to `default` and was consumed by the `continue`.
+             * Dead code under a live guard, which is why it read as correct.
+             *
+             * Seventy-eight authored motes across forty-nine of the seventy-four
+             * screens, none of them ever laid. Nothing looked wrong, because
+             * `scatterMotes` tops a rung up to the day's budget: the light was
+             * never *missing*, it was **moved** — off the ledge somebody put it
+             * on and onto whatever standable ground the shuffle picked, which is
+             * mostly the walking line.
+             *
+             * Reported from play as the Word-Gate offering nothing, and that is
+             * the sharpest case: its chamber holds two of these and is the one
+             * screen in the game that asks a Scribe to *know* something.
+             * Measured over 220 gates, a symmetric four-tile window: **117 held
+             * anything against 187, and 0.68 motes a gate against 1.89.** About
+             * half of every answered gate opened on an empty room.
+             *
+             * Authored motes are pushed here, before `scatterMotes` runs, so
+             * they are never crowded out by the budget — the day decides how
+             * much light a rung holds, and the screens decide where it is.
+             */
+            case "*":
+              // **One in seven survives a re-walk**, which is `SPENT_LIGHT`
+              // stated as a count rather than a multiplier — there is no
+              // fraction of a mote. By index and not by a draw, because the
+              // main generator's first consumer is `drawKeli` and `keliOnPath`
+              // recreates that draw to tell the map which vessel a path holds:
+              // anything that reaches for it here moves every screen after it.
+              if (!spent || stars % 7 === 0) {
+                entities.push({ id: `e${entityId++}`, kind: "mote", x: px, y: py });
+              }
+              stars += 1;
+              break;
             case "Y":
               // Where the road divides. Resh returns the Scribe here.
               entities.push({ id: `e${entityId++}`, kind: "fork", x: px, y: py });
               break;
             case "H":
-              if (dorotCardId) entities.push({ id: `e${entityId++}`, kind: "house", x: px, y: py, ref: dorotCardId });
+              {
+                const card = dorotCards[houseCursor];
+                if (card) {
+                  houseCursor += 1;
+                  entities.push({ id: `e${entityId++}`, kind: "house", x: px, y: py, ref: card });
+                }
+              }
               break;
             case "K": {
               if (keli) entities.push({ id: `e${entityId++}`, kind: "vessel", x: px, y: py, ref: keli.id });
@@ -972,12 +1086,6 @@ function paint(
             default:
               break;
           }
-          continue;
-        }
-
-        if (ch === "*") {
-          tiles[worldY * width + worldX] = Tile.Empty;
-          entities.push({ id: `e${entityId++}`, kind: "mote", x: px, y: py });
           continue;
         }
 
@@ -1429,6 +1537,27 @@ function scatterHusks(
  */
 export const SPENT_LIGHT = 0.15;
 
+/**
+ * **Which room a path's gate opens onto** — the day and the path together, as
+ * the vessel is, so that everyone answering the same gate on the same day finds
+ * the same thing behind it and no two paths hold the same thing.
+ *
+ * **Off a generator of its own, and that is not fastidiousness.** `buildPath`
+ * seeds one rng and `drawKeli` is its first consumer; `keliOnPath` recreates
+ * precisely that first draw so the Tree map can tell a player which vessel a
+ * path holds without building the path. A draw taken from that generator before
+ * it — or after it, since every later draw shifts too — moves the ground under
+ * every screen on every path in the game. The relic chamber has the same note
+ * against it and for the same reason.
+ *
+ * Hashed rather than drawn, in fact: there is nothing random about it once the
+ * day and the path are known, and a hash cannot be got out of order.
+ */
+export function gateRoomFor(pathId: string, seed: number): Chunk {
+  const at = (hashOf(`${pathId}:gate:${seed}`) >>> 0) % GATE_ODDS.length;
+  return GATE_ODDS[at];
+}
+
 /** Every letter the Tree carries — the default, so a bare call sizes nothing down. */
 const ALL_LETTERS: readonly string[] = TREE_PATHS.map((p) => p.letter);
 
@@ -1573,7 +1702,15 @@ export function buildPath(
   // different on every path — which makes the map a list of places to go for
   // things, and is the whole reason the pool exists.
   const keli = drawKeli(rng, items, poolFor(seed));
-  const { laid, wordGateTarget } = layout(region, rng, teaching, undefined, held, keli);
+  const { laid, wordGateTarget } = layout(
+    region,
+    rng,
+    teaching,
+    undefined,
+    held,
+    keli,
+    gateRoomFor(path.id, seed),
+  );
 
   return paint(
     laid,
@@ -1592,6 +1729,7 @@ export function buildPath(
     keli,
     cardDepth,
     relicsFound,
+    spent,
   );
 }
 

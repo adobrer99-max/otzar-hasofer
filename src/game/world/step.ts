@@ -18,7 +18,9 @@ import {
   BEND_TOWARD,
   canBeStruck,
   GOING_OUT,
+  THE_OPENING,
   HUSKS,
+  isGreat,
   kindForRole,
   MARK_HUNT,
   KNOCKBACK_X,
@@ -34,6 +36,7 @@ import {
   markPowers,
   SHARD_LIFE,
   SHARD_SPEED,
+  shellsTaken,
   takeHit,
 } from "../combat";
 
@@ -867,7 +870,27 @@ function stepRooms(world: World): void {
     // chamber has the stronger claim of the two: its ground lane runs clear the
     // whole width precisely so that a Scribe with no Ayin and no interest walks
     // past it, and a seal writes stone across that lane.
-    room.kind !== "relic";
+    room.kind !== "relic" &&
+    /**
+     * **...and not a gate, which is the same argument again and is now load
+     * bearing.** A gate's chamber is a walled box behind a barrier, and a den
+     * (`word-gate-den`) stands klipot inside it deliberately. Without this the
+     * room would seal the moment a Scribe walked into *any part of it* — the
+     * ground lane included — held shut by creatures on the far side of a
+     * barrier they may not have answered yet. The one screen in the game whose
+     * whole promise is that it can be refused would become the one that shuts
+     * you in.
+     *
+     * The den does not need sealing to ask for a fight, which is the point of
+     * putting it there: it is a box with the light at the back and three things
+     * in the way, entered on purpose through a door you had to know a word to
+     * open. The geometry is the demand. Nothing has to close.
+     *
+     * It was not free before the den, either — measured over 440 builds, three
+     * chambers already had a klipah scattered into them by luck, and none of
+     * the three happened to be a kind that can hold a door.
+     */
+    room.kind !== "gate";
   world.inSealedRoom = closes;
 
   if (!standing) {
@@ -956,6 +979,26 @@ function touchEntities(world: World, ctx: StepContext): void {
           // forty-two regions that way before the floors were even climbable.
           storeyOf(p.y + p.h - 1) === storeyOf(e.y)
         : overlaps(p, e, e.kind === "mote" ? pull : 0);
+
+    /**
+     * **The floor of the chamber that was never one.**
+     *
+     * Ends the rung exactly as the last lamp does — `world.out`, and the page
+     * does the rest through `afterFalling`: the light in hand goes out and the
+     * Scribe wakes at the highest Sefirah still lit. Nothing new is invented,
+     * which is the whole of why this is fair: the prologue's fifth page taught
+     * this rule before the first rung, and a trap with a rule of its own would
+     * be a cheat rather than a fall.
+     *
+     * Taken before anything else in the loop, so a mote sharing the tile cannot
+     * be collected on the way down; and `taken` is set so it fires once.
+     */
+    if (e.kind === "opening" && overlaps(p, e, 0)) {
+      e.taken = true;
+      world.out = true;
+      say(world, THE_OPENING);
+      return;
+    }
 
     // The Word-Gate's porch is a place you *stand* — so it must be triggered
     // on arriving, not on every tick you remain there. Level-triggering it
@@ -1367,12 +1410,18 @@ function stepMarks(world: World, ctx: StepContext): void {
       for (const husk of world.husks) {
         if (husk.broken || outOfReach(husk, world) || !bodiesTouch(m, husk)) continue;
         if (!canBeStruck(hiddenAt(world, husk), ctx.verbs)) continue;
+        // **Once each.** See `Mark.through` — a mark that pierces is not
+        // consumed, and without this it went on biting the same body every tick
+        // it was inside it, which is five hits from one letter and was the whole
+        // of why nearly the entire bestiary died to a single mark.
+        if (m.through?.includes(husk.id)) continue;
         strikeHusk(world, husk, m.bite, m.draws ? -1 : 1, m.x);
         // What is broken throws two shards out of it, up and away on both
         // sides — coverage rather than a second throw, which is why they are
         // short-lived and never split again.
         if (m.splits) shards.push(...splitOf(m));
-        if (!m.pierces) m.life = 0;
+        if (m.pierces) (m.through ??= []).push(husk.id);
+        else m.life = 0;
         break;
       }
     } else if (p.veiled === 0 && bodiesTouch(m, p)) {
@@ -1417,16 +1466,35 @@ const inWater = (world: World, body: Husk) =>
  * already a number the game keeps: `markPowers` gives the Staff sixteen more
  * ticks of mark life and nothing else in the game throws that far. A rule
  * saying so would be the same rule written twice and free to drift.
+ *
+ * **It switches on `HuskSpec.opening` rather than on `kind`, and that is the
+ * whole of what P14b changes.** As a switch over creatures it read as two
+ * bespoke cases under a `default: true` — which is to say eighteen kinds were
+ * open at every moment of their lives *by omission*, and nothing anywhere said
+ * so. As a switch over openings the table states it, two creatures that open
+ * the same way share one line, and adding a member to `Opening` is a compile
+ * error here, at the one place that has to answer for it.
+ *
+ * No condition has yet been added and none is removed: the two that existed are
+ * the two that exist, expressed once instead of twice. Every band is green
+ * because there is nothing for a band to notice.
  */
-function opened(world: World, husk: Husk): boolean {
-  switch (husk.kind) {
+export function opened(world: World, husk: Husk): boolean {
+  switch (HUSKS[husk.kind].opening) {
     // Out of the water, and only out of it. The Hook is what puts it there.
-    case "livyatan":
+    case "landed":
       return !inWater(world, husk);
-    // Stopped, and only a set stone stops it.
-    case "behemot":
+    // Stopped, and only a set stone stops it — `cooldown` is what a placed
+    // stone leaves on it, which is the one thing in the game that stops it.
+    case "stopped":
       return husk.cooldown > 0;
-    default:
+    // The charge is the thing it committed to, and `charging` counts it down.
+    // A wall zeroes it early and leaves seventy ticks of standing stunned; the
+    // count running out zeroes it late. Either way, what is answerable is the
+    // creature that has finished, which is the fight its own line describes.
+    case "spent":
+      return husk.charging === 0;
+    case "always":
       return true;
   }
 }
@@ -1460,7 +1528,47 @@ export function strikeHusk(
     if (push < 0) husk.vx += push * (husk.x < from ? -1 : 1) * 90;
     return;
   }
-  husk.shells -= bite;
+  /**
+   * **Nothing comes apart at the first word.**
+   *
+   * Reported from play, twice, and the second time with the case: *the monsters
+   * that hold the gate are still way too easy to kill — Saraf got one shot.* It
+   * did. A Scribe holding Shin throws at `bite` two, and nine of the twenty
+   * kinds carry two shells or fewer — so half the bestiary died to a single
+   * press, with no exchange and nothing to react to.
+   *
+   * The rule is stated where it belongs, on the blow rather than on the
+   * table: a klipah at its full number of shells is never taken to nothing by
+   * one mark. It is left with one, and the second blow breaks it. **Nothing
+   * with three shells or more is affected at all** — those already needed two —
+   * so the whole of the change lands exactly on the creatures the report was
+   * about, and the measured bands for everything else are untouched.
+   *
+   * **The table moved as well, by exactly one shell, and the number is the
+   * probe's rather than the design's.** More shells costs the *probe* far more
+   * than it costs a player, because a body that needs longer to break a thing
+   * stands next to it longer — so the tour, which is thirty to fifty fighting
+   * walks chained end to end, is where a shell floor is paid for. Swept over
+   * the whole table: at **+1** the tour finishes inside its cap on every seed;
+   * at **+2** it hits the cap on seed 555 with a hundred and seventy-eight
+   * falls against the base table's eighteen, and shaping the increase (more on
+   * the small ones, less on the great) moves *which* seed collapses and not
+   * whether one does. That is a cliff and not a knife edge: once a fighting
+   * probe goes out more often than it kindles, a fall wipes the purse and the
+   * tour never affords the crown. **+1 is the measured headroom of the
+   * instrument, not a claim about what a player can take** — and it is enough
+   * for the thing that was reported, because at +1 nothing in the bestiary
+   * dies to one word even before the rule above.
+   *
+   * **And a klipah with one shell keeps dying to one blow**, which is not an
+   * exception so much as the rule read properly: a single shell is the whole of
+   * what those three are, and the Arbeh is the guardian a beginner meets at
+   * Malchut holding *nothing at all*. Clamping it broke that room on the first
+   * run — the one fight in the game that has to be winnable bare-handed.
+   */
+  const take = shellsTaken(bite, HUSKS[husk.kind].shells);
+  const full = husk.shells >= HUSKS[husk.kind].shells && husk.shells > 1;
+  husk.shells = full ? Math.max(1, husk.shells - take) : husk.shells - take;
   husk.struck = 8;
   husk.vx += push * (husk.x < from ? -1 : 1) * 90;
   if (husk.shells > 0) return;
@@ -1525,9 +1633,39 @@ export function outOfReach(husk: Husk, world?: World): boolean {
    * answered, which keeps the pure-husk callers honest.
    */
   if (husk.kind === "tannin") return world ? inWater(world, husk) : false;
+  return buried(husk);
+}
+
+/** Korach's own half of the rule: inside the earth, where nothing follows it. */
+function buried(husk: Husk): boolean {
   if (husk.kind !== "korach") return false;
   if (husk.charging > 0) return false;
   return husk.cooldown <= (HUSKS.korach.throws ?? 0) - RISE - SETTLE;
+}
+
+/**
+ * **Whether there is anything there to paint** — which is *not* the same
+ * question as whether a mark can reach it, and was answered as though it were.
+ *
+ * `drawHusks` skipped exactly what `outOfReach` skipped, deliberately and with
+ * a test holding it there: P5c found three places asking "is Korach in the
+ * ground?" and all three answering it wrongly, so the rule was given one home
+ * and the renderer was made to ask it. That was right about Korach and wrong as
+ * a general law, and P7 walked straight into the difference — it taught
+ * `outOfReach` that a submerged Tannin cannot be marked, which is true and is
+ * the whole of that creature's fight, and thereby **stopped the Tannin being
+ * drawn at all while it was in the water**. Measured on its own bench: painted
+ * on 58% of ticks, absent for the other 42, which are precisely the ticks a
+ * player would need to see it coming.
+ *
+ * The two questions come apart cleanly once they are asked separately. Korach
+ * inside the earth is *not there*. The Tannin under the water **is** there — it
+ * is simply out of reach, the way a thing on the far side of a river is, and a
+ * fight whose rule is "catch it when it leaves the water" cannot be played
+ * against something invisible until it arrives.
+ */
+export function unseen(husk: Husk): boolean {
+  return buried(husk);
 }
 
 /**
@@ -1546,9 +1684,45 @@ export function outOfReach(husk: Husk, world?: World): boolean {
  * arriving on one seed in six: a klipah that had been unbreakable became
  * unbreakable and twice as costly, which is the opposite of the change.
  */
-function harmful(husk: Husk, world: World): boolean {
+export function harmful(husk: Husk, world: World): boolean {
   if (outOfReach(husk, world)) return false;
   return husk.kind !== "korach" || husk.charging > 0;
+}
+
+/**
+ * **Whether a mark thrown at it now would do anything at all** — the question
+ * the *probe* has to ask, and the seam the rest of P14 is built on.
+ *
+ * It is deliberately not `opened`. A blow on an unopened great one takes no
+ * shell and is still the fight: Leviathan is *drawn* by it, and the Hook
+ * dragging it out of the water is the only way that room is ever won. A klipah
+ * that staggers is a klipah something happened to. What this asks is the
+ * narrower question — is there anything there for a mark to land on — and today
+ * that is exactly `outOfReach`: a Korach inside the earth and a Tannin under
+ * the water, where the mark loop `continue`s and not one thing occurs.
+ *
+ * Given a home now, while it has one caller and one meaning, because the class
+ * of bug this codebase keeps finding is a question asked in three places and
+ * answered separately — "is Korach in the ground?" was asked by the mark loop,
+ * the contact check and the renderer, and fixing two of the three would have
+ * made the creature's one answerable moment its one invisible one.
+ */
+export function answerable(world: World, husk: Husk): boolean {
+  if (outOfReach(husk, world)) return false;
+  /**
+   * **The great ones are excepted, and it is not a courtesy.** A blow on an
+   * unopened great one takes no shell and is still the fight: it sets
+   * `struck = 12` and, with the Hook, drags Leviathan landward — which is the
+   * only way that room is ever won. A probe that stopped throwing at a
+   * submerged Leviathan would never pull it ashore and `guardianFight` would
+   * report the creature unbeatable, which is the shape of the bug that phase
+   * was written to catch.
+   *
+   * For everything else an unopened blow only staggers, so a mark spent on one
+   * buys nothing but the fifteen ticks of cooldown that the open moment needed.
+   */
+  if (isGreat(husk.kind)) return true;
+  return opened(world, husk);
 }
 
 /**
@@ -1815,7 +1989,33 @@ function stepHusks(world: World, ctx: StepContext): void {
         const chase = Math.abs(home) > TILE_SIZE * 12 ? home : toward;
         husk.vy = 90;
         husk.vx = Math.sign(chase) * spec.speed;
-        if (Math.abs(toward) < TILE_SIZE && husk.cooldown === 0 && spec.throws) {
+        /**
+         * **Out of the ground under him — not out of him.**
+         *
+         * This read `husk.y = p.y + p.h + TILE_SIZE * 2.5`, which is the same
+         * thing exactly as long as the Scribe is *standing* on something: his
+         * feet are the surface. Off the ground it is not the same thing at
+         * all, and a Scribe is off the ground for a good part of every rung.
+         * Reported from play as "the creature that comes out of the stone is
+         * stuck", and reproduced: triggered under a Scribe six tiles up, it
+         * rose to his height, hit the settling phase — which is deliberately
+         * weightless, since `flies` means gravity would drop it through the
+         * world — and **hung there motionless in mid-air** for ninety ticks
+         * before vanishing. Not stuck in the geometry; stuck in the sky.
+         *
+         * So the eruption is anchored to the earth, which is the thing it is
+         * named for. `surfaceUnder` finds the ground beneath the Scribe's
+         * column, and if there is none within eight tiles there is nothing to
+         * open: it stays under and keeps waiting, which is the honest answer
+         * for a Scribe hanging on a vine over a chasm.
+         */
+        const surface = surfaceUnder(world, ctx, p.x + p.w / 2, p.y + p.h);
+        if (
+          Math.abs(toward) < TILE_SIZE &&
+          husk.cooldown === 0 &&
+          spec.throws &&
+          surface !== undefined
+        ) {
           husk.charging = RISE;
           husk.cooldown = spec.throws;
           // **Under the feet, not in them.** Surfacing at the Scribe's own
@@ -1823,7 +2023,7 @@ function stepHusks(world: World, ctx: StepContext): void {
           // the earth opening cost a lamp with nothing to react to — measured,
           // Gevurah put eight runs in ten out. It comes up from below, and the
           // moment of rising is the moment to be somewhere else.
-          husk.y = p.y + p.h + TILE_SIZE * 2.5;
+          husk.y = surface + DEPTH;
         }
         break;
       }
@@ -2131,8 +2331,47 @@ function stepHusks(world: World, ctx: StepContext): void {
         // the fight to a Scribe with no Staff and makes the letter a
         // suggestion. So it holds its height and drops what it is carrying,
         // and the only question left is how far you can throw.
+        /**
+         * **It crosses; it does not hover.** The line above is the design and
+         * it is kept — what changes is that it used to fly *at* the Scribe's
+         * column and sit there, which is the one place in the room a mark can
+         * never arrive: a mark aimed up climbs diagonally, so from directly
+         * beneath something eight tiles up there is no throw that reaches, at
+         * any reach. The creature was removing its own window.
+         *
+         * That went unseen because a mark that pierced was not consumed by what
+         * it hit and struck the same body every tick it was inside it — so the
+         * single contact the Scribe got on the *approach*, while the angle was
+         * still open, took all six shells at once. With one hit per mark the
+         * fight needs three of those windows, and the Ziz was granting one.
+         *
+         * So it holds a heading, turns at the walls, and turns again once it is
+         * well past the Scribe — a bird patrolling a roof. Every crossing is a
+         * window at exactly the distance the Staff was made for, which is the
+         * fight the line describes and a great deal closer to it than parking
+         * overhead was.
+         */
         const roof = husk.home.y;
-        husk.vx = Math.sign(toward || 1) * spec.speed;
+        const edge = TILE_SIZE * 3;
+        const far = world.width * TILE_SIZE - edge;
+        /**
+         * **It turns at the walls and nowhere else.**
+         *
+         * The first version also turned once it was well past the Scribe, which
+         * looks like the same thing and is not: against a wall there is no room
+         * to *get* past him, so it turned at once and hung there — inside the
+         * one distance a mark aimed up can never reach. Traced at eleven
+         * shells: three hits in the first five hundred ticks while it was still
+         * crossing, then twenty thousand with the Scribe pinned in the corner
+         * and the bird oscillating overhead.
+         *
+         * A full sweep gives a window on every pass, wherever the Scribe is
+         * standing, which is what the line always described — it holds its
+         * height and crosses, and the only question is how far you can throw.
+         */
+        if (husk.x < edge) husk.facing = 1;
+        else if (husk.x + husk.w > far) husk.facing = -1;
+        husk.vx = husk.facing * spec.speed;
         husk.vy = Math.max(-spec.speed, Math.min(spec.speed, (roof - husk.y) * 3));
         if (husk.cooldown === 0 && spec.throws) {
           husk.cooldown = spec.throws;
@@ -2221,6 +2460,44 @@ function pace(world: World, ctx: StepContext, husk: Husk, speed: number, gentle 
  */
 const RISE = 54;
 const SETTLE = 90;
+
+/**
+ * How deep under the surface an eruption begins.
+ *
+ * `RISE` ticks at ninety-five a second carry it eighty-five and a half pixels,
+ * so it comes up through this sixty and stands a quarter of a tile proud of the
+ * ground — which is not slack, it is where a flat mark flies. That was measured
+ * the hard way once already: at forty-two ticks the rise stopped at the
+ * Scribe's waist, two pixels under the line, and every mark ever thrown at the
+ * creature sailed over it. **Do not tidy the overshoot away.** Tried, and the
+ * bench went straight back to never breaking one.
+ */
+const DEPTH = TILE_SIZE * 2.5;
+
+/**
+ * The top of the ground beneath a point — the surface an eruption would come
+ * through, or `undefined` if there is nothing under it worth calling earth.
+ *
+ * Ledges count, and that is deliberate: a ledge is ground you are standing on,
+ * and Korach passes through everything anyway, so what this is really asking is
+ * "is there a floor here to open" rather than "would a body be stopped".
+ */
+function surfaceUnder(
+  world: World,
+  ctx: StepContext,
+  x: number,
+  fromY: number,
+  within = 8,
+): number | undefined {
+  const solid = { verbs: ctx.verbs, crawling: false, revealed: world.revealed };
+  const column = Math.floor(x / TILE_SIZE);
+  const first = Math.floor(fromY / TILE_SIZE);
+  for (let row = first; row <= first + within; row += 1) {
+    const tile = tileAt(world, column, row);
+    if (isSolid(tile, solid) || isLedge(tile)) return row * TILE_SIZE;
+  }
+  return undefined;
+}
 
 /**
  * How long a Saraf's fire stays on the ground where it was laid, against a

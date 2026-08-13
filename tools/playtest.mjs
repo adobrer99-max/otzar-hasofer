@@ -79,9 +79,51 @@ const KEYS = {
 const pastThePrologue = async (page) => {
   const skip = page.getByRole("button", { name: /^Skip/ });
   if (await skip.count()) {
+    /**
+     * **The one place every script sees the prologue**, so it is where the
+     * panel is checked — once, cheaply, for everybody.
+     *
+     * A scene is a `<canvas>` inside a plate, which is a hole in the document
+     * with an `aria-label` on it. Neither `scene.test.ts` nor the `scenes`
+     * sheet can say whether it was ever *mounted*: the first tests the painter
+     * and the second calls it directly. This asks the shipped page, and it is
+     * exactly the class of thing that went unnoticed for the whole life of P5b
+     * when `onVessel` was threaded through props and never assigned.
+     */
+    const panel = page.locator('[role="dialog"] canvas[role="img"]');
+    if (!(await panel.count())) throw new Error("the prologue plate has no scene in it");
+    const said = await panel.first().getAttribute("aria-label");
+    if (!said || said.length < 30) throw new Error(`the prologue's scene says "${said}"`);
     await skip.first().click();
     await page.waitForTimeout(500);
   }
+};
+
+/**
+ * Wipe the drawers a returning Scribe carries, so the next Begin is a **first**
+ * Begin — the prologue told, the map teaching itself, the kingdom seen for the
+ * first time.
+ *
+ * `first-run` has done this inline since it was written; the two panel scripts
+ * need the same four keys and a fifth (`otzar-game-seen`, which P11b added), and
+ * three copies of a list of storage keys is three places to forget one. The
+ * asymmetry is deliberate: `pastThePrologue` puts the telling *down*, this makes
+ * sure there is one to put down.
+ */
+const tellItAgain = async (page) => {
+  await page.evaluate(() => {
+    for (const key of [
+      "otzar-game-taught",
+      "otzar-game-taught-tree",
+      "otzar-game-told",
+      "otzar-game-seen",
+      "otzar-game-sound",
+    ]) {
+      localStorage.removeItem(key);
+    }
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(700);
 };
 
 const sealFromTheMap = async (page) => {
@@ -111,14 +153,7 @@ const SCRIPTS = [
      */
     warp: {},
     enter: async (page) => {
-      await page.evaluate(() => {
-        localStorage.removeItem("otzar-game-taught");
-        localStorage.removeItem("otzar-game-taught-tree");
-        localStorage.removeItem("otzar-game-told");
-        localStorage.removeItem("otzar-game-sound");
-      });
-      await page.reload({ waitUntil: "domcontentloaded" });
-      await page.waitForTimeout(700);
+      await tellItAgain(page);
       // The score is offered on the threshold, to somebody who has never said.
       const sound = page.getByRole("button", { name: /Play with sound/ });
       if (!(await sound.count())) throw new Error("the threshold never offered the score");
@@ -533,6 +568,19 @@ const SCRIPTS = [
     seconds: 120,
     // Walk into everything, write nothing.
     driver: { strike: false, reckless: true },
+    /**
+     * **The claim, rather than the timeout.** This script has an `until` that
+     * says when to stop and, until now, nothing that said whether stopping was
+     * the right thing — so when `WarpOptions.lamps` turned out to be parsed and
+     * applied nowhere, the Scribe walked the whole two minutes on the full three
+     * lamps, never went out, and reported *the clock ran out* as a clean run.
+     * The one script whose subject is a climb ending had never seen one end.
+     */
+    check: (p) => {
+      if (!p.out && p.plate !== "out") {
+        throw new Error("the last lamp never went out — the kingdom never came up");
+      }
+    },
   },
   {
     name: "book",
@@ -860,6 +908,389 @@ const SCRIPTS = [
     },
   },
   {
+    name: "scenes",
+    about: "Every cut scene, across its own motion, on both grounds — the sheet this pass is judged on.",
+    /**
+     * **The scenes, looked at**, which is the only way a picture can be judged.
+     *
+     * `scene.test.ts` can say that six scenes are six different pictures and
+     * that each of them moves, because a recording canvas can say that much. It
+     * cannot say whether a wedge and a dot read as a scribe at a desk, and P4b
+     * is the standing lesson on what happens when a table of drawn things has
+     * only the first kind of test: twenty silhouettes passed "no two rows
+     * match" while every creature on screen was a blob.
+     *
+     * Built exactly like `bestiary` and for the same reason — it imports
+     * `/src/game/render/scene.ts` and `/src/game/render/scenes.ts` **out of the
+     * dev server**, so what is photographed is the shipping painter rather than
+     * a copy that would drift within a week. That is why `paintScene` takes a
+     * scene, a palette, a `t` and a box, and needs no React and no world.
+     *
+     * **A row per scene, five frames across it**, at 0, 1, 2, 4 and 8 seconds,
+     * and the ten places are tinted through `paletteOf` exactly as the panel in
+     * the plate tints them — a place's scene is authored with no colour in it at
+     * all and takes every bit of it from the Sefirah, so photographing them on
+     * the plain theme would be photographing something nobody sees.
+     * A single still cannot show motion and a video cannot be compared, so the
+     * strip is the same instrument P8 built for the gaits: a row of keys is how
+     * animators have always judged a walk, and it caught a figure doing the
+     * splits that sixty frames a second had hidden. Eight seconds is on the end
+     * deliberately — it is where a `once` drift has long since landed, and the
+     * fall is meant to *stay* fallen.
+     *
+     * And **both grounds**, because a scene is painted entirely out of the
+     * palette and the two are not the same picture with different numbers: on
+     * vellum `ink` is the text colour and on charcoal it is the background. That
+     * is the exact shape of the bug P8 shipped, and this is the sheet that would
+     * have caught it.
+     */
+    warp: {},
+    noPlay: true,
+    enter: async (page) => {
+      await pastThePrologue(page);
+      const write = async (name, dataUrl) => {
+        await writeFile(join(outDir, name), Buffer.from(dataUrl.split(",")[1], "base64"));
+      };
+      for (const theme of ["dark", "light"]) {
+        await page.evaluate((t) => document.documentElement.setAttribute("data-theme", t), theme);
+        await page.waitForTimeout(150);
+        const sheet = await page.evaluate(async () => {
+          const { paintScene, paintGround } = await import("/src/game/render/scene.ts");
+          const { ALL_SCENES, PLACE_SCENES } = await import("/src/game/render/scenes.ts");
+          const { paletteOf } = await import("/src/game/render/palette.ts");
+          // Which Sefirah each scene is tinted for, so the ten are photographed
+          // in the colour a player actually meets them in — a place's scene is
+          // deliberately authored without colour and gets all of it from here.
+          const placeOf = Object.fromEntries(
+            Object.entries(PLACE_SCENES).map(([sefirah, scene]) => [scene.id, sefirah]),
+          );
+          const { readPalette } = await import("/src/game/render/palette.ts");
+          const base = readPalette();
+
+          // The panel's own aspect, so what is photographed is the composition
+          // a reader gets rather than a crop of it.
+          const W = 300;
+          const H = 120;
+          const AT = [0, 1, 2, 4, 8];
+          const PAD = 4;
+          const LABEL = 16;
+
+          const canvas = document.createElement("canvas");
+          canvas.width = AT.length * (W + PAD) + PAD;
+          canvas.height = ALL_SCENES.length * (H + PAD + LABEL) + PAD;
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = base.bgDeep;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          ALL_SCENES.forEach((scene, row) => {
+            const top = PAD + row * (H + PAD + LABEL);
+            ctx.fillStyle = base.muted;
+            ctx.font = "11px monospace";
+            ctx.fillText(`${scene.id}  ·  ${AT.join("s  ")}s`, PAD, top + 11);
+            AT.forEach((t, col) => {
+              const left = PAD + col * (W + PAD);
+              ctx.save();
+              ctx.translate(left, top + LABEL);
+              ctx.beginPath();
+              ctx.rect(0, 0, W, H);
+              ctx.clip();
+              const here = paletteOf(base, placeOf[scene.id]);
+              paintGround(ctx, here, W, H);
+              paintScene(ctx, scene, here, t, W, H);
+              ctx.restore();
+              ctx.strokeStyle = base.stoneEdge;
+              ctx.lineWidth = 1;
+              ctx.strokeRect(left + 0.5, top + LABEL + 0.5, W - 1, H - 1);
+            });
+          });
+          return canvas.toDataURL("image/png");
+        });
+        await write(`scenes-${theme}.png`, sheet);
+      }
+      await page.evaluate(() => document.documentElement.removeAttribute("data-theme"));
+    },
+    until: () => true,
+    seconds: 20,
+  },
+  {
+    name: "panel-still",
+    about: "The panel under prefers-reduced-motion — a composed still, and a different one per page.",
+    /**
+     * **A still, not a blank**, which is a claim only a browser can settle.
+     *
+     * `SceneCanvas` reads `matchMedia("(prefers-reduced-motion: reduce)")` once
+     * at mount and, if it matches, never starts the loop — it paints one frame
+     * at the scene's own authored `still`. `scene.test.ts` can say that frame
+     * has a picture in it, because it calls the painter directly. What it
+     * cannot say is whether the *component* takes that branch, and the branch
+     * has three ways to fail silently: the media query read at the wrong time,
+     * the single paint racing a canvas that has no size yet, and the still
+     * being painted once for the whole plate rather than once per page. All
+     * three end in an empty box for exactly the readers who asked for less
+     * movement and will never see the sheet the rest of this file produces.
+     *
+     * `reducedMotion` is a *context* setting in Playwright, fixed before the
+     * first paint, so this has to be its own script rather than a passage in
+     * another one.
+     *
+     * Three claims, and the third is the one that catches the frozen-canvas
+     * failure: the picture does not change over a second, it is not the blank
+     * canvas, and turning the page paints a *different* still.
+     */
+    warp: {},
+    noPlay: true,
+    motion: "reduce",
+    enter: async (page) => {
+      await tellItAgain(page);
+      await page.getByRole("button", { name: /^Begin/ }).first().click();
+      await page.waitForTimeout(700);
+
+      const shot = () =>
+        page.evaluate(() => {
+          const canvas = document.querySelector('[role="dialog"] canvas[role="img"]');
+          if (!canvas) return null;
+          const blank = document.createElement("canvas");
+          blank.width = canvas.width;
+          blank.height = canvas.height;
+          return {
+            picture: canvas.toDataURL("image/png"),
+            blank: blank.toDataURL("image/png"),
+            size: [canvas.width, canvas.height],
+          };
+        });
+
+      const first = await shot();
+      if (!first) throw new Error("the prologue plate has no scene in it");
+      if (first.size[0] < 2 || first.size[1] < 2) {
+        throw new Error(`the panel is ${first.size.join("×")} — it never got a size`);
+      }
+      if (first.picture === first.blank) throw new Error("the still is an empty box");
+
+      await page.waitForTimeout(1100);
+      const again = await shot();
+      if (again.picture !== first.picture) {
+        throw new Error("the panel is still moving for a reader who asked it not to");
+      }
+      await page.screenshot({ path: join(outDir, "panel-still-1.png") });
+
+      // ...and it is a still *of this page*, not one paint that outlived the
+      // scene it was for.
+      await page.keyboard.press("Enter");
+      await page.waitForTimeout(600);
+      const turned = await shot();
+      if (!turned) throw new Error("the second page has no scene in it");
+      if (turned.picture === first.picture) {
+        throw new Error("turning the page did not repaint the still");
+      }
+      await page.screenshot({ path: join(outDir, "panel-still-2.png") });
+      return { size: first.size, still: true };
+    },
+    until: () => true,
+    seconds: 40,
+  },
+  {
+    name: "panel-phone",
+    about: "The prologue and the first sight of the kingdom at 390px — the new layout, on the screen it is played on.",
+    /**
+     * **The panel is new layout, and layout is the one thing the sheet cannot
+     * photograph.** `scenes` draws the painter into a canvas of its own choosing
+     * at whatever aspect it likes; this asks the shipped page what the panel
+     * actually came out as when a plate of six lines of prose is above the fold
+     * of a 390-wide phone.
+     *
+     * It is a fixed width rather than the global `--phone`, because this script
+     * is *about* the narrow case: a layout arm that only ran when somebody
+     * remembered a flag is an arm that runs on a desk.
+     *
+     * Two named traps from the phase, checked rather than assumed. **A plate
+     * that grows past the screen** — `PlateOverlay` scrolls its body because
+     * the crowning once overflowed, and a picture plus six paragraphs is the
+     * same risk again; so nothing may overflow *horizontally*, at the page or
+     * at the dialog, and the panel may not eat the plate. And **the panel is a
+     * second canvas with a frame cost** — P6 measured the tile loop at 71% of
+     * the drawing on a throttled phone, so the scene painter is timed here at
+     * the size the panel really is, which is what `--phone --cpu=8` is for.
+     *
+     * It also carries the other half of `panel-still`'s claim: with motion
+     * allowed, the same panel **does** move. Without it, a component that
+     * painted one frame and died would pass the reduced-motion arm perfectly.
+     */
+    warp: {},
+    noPlay: true,
+    screen: { width: 390, height: 844 },
+    enter: async (page) => {
+      await tellItAgain(page);
+      await page.getByRole("button", { name: /^Begin/ }).first().click();
+      await page.waitForTimeout(700);
+
+      const measured = [];
+      const laidOut = async (name) => {
+        const m = await page.evaluate(() => {
+          const dialog = document.querySelector('[role="dialog"]');
+          const canvas = dialog?.querySelector('canvas[role="img"]');
+          const button = [...(dialog?.querySelectorAll("button") ?? [])].find(
+            (b) => /Go on|Begin the ascent/.test(b.textContent ?? ""),
+          );
+          const box = (el) => {
+            if (!el) return null;
+            const r = el.getBoundingClientRect();
+            return [r.left, r.top, r.width, r.height].map((n) => Math.round(n));
+          };
+          return {
+            page: [document.documentElement.scrollWidth, window.innerWidth],
+            dialog: dialog ? [dialog.scrollWidth, dialog.clientWidth] : null,
+            panel: box(canvas),
+            button: box(button),
+            viewport: [window.innerWidth, window.innerHeight],
+          };
+        });
+        if (!m.panel) throw new Error(`${name}: the plate has no scene in it`);
+        if (m.page[0] > m.page[1]) {
+          throw new Error(`${name}: the page is ${m.page[0]}px wide in a ${m.page[1]}px window`);
+        }
+        if (m.dialog[0] > m.dialog[1]) {
+          throw new Error(`${name}: the plate is ${m.dialog[0]}px wide in a ${m.dialog[1]}px box`);
+        }
+        if (m.panel[3] < 60) throw new Error(`${name}: the panel is ${m.panel[3]}px tall`);
+        // A picture that takes half the screen on a phone is not an
+        // establishing shot, it is the plate.
+        if (m.panel[3] > m.viewport[1] * 0.45) {
+          throw new Error(`${name}: the panel is ${m.panel[3]}px of a ${m.viewport[1]}px screen`);
+        }
+        measured.push({ at: name, ...m });
+        return m;
+      };
+
+      // The panel moves when nobody has asked it not to — the other half of
+      // `panel-still`, and the reason that script's pass means anything.
+      const frame = () =>
+        page.evaluate(() =>
+          document.querySelector('[role="dialog"] canvas[role="img"]')?.toDataURL("image/png"),
+        );
+      const before = await frame();
+      await page.waitForTimeout(700);
+      if ((await frame()) === before) throw new Error("the panel is a still with motion allowed");
+
+      /**
+       * **What a frame of the panel costs**, at the size the panel really is on
+       * this screen and through the shipping painter out of the dev server.
+       * Every scene in turn rather than the one that happens to be up, because
+       * the number worth writing down is the worst of the sixteen.
+       */
+      const cost = await page.evaluate(async () => {
+        const { paintScene, paintGround } = await import("/src/game/render/scene.ts");
+        const { ALL_SCENES, PLACE_SCENES } = await import("/src/game/render/scenes.ts");
+        const { paletteOf, readPalette } = await import("/src/game/render/palette.ts");
+        const live = document.querySelector('[role="dialog"] canvas[role="img"]');
+        const rect = live.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const off = document.createElement("canvas");
+        off.width = Math.round(rect.width * dpr);
+        off.height = Math.round(rect.height * dpr);
+        const ctx = off.getContext("2d");
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const placeOf = Object.fromEntries(
+          Object.entries(PLACE_SCENES).map(([sefirah, scene]) => [scene.id, sefirah]),
+        );
+        const base = readPalette();
+        const all = [];
+        // **Per scene, and only then pooled.** A p95 taken across sixteen
+        // different pictures is the cost of the expensive ones wearing the
+        // name of the average, and it names nothing that could be changed.
+        const each = ALL_SCENES.map((scene) => {
+          const palette = paletteOf(base, placeOf[scene.id]);
+          const ms = [];
+          for (let i = 0; i < 24; i += 1) {
+            const began = performance.now();
+            ctx.clearRect(0, 0, rect.width, rect.height);
+            paintGround(ctx, palette, rect.width, rect.height);
+            paintScene(ctx, scene, palette, i / 6, rect.width, rect.height);
+            ms.push(performance.now() - began);
+          }
+          all.push(...ms);
+          ms.sort((a, b) => a - b);
+          const round = (v) => Math.round(v * 1000) / 1000;
+          return { id: scene.id, p50: round(ms[12]), worst: round(ms.at(-1)) };
+        });
+        all.sort((a, b) => a - b);
+        const at = (q) => Math.round(all[Math.floor(all.length * q)] * 1000) / 1000;
+        each.sort((a, b) => b.p50 - a.p50);
+        return {
+          css: [Math.round(rect.width), Math.round(rect.height)],
+          backing: [off.width, off.height],
+          paints: all.length,
+          p50: at(0.5),
+          p95: at(0.95),
+          worst: Math.round(all.at(-1) * 1000) / 1000,
+          dearest: each.slice(0, 4),
+        };
+      });
+
+      /**
+       * **Half a frame, whatever machine this is.** The bar is stated against
+       * the sixty-a-second budget rather than against a number this run
+       * happened to produce, which is what makes it mean the same thing at
+       * `--cpu=8` as at `--cpu=1`: the throttle multiplies the cost, so a panel
+       * that fits in half a frame on a throttled phone core fits everywhere.
+       *
+       * There is real headroom under it and that is deliberate — a bar drawn at
+       * the last measurement is a bar that fails on the next machine, which is
+       * exactly the mistake `fight.test.ts` made when it drew a ceiling from
+       * the defect it was supposed to catch.
+       */
+      if (cost.p95 > 1000 / 60 / 2) {
+        throw new Error(
+          `a frame of the panel is ${cost.p95}ms at the 95th percentile (cpu ÷${CPU}), ` +
+            `over half of a 16.7ms frame — dearest: ` +
+            cost.dearest.map((d) => `${d.id} ${d.p50}ms`).join(", "),
+        );
+      }
+
+      /**
+       * The prologue, page by page, photographed at the width it is read at —
+       * and bounded by **the page dots** rather than by the button.
+       *
+       * "Go on" is the button on the first sight too, so a loop that turned
+       * every "Go on" walked straight through the kingdom and then complained
+       * that the kingdom was never seen. The dots carry
+       * `aria-label="Page n of 6"` and belong to the prologue alone, which
+       * makes them both the fence and the label.
+       */
+      for (let turned = 0; turned < 12; turned += 1) {
+        const dots = page.locator('[role="dialog"] [aria-label^="Page "]');
+        if (!(await dots.count())) break;
+        await laidOut((await dots.first().getAttribute("aria-label")) ?? `prologue ${turned + 1}`);
+        await page.screenshot({ path: join(outDir, `panel-phone-${turned + 1}.png`) });
+        await page.keyboard.press("Enter");
+        await page.waitForTimeout(350);
+      }
+
+      /**
+       * **And the kingdom seen from outside**, which is the other plate this
+       * phase built and the only one of the ten a script can reach without
+       * walking a path: Malchut is where a Scribe starts, so its first sight
+       * plays at Begin, after the prologue's last page.
+       */
+      const sight = page.getByRole("button", { name: /^Go on$/ });
+      await sight.first().waitFor({ state: "visible", timeout: 6000 }).catch(() => {});
+      const said = await page
+        .locator('[role="dialog"]')
+        .innerText()
+        .catch(() => "");
+      // Case-insensitively: the kicker is upper-cased in CSS, and `innerText`
+      // reports the transformed text rather than the authored string.
+      if (!/you come to/i.test(said)) {
+        throw new Error(`the kingdom was never seen: ${said.slice(0, 80)}`);
+      }
+      await laidOut("first sight · malchut");
+      await page.screenshot({ path: join(outDir, "panel-phone-first-sight.png") });
+
+      return { cost, measured };
+    },
+    until: () => true,
+    seconds: 60,
+  },
+  {
     name: "bestiary",
     about: "All twenty klipot, in their states, on both grounds — the sheet the creature pass is judged on.",
     /**
@@ -893,11 +1324,13 @@ const SCRIPTS = [
      * filled from the palette's own deep background and the honest question is
      * whether it can be picked out of either.
      *
-     * `bestiary-plate-*.png` draws the same twenty at six times, four states
-     * apiece — whole, struck, half its shells gone, and mid-charge. That is the
-     * picture you author against, and the four states are there because the
-     * roadmap's complaint was precisely that a creature about to charge looks
-     * exactly like one that is not.
+     * `bestiary-plate-*.png` draws the same twenty at six times, six states
+     * apiece — whole, struck, half its shells gone, mid-charge, shut, and shut
+     * *while being struck*. That is the picture you author against, and the
+     * states are there because each was once drawn identically to its
+     * neighbour: a creature about to charge looked exactly like one that is
+     * not, and a blow that a shut creature turned aside looked exactly like a
+     * blow that took a shell off it.
      *
      * And **both themes**, because the game ships a charcoal ground and a
      * vellum one and a klipah is drawn entirely out of the palette.
@@ -941,7 +1374,7 @@ const SCRIPTS = [
               home: { x: 3, y: 0 },
               cooldown: 0,
               charging: state === "charging" ? 20 : 0,
-              struck: state === "struck" ? 6 : 0,
+              struck: state === "struck" || state === "shut-struck" ? 6 : 0,
             };
           };
 
@@ -975,7 +1408,16 @@ const SCRIPTS = [
                 ctx.save();
                 ctx.translate(cx + CELL / 2, cy + CELL / 2 - 6);
                 ctx.scale(PLAY, PLAY);
-                paintHusk(ctx, stand(kind, "whole"), base, 0);
+                // **Open on the sky band, shut on the stone band.** The two
+                // bands were the same picture twice against two grounds, which
+                // answered "can it be picked out" and could not answer "can its
+                // state be read" — and the second is the question P14 turns on.
+                // The plate sheet at six times is where a tell is authored; this
+                // is the only place that can say whether it survives being
+                // twenty-seven pixels, which is the size it is actually played
+                // at. The two questions still both get answered, because a shut
+                // klipah is the same silhouette with a ring round it.
+                paintHusk(ctx, stand(kind, "whole"), base, 0, band === 1);
                 ctx.restore();
                 ctx.fillStyle = base.muted;
                 ctx.font = "11px monospace";
@@ -984,10 +1426,19 @@ const SCRIPTS = [
             }
             ctx.fillStyle = base.gold;
             ctx.font = "bold 13px monospace";
-            ctx.fillText("against sky (top) and stone (bottom), at play zoom", 8, ROWS * CELL * 2 + 17);
+            ctx.fillText("open against sky (top), shut against stone (bottom), at play zoom", 8, ROWS * CELL * 2 + 17);
           });
 
-          const STATES = ["whole", "struck", "opened", "charging"];
+          // **Six, and the last two are the pair P14c exists for.** `shut` is
+          // a klipah no mark can take a shell off — the two great ones' own
+          // condition today, and eighteen more kinds' as P14d lands them — and
+          // `shut-struck` is the one that matters most, because `strikeHusk`
+          // sets `struck` on a blow that was turned aside exactly as on one
+          // that landed. Those two cells side by side with `struck` are the
+          // whole judgement: gold means a shell came off, silver means it did
+          // not, and if a sheet cannot show that at six times it will not show
+          // it at twenty-seven pixels either.
+          const STATES = ["whole", "struck", "opened", "charging", "shut", "shut-struck"];
           const BIG = 6;
           const ROW = 136;
           const COL = 132;
@@ -1013,7 +1464,7 @@ const SCRIPTS = [
                 ctx.save();
                 ctx.translate(cx + (COL - 8) / 2, cy + (ROW - 8) / 2);
                 ctx.scale(BIG, BIG);
-                paintHusk(ctx, stand(kind, state), base, 0);
+                paintHusk(ctx, stand(kind, state), base, 0, state.startsWith("shut"));
                 ctx.restore();
               });
             });
@@ -1109,6 +1560,19 @@ const overrides = Object.fromEntries(
 const seconds = flag("seconds", undefined);
 
 /**
+ * `--motion=no-preference` — how to check that `panel-still` can fail.
+ *
+ * A script that asserts a picture holds still is worthless if it would pass
+ * anyway, and there is no way to find that out from inside: `prefers-reduced-
+ * motion` is fixed on the context before the first paint, so it cannot be
+ * toggled mid-run. This overrides it, and running that one arm with it must
+ * come back "the panel is still moving for a reader who asked it not to". It is
+ * the same argument as `?faces=0` in P6 — an A/B switch that was itself broken
+ * once, and reported the atlas as worthless.
+ */
+const motion = flag("motion", undefined);
+
+/**
  * **What machine this is pretending to be.**
  *
  * `--phone` is a 390×844 viewport at three device pixels to the CSS pixel with
@@ -1127,6 +1591,7 @@ const scripts = (wanted.length ? SCRIPTS.filter((s) => wanted.includes(s.name)) 
     ...s,
     warp: { ...s.warp, ...overrides },
     seconds: seconds ? Number(seconds) : s.seconds,
+    motion: motion ?? s.motion,
   }),
 );
 if (!scripts.length) {
@@ -1427,13 +1892,25 @@ const TAP_KEYS = ["act", "dash", "strike"];
 // --- a run -------------------------------------------------------------------
 
 async function play(script, browser) {
+  /**
+   * **Two things a script may say about the machine it wants**, and both exist
+   * for the same reason: they are settings of the *context*, fixed before the
+   * first paint, so no amount of driving can reach them afterwards.
+   *
+   * `screen` is a width a script is *about* rather than one a run is taken on —
+   * `--phone` is the global for "take these numbers on a handset", and a layout
+   * arm has to be narrow whether or not anybody passed it. `motion` is
+   * `prefers-reduced-motion`, which Playwright can only set here, and which
+   * `SceneCanvas` reads once at mount.
+   */
+  const screen = script.screen ?? SCREEN;
   const context = await browser.newContext({
-    viewport: SCREEN,
+    viewport: screen,
     deviceScaleFactor: DPR,
     isMobile: PHONE,
     hasTouch: PHONE,
-    recordVideo: has("no-video") ? undefined : { dir: outDir, size: SCREEN },
-    reducedMotion: "no-preference",
+    recordVideo: has("no-video") ? undefined : { dir: outDir, size: screen },
+    reducedMotion: script.motion ?? "no-preference",
   });
   const page = await context.newPage();
 
@@ -1464,9 +1941,14 @@ async function play(script, browser) {
   // A script may have to *walk in* rather than warp in — the overworld is
   // reached by beginning a climb and choosing a way, and no query string
   // expresses that.
+  // Whatever `enter` came back with is kept: a script that measures something
+  // rather than playing it has nowhere else to put its findings, and a number
+  // printed to a console and not written down is a number nobody can compare
+  // against next month.
+  let found;
   if (script.enter) {
     await page.waitForTimeout(600);
-    await script.enter(page);
+    found = await script.enter(page);
     await page.waitForTimeout(600);
   } else if (Object.keys(script.warp ?? {}).length > 0) {
     // A warp stands the Scribe on the Tree; a rung is chosen, never given.
@@ -1481,7 +1963,7 @@ async function play(script, browser) {
    * failed on "the probe never appeared", which was true and beside the point.
    */
   if (script.noPlay) {
-    return {
+    const report = {
       script: script.name,
       about: script.about,
       warp: script.warp,
@@ -1490,9 +1972,18 @@ async function play(script, browser) {
       captions: [],
       plates: [],
       letters: [],
+      found,
       errors,
       ended: "the script asked for nothing to be played",
     };
+    // **Written down and closed up**, both of which this branch used to skip:
+    // `book` and `scenes` left no JSON at all — so the one script whose whole
+    // output is a measurement had nowhere to put it — and left their context
+    // open, which on a set run holds every page of every no-play script alive
+    // until the browser closes.
+    await writeFile(join(outDir, `${script.name}.json`), `${JSON.stringify(report, null, 2)}\n`);
+    await context.close();
+    return report;
   }
 
   // Wait for the probe to answer, which is also the check that the warp took.
@@ -1528,6 +2019,7 @@ async function play(script, browser) {
     captions: [],
     plates: [],
     letters: [],
+    found,
     errors,
   };
   const shots = [];

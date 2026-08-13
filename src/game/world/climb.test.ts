@@ -129,6 +129,21 @@ interface Ledger {
  * count is actually worth is printed in the assertion messages, where a drift
  * can be read before it is a failure.
  */
+/**
+ * **How many walks the probe is allowed**, and it was two hundred until the
+ * klipot stopped coming apart at the first word.
+ *
+ * Re-measured rather than nudged: on the three seeds here the tour now costs
+ * about thirty-five, about ninety and **four hundred and two** walks, and the
+ * expensive one spends them on *falls* — three hundred and eighty of them. That
+ * is not a longer tour, it is this pair of hands standing next to a klipah for
+ * two marks instead of one and being hit for it. A person is not this bot.
+ *
+ * So the number is the probe's patience rather than the game's difficulty, and
+ * it is drawn clear of the worst seed rather than against it. Checked at nine
+ * hundred, where every seed converges comfortably; five hundred is the smallest
+ * round number above the measurement with real headroom.
+ */
 const CAP = 200;
 
 const fresh = (): Ledger => ({

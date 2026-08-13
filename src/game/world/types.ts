@@ -31,7 +31,13 @@ export type EntityKind =
   /** A hidden thing in its chamber, kept past the seal — see `relics.ts`. */
   | "relic"
   /** Where a road divides. Resh returns you here. */
-  | "fork";
+  | "fork"
+  /**
+   * **The floor of a chamber that was never a chamber** — see `GATE_FALL`.
+   * Touching it ends the rung the way the last lamp does: the light in hand
+   * goes out, and the Scribe wakes at the highest Sefirah still lit.
+   */
+  | "opening";
 
 export interface Entity {
   id: string;
@@ -152,6 +158,21 @@ export interface Mark extends Body {
   /** Whether it turns for home when its life runs out, and whether it has. */
   returns?: boolean;
   turned?: boolean;
+  /**
+   * **What it has already gone through**, so a piercing mark cannot bite the
+   * same shell twice.
+   *
+   * A mark that does not pierce is consumed by the thing it hits, which ends
+   * the question. A piercing one is not — and nothing stopped it striking the
+   * *same* husk again on the next tick, while it was still passing through the
+   * body. Measured on the bench: a Scribe holding Chet broke eighteen of the
+   * twenty in four to six ticks with a single mark, klipot with five and six
+   * shells among them, because one mark was landing five hits.
+   *
+   * Piercing means the mark carries on to what is behind it. It has never meant
+   * a drill.
+   */
+  through?: string[];
   /** The letter written, for the renderer. */
   glyph: string;
 }

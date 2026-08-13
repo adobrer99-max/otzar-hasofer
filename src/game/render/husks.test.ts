@@ -3,6 +3,7 @@ import { HUSKS, type HuskKind } from "../combat";
 import type { Husk } from "../world/types";
 import { alpha, readPalette } from "./palette";
 import { CREATURES, gaitOf, paintHusk, type Point } from "./husks";
+import { recorder } from "./testCanvas";
 
 /**
  * **A bestiary you can tell apart.**
@@ -249,33 +250,6 @@ describe("the walk", () => {
 });
 
 /**
- * **A recording canvas**, because the interesting claims about `paintHusk` are
- * claims about what it *draws* and nothing in this suite has a canvas: the
- * renderer's helpers run under node. Every call and every style set is written
- * down in order, which is enough to say whether two pictures are the same
- * picture without being able to look at either.
- */
-function recorder(): { ctx: CanvasRenderingContext2D; log: () => string } {
-  const calls: string[] = [];
-  const round = (v: unknown) => (typeof v === "number" ? Math.round(v * 100) / 100 : v);
-  const target = {} as Record<string, unknown>;
-  const ctx = new Proxy(target, {
-    get(_, prop: string) {
-      if (prop in target) return target[prop];
-      return (...args: unknown[]) => {
-        calls.push(`${prop}(${args.map(round).join(",")})`);
-      };
-    },
-    set(_, prop: string, value) {
-      target[prop] = value;
-      calls.push(`${prop}=${String(value)}`);
-      return true;
-    },
-  }) as unknown as CanvasRenderingContext2D;
-  return { ctx, log: () => calls.join("\n") };
-}
-
-/**
  * **No state may look like another** — which is the fault this phase was built
  * to find, and it could only be found by looking.
  *
@@ -335,6 +309,45 @@ describe("the states a klipah can be in", () => {
           );
         }
         drawn.set(state, picture);
+      }
+    }
+  });
+
+  /**
+   * **And a fifth state, which is the one the shipped game had no picture for.**
+   *
+   * `strikeHusk` sets `struck` on *every* blow, including the ones on an
+   * unopened great one — where it takes no shell and exists only to drag
+   * Leviathan landward. So a mark on a creature that cannot yet be hurt flashed
+   * the same gold rim as a mark that took a shell off it, and a player throwing
+   * at a submerged Leviathan or an un-stopped Behemoth could not tell the fight
+   * from the futility. This is P8's charging fault again, exactly: a state the
+   * player has something to do about, drawn identically to the state they do
+   * not.
+   *
+   * Asserted for **every** kind rather than for the two that are conditional
+   * today, because `paintHusk` takes the answer rather than deriving it, and
+   * P14d's whole job is to make more kinds pass `true`. A creature whose shut
+   * picture is its open picture would ship as a creature nobody can read.
+   *
+   * A difference rather than a particular picture — the rule P8 settled — so it
+   * survives any retune of what the three channels actually draw.
+   */
+  it("draws a shut klipah differently from an open one, struck or not", () => {
+    for (const kind of kinds) {
+      for (const state of ["whole", "struck"] as const) {
+        const shot = (shut: boolean) => {
+          const { ctx, log } = recorder();
+          paintHusk(ctx, stand(kind, state), readPalette(), 0, shut);
+          return log();
+        };
+        const open = shot(false);
+        const closed = shot(true);
+        expect(closed.length, `a shut ${kind} drew nothing at all`).toBeGreaterThan(0);
+        expect(
+          closed,
+          `a ${kind} that is shut looks exactly like one that is open, while ${state}`,
+        ).not.toBe(open);
       }
     }
   });

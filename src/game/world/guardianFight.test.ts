@@ -79,7 +79,27 @@ export function duel(sefirah: SefirahId, seed: number, budget = 24000, ctx: Step
     // a person does — and in Yesod it is the whole fight, because the Nefilim
     // does nothing at all until someone is underneath it.
     const above = beast.y + beast.h < p.y;
-    const far = Math.abs(dx) > TILE_SIZE * (above ? 1 : 7);
+    /**
+     * **How far above is above.** Getting underneath a thing is right for the
+     * Nefilim, which hangs from a ceiling within reach and does nothing at all
+     * until somebody is beneath it. It is exactly wrong for the Ziz, which
+     * holds a roof eight tiles up: a mark aimed up climbs *diagonally*, so from
+     * directly underneath there is no throw that arrives, at any reach — and
+     * the probe, closing to one tile and then throwing straight up forever, was
+     * standing in the only place in the room that cannot work.
+     *
+     * That was invisible while a piercing mark re-struck the same body every
+     * tick it was inside it: the one contact the approach gave took all six
+     * shells at once, so the fight ended before the bad position mattered. With
+     * one hit per mark it needs three windows, and there were none.
+     *
+     * You cannot chase a bird. Held still, the Ziz crosses overhead on its
+     * patrol and passes through throwing distance three times in five hundred
+     * ticks. Four tiles is the line between the two creatures — the Nefilim
+     * hangs inside it, the Ziz well outside.
+     */
+    const high = (p.y - (beast.y + beast.h)) / TILE_SIZE > 4;
+    const far = Math.abs(dx) > TILE_SIZE * (above ? 1 : 7) && !high;
     const aheadX = Math.floor((p.x + p.w / 2) / TILE_SIZE) + towards;
     const footRow = Math.floor((p.y + p.h + 1) / TILE_SIZE);
     const waterAhead =

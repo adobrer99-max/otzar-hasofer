@@ -677,6 +677,15 @@ export function paintHusk(
   husk: Husk,
   palette: Palette,
   tick: number,
+  /**
+   * **Whether a mark would take a shell off it right now** — `opened()` in
+   * `step.ts`, asked by `draw.ts` because it is a question about the room and
+   * this painter is deliberately given none.
+   *
+   * Defaulted to open, which is what eighteen of the twenty kinds are at every
+   * moment of their lives; the two that are not are the great ones.
+   */
+  shut = false,
 ): void {
   const spec = HUSKS[husk.kind];
   const creature = CREATURES[husk.kind];
@@ -767,6 +776,45 @@ export function paintHusk(
    * small, and it cannot be mistaken for a hit: `struck` is a hard gold rim on
    * the body itself and lasts six ticks.
    */
+  /**
+   * **Sealed, and it needs a ring of its own** — the third channel, and the
+   * first attempt at it was not enough.
+   *
+   * The two signals below — no trapped light showing through, and a heavier
+   * cold outline — were tried alone and photographed on the plate sheet at six
+   * times. `shut` against `whole` was a slightly thicker grey edge and a
+   * missing dark-gold smudge: arguable magnified, and certainly invisible at
+   * the twenty-seven pixels a klipah actually occupies. The pair that *did*
+   * read was `struck` against `shut-struck`, gold against silver — but that
+   * only tells a player what happened **after** they have spent a mark, and the
+   * state worth knowing is the one before.
+   *
+   * So a ring, for the reason P8 settled: a halo is the only channel that
+   * survives being small. It is **static and pale** against `charging`'s
+   * **pulsing and gold**, and the two are *nested* rather than concentric at
+   * the same radius: this hugs the silhouette at 0.52 and the charge beats
+   * outside it from 0.58. A Behemoth mid-charge is shut, so both are drawn at
+   * once and they have to stay two things.
+   *
+   * **Hugging is the second correction.** It was laid outside the charge at
+   * 0.74 first, which is one and a half times the draw box — on a creature
+   * whose box is two and a half times its body, that is a flat oval spanning
+   * several tiles, and the scale sheet showed Leviathan and Behemoth wearing
+   * one permanently. A transient halo can afford to be enormous; a state a
+   * creature spends most of its life in cannot.
+   */
+  if (shut) {
+    // Photographed on both grounds: pale-on-charcoal is the easy one, and on
+    // vellum the same ring sits on tan stone with less margin, so it is opened
+    // up rather than left at the value that happened to satisfy the dark sheet
+    // — which is the mistake the klipot's own fill made for a whole phase.
+    ctx.strokeStyle = alpha(palette.silver, 0.62);
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, dw * 0.52, dh * 0.52, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
   if (husk.charging > 0) {
     const beat = 0.55 + 0.45 * Math.sin(tick / 3);
     ctx.strokeStyle = alpha(lit, 0.25 + 0.45 * beat);
@@ -791,13 +839,45 @@ export function paintHusk(
    * breaking" is the cracks and the thinning body, which are on top of the
    * picture rather than under it.
    */
-  ctx.fillStyle = alpha(lit, 0.14 + opened * 0.3 + (husk.charging > 0 ? 0.22 : 0));
-  ctx.beginPath();
-  ctx.arc(cx, cy, husk.w * (0.24 + (husk.charging > 0 ? 0.07 : 0)), 0, Math.PI * 2);
-  ctx.fill();
+  /**
+   * **And it does not show through at all while the shell is shut**, which is
+   * the first of the three things that say so.
+   *
+   * This is the existing channel read the way it was always written: the light
+   * is visible *because the shell is giving way*, and a klipah no mark can open
+   * is not giving way. It costs no new ink, which matters at twenty-seven
+   * pixels — P8's pass that gave every creature a bright symbol produced twenty
+   * blobs wearing twenty badges, and the lesson was that a small picture has
+   * room for a state and no room for a legend.
+   */
+  if (!shut) {
+    ctx.fillStyle = alpha(lit, 0.14 + opened * 0.3 + (husk.charging > 0 ? 0.22 : 0));
+    ctx.beginPath();
+    ctx.arc(cx, cy, husk.w * (0.24 + (husk.charging > 0 ? 0.07 : 0)), 0, Math.PI * 2);
+    ctx.fill();
+  }
 
-  const bodyRim = husk.struck > 0 ? lit : alpha(rim, 0.95);
+  /**
+   * **A blow that was turned aside must not look like a blow that landed** —
+   * the second of the three, and the one that fixes a gap in the *shipped*
+   * game rather than a future one.
+   *
+   * `struck` is set by `strikeHusk` on every hit, including the ones on an
+   * unopened great one, where it takes no shell and exists only to drag
+   * Leviathan landward. So a mark on a submerged Leviathan or an un-stopped
+   * Behemoth flashed exactly the same gold rim as a mark that took a shell off
+   * it, and a player throwing at either had no way to tell the fight from the
+   * futility. Gold now means a shell came off. Silver means it turned.
+   *
+   * The third is the casing below: while it is shut the outline is heavier and
+   * cold, which is a *static* pale edge on the silhouette and cannot be read as
+   * either the six-tick gold rim or `charging`'s pulsing gold halo outside the
+   * body. Three channels, three states, no new vocabulary.
+   */
+  const bodyRim = husk.struck > 0 ? (shut ? palette.silver : lit) : alpha(rim, shut ? 1 : 0.95);
   const bodyInk = alpha(ink, 0.9 - opened * 0.3);
+  /** How hard the casing reads. In world units, so it is the same on a Locust. */
+  const casing = shut ? 3.4 : 2;
 
   /**
    * **The limbs go down first**, so a body laid over them hides the joint and a
@@ -815,7 +895,7 @@ export function paintHusk(
     // pivots hold them where they are.
     const sink = limb.move?.on === "tick" ? 0 : drop;
     for (const [style, extra] of [
-      [bodyRim, 4],
+      [bodyRim, shut ? 6 : 4],
       [bodyInk, 0],
     ] as const) {
       ctx.strokeStyle = style;
@@ -833,7 +913,7 @@ export function paintHusk(
   // Then the masses — a torso, a head, a wing, a coil.
   ctx.strokeStyle = bodyRim;
   ctx.fillStyle = bodyInk;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = casing;
   for (const mass of creature?.masses ?? []) {
     trace(ctx, mass.poly, (fx, fy) => place(fx, fy, mass.move, drop), mass.smooth === true);
     ctx.fill();

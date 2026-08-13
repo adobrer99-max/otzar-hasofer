@@ -1,7 +1,7 @@
 import type { Verb } from "../abilities";
 import { routeTo, storeysOf } from "./route";
 import { tileAt } from "./build";
-import { step, type StepContext } from "./step";
+import { answerable, step, type StepContext } from "./step";
 import { CHUNK_H } from "./chunks";
 import { Tile, TILE_SIZE } from "./tiles";
 import { NO_INPUT, type Input, type World } from "./types";
@@ -685,6 +685,23 @@ export interface Fight {
   lampsLeft: number;
   broken: number;
   standing: number;
+  /**
+   * **Shells actually taken off, which is the same question as `broken` asked
+   * so the shell count cannot answer it.**
+   *
+   * A share of husks broken is a share of a fixed tick budget, so it falls when
+   * the klipot merely get sturdier and falls when the marks stop landing, and
+   * nothing in it tells those apart — raising every kind by one shell dropped
+   * the worst rung's share from a third to a sixth without a single mark
+   * behaving differently. Shells taken rises with the table instead of falling
+   * with it, so a band on it measures the marks. See `fight.test.ts`.
+   *
+   * Counted as the per-tick fall in the shells still standing, so it takes no
+   * new field on `World`. Only decreases count, which means a tick that both
+   * lays a klipah and takes a shell off another one is missed — the figured
+   * stone's pacer is the only thing that lays one mid-rung, so this is a floor.
+   */
+  shellsTaken: number;
   veilings: number;
   ticks: number;
   /**
@@ -720,7 +737,22 @@ export interface Fight {
  * the rows came on: eight runs in ten went out in Gevurah, none of it about the
  * fight.
  */
-export function fighter(world: World, ctx: StepContext, ticks: number): Fight {
+export function fighter(
+  world: World,
+  ctx: StepContext,
+  ticks: number,
+  /**
+   * **`fights: false` is the runner** — the identical walker with the writing
+   * hand taken away, and nothing else changed. It exists to answer a complaint
+   * from play that no probe in this file could: *most of the small klipot can
+   * simply be run past*. That is a question about the difference between two
+   * Scribes on the same ground, and the only honest way to ask it is with one
+   * driver and one switch. It still gives ground when something is on top of
+   * it, because a runner who walks into things measures suicide rather than
+   * running.
+   */
+  opts: { fights?: boolean } = {},
+): Fight {
   const aim = steering(world, ctx.verbs);
   let best = aim.left(world.player);
   let mark = best;
@@ -728,6 +760,9 @@ export function fighter(world: World, ctx: StepContext, ticks: number): Fight {
   let holdJump = 0;
   let backAway = 0;
   let i = 0;
+  const standingShells = () => world.husks.reduce((a, h) => a + Math.max(0, h.shells), 0);
+  let shellsTaken = 0;
+  let shellsStanding = standingShells();
 
   for (; i < ticks && !world.finished && !world.out; i += 1) {
     const p = world.player;
@@ -765,28 +800,96 @@ export function fighter(world: World, ctx: StepContext, ticks: number): Fight {
     // is what `throwMark` does with it, and a probe that only ever throws flat
     // simply cannot answer what floats: two of the runs that went out had broken
     // *nothing*, because everything that killed them was above the line.
+    /**
+     * **Two nearests, and the split is the whole of what P14a adds.**
+     *
+     * `nearest` is anything close enough to matter and drives the *retreat* —
+     * the two-and-a-half tiles that took the goings-out from 48 of 220 to 29
+     * and the tour's worst seed from 402 walks to 29. That measurement is not
+     * re-opened here: a body still gives ground to whatever is coming at it,
+     * whether or not a mark could touch it.
+     *
+     * `markable` is the subset a mark would actually land on, and it drives the
+     * *throw*. Until now the probe spent marks on a Korach inside the earth and
+     * a Tannin under the water — the mark loop `continue`s past both, so not one
+     * thing happened, and every one of those throws also spent the fifteen ticks
+     * of cooldown that the moment it surfaced needed.
+     *
+     * Split rather than narrowed, deliberately. Making `nearest` itself
+     * answerable-only would have quietly re-tuned the retreat, and the retreat
+     * is the number this probe was most recently fixed by — a change that moves
+     * two things at once measures neither.
+     *
+     * **And measured, it changes nothing at all today, which is the point.**
+     * Over the fight pool's hundred and eighty walks it withholds **1,106
+     * throws** that the old probe made into empty ground — and `broken`,
+     * `standing`, the goings-out, the shells taken and the distance reached come
+     * out *bit-identical*, the last of them to six decimal places. Two reasons,
+     * and both stop being true in P14b: a mark that misses costs only its own
+     * fifteen ticks of cooldown, and the two windows that exist are long enough
+     * to outlast that; and `strike` moves no part of the body, so the walk is
+     * the same walk either way.
+     *
+     * An instrument change made in advance of the thing it is for should be
+     * exactly this — provably inert, so that nothing P14d measures can be laid
+     * at its door. It is the seam rather than the improvement.
+     */
     let nearest: number | undefined;
-    let nearestDy = 0;
+    let markable: number | undefined;
+    let markableDy = 0;
     for (const husk of world.husks) {
       const dx = (husk.x - p.x) * (towards || 1);
       if (dx < -TILE_SIZE || dx > TILE_SIZE * 9) continue;
       const dy = husk.y - p.y;
       if (Math.abs(dy) > TILE_SIZE * 4) continue;
-      if (nearest === undefined || dx < nearest) {
-        nearest = dx;
-        nearestDy = dy;
+      if (nearest === undefined || dx < nearest) nearest = dx;
+      if (!answerable(world, husk)) continue;
+      if (markable === undefined || dx < markable) {
+        markable = dx;
+        markableDy = dy;
       }
     }
-    const aimUp = nearest !== undefined && nearestDy < -TILE_SIZE * 0.75;
-    const aimDown = nearest !== undefined && nearestDy > TILE_SIZE * 0.75;
+    // Aiming is part of throwing, so a Scribe with no mark to throw does not do
+    // it — and it is not idle in this game: `up` is also what begins a climb on
+    // a vine, so a runner pressing it near a klipah would be steering as well as
+    // aiming, and the comparison would be measuring two different walkers.
+    const aiming = opts.fights !== false && markable !== undefined;
+    const aimUp = aiming && markableDy < -TILE_SIZE * 0.75;
+    const aimDown = aiming && markableDy > TILE_SIZE * 0.75;
 
     // Give ground, then stand and write. The retreat has a floor as well as a
     // ceiling: a klipah that keeps walking into you re-triggers the retreat
     // every tick, and a probe that only ever retreats backs down the whole
-    // region without throwing a single mark. Twelve ticks of giving ground,
-    // then at least twelve of standing — which is when the marks go out.
+    // region without throwing a single mark. Ten ticks of giving ground, then
+    // at least fourteen of standing — which is when the marks go out.
+    /**
+     * **Two and a half tiles, and it was one.**
+     *
+     * The probe's fighting became the binding constraint on the game's own
+     * standing proof — the tour cost 402 walks on one seed, 380 of them falls —
+     * so it was opened up and asked how it was dying. Over 220 walks and 246
+     * lamps lost: **241 of them to *contact*, five to a thrown mark, at a
+     * median distance of 1.2 tiles.** It was not being out-fought. It was
+     * walking into things while throwing at them.
+     *
+     * `p.w * 1.5` is twenty-four pixels — one tile, centre to centre, between
+     * two bodies that are sixteen and eighteen wide. By the time it fired the
+     * klipah was already touching. Measured at two and a half tiles: goings out
+     * **48 of 220 to 29**, and the tour's worst seed from 402 walks and 380
+     * falls to **29 walks and 3 falls**. Every band held, and the walk cap came
+     * back down from the five hundred it had needed to the two hundred it was.
+     *
+     * **And giving ground is the whole of the fix — standing off is not.** The
+     * obvious companion was to stop advancing while anything stood inside a
+     * mark's carry, and let it come. It cut the lamps lost further, to 150, and
+     * made the probe *worse*: 2.03 klipot broken a rung against 2.72, no seed
+     * reaching the consummation, and four of six climbs unable to kindle where
+     * they landed. A probe that will not close measures a game nobody plays. It
+     * gives ground and comes straight back.
+     */
     backAway -= 1;
-    if (nearest !== undefined && nearest < p.w * 1.5 && backAway <= -12) backAway = 12;
+    if (nearest !== undefined && nearest < TILE_SIZE * 2.5 && backAway <= -14) backAway = 10;
+
 
     const backingOff = backAway > 0 || (stuckFor > 90 && stuckFor % 150 < 45);
     const wantJump =
@@ -796,6 +899,7 @@ export function fighter(world: World, ctx: StepContext, ticks: number): Fight {
 
     const input: Input = {
       ...NO_INPUT,
+      // Give ground, hold ground, or walk on — in that order.
       right: backingOff ? towards < 0 : towards > 0,
       left: backingOff ? towards > 0 : towards < 0,
       jump: wantJump,
@@ -812,10 +916,15 @@ export function fighter(world: World, ctx: StepContext, ticks: number): Fight {
       // is retreating, so a probe that throws while backing off throws every
       // mark *away* from the thing chasing it. It read as the klipot being
       // brutal and the marks being feeble; it was the bot shooting backwards.
-      strike: !backingOff && nearest !== undefined && p.markCooldown === 0,
+      strike:
+        opts.fights !== false && !backingOff && markable !== undefined && p.markCooldown === 0,
     };
 
     step(world, input, ctx);
+
+    const now = standingShells();
+    if (now < shellsStanding) shellsTaken += shellsStanding - now;
+    shellsStanding = now;
   }
 
   return {
@@ -825,6 +934,7 @@ export function fighter(world: World, ctx: StepContext, ticks: number): Fight {
     lampsLeft: world.player.lamps,
     broken: world.husksBroken,
     standing: world.husks.length,
+    shellsTaken,
     veilings: world.veilings,
     ticks: i,
     or: world.or,

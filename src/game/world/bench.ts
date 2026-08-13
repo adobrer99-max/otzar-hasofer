@@ -1,7 +1,7 @@
 import { abilityByLetter, type Grace, type Verb } from "../abilities";
 import { HUSKS, type HuskKind } from "../combat";
 import { buildRegion, setTile } from "./build";
-import { outOfReach, step, strikeHusk, type StepContext } from "./step";
+import { answerable, harmful, opened, outOfReach, step, strikeHusk, type StepContext } from "./step";
 import { Tile, TILE_SIZE } from "./tiles";
 import { NO_INPUT, type Husk, type World } from "./types";
 
@@ -58,6 +58,37 @@ export interface Trace {
   threwOver: number;
   /** Whether it ever reached the Scribe. */
   touched: boolean;
+  /**
+   * **What the touching cost**, in gathered light.
+   *
+   * Almost every klipah takes a lamp; exactly one — Delilah — takes `or`
+   * instead, which is the whole of that creature and the reason its contact has
+   * no i-frames behind it. The bench could not see it: `touched` records that a
+   * body arrived and nothing recorded what arriving *did*, so the one property
+   * that separates Delilah from any other floater was invisible to the table
+   * that asserts no two kinds are alike.
+   *
+   * It went unnoticed for as long as the shell counts happened to keep the two
+   * traces apart. Raising them collided `nachash` and `delilah` — which read as
+   * the shells breaking the bench and was the bench admitting a hole.
+   */
+  drained: number;
+  /**
+   * **How much of its life it spent over the Scribe's head**, as a share.
+   *
+   * The bench records where a klipah went relative to *where it started* —
+   * `rose` and `fell` — and nothing about where it went relative to the body it
+   * is fighting. Two creatures that both patrol on the level and drop things
+   * underfoot therefore read identically, however differently they are placed:
+   * the Saraf walks the floor and the Ziz holds a roof eight tiles up, out of
+   * an ordinary mark's reach, which is that creature's entire fight.
+   *
+   * It only surfaced when the Ziz stopped tracking the Scribe's column and
+   * simply swept the room, which made its trace a pacer's. The trace was always
+   * a pacer's; the thing that had been hiding it was a behaviour that had to be
+   * removed for the room to be winnable at all.
+   */
+  overhead: number;
   /** Times it turned around. */
   turns: number;
   /**
@@ -162,6 +193,21 @@ function lay(world: World, kind: HuskKind): Husk {
 }
 
 /**
+ * **The room and its one klipah, handed out** — for a test that needs a
+ * creature standing in the element it was authored for and has a question the
+ * seven postures do not answer.
+ *
+ * Exported rather than copied, because the element is half the behaviour and a
+ * second hand-built pool beside this one would drift from it within a phase:
+ * the Tannin's whole rule is about being in water, and a test that laid it on
+ * dry stone would prove whatever it liked.
+ */
+export function laid(kind: HuskKind): { world: World; husk: Husk } {
+  const world = room(kind);
+  return { world, husk: lay(world, kind) };
+}
+
+/**
  * Runs one kind against one posture and writes down what it did.
  *
  * The Scribe is pinned every tick rather than driven, because the question is
@@ -231,6 +277,7 @@ export function bench(kind: HuskKind, posture: Posture, ticks = 420): Trace {
   const startNear = Math.hypot(husk.x - p.x, husk.y - p.y);
   let travelled = 0;
   let moved = 0;
+  let over = 0;
   let rose = 0;
   let fell = 0;
   let turns = 0;
@@ -241,6 +288,10 @@ export function bench(kind: HuskKind, posture: Posture, ticks = 420): Trace {
   let wasX = husk.x;
   let wasShells = husk.shells;
   let selfHarm = 0;
+  // Something to take, so that taking it can be seen. Fifty is plenty and the
+  // number does not matter: what is recorded is how much went.
+  world.or = 50;
+  const purse = world.or;
 
   for (let t = 0; t < ticks; t += 1) {
     place(t);
@@ -260,6 +311,7 @@ export function bench(kind: HuskKind, posture: Posture, ticks = 420): Trace {
     // creature took off itself.
     if (husk.shells < wasShells && posture !== "struck") selfHarm += wasShells - husk.shells;
     wasShells = husk.shells;
+    if (husk.y + husk.h < p.y) over += 1;
     travelled += Math.abs(husk.x - wasX);
     if (Math.abs(husk.x - wasX) > 0.2 || Math.abs(husk.vy) > 20) moved += 1;
     wasX = husk.x;
@@ -285,6 +337,8 @@ export function bench(kind: HuskKind, posture: Posture, ticks = 420): Trace {
     threw,
     threwOver,
     touched,
+    overhead: ROUND(over / ticks),
+    drained: purse - world.or,
     turns,
     selfHarm,
   };
@@ -312,7 +366,13 @@ export function signature(kind: HuskKind): string {
     const air = t.rose > 1 ? "rises" : t.fell > 1 ? "drops" : "level";
     const arms = t.threw === 0 ? "-" : t.threwOver > t.threw / 2 ? "overhead" : "underfoot";
     const own = t.selfHarm > 0 ? "/breaks-itself" : "";
-    return `${posture}:${came}/${busy}/${air}/${arms}/${t.touched ? "reaches" : "-"}${own}`;
+    // What the touching cost, which is the one thing that separates the klipah
+    // that takes gathered light from every other thing that reaches you.
+    const took = t.drained > 0 ? "/drains" : "";
+    // Where it keeps station, which is the difference between a thing that
+    // walks the floor and a thing that holds a roof out of a mark's reach.
+    const held = t.overhead > 0.6 ? "/overhead" : t.overhead > 0.1 ? "/partly-over" : "";
+    return `${posture}:${came}/${busy}/${air}/${arms}/${t.touched ? "reaches" : "-"}${own}${took}${held}`;
   }).join(" ");
 }
 
@@ -343,10 +403,21 @@ const ALL_GRACES: Grace[] = Object.values(abilityByLetter)
  * regions for the whole life of the creature tier and could not be broken by
  * anybody, and every instrument the game had reported it as merely difficult.
  */
-export function breakIn(kind: HuskKind, ticks = 4000): number {
+export function breakIn(
+  kind: HuskKind,
+  ticks = 4000,
+  /**
+   * A narrower hand, for the one question the full alphabet cannot ask: whether
+   * a creature's gate is the *letter* it is said to be. Leviathan opens out of
+   * the water and nowhere else, and Vav is what puts it there — so "can it be
+   * broken" and "can it be broken without the Hook" are two measurements, and
+   * only the second says the lock is real.
+   */
+  verbs: readonly Verb[] = ALL_VERBS,
+): number {
   const world = room(kind);
   const husk = lay(world, kind);
-  const ctx: StepContext = { verbs: ALL_VERBS, graces: ALL_GRACES };
+  const ctx: StepContext = { verbs, graces: ALL_GRACES };
   const p = world.player;
 
   for (let t = 0; t < ticks; t += 1) {
@@ -357,7 +428,20 @@ export function breakIn(kind: HuskKind, ticks = 4000): number {
     // is, is somewhere else. Two tiles off its shoulder and level with its
     // middle — the place a player ends up after chasing it.
     p.x = husk.x - TILE_SIZE * 2;
-    p.y = husk.y + husk.h / 2 - p.h / 2;
+    /**
+     * **...but never inside the earth.** Keeping station is right for a klipah
+     * that hangs from a ceiling or swims; it is nonsense for the one that
+     * travels *under the floor*, and it put the Scribe twelve tiles below the
+     * room with the whole world above his head. That was harmless while the
+     * eruption was measured from his own body — it simply opened wherever he
+     * was — and stopped being harmless the moment it was anchored to the
+     * ground, because there is no ground beneath a Scribe who is under it: the
+     * creature never surfaced at all and read as unbreakable.
+     *
+     * A Scribe stands on things. The floor of the bench is its bottom row.
+     */
+    const standing = (world.height - 1) * TILE_SIZE - p.h;
+    p.y = Math.min(husk.y + husk.h / 2 - p.h / 2, standing);
     p.vx = 0;
     p.vy = 0;
     p.lamps = 99;
@@ -388,20 +472,103 @@ export function breakIn(kind: HuskKind, ticks = 4000): number {
 }
 
 
+/** What a duel with one klipah came to. */
+export interface Duel {
+  /** Ticks to break it, or -1 if it outlived the budget. */
+  broke: number;
+  /** Lamps it took off the Scribe on the way. */
+  cost: number;
+  /** Marks thrown to do it — how much of the answer was aim and how much was volume. */
+  marks: number;
+}
+
+/**
+ * **What it costs to break one**, which is a different question from whether it
+ * can be broken and is the one a player is asking when they say a creature is
+ * too easy.
+ *
+ * `breakIn` refills the Scribe's lamps every tick and zeroes his i-frames,
+ * deliberately: it is asking whether the *game* can break a kind at all, and a
+ * probe that dies half way through answers "no" for the wrong reason. The price
+ * of that is that it cannot see a creature which dies in a second and a half
+ * and never touches anybody. Both of the things a player calls "too easy" —
+ * dying too fast, and costing nothing while it does — are invisible to it.
+ *
+ * So this is the same duel with the lamps left alone. Three lamps, the number a
+ * rung starts with; if he goes out, that is a creature worth its light.
+ *
+ * **And it can be handed vessels**, which nothing in this repo could do before.
+ * Every probe in the suite fights with an empty satchel — `fight.test.ts`,
+ * `curve.test.ts` and the tour all build their context out of the letters
+ * alone — so the whole measured fight is the *un-furnished* Scribe, and the one
+ * a player walks the back half of a climb with had never been put in a room
+ * with anything. That is where "too easy to kill in certain cases" lives: the
+ * three vessels that sharpen the nib fold multiplicatively and Shin doubles the
+ * result, so the certain case is a satchel.
+ */
+export function duel(kind: HuskKind, ticks = 2000, items: readonly string[] = []): Duel {
+  const world = room(kind);
+  const husk = lay(world, kind);
+  const ctx: StepContext = { verbs: ALL_VERBS, graces: ALL_GRACES, items };
+  const p = world.player;
+  p.lamps = 3;
+  let cost = 0;
+  let marks = 0;
+  let lamps = p.lamps;
+
+  for (let t = 0; t < ticks; t += 1) {
+    // The same station-keeping as `breakIn`, and for the same reason — the
+    // question is what the creature costs a Scribe who is answering it, not
+    // whether a fixed pair of feet happens to be in the right place.
+    p.x = husk.x - TILE_SIZE * 2;
+    const standing = (world.height - 1) * TILE_SIZE - p.h;
+    p.y = Math.min(husk.y + husk.h / 2 - p.h / 2, standing);
+    p.vx = 0;
+    p.vy = 0;
+    p.facing = husk.x + husk.w / 2 > p.x + p.w / 2 ? 1 : -1;
+    const line = p.y + p.h / 2;
+    const before = world.marks.length;
+    step(
+      world,
+      {
+        ...NO_INPUT,
+        strike: true,
+        up: husk.y + husk.h < line - 3,
+        down: husk.y > line + 3,
+      },
+      ctx,
+    );
+    marks += Math.max(0, world.marks.length - before);
+    if (p.lamps < lamps) cost += lamps - p.lamps;
+    lamps = p.lamps;
+    if (world.out) return { broke: -1, cost, marks };
+    if (husk.broken || world.husks.length === 0) return { broke: t, cost, marks };
+  }
+  return { broke: -1, cost, marks };
+}
+
 /**
  * **How much of its life a mark can touch it at all**, as a fraction.
  *
- * One for nineteen of the twenty, because a klipah is a thing you write on.
- * The exception is Korach, who is inside the ground for most of his cycle and
- * is supposed to be — but "most" is a number, and nobody had ever taken it.
- * It was sixteen per cent, which is not a creature that hides, it is a creature
- * that cannot be broken: over sixty-six honest walks the fighting probe laid
- * thirty-seven and took one.
+ * Korach is inside the ground for most of his cycle and is supposed to be — but
+ * "most" is a number, and nobody had ever taken it. It was sixteen per cent,
+ * which is not a creature that hides, it is a creature that cannot be broken:
+ * over sixty-six honest walks the fighting probe laid thirty-seven and took one.
  *
  * `breakIn` does not catch this and cannot. Its Scribe keeps station, so he is
  * standing over the hole at the one moment the thing is out, and he takes it —
  * a perfect player answers a sixteen-per-cent window, and every real one walks
  * past. This is the measurement that tells them apart.
+ *
+ * **And it could not see the water.** `outOfReach`'s second argument is the
+ * world, and it is optional precisely because most callers are asking about a
+ * klipah rather than about a place — this one is asking about a place and did
+ * not pass it. So the Tannin, whose whole fight is that a mark does not follow
+ * it under the surface, measured at a flat 1.00 here, and `bestiary.test.ts`
+ * asserted that flat 1.00 as a fact about nineteen of the twenty kinds. The one
+ * condition in this game that was not a great one's was invisible to the one
+ * instrument built to see conditions — which matters far more now than it did,
+ * because the whole of P14 is authored in these units.
  */
 export function reachable(kind: HuskKind, ticks = 3000): number {
   const world = room(kind);
@@ -419,7 +586,84 @@ export function reachable(kind: HuskKind, ticks = 3000): number {
     p.iframes = 0;
     step(world, NO_INPUT, ctx);
     if (husk.broken) break;
-    if (!outOfReach(husk)) out += 1;
+    if (!outOfReach(husk, world)) out += 1;
   }
   return Math.round((out / ticks) * 100) / 100;
+}
+
+/**
+ * **The share of a creature's life in which a mark takes a shell off it** —
+ * `HuskSpec.opening`, measured rather than declared.
+ *
+ * The twin of `reachable`, and the two are asking different questions on
+ * purpose. `reachable` is whether a mark *arrives*; this is whether arriving
+ * counts. A Korach inside the earth is not there to be hit; an unopened
+ * Behemoth is very much there, and a blow staggers it and takes nothing — which
+ * is not a technicality, it is how Leviathan is dragged out of the water by a
+ * Hook that never takes a shell off it.
+ *
+ * Takes a posture because one of the two conditions cannot be met in an empty
+ * room: Behemoth opens only while stopped and only a stone the Scribe set stops
+ * it, so its openness is **zero** on plain ground and rises once `"blocked"`
+ * puts a placed stone in front of it. That zero is the fight, stated as a
+ * number for the first time.
+ */
+export function openness(kind: HuskKind, ticks = 3000, posture?: Posture): number {
+  const world = room(kind, posture);
+  const husk = lay(world, kind);
+  const ctx: StepContext = { verbs: ALL_VERBS, graces: ALL_GRACES };
+  const p = world.player;
+  const standY = (world.height - 3) * TILE_SIZE;
+  let open = 0;
+  for (let t = 0; t < ticks; t += 1) {
+    p.x = 6 * TILE_SIZE;
+    p.y = standY;
+    p.vx = 0;
+    p.vy = 0;
+    p.lamps = 99;
+    p.iframes = 0;
+    step(world, NO_INPUT, ctx);
+    if (husk.broken) break;
+    if (opened(world, husk)) open += 1;
+  }
+  return Math.round((open / ticks) * 100) / 100;
+}
+
+/**
+ * **The share of a creature's life in which a mark cannot touch it and it can
+ * still touch you** — the pairing rule, as a number.
+ *
+ * P14's whole affordability argument is that a klipah's closed phase must cost
+ * the Scribe nothing, and the reason is measured rather than felt: the first
+ * version of Korach's settling phase handed the creature ninety extra ticks of
+ * *contact* along with ninety ticks of being hittable, and the honest dash
+ * stopped arriving on one seed in six. A klipah that is unanswerable **and**
+ * dangerous is the shell count raised without raising it — the probe throws on
+ * its cooldown, the marks buy nothing, it stands there longer and the lamps go.
+ *
+ * Today this is **zero for all twenty by construction**, because `harmful`
+ * opens by returning false for anything out of reach. That is exactly why the
+ * band is worth writing down now: the second way of being closed — a mark that
+ * reaches and takes no shell — is not paired by any line of code, and this is
+ * the guard that will not let it ship unpaired.
+ */
+export function unfair(kind: HuskKind, ticks = 3000): number {
+  const world = room(kind);
+  const husk = lay(world, kind);
+  const ctx: StepContext = { verbs: ALL_VERBS, graces: ALL_GRACES };
+  const p = world.player;
+  const standY = (world.height - 3) * TILE_SIZE;
+  let bad = 0;
+  for (let t = 0; t < ticks; t += 1) {
+    p.x = 6 * TILE_SIZE;
+    p.y = standY;
+    p.vx = 0;
+    p.vy = 0;
+    p.lamps = 99;
+    p.iframes = 0;
+    step(world, NO_INPUT, ctx);
+    if (husk.broken) break;
+    if (!answerable(world, husk) && harmful(husk, world)) bad += 1;
+  }
+  return Math.round((bad / ticks) * 100) / 100;
 }

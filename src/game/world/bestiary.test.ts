@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { HUSKS, type HuskKind } from "../combat";
-import { bench, breakIn, POSTURES, reachable, signature } from "./bench";
-import { outOfReach } from "./step";
-import type { Husk } from "./types";
+import { bench, breakIn, duel, laid, openness, POSTURES, reachable, signature, unfair } from "./bench";
+import { outOfReach, step, unseen, type StepContext } from "./step";
+import { TILE_SIZE } from "./tiles";
+import { NO_INPUT, type Husk } from "./types";
 
 /**
  * **The bestiary, held to the same standard as the silhouettes.**
@@ -33,13 +34,19 @@ import type { Husk } from "./types";
 const KINDS = Object.keys(HUSKS) as HuskKind[];
 
 /**
- * The two the Scribe cannot simply write on, and why. Leviathan has to be drawn
- * out of the water with the Hook before a mark means anything, and Behemoth has
- * to be stopped with a stone the Scribe set — *he that made him can make his
- * sword approach unto him*, and the sword is not a pen. Both are proved beaten
- * in `guardianFight.test.ts`, in the rooms they were authored for.
+ * The one the Scribe cannot simply write on: Behemoth has to be stopped with a
+ * stone he set — *he that made him can make his sword approach unto him*, and
+ * the sword is not a pen. It is proved beaten in `guardianFight.test.ts`, in the
+ * room it was authored for.
+ *
+ * **Behemoth alone**, and Leviathan's removal from this set is a correction.
+ * Both were here, and Leviathan's place was earned by a bug: a piercing mark
+ * re-struck it every tick it was inside it, and an unopened great one takes
+ * `struck = 12` from every blow rather than a shell, so the thing was pinned in
+ * the water sixty times a second and never left it. It leaves the water on its
+ * own — that is its whole fight — and is broken when it does.
  */
-const NOT_BY_WRITING: ReadonlySet<HuskKind> = new Set<HuskKind>(["livyatan", "behemot"]);
+const NOT_BY_WRITING: ReadonlySet<HuskKind> = new Set<HuskKind>(["behemot"]);
 
 describe("the twenty, each its own creature", () => {
   /**
@@ -81,7 +88,7 @@ describe("everything in the table can be broken", () => {
    * *in the way*, which is a different and much easier question, and it is the
    * question every instrument this game had was already answering.
    */
-  it("breaks eighteen of the twenty by writing alone", () => {
+  it("breaks nineteen of the twenty by writing alone", () => {
     for (const kind of KINDS) {
       if (NOT_BY_WRITING.has(kind)) continue;
       const at = breakIn(kind);
@@ -92,11 +99,92 @@ describe("everything in the table can be broken", () => {
     }
   }, 600000);
 
-  it("leaves the two whose gate is not a mark", () => {
-    for (const kind of NOT_BY_WRITING) {
-      expect(breakIn(kind), `${kind} is broken by writing, which is its whole gate`).toBe(-1);
-    }
+  /**
+   * **One, not two — and the second was a lie the shredder was telling.**
+   *
+   * This asserted that neither Leviathan nor Behemoth could be broken by a
+   * station-keeping Scribe, and it passed. It passed for the wrong reason.
+   * `breakIn` hands over all twenty-two letters, and Vav is among them, so
+   * every mark it throws **draws** — which is exactly Leviathan's gate: out of
+   * the water and only out of it, and the Hook is what puts it there. A Scribe
+   * with the Hook pulling it ashore and then writing on it is not a loophole,
+   * it is the fight the creature was authored for.
+   *
+   * What was actually happening: a piercing mark was not consumed by what it
+   * hit and struck the same body every tick it was inside it, and an unopened
+   * great one takes `struck = 12` from every blow instead of a shell. So the
+   * thing was re-frozen sixty times a second and could never leave the water at
+   * all. The creature read as unbreakable because it was being *held down*.
+   *
+   * Behemoth is the one whose gate is genuinely not a mark: it opens only while
+   * stopped, and only a set stone stops it — Bet, a verb no amount of writing
+   * substitutes for.
+   */
+  it("leaves Behemoth, whose gate is a stone and not a mark", () => {
+    expect(breakIn("behemot"), "Behemoth is broken by writing, which is its whole gate").toBe(-1);
   }, 300000);
+
+  /**
+   * **And the water is a price rather than a gate**, which is the other half of
+   * the same correction and is worth stating rather than inferring.
+   *
+   * Leviathan is not locked behind Vav: it comes out of the water at you, and a
+   * Scribe with no Hook at all can wait and answer it — measured at a hundred
+   * and twenty-two ticks against the four to thirty-five everything else in the
+   * table takes. What the Hook buys is not permission but *time*, by dragging
+   * it ashore instead of waiting for it to come. Asserted as a difference,
+   * because the two numbers are exact and would have to be rewritten by any
+   * retune that touched either.
+   */
+  it("makes Leviathan cost the water, and makes the Hook worth carrying", () => {
+    const landed = breakIn("livyatan");
+    const waited = breakIn("livyatan", 4000, ["cut", "flame"]);
+    expect(landed, "Leviathan cannot be broken at all").toBeGreaterThan(-1);
+    expect(waited, "Leviathan cannot be answered without the Hook").toBeGreaterThan(-1);
+    // Slower than anything else in the table that is not underground, either way.
+    expect(landed, `Leviathan is as cheap as an ordinary klipah (${landed})`).toBeGreaterThan(40);
+    // And the Hook is worth a third of it, which is why a Scribe carries one.
+    expect(landed, `the Hook buys nothing (${landed} against ${waited})`).toBeLessThan(waited * 0.8);
+  }, 300000);
+
+  /**
+   * **The same fight, with the satchel the report was actually carrying.**
+   *
+   * `duel` had no way to hold a vessel until now and neither did anything else
+   * in the suite — see the ceiling's note in `combat.ts`. Handed the three that
+   * sharpen the nib, `markBite` comes to six, and without a ceiling that breaks
+   * every kind in the table in **two words**, the Arbeh and Behemoth alike.
+   *
+   * Measured with the ceiling in: two words for the small ones, three for the
+   * five-and-six-shell kinds, four to five for the great ones — against two,
+   * three and five to six for the same Scribe carrying nothing. So the vessels
+   * are still plainly worth walking for, and they are no longer the whole
+   * answer, which is what "too easy in certain cases" was reporting.
+   *
+   * Asserted as a shape rather than as the numbers: a floor of two words on
+   * everything, a floor of three on everything made of five shells or more, and
+   * the satchel never worth more than half the fight. Any of the three failing
+   * means the nib has gone back to being a skeleton key.
+   */
+  it("does not become a skeleton key when the satchel is full", () => {
+    const SHARP = ["kulmus", "izmel", "mishkolet"];
+    for (const kind of KINDS) {
+      if (NOT_BY_WRITING.has(kind)) continue;
+      const bare = duel(kind, 3000);
+      const kit = duel(kind, 3000, SHARP);
+      expect(kit.broke, `${kind} outlived a sharpened nib`).toBeGreaterThan(-1);
+      expect(kit.marks, `${kind} came apart in ${kit.marks} word(s)`).toBeGreaterThan(1);
+      if (HUSKS[kind].shells >= 5) {
+        expect(kit.marks, `${kind} has ${HUSKS[kind].shells} shells and took ${kit.marks} words`)
+          .toBeGreaterThan(2);
+      }
+      // And the sharpest satchel in the game may not more than halve the fight.
+      expect(
+        kit.marks,
+        `${kind}: ${kit.marks} words with the satchel against ${bare.marks} without`,
+      ).toBeGreaterThanOrEqual(bare.marks / 2);
+    }
+  }, 600000);
 });
 
 describe("nothing hides for most of its life", () => {
@@ -124,30 +212,159 @@ describe("nothing hides for most of its life", () => {
     }
   }, 600000);
 
-  it("still lets the one that burrows spend real time under the ground", () => {
-    // The other side of the same band. If this ever reads 1, the earth has
-    // stopped opening and Korach has become a pacer with a good name.
+  /**
+   * **The two that hold something, and the eighteen that hold nothing.**
+   *
+   * This asserted `reachable(kind) === 1` for all nineteen non-Korach kinds and
+   * it passed — including for the Tannin, whose entire fight is that a mark does
+   * not follow it under the water. It passed because `reachable` called
+   * `outOfReach(husk)` with **no world**, and that argument is what the water is
+   * read from. The one condition in this game that is not a great one's was
+   * invisible to the one instrument built to see conditions.
+   *
+   * Measured now that it can be: **Korach 0.43, the Tannin 0.63**, everything
+   * else a flat 1.00.
+   *
+   * That flat 1.00 used to read as a triviality and is now the subject: eighteen
+   * of the twenty kinds are open at every moment of their lives, and P14 is the
+   * phase that changes it. So the assertion is kept exactly as strict, and the
+   * set is named — a kind that gains a condition has to be added here on
+   * purpose, with its number, rather than sliding under a band.
+   */
+  it("still lets the two that hide spend real time out of reach", () => {
+    // If either of these ever reads 1, the earth has stopped opening or the
+    // water has stopped holding, and a fight has become a pacer with a good name.
     expect(reachable("korach"), "Korach no longer hides at all").toBeLessThan(0.75);
+    expect(reachable("tannin"), "the Tannin no longer holds the water").toBeLessThan(0.75);
     for (const kind of KINDS) {
-      if (kind === "korach") continue;
+      if (kind === "korach" || kind === "tannin") continue;
       expect(reachable(kind), `${kind} has started hiding`).toBe(1);
+    }
+  }, 600000);
+
+  /**
+   * **And the other half of the same question, which is not the same question.**
+   *
+   * `reachable` asks whether a mark *arrives*. This asks whether arriving
+   * counts. A Korach inside the earth is not there to be hit; an unopened
+   * Behemoth is very much there, and a blow staggers it and takes nothing —
+   * which is not a technicality, it is exactly how Leviathan is dragged out of
+   * the water by a Hook that never takes a shell off it.
+   *
+   * Measured through the shipped rule: **eighteen kinds open at every moment of
+   * their lives**, Leviathan at 0.63, and Behemoth at **zero** on plain ground,
+   * rising once a stone is set in front of it. That zero is the whole of that
+   * fight and it had never been a number.
+   *
+   * The eighteen are the subject of P14 rather than a background fact, so they
+   * are asserted at exactly 1 and the two exceptions are named. A kind that
+   * gains a condition has to be taken out of this set on purpose.
+   */
+  it("opens eighteen of the twenty at every moment, and names the two that do not", () => {
+    for (const kind of KINDS) {
+      if (HUSKS[kind].opening !== "always") continue;
+      expect(openness(kind), `${kind} has started closing`).toBe(1);
+    }
+    // Out of the water and only out of it — so it is open for the part of its
+    // cycle it spends ashore, and that is neither none of it nor all of it.
+    expect(openness("livyatan"), "Leviathan never comes ashore").toBeGreaterThan(0.2);
+    expect(openness("livyatan"), "Leviathan no longer holds the water").toBeLessThan(0.9);
+    // And the one whose gate is a stone: never open until the Scribe sets one.
+    expect(openness("behemot"), "Behemoth opens without a stone being set").toBe(0);
+    /**
+     * **The Re'em, the first of the eighteen to be closed**, and the number is
+     * the surprise worth keeping: it is shut for only **eight per cent** of its
+     * life and that costs it more than eight per cent of its fight. Measured on
+     * the bench, `breakIn` went from 18 ticks to 105 and 2 marks to 8, and the
+     * duel began costing a lamp where it had cost none — because a window does
+     * not have to be *narrow* to be hard, it has to be badly timed against a
+     * mark's cooldown, and this one is: the creature charges precisely when the
+     * Scribe is near enough to write on it.
+     *
+     * On real ground the fighting probe's share of Re'em broken went 22% to
+     * 13%, which puts it among the four hardest kinds in the table rather than
+     * outside it. Banded generously on both sides: shut enough to matter, open
+     * enough not to be weather.
+     */
+    expect(openness("reem"), "the Re'em no longer shuts while it runs").toBeLessThan(0.99);
+    expect(openness("reem"), "the Re'em has become weather rather than a fight").toBeGreaterThan(0.5);
+    expect(
+      openness("behemot", 3000, "blocked"),
+      "a set stone no longer stops Behemoth",
+    ).toBeGreaterThan(0.5);
+  }, 600000);
+
+  /**
+   * **A closed klipah may not also be a dangerous one** — the rule that decides
+   * whether conditions are affordable at all, and it is measured rather than
+   * asserted in a comment.
+   *
+   * The evidence is on the record: the first version of Korach's settling phase
+   * handed the creature ninety extra ticks of *contact* along with ninety ticks
+   * of being hittable, and the honest dash stopped arriving on one seed in six.
+   * A klipah that cannot be answered and can still take a lamp is the shell
+   * count raised without raising it — the probe throws on its cooldown, the
+   * marks buy nothing, it stands there longer, and the lamps go.
+   *
+   * **It read zero for all twenty and it does not any more, which is this band
+   * doing its job on the very first authored opening.** It was zero while
+   * `answerable` asked only about *reach*, where `harmful` pairs the two by
+   * construction; the moment `answerable` began asking about openings as well,
+   * the Re'em came out at **0.08** — the share of its life it spends running a
+   * charge that cannot be written on.
+   *
+   * So the claim was redrawn rather than the creature, because a klipah that is
+   * unanswerable *while it commits to a run at you* is the fair and classical
+   * shape: stand aside, it goes into the wall, and then you answer it. That is
+   * this creature's own line. What the band has to forbid is not the moment but
+   * the **proportion** — a klipah shut and dangerous for a third of its life is
+   * weather rather than a fight, which is the Korach lesson the other way up.
+   *
+   * Drawn at a quarter: three times the only non-zero measurement in the table,
+   * and tight enough that each of the eighteen still to be authored has to keep
+   * its dangerous phase short. Measured — reem 0.08, every other kind 0.00.
+   *
+   * **The great ones are outside it, and `answerable` says why.** Behemoth is
+   * shut *precisely while it charges*, which is the one flat contradiction of
+   * this rule in the game, and it ships and is right: an arena is one creature
+   * and a whole room, the fight is to set a stone, and nothing about it is a
+   * Scribe walking past on a tick budget. This band is about the ordinary rung.
+   */
+  it("keeps a klipah's unanswerable-and-dangerous phase short", () => {
+    for (const kind of KINDS) {
+      expect(
+        unfair(kind),
+        `${kind} spends too much of its life beyond a mark and still taking lamps`,
+      ).toBeLessThan(0.25);
     }
   }, 600000);
 });
 
 
 /**
- * **And what can be hit must be visible.**
+ * **And what can be hit must be visible — but not everything visible can be
+ * hit**, which is the correction this describe block carries and the reason it
+ * now asks two questions instead of one.
  *
  * Three separate places asked "is Korach in the ground?" and all three answered
  * it by reading `charging`, which counts only the rise: the mark loop, the
  * contact check, and the renderer. Fixing the first two and not the third would
  * have made the creature's one answerable moment its one *invisible* moment —
- * a player throwing at empty air where something is standing.
+ * a player throwing at empty air where something is standing. So the rule was
+ * given one home and the renderer was made to ask it.
  *
- * So the rule has one home and everything asks it. This test is the coupling
- * written down: `drawHusks` skips exactly what `outOfReach` skips, and if the
- * renderer ever grows its own opinion again, the shapes here stop agreeing.
+ * That was right about Korach and wrong as a law, because it welded two
+ * questions together that only coincide for one creature. P7 then gave the
+ * Tannin the water — `outOfReach` says no mark follows it there, which is that
+ * creature's whole fight — and thereby **stopped it being painted while it was
+ * in the water**: measured on its own bench, on screen for fifty-eight per cent
+ * of its life, gone for the forty-two per cent a player would need to see it
+ * coming. Nothing failed, because the coupling below was the only thing
+ * watching and it was watching the wrong thing.
+ *
+ * The two questions come apart cleanly once they are asked apart. Korach inside
+ * the earth is **not there**. The Tannin under the water **is** there and is
+ * simply out of reach.
  */
 describe("the rule about being reachable has one home", () => {
   const korach = (charging: number, cooldown: number): Husk => ({
@@ -181,5 +398,125 @@ describe("the rule about being reachable has one home", () => {
   it("says nothing about anything else", () => {
     expect(outOfReach({ ...korach(0, 0), kind: "cain" })).toBe(false);
     expect(outOfReach({ ...korach(0, 0), kind: "livyatan" })).toBe(false);
+  });
+
+  /**
+   * **The renderer's question, which is a different question.** Korach under
+   * the earth is the only thing in the bestiary that is not there to be drawn;
+   * everything else that a mark cannot reach is standing in plain sight, and
+   * saying otherwise is how the Tannin lost half its life on screen.
+   */
+  it("hides a buried Korach, and hides nothing else at all", () => {
+    expect(unseen(korach(0, 120))).toBe(true);
+    expect(unseen(korach(20, 300))).toBe(false);
+    expect(unseen(korach(0, 260))).toBe(false);
+    for (const kind of Object.keys(HUSKS) as HuskKind[]) {
+      if (kind === "korach") continue;
+      expect(unseen({ ...korach(0, 0), kind }), `${kind} is not painted`).toBe(false);
+    }
+  });
+});
+
+/**
+ * **The earth opens in the earth.**
+ *
+ * Reported from play as "the creature that comes out of the stone is stuck",
+ * and it was not stuck in any geometry — `flies` means nothing in the world can
+ * hold it. It was stuck in the *sky*. The eruption was placed at
+ * `p.y + p.h + 2.5 tiles`, which is the surface exactly as long as the Scribe
+ * is standing on something and is a point in mid-air the moment he is not; the
+ * creature then rose to his height, entered the settling phase — deliberately
+ * weightless, since gravity would drop a thing the rock does not hold straight
+ * through the floor — and hung there motionless for ninety ticks.
+ *
+ * Every measurement the creature has ever been given was taken with a Scribe
+ * standing still, which is why nothing caught it: **a Scribe is off the ground
+ * for a good part of every rung**, and this is the posture no bench has.
+ */
+describe("Korach comes up out of the ground, wherever the Scribe is", () => {
+  it("never stands still in the air under a jumping Scribe", () => {
+    const { world, husk } = laid("korach");
+    const ctx: StepContext = { verbs: [], graces: [] };
+    const p = world.player;
+    const floor = (world.height - 1) * TILE_SIZE;
+    let surfaced = 0;
+    let highest = 0;
+    for (let t = 0; t < 900; t += 1) {
+      p.vx = 0;
+      p.vy = 0;
+      p.lamps = 99;
+      p.iframes = 0;
+      p.x = husk.home.x;
+      // Six tiles up, and held there — the top of a jump, stretched.
+      p.y = floor - p.h - 6 * TILE_SIZE;
+      step(world, NO_INPUT, ctx);
+      // Out of the ground and no longer rising: the moment it is answerable,
+      // and the moment it used to be hanging in the sky.
+      if (unseen(husk) || husk.charging > 0) continue;
+      surfaced += 1;
+      highest = Math.max(highest, floor - (husk.y + husk.h));
+    }
+    expect(surfaced, "it never came up at all").toBeGreaterThan(100);
+    // A quarter of a tile proud of the ground is where the rise leaves it, and
+    // that is deliberate — it is the line a flat mark flies along. Six tiles is
+    // the bug.
+    expect(highest / TILE_SIZE, "it settled in the air").toBeLessThan(0.5);
+  });
+
+  /**
+   * And where there is no earth, nothing opens. A Scribe on a vine over a
+   * chasm is not standing on anything, and the honest answer is that the
+   * creature stays under and keeps waiting — not that the ground appears.
+   */
+  it("does not open under a Scribe with nothing beneath him", () => {
+    const { world, husk } = laid("korach");
+    const ctx: StepContext = { verbs: [], graces: [] };
+    const p = world.player;
+    for (let t = 0; t < 900; t += 1) {
+      p.vx = 0;
+      p.vy = 0;
+      p.lamps = 99;
+      p.iframes = 0;
+      p.x = husk.home.x;
+      // Above the floor by more than the depth any earth is looked for in.
+      p.y = 0;
+      step(world, NO_INPUT, ctx);
+      expect(husk.charging, "it erupted out of thin air").toBe(0);
+    }
+  });
+});
+
+/**
+ * **The Tannin, seen in its own water** — the claim the coupling above used to
+ * make impossible, made against the shipped step rather than against a shape.
+ *
+ * It is asserted as a *share of a life* rather than as "true at tick 40",
+ * because what went wrong was not one frame: the creature was absent for every
+ * tick it spent in the element it is authored to live in, and any single-tick
+ * claim would have been about whichever tick was picked.
+ */
+describe("a klipah out of reach is still a klipah on screen", () => {
+  it("paints the Tannin for the whole of its life, water and all", () => {
+    const { world, husk } = laid("tannin");
+    const ctx: StepContext = { verbs: [], graces: [] };
+    const p = world.player;
+    let painted = 0;
+    let submerged = 0;
+    const ticks = 900;
+    for (let t = 0; t < ticks; t += 1) {
+      p.vx = 0;
+      p.vy = 0;
+      p.lamps = 99;
+      p.iframes = 0;
+      p.x = 6 * TILE_SIZE;
+      p.y = (world.height - 3) * TILE_SIZE;
+      step(world, NO_INPUT, ctx);
+      if (!unseen(husk)) painted += 1;
+      if (outOfReach(husk, world)) submerged += 1;
+    }
+    // It spends a real part of its life unreachable — without which the claim
+    // below is about a creature that never went in the water.
+    expect(submerged, "the Tannin never went under").toBeGreaterThan(ticks * 0.2);
+    expect(painted, "the Tannin is not drawn while it is in the water").toBe(ticks);
   });
 });
