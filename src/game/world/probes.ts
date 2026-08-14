@@ -3,7 +3,7 @@ import { routeTo, storeysOf } from "./route";
 import { tileAt } from "./build";
 import { answerable, step, type StepContext } from "./step";
 import { CHUNK_H } from "./chunks";
-import { Tile, TILE_SIZE } from "./tiles";
+import { isSolid, Tile, TILE_SIZE } from "./tiles";
 import { NO_INPUT, type Input, type World } from "./types";
 
 /**
@@ -938,5 +938,218 @@ export function fighter(
     veilings: world.veilings,
     ticks: i,
     or: world.or,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// the hurried Scribe
+// ---------------------------------------------------------------------------
+
+/** What a screen did to a body that would not slow down for it. */
+export interface Hurry {
+  /** It got to the way out. */
+  crossed: boolean;
+  /**
+   * What the ground took. A veiling is the only price terrain is allowed to
+   * charge — time and ground, never a lamp and never the run — so this is
+   * the whole of what a screen can cost a runner, and a screen that costs
+   * nothing is a screen that asked nothing.
+   */
+  veilings: number;
+  /** Figured stones that gave way underfoot — see `Tile.Maskit`. */
+  sprung: number;
+  /**
+   * Ticks spent. Against the same screen walked carefully this is the other
+   * half of the reading: a screen can also ask something by being *slower* to
+   * cross in a hurry than at a walk, which is a body being made to think.
+   */
+  ticks: number;
+  /** How much of the way it got, as a fraction, for the screens it did not cross. */
+  reached: number;
+}
+
+/**
+ * **A Scribe in a hurry**, and the instrument the terrain phase is built on.
+ *
+ * There has never been a measure of how hard a screen is to cross *at speed*.
+ * `probe` is a competent Scribe and its whole design is patience — it backs
+ * off, comes down, gives up on a face, presses act on a beat, sets a stone at
+ * a lip and waits out a klipah — so it answers "can this be crossed", which is
+ * the soft-lock question and is already settled for every screen in the
+ * library. It cannot answer "does this cost anything to run past", and until
+ * something can, *harder terrain* is a feeling.
+ *
+ * So: the same body, with the deliberation taken out. It holds toward the way
+ * out and never stops; it jumps at a gap, at a step it cannot walk up, and
+ * over a void with a second jump; it clears a thorn or a door in front of it,
+ * because those are locks and a lock a Scribe holds the key to is not what is
+ * being measured here. What it does **not** do is the whole difference:
+ *
+ * - it never backs off, never comes down out of a pocket, never gives up on a
+ *   wall and tries another way — every one of `probe`'s recoveries is a body
+ *   stopping to think;
+ * - it presses nothing on a rhythm, which is `probe`'s way past most of what
+ *   stops it;
+ * - it never goes out of its way — no jump for a letter on a shelf;
+ * - it sets no stone at a lip, which is the one considered move in the game;
+ * - **it does not fight.** A runner runs past, which is the play report this
+ *   phase exists to answer.
+ *
+ * The difference between what this crosses and what `probe` crosses, screen by
+ * screen, is the list of screens that ask nothing of a body in a hurry. Where
+ * the two agree, the ground is free.
+ */
+export function hurried(world: World, ctx: StepContext, ticks: number): Hurry {
+  const aim = steering(world, ctx.verbs);
+  let best = aim.left(world.player);
+  let holdJump = 0;
+  /** Never stand still: where the route has no lean to offer, keep the last. */
+  let lean = 1;
+  let sprung = 0;
+  let mending = world.mending.length;
+  /** Whether this fall has already reached for something. */
+  let reached = false;
+  /**
+   * Ticks since the body last had a wall. Clinging flickers — a body sliding
+   * down a face loses contact for a tick at a time — so a guard written as
+   * *while clinging* lets go on those ticks and never climbs anything.
+   */
+  let sinceCling = 99;
+  let i = 0;
+
+  for (; i < ticks && !world.finished; i += 1) {
+    const p = world.player;
+    best = Math.min(best, aim.left(p));
+    const towards = aim.towards(p) || lean;
+    lean = towards;
+
+    const ownX = Math.floor((p.x + p.w / 2) / TILE_SIZE);
+    const footRow = Math.floor((p.y + p.h + 1) / TILE_SIZE);
+    const aheadX = ownX + towards;
+
+    // One stride ahead, which is where a hand jumps — the same reading `probe`
+    // takes, for the same reason: two ahead leaves the ground a tile early and
+    // spends the arc clearing runway instead of the gap.
+    const gapAhead =
+      p.onGround &&
+      tileAt(world, aheadX, footRow) === Tile.Empty &&
+      tileAt(world, aheadX, footRow + 1) === Tile.Empty;
+
+    /**
+     * Anything to land on down this column.
+     *
+     * **A figured stone never needs naming here**, though it is solid and this
+     * list does not mention it: both the scatter and the authored ones are laid
+     * only over hewn stone, so the scan finds the floor one row further down
+     * whichever way the lie is read. That is a property of where a trap is
+     * allowed to be rather than an accident, and it is why this stays letter
+     * for letter what `probe` reads.
+     */
+    let groundBelow = false;
+    for (let ty = Math.floor((p.y + p.h) / TILE_SIZE) + 1; ty < world.height && !groundBelow; ty += 1) {
+      const t = tileAt(world, ownX, ty);
+      if (t === Tile.Stone || t === Tile.Ledge) groundBelow = true;
+    }
+
+    // A step it cannot simply walk up. `probe` climbs these by holding into
+    // them and jumping on a rhythm; a body in a hurry jumps once, at the step,
+    // and either clears it or does not.
+    const stepAhead =
+      p.onGround &&
+      !gapAhead &&
+      isSolid(tileAt(world, aheadX, footRow - 1), {
+        verbs: ctx.verbs,
+        crawling: false,
+        revealed: world.revealed,
+      });
+
+    let barrierAhead = false;
+    for (let d = 1; d <= 3 && !barrierAhead; d += 1) {
+      for (let up = 0; up <= 2 && !barrierAhead; up += 1) {
+        const t = tileAt(world, ownX + d * towards, footRow - up);
+        if (t === Tile.Thorn || t === Tile.Growth || t === Tile.Door) barrierAhead = true;
+      }
+    }
+
+    const onAVine =
+      ctx.verbs.includes("climb") &&
+      [0, 1].some((up) => tileAt(world, ownX, Math.floor((p.y + p.h - 1) / TILE_SIZE) - up) === Tile.Vine);
+
+    // The Eye, once, on the way in — a veiled staircase is a floor to anybody
+    // holding Ayin and a hole to anybody else, and `routeTo` has always assumed
+    // the letter is spent. Hurrying does not make a player forget it.
+    const openTheEye =
+      ctx.verbs.includes("reveal") && !world.revealed && p.onGround && !p.grappleTo && i % 5 === 0;
+
+    /**
+     * Reaching out over nothing — and **latched only where the reach is Bet's**,
+     * which is the same narrow rule `probe` keeps and for the same reason. The
+     * Hook self-limits through `grappleTo` and wants another cast the moment it
+     * has thrown you at the next ring; Bet's second press takes back the stone
+     * you are standing on. Latching both was measured here and cost every anchor
+     * screen in the library at once — five of them, with a hundred and fifty
+     * veilings apiece, which read as *the Hook screens punish a runner* and was
+     * really *this driver cannot cast the Hook*.
+     */
+    const holdsStone = ctx.verbs.includes("block") && !ctx.verbs.includes("grapple");
+    const reaching = !p.onGround && p.vy > 0 && !groundBelow && !p.grappleTo;
+    const reachOnce = reaching && (!holdsStone || !reached);
+    reached = p.onGround ? false : reached || reaching;
+
+    if (p.clinging !== 0) sinceCling = 0;
+    else sinceCling += 1;
+
+    const wantJump =
+      gapAhead ||
+      stepAhead ||
+      // Still over nothing with the Breath unspent — the reflex, not a plan.
+      (!p.onGround && p.airJump && p.vy > 0 && !groundBelow) ||
+      /**
+       * **Up a face it is already on.** Holding toward the way out is holding
+       * into any wall that happens to be that way, and holding into a wall and
+       * tapping jump is how the Fence climbs — a reflex, not deliberation, and
+       * a player in a hurry meeting a sheer wall climbs it rather than standing
+       * at the bottom of it.
+       *
+       * Without this, `sheer-wall`, `sheer-face`, `high-vault` and `vine-wall`
+       * all came out uncrossable in a hurry, which is the instrument's own
+       * repertoire being reported as a property of the ground. What is left out
+       * of this probe has to be **patience**, not competence, or the table it
+       * publishes names the wrong screens.
+       *
+       * Note what is still missing beside `probe`: there is no giving up on a
+       * climb and no ceiling test, so a body that catches a face going nowhere
+       * climbs it until the budget runs out. That is exactly what a body that
+       * will not stop and reconsider does.
+       */
+      (sinceCling < 8 && aim.above(p));
+    if (wantJump) holdJump = 20;
+    else if (holdJump > 0) holdJump -= 1;
+
+    const input: Input = {
+      ...NO_INPUT,
+      right: towards > 0,
+      left: towards < 0,
+      jump: wantJump,
+      jumpHeld: holdJump > 0,
+      up: p.inWater || p.climbing || (onAVine && aim.above(p)),
+      act: openTheEye || barrierAhead || reachOnce,
+      dash: !p.onGround && p.vy > 40 && !groundBelow,
+    };
+
+    step(world, input, ctx);
+
+    // The floor opening under it. `mending` only ever grows on a stone giving
+    // way and shrinks when one closes again, so a rise is a trap sprung.
+    if (world.mending.length > mending) sprung += world.mending.length - mending;
+    mending = world.mending.length;
+  }
+
+  return {
+    crossed: world.finished,
+    veilings: world.veilings,
+    sprung,
+    ticks: i,
+    reached: aim.fraction(best),
   };
 }

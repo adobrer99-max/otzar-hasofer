@@ -90,6 +90,54 @@ describe("the chunk library", () => {
   });
 
   /**
+   * **The figured stone, authored.**
+   *
+   * `layMaskit` keeps four rules when it scatters one, and every one of them
+   * is load-bearing rather than cautious — they are what let a trap exist at
+   * all beside a no-soft-lock guarantee proved on the painted grid. A screen
+   * that writes its own `m` has to keep the same four, and it is checked here
+   * rather than at paint time because a chunk is a fixed text: a rule kept by
+   * the author is kept on every rung and every seed at once, and a rule kept
+   * by the painter is only ever kept where somebody thought to look.
+   *
+   * Mirroring is safe by construction and is worth saying: a screen may be
+   * laid back to front, which maps column `x` to `CHUNK_W - 1 - x`. All four
+   * rules below are symmetric under that — the seam bands are the same at both
+   * ends, and air-above, solid-below and side-by-side all travel with the
+   * tile.
+   */
+  it("keeps an authored figured stone to the same four rules the scatter keeps", () => {
+    // What paints as empty: air, and everything that is lifted out of the grid
+    // into an entity or a body before the tile is written.
+    const air = (ch: string | undefined) =>
+      ch !== undefined && (clear(ch) || MARKER_CHARS.has(ch) || ch in HUSK_CHARS);
+    for (const c of ALL) {
+      for (let y = 0; y < CHUNK_H; y += 1) {
+        for (let x = 0; x < CHUNK_W; x += 1) {
+          if (c.rows[y][x] !== "m") continue;
+          const where = `${c.id} (${x},${y})`;
+          // Never on a seam. Two screens meet at every `CHUNK_W`, and a lie
+          // laid at the join is a lie sprung at the exact moment a body is
+          // crossing from one authored screen into the next.
+          expect(x >= 2 && x <= CHUNK_W - 3, `${where}: a figured stone on the seam`).toBe(true);
+          // Never two side by side: a pair is a two-tile hole, which is a pit
+          // rather than a stumble and is the one shape a single step down does
+          // not climb back out of.
+          expect(c.rows[y][x + 1] === "m", `${where}: two figured stones side by side`).toBe(false);
+          // Walked on, or it is a wall with a secret. Air above.
+          expect(air(c.rows[y - 1]?.[x]), `${where}: nothing can stand on it`).toBe(true);
+          // And **hewn** stone one tile under it — the same tile the scatter
+          // demands, not merely something solid. What is left when it gives
+          // way has to be a step down rather than a hole in the world, and
+          // overgrowth burns, a door opens and a second figured stone is
+          // another lie. This is the rule the guarantee actually rests on.
+          expect(c.rows[y + 1]?.[x], `${where}: opens onto nothing`).toBe("#");
+        }
+      }
+    }
+  });
+
+  /**
    * Both profiles, on both sides. This is what lets any chunk follow any other
    * whose exit matches its entry — and the `high` void is the load-bearing
    * part: a high edge with a floor under it would let a fallen Scribe land

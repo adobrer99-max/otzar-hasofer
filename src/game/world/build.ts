@@ -180,7 +180,21 @@ export function buildRegion(
  * seeing whether a body holding a given alphabet can cross it — which is the
  * only way to find a requirement the author did not write down.
  */
-export function paintChunks(laid: readonly Chunk[], seed = 1): World {
+export function paintChunks(
+  laid: readonly Chunk[],
+  seed = 1,
+  /**
+   * The figured-stone budget — zero by default, which is what every existing
+   * caller wants and is why it stays a default rather than a required
+   * argument.
+   *
+   * It has to be reachable, though: an authored `m` over budget is written as
+   * ordinary stone, so a per-screen instrument painting a trap screen through
+   * this would measure the screen with its trap turned off and report it as
+   * harmless. Set high enough and every authored stone on the chain stands.
+   */
+  maskit = 0,
+): World {
   const region = regionAt(1);
   return paint(
     laid,
@@ -193,7 +207,7 @@ export function paintChunks(laid: readonly Chunk[], seed = 1): World {
     0,
     undefined,
     { kinds: [], count: 0 },
-    0,
+    maskit,
     1,
     laid.length,
   );
@@ -937,6 +951,13 @@ function paint(
   let authored = 0;
   /** Authored motes seen so far — see the `"*"` case, and `spent`. */
   let stars = 0;
+  /**
+   * Figured stones laid because a screen asked for one — see `TILE_CHARS`'s
+   * `m`. They come out of the rung's own `maskit` budget before the scatter
+   * gets any of it, so the two ways of laying one cannot double-count, and a
+   * rung's floor never holds more lies than its Sefirah allows.
+   */
+  let figured = 0;
   let fragmentCursor = firstFragmentIndex;
   let entityId = 0;
 
@@ -1121,14 +1142,26 @@ function paint(
           continue;
         }
 
-        tiles[worldY * width + worldX] = TILE_CHARS[ch] ?? Tile.Empty;
+        const tile = TILE_CHARS[ch] ?? Tile.Empty;
+        if (tile === Tile.Maskit) {
+          // **Over budget, it is simply stone.** Not skipped, not made a hole:
+          // `isSolid` gives the same answer for both, so a screen composed
+          // around a trap is crossed exactly the same way on a rung that wants
+          // no traps — and no change to `region.maskit`, in either direction,
+          // can move the route graph or the no-soft-lock proof taken against
+          // the painted grid. What changes is only whether the floor is honest.
+          tiles[worldY * width + worldX] = figured < maskit ? Tile.Maskit : Tile.Stone;
+          if (figured < maskit) figured += 1;
+          continue;
+        }
+        tiles[worldY * width + worldX] = tile;
       }
     });
   });
 
   scatterMotes(tiles, width, height, entities, rng, () => `e${entityId++}`, lightOfTheDay);
   scatterHusks(tiles, width, height, husks, rng, () => `h${entityId++}`, klipot, quiet);
-  layMaskit(tiles, width, height, rng, maskit, quiet);
+  layMaskit(tiles, width, height, rng, maskit - figured, quiet);
 
   const player: Player = {
     x: spawn.x,
@@ -1331,10 +1364,16 @@ function layMaskit(
   // Never two in a row: a pair side by side is a two-tile hole, which is a
   // pit rather than a stumble, and it is also the only way this could drop a
   // Scribe somewhere a single step down does not reach back out of.
+  //
+  // **Asked of the grid rather than of this loop's own record**, because the
+  // screens can now author their own — see `TILE_CHARS`'s `m`. A scattered
+  // stone laid beside an authored one is the same two-tile hole as a scattered
+  // pair, and a set that only remembers what this pass laid cannot see it.
   const taken = new Set<number>();
+  const lies = (at: number) => taken.has(at) || tiles[at] === Tile.Maskit;
   for (const at of shuffle(rng, eligible)) {
     if (taken.size >= count) break;
-    if (taken.has(at - 1) || taken.has(at + 1)) continue;
+    if (lies(at - 1) || lies(at + 1)) continue;
     taken.add(at);
     tiles[at] = Tile.Maskit;
   }

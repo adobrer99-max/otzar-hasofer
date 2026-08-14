@@ -76,6 +76,35 @@ export const TILE_CHARS: Record<string, Tile> = {
   A: Tile.Anchor,
   c: Tile.LowGap,
   W: Tile.WordGate,
+  /**
+   * **The figured stone, composed rather than sprinkled.**
+   *
+   * Every other character in this table is a *lock*: a thorn, a door, a
+   * thicket, a stretch of water — each answered by a letter, and each costing
+   * nothing at all once the letter is held. `Tile.Maskit` is the one tile in
+   * the game that charges a body for being careless rather than for being
+   * unequipped, and until this line it had no character, so no screen had ever
+   * been authored around one. `layMaskit` scattered them afterwards, at most
+   * two to a rung.
+   *
+   * A run of floor whose third tile is a lie is a composition. A tile dropped
+   * at random into a floor is a coin toss. This is what lets the first be
+   * written down.
+   *
+   * **Two things keep the two ways of laying one honest.** `region.maskit` is
+   * the rung's whole budget and the authored ones are drawn from it first —
+   * so a Sefirah that wants none has none, however many screens it lays that
+   * were drawn with one. And an authored stone over budget is written as
+   * ordinary hewn stone rather than dropped, so **the budget can never change
+   * where a body may walk**: `isSolid` cannot tell the two apart, and the
+   * no-soft-lock proof is taken against the painted grid.
+   *
+   * The rest of the rules — never on a seam, never two side by side, always
+   * with air above and solid ground below — are the same rules `layMaskit`
+   * keeps, and `chunks.test.ts` holds an authored one to them at authoring
+   * time, which is stricter than checking the grid afterwards.
+   */
+  m: Tile.Maskit,
 };
 
 /** Markers that become entities at load rather than tiles in the grid. */
