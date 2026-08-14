@@ -2,9 +2,9 @@ import type { Verb } from "../abilities";
 import { routeTo, storeysOf } from "./route";
 import { tileAt } from "./build";
 import { answerable, step, type StepContext } from "./step";
-import { CHUNK_H } from "./chunks";
+import { CHUNK_H, CHUNKS, END_CHUNK, START_CHUNK } from "./chunks";
 import { isSolid, Tile, TILE_SIZE } from "./tiles";
-import { NO_INPUT, type Input, type World } from "./types";
+import { NO_INPUT, type Chunk, type Input, type World } from "./types";
 
 /**
  * **The two probes, and why they do not live in a test file.**
@@ -966,6 +966,74 @@ export interface Hurry {
   ticks: number;
   /** How much of the way it got, as a fraction, for the screens it did not cross. */
   reached: number;
+  /**
+   * Lamps still burning, and whether the last one went out — the two numbers
+   * that only mean anything with the klipot standing, which is the arm that
+   * asks what a rung costs a Scribe who runs past everything in it.
+   *
+   * `world.out` is **reported and not broken on**, exactly as `fighter` does:
+   * going out does not finish a world, and a loop that stopped there would
+   * measure a different length of walk from one that did not.
+   */
+  lampsLeft: number;
+  out: boolean;
+}
+
+/**
+ * **A screen on its own, with a way in and a way out** — one home, because it
+ * was two.
+ *
+ * This helper and `declares` below existed verbatim in `traversal.test.ts` and
+ * again in `speed.test.ts`, which is the duplication this file was created to
+ * end. It had already cost something: the careful sweep painted its chain with
+ * no figured-stone budget, so the moment a screen authored an `m` that arm
+ * would have measured it **with the trap turned off** and reported it harmless.
+ *
+ * **And the `both` profile is new.** Both copies returned `undefined` for the
+ * four branching screens under a comment saying they were "covered by the
+ * pair" — nothing covered them. They are walked inside real rungs, so it was
+ * never a soft-lock hole, but no per-screen claim in this repo has ever
+ * included `the-fork`, `two-ways`, `high-road` or `the-merge`. A `both` edge
+ * carries the ground lane and the high lane at once, so the way in is the fork
+ * that divides the road and the way out is the merge that rejoins it.
+ */
+export function chainFor(chunk: Chunk): Chunk[] | undefined {
+  const by = (id: string) => {
+    const found = CHUNKS.find((c) => c.id === id);
+    if (!found) throw new Error(`the library lost ${id}`);
+    return found;
+  };
+  const up = by("rise-to-high");
+  const down = by("fall-to-ground");
+  const fork = by("the-fork");
+  const merge = by("the-merge");
+  const { entry, exit } = chunk;
+  if (entry === "ground" && exit === "ground") return [START_CHUNK, chunk, END_CHUNK];
+  if (entry === "high" && exit === "high") return [START_CHUNK, up, chunk, down, END_CHUNK];
+  if (entry === "ground" && exit === "high") return [START_CHUNK, chunk, down, END_CHUNK];
+  if (entry === "high" && exit === "ground") return [START_CHUNK, up, chunk, END_CHUNK];
+  // The branching four. A screen that *is* the fork or the merge must not be
+  // laid beside itself — it is its own way in or its own way out.
+  if (entry === "ground" && exit === "both") return [START_CHUNK, chunk, merge, END_CHUNK];
+  if (entry === "both" && exit === "ground") return [START_CHUNK, fork, chunk, END_CHUNK];
+  if (entry === "both" && exit === "both") return [START_CHUNK, fork, chunk, merge, END_CHUNK];
+  return undefined;
+}
+
+/**
+ * What a screen may fairly be walked holding.
+ *
+ * A screen on the high road cannot be reached without whatever the lift asks,
+ * and a branching screen without whatever the fork asks, so those count too —
+ * and `rise-to-high` and `the-fork` both asking for nothing is itself part of
+ * what is being checked.
+ */
+export function declares(chunk: Chunk): Verb[] {
+  const reached: string[] = [];
+  if (chunk.entry === "high" || chunk.exit === "high") reached.push("rise-to-high", "fall-to-ground");
+  if (chunk.entry === "both" || chunk.exit === "both") reached.push("the-fork", "the-merge");
+  const extra = CHUNKS.filter((c) => reached.includes(c.id)).flatMap((c) => c.requires);
+  return [...new Set([...chunk.requires, ...extra])];
 }
 
 /**
@@ -1151,5 +1219,7 @@ export function hurried(world: World, ctx: StepContext, ticks: number): Hurry {
     sprung,
     ticks: i,
     reached: aim.fraction(best),
+    lampsLeft: world.player.lamps,
+    out: Boolean(world.out),
   };
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { abilityByLetter, type Verb } from "../abilities";
-import { probe } from "./probes";
+import { abilityByLetter } from "../abilities";
+import { chainFor, declares, probe } from "./probes";
 import { routeTo } from "./route";
 import { lettersOnEntering, regions, TOTAL_REGIONS } from "../regions";
 import { SCROLL_TOTAL } from "../scroll";
@@ -10,9 +10,9 @@ import { crossesAbyss, lettersFrom, otherEnd, pathsFrom } from "../tree";
 import type { SefirahId } from "../../types/letter";
 import { buildPath, buildRegion, paintChunks, PLAYER_H, rowsFor, tileAt, verbsOf } from "./build";
 import { MAX_JUMP_RISE, openWordGate, step, type StepContext } from "./step";
-import { CHUNK_H, CHUNK_W, CHUNKS, END_CHUNK, START_CHUNK } from "./chunks";
+import { CHUNK_H, CHUNK_W, CHUNKS } from "./chunks";
 import { Tile, TILE_SIZE } from "./tiles";
-import { NO_INPUT, type Chunk, type World } from "./types";
+import { NO_INPUT, type World } from "./types";
 
 
 /**
@@ -759,29 +759,17 @@ describe("walking the Tree", () => {
  * Husks cleared, because whether a fight is survivable is `fight.test.ts`.
  */
 describe("the library, against a body holding only what it asks", () => {
-  const chainFor = (chunk: Chunk): Chunk[] | undefined => {
-    const up = CHUNKS.find((c) => c.id === "rise-to-high");
-    const down = CHUNKS.find((c) => c.id === "fall-to-ground");
-    if (!up || !down) throw new Error("the library lost its way up or down");
-    if (chunk.entry === "ground" && chunk.exit === "ground") return [START_CHUNK, chunk, END_CHUNK];
-    if (chunk.entry === "high" && chunk.exit === "high") return [START_CHUNK, up, chunk, down, END_CHUNK];
-    if (chunk.entry === "ground" && chunk.exit === "high") return [START_CHUNK, chunk, down, END_CHUNK];
-    if (chunk.entry === "high" && chunk.exit === "ground") return [START_CHUNK, up, chunk, END_CHUNK];
-    // The branching `both` screens are laid in pairs and are covered by the pair.
-    return undefined;
-  };
-
   /**
-   * A screen on the high road cannot be reached without whatever the lift
-   * asks, so it is fair to hold that too — and `rise-to-high` asks for nothing,
-   * which is itself part of what is being checked here.
+   * `chainFor` and `declares` used to live here, and a copy of each lived in
+   * `speed.test.ts`. They are in `probes.ts` now, beside the probes they drive.
+   *
+   * **Four screens came back with them.** Both copies returned `undefined` for
+   * the `both` profile under a comment saying the branching screens were
+   * "covered by the pair" — nothing covered them, and `the-fork`, `two-ways`,
+   * `high-road` and `the-merge` have never been walked in isolation by
+   * anything in this repo. They are walked inside real rungs, so it was never a
+   * soft-lock hole; it was a claim quietly narrower than it read.
    */
-  const declares = (chunk: Chunk): Verb[] => {
-    const lift = CHUNKS.filter((c) => c.id === "rise-to-high" || c.id === "fall-to-ground");
-    const extra = chunk.entry === "high" || chunk.exit === "high" ? lift.flatMap((c) => c.requires) : [];
-    return [...new Set([...chunk.requires, ...extra])];
-  };
-
   it("carries a competent Scribe across every screen, holding only its own letters", () => {
     const failing: string[] = [];
     for (const chunk of CHUNKS) {
