@@ -126,12 +126,18 @@ describe("the chunk library", () => {
           expect(c.rows[y][x + 1] === "m", `${where}: two figured stones side by side`).toBe(false);
           // Walked on, or it is a wall with a secret. Air above.
           expect(air(c.rows[y - 1]?.[x]), `${where}: nothing can stand on it`).toBe(true);
-          // And **hewn** stone one tile under it — the same tile the scatter
-          // demands, not merely something solid. What is left when it gives
-          // way has to be a step down rather than a hole in the world, and
-          // overgrowth burns, a door opens and a second figured stone is
-          // another lie. This is the rule the guarantee actually rests on.
-          expect(c.rows[y + 1]?.[x], `${where}: opens onto nothing`).toBe("#");
+          // **And nothing at all about what is underneath.** A lie over hewn
+          // stone is a stumble and a lie over a void is a fall, and the fall is
+          // the whole point — see `layMaskit`. What keeps the second safe is
+          // that the tile mends to hewn stone, and that `route.test.ts` floods
+          // every rung with all of its lies removed at once. Geometry was a
+          // proxy for that and the property is asserted directly now.
+          //
+          // The one thing still forbidden is a lie in the **last row**, because
+          // the row beneath it belongs to the storey below rather than to this
+          // screen, so what a body falls into is not a thing this screen can be
+          // read to know.
+          expect(y, `${where}: a figured stone in the bottom row`).toBeLessThan(CHUNK_H - 1);
         }
       }
     }

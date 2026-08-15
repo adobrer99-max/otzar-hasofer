@@ -14,7 +14,7 @@ import type { SefirahId } from "../../types/letter";
 import { buildPath, buildRegion, FLOOR_ROWS, verbsOf } from "./build";
 import { routeTo } from "./route";
 import { openWordGate } from "./step";
-import { TILE_SIZE } from "./tiles";
+import { Tile, TILE_SIZE } from "./tiles";
 
 /**
  * **The no-soft-lock guarantee, in two dimensions.**
@@ -203,6 +203,64 @@ describe("the way out, on the Tree", () => {
       `no way across ${lost.length} of ${walked} paths walked`,
     ).toEqual([]);
   }, 120000);
+
+  /**
+   * **The figured stones may all give way at once, and the way out is still
+   * there** — the guard that lets a lie open onto a *drop*.
+   *
+   * Until P13d, `layMaskit` demanded hewn stone directly beneath every trap, so
+   * springing one was always a step down of a single tile. That rule was a
+   * geometric proxy for a property, and its own comment said the property could
+   * not be tested: "a trap that could take a tile out of a floor would be a trap
+   * that can invalidate the proof at runtime, which no test could ever catch."
+   *
+   * It can be caught, and this is the catching of it. The proxy is gone and the
+   * property is asserted directly, which is strictly stronger than the rule it
+   * replaced — that rule permitted a stone anywhere the geometry looked right
+   * and never once asked whether the rung survived it.
+   *
+   * **Two claims, because they are two different statements.** Taking every
+   * stone out at once is the worst case for lost standing room; taking them out
+   * one at a time is the case that actually happens, and it is not implied by
+   * the first — every figured stone has air above it, so removing one can only
+   * ever open a way *down*, and a route that needed such a hole would be a route
+   * that exists only while a trap is sprung.
+   *
+   * What makes the drop safe beyond this is `mendFloor`: forty ticks later the
+   * tile is hewn stone again, so even a rung that lost its way for a moment has
+   * it back. `ducking.test.ts` holds that half.
+   */
+  it("keeps the way out when the figured stones give way", () => {
+    const lost: string[] = [];
+    let rungs = 0;
+    let stones = 0;
+    for (let seed = 1; seed <= 12; seed += 1) {
+      for (const { path, held } of wander(seed * 7919, 22)) {
+        const world = ground(path, seed, held);
+        const verbs = verbsOf(held);
+        const at: number[] = [];
+        for (let i = 0; i < world.tiles.length; i += 1) {
+          if (world.tiles[i] === Tile.Maskit) at.push(i);
+        }
+        rungs += 1;
+        stones += at.length;
+        if (at.length === 0) continue;
+        const where = `${path.id} seed ${seed}`;
+        // One at a time, which is what a Scribe's own weight actually does.
+        for (const i of at) {
+          world.tiles[i] = Tile.Empty;
+          if (!routeTo(world, verbs).usable) lost.push(`${where} — the stone at ${i} alone`);
+          world.tiles[i] = Tile.Maskit;
+        }
+        // And all of them together, for the floor that has nothing left in it.
+        for (const i of at) world.tiles[i] = Tile.Empty;
+        if (!routeTo(world, verbs).usable) lost.push(`${where} — all ${at.length} at once`);
+      }
+    }
+    expect(rungs, "the wander walked nowhere").toBeGreaterThan(200);
+    expect(stones, "no figured stone was laid anywhere, so this proves nothing").toBeGreaterThan(20);
+    expect(lost.slice(0, 8), `${lost.length} rungs lost their way out to a sprung stone`).toEqual([]);
+  }, 300000);
 
   /**
    * And the first step in particular, which is the one a Scribe takes holding

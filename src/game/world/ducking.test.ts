@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { buildRegion, setTile } from "./build";
 import { step, type StepContext } from "./step";
+import { CHUNK_W } from "./chunks";
 import { Tile, TILE_SIZE } from "./tiles";
 import { NO_INPUT, type Input, type World } from "./types";
-import { regions } from "../regions";
 
 /**
  * **Ducking, and what the Coil actually buys.**
@@ -120,32 +120,47 @@ describe("ducking", () => {
  * rather than a way to lose a rung.
  */
 describe("the figured stone", () => {
-  it("is laid nowhere in the kingdom, and above it over solid ground only", () => {
-    expect(regions[0].maskit, "the teaching rung lays traps").toBe(0);
+  /**
+   * **Walked on, never on a seam, and never two side by side** — and nothing
+   * whatever about what is underneath.
+   *
+   * The stone-below clause was here until P13d and it was a geometric proxy for
+   * "springing this cannot cost the rung". A lie over hewn stone is a stumble; a
+   * lie over a void is a *fall*, and the fall is the thing that actually takes
+   * ground from a body that will not slow down. The property the proxy stood in
+   * for is asserted directly now, in `route.test.ts`, by pulling every figured
+   * stone out of a rung — one at a time and then all together — and demanding
+   * the way out still be there. That is strictly stronger: the old rule allowed
+   * a stone wherever the geometry looked right and never once asked whether the
+   * rung survived it.
+   */
+  it("is laid where it is walked on, off the seams, and never in pairs", () => {
+    let found = 0;
     for (let region = 1; region <= 10; region += 1) {
       for (const seed of [3, 91, 555, 12345]) {
         const world = buildRegion(region, seed);
-        let found = 0;
         for (let y = 0; y < world.height; y += 1) {
           for (let x = 0; x < world.width; x += 1) {
             if (world.tiles[y * world.width + x] !== Tile.Maskit) continue;
             found += 1;
-            // Air above, so it is walked on — and **stone below**, which is the
-            // rule the whole thing stands on: what happens when it gives way is
-            // a step down of one tile, never a hole in the world.
             expect(
               world.tiles[(y - 1) * world.width + x],
               `region ${region}: a figured stone with something on top of it`,
             ).toBe(Tile.Empty);
             expect(
-              world.tiles[(y + 1) * world.width + x],
-              `region ${region}: a figured stone over nothing`,
-            ).toBe(Tile.Stone);
+              world.tiles[y * world.width + x + 1],
+              `region ${region}: two figured stones side by side`,
+            ).not.toBe(Tile.Maskit);
+            const inScreen = x % CHUNK_W;
+            expect(
+              inScreen >= 2 && inScreen <= CHUNK_W - 3,
+              `region ${region}: a figured stone on the seam at column ${x}`,
+            ).toBe(true);
           }
         }
-        if (region === 1) expect(found, "a trap in Malchut").toBe(0);
       }
     }
+    expect(found, "no figured stone was laid anywhere, so this proves nothing").toBeGreaterThan(0);
   });
 
   it("gives way under the Scribe, and stands something up out of it", () => {

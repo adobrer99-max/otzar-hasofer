@@ -1322,17 +1322,32 @@ export function setTile(world: World, tx: number, ty: number, tile: Tile): void 
 /**
  * **The figured stones** — אֶבֶן מַשְׂכִּית, the ground that is not ground.
  *
- * A tile is eligible only if breaking it opens **no hole in the world**: it has
- * to be stone, with air above it so it is walked on, and with something solid
- * directly beneath so that what is left when it gives way is a step down of one
- * tile onto a floor. That rule is not caution, it is the whole reason this can
- * exist at all — `route.test.ts` earns the no-soft-lock guarantee over six
- * hundred sampled paths against the *painted* grid, and a trap that could take
- * a tile out of a floor would be a trap that can invalidate the proof at
- * runtime, which no test could ever catch.
+ * **A lie may open onto a drop, and until P13d it could not.** The old rule
+ * demanded hewn stone directly beneath, so springing one was always a step down
+ * of a single tile onto a floor, and its comment called that "the whole reason
+ * this can exist at all" — that `route.test.ts` earns the no-soft-lock
+ * guarantee against the *painted* grid, and a trap which could take a tile out
+ * of a floor is a trap that can invalidate the proof at runtime, "which no test
+ * could ever catch."
  *
- * So the trap costs a Scribe a surprise, a moment of falling and whatever comes
- * up out of it. It cannot cost them the rung.
+ * **The fear is answerable, and the answer is `mendFloor`.** The hole is not
+ * permanent: forty ticks later the tile is written back as hewn stone — solid,
+ * and indistinguishable to `isSolid` from what stood there before — and
+ * `mendFloor` already refuses to close on top of a body, so nobody is ever
+ * sealed into stone. A body that falls through is veiled at worst, and a
+ * veiling is the one price terrain has always been allowed to charge. The grid
+ * the route was proved against is *restored*; the worst case is losing a
+ * crossing for two thirds of a second.
+ *
+ * **And an argument is not a guard**, so the geometry it stood in for is
+ * asserted directly instead, which is strictly stronger than the rule it
+ * replaces: `route.test.ts` floods each rung with **every figured stone in it
+ * removed at once** and demands the way out still be reachable. That covers any
+ * subset of them springing, and therefore any single one.
+ *
+ * What is left here is only what is still doing work — it must be stone, it
+ * must have air above it so it is walked on, it must not sit on a seam, and no
+ * two may stand side by side.
  */
 function layMaskit(
   tiles: Uint8Array,
@@ -1350,7 +1365,10 @@ function layMaskit(
       const at = y * width + x;
       if (tiles[at] !== Tile.Stone) continue;
       if (tiles[at - width] !== Tile.Empty) continue;
-      if (tiles[at + width] !== Tile.Stone) continue;
+      // No clause about what lies beneath. A stone over a floor is a stumble;
+      // a stone over nothing is a fall, and a fall is the thing that actually
+      // takes ground from a body that will not slow down. The safety of the
+      // second is `mendFloor` plus the stones-removed flood, not geometry.
       // **Never on a seam.** Two screens meet at every `CHUNK_W`, and the edge
       // contract is checked by comparing the tiles either side of the join —
       // so a figured stone laid there reads as a profile mismatch. It would
