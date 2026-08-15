@@ -143,6 +143,14 @@ interface Ledger {
  * it is drawn clear of the worst seed rather than against it. Checked at nine
  * hundred, where every seed converges comfortably; five hundred is the smallest
  * round number above the measurement with real headroom.
+ *
+ * **P13d tried to raise it and the number said no.** With a figured stone
+ * authored into nine body screens the tour reached 202 walks on seed 555 and
+ * the dash ran out of patience on seed 3, which looks like a budget failing.
+ * Set to five hundred, the same seed took **502 walks and three hundred and
+ * fifty-two falls** — it does not converge slower, it does not converge. This
+ * constant is the line between *slow* and *looping* and it was reading
+ * correctly; the thing to move was the ground, not the patience.
  */
 const CAP = 200;
 

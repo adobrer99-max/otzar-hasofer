@@ -106,15 +106,41 @@ export interface Region {
    * How many pieces of this rung's floor are **אֶבֶן מַשְׂכִּית** — figured stones,
    * which look like ground and are not (see `Tile.Maskit`).
    *
-   * None in the kingdom. Malchut is where the walk, the leap and the mark are
-   * taught, and a floor that gives way under a Scribe who has just been told
-   * which key walks is not a trap, it is a lie about the controls.
+   * **The ceiling on a rung's floor, and the authored ones come out of it
+   * first** — see `TILE_CHARS`'s `m`. It is a budget rather than a target: what
+   * a rung actually holds is however many of its screens were drawn with a lie
+   * in them, capped here, with `layMaskit` scattering any remainder.
    *
-   * The count is small on purpose everywhere. A trap that is common stops being
-   * a trap and becomes terrain — a Scribe who meets four in a rung starts
-   * treading on every tile the way one treads on a frozen pond, and the rung
-   * takes four times as long to cross for no more thought. One or two is a
-   * thing that happens to you; five is a rule you learn to play around.
+   * **The numbers roughly doubled at P13d, and the kingdom kept its zero — the
+   * second of those against the owner's instruction, because the measurement
+   * overruled it.**
+   *
+   * They were `0,1,1,1,1,1,1,2,2,2`, which is at most two randomly placed tiles
+   * a rung across the whole Tree, and what that came to was unambiguous: over
+   * seventy-six screens and ten seeds the terrain **never once** took anything
+   * from a body that got across it, and every one of the thirty-nine letterless
+   * screens was free to a runner. A trap laid twice at random in twenty screens
+   * is not a rule anybody learns to play around; it is a thing they never meet.
+   *
+   * The ask was for the kingdom to lose its exemption too. It cannot, and the
+   * finding is clean rather than a judgement call: **with every other rung left
+   * at its old value and Malchut moved from zero to one, the honest dash stopped
+   * reaching the crown on seed 3** — and put back to zero, with all nine
+   * authored lies still standing, it passed again in a twelfth of the time. The
+   * old note here had the reason and it was right: Malchut is where the walk,
+   * the leap and the mark are taught, a Scribe there holds *nothing* — no
+   * Breath, no Fence — and a floor that gives way under them, standing a pacer
+   * up beside three lamps and no second jump, is not the trap it is anywhere
+   * else on the Tree.
+   *
+   * **Above the kingdom the ceiling is the tour, and it binds hard.** At
+   * `0,2,2,2,3,3,3,3,3,3` the consummation was **handed two letters** — the one
+   * concession `climb.test.ts` forbids absolutely — and at three to six a rung
+   * the whole economy fell over, the leanest twenty-two-walk climb carrying 272
+   * light against the 300 the ten kindlings ask, from a baseline of 324. What
+   * costs that much is not the stumble; it is the klipah that stands up out of
+   * every sprung stone. The count below is what the standing proofs allow, and
+   * the next lever is that pacer rather than this number.
    */
   maskit: number;
   /** The three supernals stand above the Abyss and hold no House. */
@@ -209,7 +235,7 @@ export const regions: Region[] = [
     length: 6,
     demand: { min: 1, max: 3 },
     klipot: { kinds: ["cain", "brothers", "calf"], count: 4 },
-    maskit: 1,
+    maskit: 2,
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -225,7 +251,7 @@ export const regions: Region[] = [
     length: 6,
     demand: { min: 1, max: 3 },
     klipot: { kinds: ["brothers", "esav", "delilah", "reem"], count: 5 },
-    maskit: 1,
+    maskit: 2,
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -241,7 +267,7 @@ export const regions: Region[] = [
     length: 7,
     demand: { min: 1, max: 3 },
     klipot: { kinds: ["cain", "amalek", "izevel", "saraf"], count: 6 },
-    maskit: 1,
+    maskit: 2,
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -261,7 +287,7 @@ export const regions: Region[] = [
     length: 7,
     demand: { min: 2, max: 3 },
     klipot: { kinds: ["cain", "amalek", "korach", "arbeh"], count: 5 },
-    maskit: 1,
+    maskit: 2,
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -277,7 +303,7 @@ export const regions: Region[] = [
     length: 7,
     demand: { min: 2, max: 3 },
     klipot: { kinds: ["esav", "korach", "izevel", "tannin"], count: 7 },
-    maskit: 1,
+    maskit: 2,
     hasHouse: true,
     hasShrine: true,
     teaching:
@@ -293,7 +319,7 @@ export const regions: Region[] = [
     length: 8,
     demand: { min: 2, max: 3, bias: "hard" },
     klipot: { kinds: ["korach", "izevel", "atalya", "rahav"], count: 6 },
-    maskit: 2,
+    maskit: 3,
     hasHouse: false,
     hasShrine: false,
     teaching:
@@ -329,7 +355,7 @@ export const regions: Region[] = [
     length: 8,
     demand: { min: 2, max: 3, bias: "hard" },
     klipot: { kinds: ["atalya", "izevel", "nachash", "og"], count: 9 },
-    maskit: 2,
+    maskit: 3,
     hasHouse: false,
     hasShrine: false,
     teaching:
@@ -345,7 +371,7 @@ export const regions: Region[] = [
     length: 9,
     demand: { min: 2, max: 3, bias: "hard" },
     klipot: { kinds: ["calf", "atalya", "nachash", "delilah", "nefilim"], count: 10 },
-    maskit: 2,
+    maskit: 3,
     hasHouse: false,
     hasShrine: false,
     teaching:

@@ -145,16 +145,34 @@ const named = (rows: Reading[]) => rows.map((r) => r.id).sort();
 
 /**
  * **Screens that charge a runner and still let them through** — the ground
- * taking something from a body that keeps going, which is the shape P13d is
- * aiming at: *lose ground rather than lamps.* A screen that kills a runner
- * teaches nothing; a screen that drops one two tiles into a pocket he has to
- * climb back out of, past the klipah he was running from, costs him exactly the
- * thing he was trying to save.
+ * taking something from a body that keeps going, which is the shape P13d aimed
+ * at: *lose ground rather than lamps.* A screen that kills a runner teaches
+ * nothing; a screen that drops one into a notch he has to climb back out of,
+ * past the klipah that just came up out of the floor beside him, costs him
+ * exactly the thing he was trying to save.
  *
- * **Empty, and that is the finding.** Across seventy-six screens and ten seeds
- * the terrain has never once taken anything from a body that got across it.
+ * **This list was empty until P13d, and that was the finding it answered.**
+ * Nine screens carry an authored figured stone now, one apiece. Eight of the
+ * nine are stumbles — the floor is two rows deep almost everywhere in this
+ * library, so springing one is a step down into a slot — and **`the-gulf` is
+ * the true fall**: its stepping stone is a single tile thick with the gulf open
+ * underneath, so a body that trusts the middle of it goes all the way through
+ * and is veiled.
+ *
+ * Seven of the nine ask for no letter at all, which is the half that matters:
+ * before this, every one of the thirty-nine letterless screens was free.
  */
-const TAKES_SOMETHING: readonly string[] = [];
+const TAKES_SOMETHING: readonly string[] = [
+  "long-pit",
+  "long-teeth",
+  "narrow-stacks",
+  "pit",
+  "stagger-stacks",
+  "the-gulf",
+  "the-lip",
+  "the-plinth",
+  "two-pits",
+];
 
 /**
  * **Screens a body in a hurry cannot do at all** — the other kind of ask, and
@@ -242,24 +260,30 @@ describe("what a screen asks of a body in a hurry", () => {
   });
 
   /**
-   * **Every letterless screen in the game is free to a runner** — thirty-nine
-   * of thirty-nine, and the single sharpest statement this file makes.
+   * **The letterless ground is no longer free**, and this is the line P13d was
+   * for.
    *
    * A screen with no verb gate is the ground a Scribe walks before the alphabet
-   * has bought anything, and it is most of what the kingdom and the first few
-   * rungs are made of. If none of it asks anything of a body that will not slow
-   * down, then for the whole opening of a climb the terrain is scenery.
+   * has bought anything, and it is most of what the kingdom and the first rungs
+   * are made of. P13b measured **thirty-nine of thirty-nine free to a runner**,
+   * which meant that for the whole opening of a climb the terrain was scenery.
+   * Seven of them charge one now.
    *
-   * Asserted as *all of them* rather than as a share, so that the first
-   * letterless screen P13d gives a price to has to come and change this line.
+   * Kept as a floor rather than an exact count, because the exact membership is
+   * `TAKES_SOMETHING`'s job and saying it twice would mean editing two lists to
+   * author one screen. What this holds is the *claim*: the plain ground asks
+   * something, and it must go on asking.
    */
-  it("asks nothing whatever of a runner on any screen that needs no letter", { timeout: 300000 }, () => {
+  it("charges a runner on the ground that needs no letter at all", { timeout: 300000 }, () => {
     const rows = sweep().hurried;
     const gate = new Map(SUBJECTS.map((c) => [c.id, c.requires.length > 0]));
     const plain = rows.filter((r) => gate.get(r.id) === false);
-    const charged = plain.filter((r) => r.crossed < SEEDS.length || r.veilings > 0 || r.sprung > 0);
+    const charged = plain.filter((r) => r.veilings > 0 || r.sprung > 0);
     expect(plain.length).toBeGreaterThan(30);
-    expect(charged.map((r) => r.id), "letterless screens that ask a runner for something").toEqual([]);
+    expect(
+      charged.length,
+      `only ${charged.length} of ${plain.length} letterless screens ask a runner for anything`,
+    ).toBeGreaterThanOrEqual(6);
   });
 
   /**

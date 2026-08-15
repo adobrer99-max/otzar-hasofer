@@ -1118,7 +1118,7 @@ export const CHUNKS: Chunk[] = [
     E, E,
     // Three tiles. A Scribe who has not yet found the Breath must be able to
     // clear this on a plain running jump, with room to spare.
-    "######...#######",
+    "######...##m####",
     "######...#######",
   ]),
 
@@ -1154,7 +1154,7 @@ export const CHUNKS: Chunk[] = [
   chunk("the-plinth", { demand: 1 }, [
     E, E, E, E, E, E, E, E, E, E, E, E, E,
     ".....*...*......",
-    ".....######.....",
+    ".....##m###.....",
     ".....######.....",
     F,
     F,
@@ -1175,7 +1175,7 @@ export const CHUNKS: Chunk[] = [
     "...*......*.....",
     E,
     E,
-    "###...####...###",
+    "###...####...m##",
     "###...####...###",
   ]),
 
@@ -1199,7 +1199,7 @@ export const CHUNKS: Chunk[] = [
     ".......*........",
     E,
     "...###..........",
-    "######....######",
+    "######....##m###",
     "######....######",
   ]),
 
@@ -1254,7 +1254,7 @@ export const CHUNKS: Chunk[] = [
   chunk("narrow-stacks", { demand: 2 }, [
     E, E, E, E, E, E, E, E, E, E, E, E, E,
     "..*.....*.......",
-    "..###...###.....",
+    "..#m#...###.....",
     "..###...###.....",
     "##..........####",
     "##..........####",
@@ -1282,7 +1282,7 @@ export const CHUNKS: Chunk[] = [
     E, E, E, E, E, E, E, E, E, E,
     "...*.....*......",
     E,
-    ".......####.....",
+    ".......#m##.....",
     ".......####.....",
     "..###..####.....",
     "..###..####.....",
@@ -1320,7 +1320,7 @@ export const CHUNKS: Chunk[] = [
     "...*.......*....",
     "..#####.........",
     "..#####.........",
-    "#######....#####",
+    "#######....#m###",
     "#######....#####",
   ]),
 
@@ -1344,7 +1344,7 @@ export const CHUNKS: Chunk[] = [
     E, E, E, E, E, E, E, E, E, E,
     "...*..*.....*...",
     E,
-    "......###.......",
+    "......#m#.......",
     "......###.......",
     "..###......###..",
     "..###......###..",
@@ -1357,12 +1357,26 @@ export const CHUNKS: Chunk[] = [
    * ledge over that with the light on it — the crossing is two aimed jumps and
    * the mote is a third that buys nothing but the mote.
    */
+  /**
+   * **And the middle of the stepping stone is a lie** — the one place in the
+   * library where the trap is a true false bridge rather than a stumble.
+   *
+   * The `###` at row fourteen is one tile thick with the gulf open underneath
+   * it, so a body that puts its weight on the middle of it goes *through*, all
+   * the way down, and is veiled. Everywhere else in this file the floor is two
+   * rows deep and springing a stone is a step down into a notch; here it is the
+   * fall the tile was always meant to be able to cost.
+   *
+   * The two tiles either side of it stay stone, which is what makes it fair and
+   * is also what `route.test.ts` demands: the crossing has to survive every
+   * figured stone in the rung vanishing at once.
+   */
   chunk("the-gulf", { demand: 3 }, [
     E, E, E, E, E, E, E, E, E, E, E,
     "......*....*....",
     ".....=====......",
     E,
-    "......###.......",
+    "......#m#.......",
     E,
     "####.......#####",
     "####.......#####",
