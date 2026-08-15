@@ -295,7 +295,7 @@ export function neighbourhood(world: World | null, radius = 4): string[][] {
       row.push(
         x < 0 || y < 0 || x >= world.width || y >= world.height
           ? "out"
-          : (TILE_NAMES[world.tiles[y * world.width + x] ?? 0] ?? "empty"),
+          : tileName(world.tiles[y * world.width + x] ?? 0),
       );
     }
     rows.push(row);
@@ -303,7 +303,28 @@ export function neighbourhood(world: World | null, radius = 4): string[][] {
   return rows;
 }
 
-const TILE_NAMES: Record<number, string> = {
+/**
+ * Every tile there is, by name.
+ *
+ * **`Record<Tile, string>` and not `Record<number, string>`, so that "every" is
+ * the compiler's business rather than a reader's.** Under the looser type this
+ * table stopped at `WordGate`, and the two tiles authored after it fell through
+ * the lookup's old `?? "empty"` — so `look()` reported a door closed behind the
+ * Scribe, and a figured stone, to every driver in the harness as **open air**.
+ *
+ * Both were live faults, and each is the exact inverse of the tile's purpose. A
+ * `Seal` is the one tile that appears on its own to hold a body in a room, and
+ * the driver was told there was nothing there. A `Maskit` is solid and
+ * *indistinguishable from hewn stone* — its whole design — and the driver was
+ * told the floor had a hole in it, on every rung, twice a rung since P13d
+ * raised the budget.
+ *
+ * This is the third table with a silent default to go stale behind a new tile:
+ * `TILE_CHARS` had no character for `Maskit` until P13a, `MARKER_CHARS` had no
+ * case for `*` for the life of the library. It is the first one where adding a
+ * tile and forgetting this file will fail to compile.
+ */
+export const TILE_NAMES: Record<Tile, string> = {
   [Tile.Empty]: "empty",
   [Tile.Stone]: "stone",
   [Tile.Ledge]: "ledge",
@@ -317,7 +338,22 @@ const TILE_NAMES: Record<number, string> = {
   [Tile.LowGap]: "lowgap",
   [Tile.Placed]: "placed",
   [Tile.WordGate]: "wordgate",
+  [Tile.Seal]: "seal",
+  [Tile.Maskit]: "maskit",
 };
+
+/**
+ * A tile's name, or `"unknown"` for a number that is not a tile at all.
+ *
+ * Deliberately **not** `"empty"`. A driver reads these names as terrain, and of
+ * all the wrong answers a byte outside the enum could be given, open air is the
+ * only one that makes a body *walk into* whatever is actually there. That is
+ * what the old fallback handed out for free, and it is why two real tiles were
+ * invisible rather than merely unnamed.
+ */
+function tileName(t: number): string {
+  return Object.hasOwn(TILE_NAMES, t) ? TILE_NAMES[t as Tile] : "unknown";
+}
 
 export interface ProbeApi {
   read: () => Probe | null;

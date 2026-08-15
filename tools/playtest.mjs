@@ -1704,7 +1704,31 @@ await mkdir(outDir, { recursive: true });
 function decide(p, look, memory, opts) {
   const R = 4;
   const at = (dx, dy) => look[R + dy]?.[R + dx] ?? "out";
-  const solid = (t) => t === "stone" || t === "ledge" || t === "placed" || t === "growth";
+  /**
+   * Terrain to stand on or bump into.
+   *
+   * Not the same list as `isSolid` — a door and a Word-Gate are solid too, and
+   * both are handled below as things to *answer* rather than as walls. But
+   * every tile that blocks a body unconditionally has to be known here or
+   * elsewhere in this function, and for a long time two of them were known
+   * nowhere at all: `look()` reported a `Seal` and a `Maskit` as open air, so
+   * this driver read a door closed behind it as a hole to fall through, and a
+   * figured stone as a gap to leap — on every rung, twice a rung since the
+   * budget went up. `TILE_NAMES` names them now, and this reads them.
+   *
+   * **`maskit` counts as floor precisely because it is meant to.** The tile's
+   * whole design is that it is indistinguishable from hewn stone underfoot, so
+   * a driver that knew to step around one would measure a game no player is
+   * playing. Naming it here does not teach avoidance — it is walked exactly as
+   * stone is, and it gives way exactly as it would under anyone.
+   */
+  const solid = (t) =>
+    t === "stone" ||
+    t === "ledge" ||
+    t === "placed" ||
+    t === "growth" ||
+    t === "maskit" ||
+    t === "seal";
 
   const progressing = p.x > memory.mark + 0.5;
   memory.stuckFor = progressing ? 0 : memory.stuckFor + 1;
