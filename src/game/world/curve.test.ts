@@ -4,6 +4,7 @@ import { lettersOnEntering, regionOfSefirah, regions, TOTAL_REGIONS } from "../r
 import { TREE_PATHS } from "../tree";
 import { buildPath } from "./build";
 import { fighter } from "./probes";
+import { pool } from "../seedPools";
 
 /**
  * **The shape of the climb, measured on the ground a climb actually walks.**
@@ -41,7 +42,7 @@ import { fighter } from "./probes";
  */
 
 /** Twenty, because a rung reached by two paths is forty walks and no more. */
-const SEEDS = [3, 91, 555, 777, 1234, 42, 8888, 271, 1618, 99, 31337, 606, 7, 13, 2024, 5150, 404, 1729, 808, 64];
+const SEEDS = pool([3, 91, 555, 777, 1234, 42, 8888, 271, 1618, 99, 31337, 606, 7, 13, 2024, 5150, 404, 1729, 808, 64]);
 
 /**
  * **The paths that arrive at a rung.** A Scribe reaches a Sefirah by walking a

@@ -8,6 +8,7 @@ import { TREE_PATHS } from "../tree";
 import { buildPath, regionOfPath, rowsFor, verbsOf } from "./build";
 import type { StepContext } from "./step";
 import { fighter, type Fight } from "./probes";
+import { pool } from "../seedPools";
 
 /**
  * What the fight actually costs.
@@ -106,10 +107,22 @@ const budgetFor = (rung: number) => 12000 * (rowsFor(rung) + 1);
 // Tree — was green here and green on a second pool and failed on a third, at
 // 1.40 against a bar of 1.5. A band that has only ever been checked against the
 // pool it was drawn from is not a band.
-const SEEDS = [
+//
+// **And the doing of it is a flag now** — `OTZAR_POOL=1`, see `seedPools.ts`.
+// It was hand work before: retype four seed lists, run, retype them, run, put
+// them all back. So it was skipped twice by phases that meant to do it, which
+// is how P13d came to re-commit a whole balance pass off one draw.
+//
+// Re-measured that way in P13e-3, this file holds on all three: the klipot
+// broken per fight come out at 3.24 / 3.52 / 2.89 in tier 1 and 3.40 / 3.76 /
+// 3.28 in tier 3, going out 4, 4 and 5 times in seventy-five. Every band here
+// is clear of that spread. Nothing in `curve.test.ts` moved either. What did
+// not survive the same treatment was the climb — see `climb.test.ts`, where two
+// claims stated as universals turned out to be claims about two seeds.
+const SEEDS = pool([
   3, 91, 555, 12345, 777, 40404, 8, 1234, 60606, 31337,
   17, 42, 101, 2024, 5150, 7777, 99, 4242, 314, 2718,
-];
+]);
 
 /**
  * Every rung, every seed, with a Scribe who fights. Measured once, reused — and
@@ -431,9 +444,9 @@ describe("what a vessel costs a Scribe who fights", () => {
   // Fifteen, because the step between boon tiers is small by design and a
   // five-seed cell cannot see it: the numbers below were re-measured over
   // three independent fifteen-seed pools before anything here was asserted.
-  const HAND_SEEDS = [
+  const HAND_SEEDS = pool([
     3, 91, 555, 12345, 777, 40404, 8, 1234, 60606, 31337, 17, 42, 101, 2024, 5150,
-  ];
+  ]);
 
   /**
    * Measured once, in a hook, and **with a breath between hands**.
