@@ -136,6 +136,34 @@ const sealFromTheMap = async (page) => {
   if (await seal.count()) await seal.click();
 };
 
+/**
+ * The same moment on both grounds.
+ *
+ * The game ships a charcoal palette and a vellum one, and P8 is the standing
+ * lesson in what that costs an eye that only ever looks at one: twenty klipot
+ * passed every test they had while being very nearly invisible on vellum, and
+ * nothing but a pair of pictures side by side could have said so.
+ *
+ * The keys are dropped first. Flipping the theme and waiting for a repaint is
+ * a fifth of a second in which a Scribe who is still holding *right* will walk
+ * out of the frame — or onto the very stone the first picture was taken to
+ * show intact — so the two grounds would not be two pictures of one moment.
+ */
+const bothGrounds = async (page, release, name) => {
+  await release();
+  await page.waitForTimeout(80);
+  for (const [theme, ground] of [
+    ["dark", "charcoal"],
+    ["light", "vellum"],
+  ]) {
+    await page.evaluate((t) => document.documentElement.setAttribute("data-theme", t), theme);
+    await page.waitForTimeout(110);
+    await page.screenshot({ path: join(outDir, `${name}-${ground}.png`) });
+  }
+  await page.evaluate(() => document.documentElement.removeAttribute("data-theme"));
+  await page.waitForTimeout(60);
+};
+
 const SCRIPTS = [
   {
     name: "first-run",
@@ -196,6 +224,124 @@ const SCRIPTS = [
     warp: { rung: 5, letters: "as-of-rung", lamps: 3, seed: 11 },
     until: (p) => p.husks.broken >= 2 || p.finished,
     seconds: 90,
+  },
+  {
+    name: "maskit",
+    about: "The figured stone — a lie in the floor, seen whole, giving way, and what came up.",
+    /**
+     * **The one thing P13 authored that nobody has ever looked at.**
+     *
+     * Nine screens were composed around a figured stone and the budget above
+     * the kingdom was doubled, all of it proved by unit test and none of it
+     * ever seen — and until the tile got a name in `TILE_NAMES` it could not
+     * be: `look()` reported one to this harness as open air, so no script could
+     * have found a stone to stand on if it had tried.
+     *
+     * **The question is not whether it works.** `maskit.test.ts` says the tile
+     * is solid, that standing on it empties it, that it mends as hewn stone and
+     * that something comes up. What no test can say is whether the seam is
+     * *legible*, and `drawMaskit` sets itself a standard that is precisely a
+     * question about a picture: legible to a player who has already been
+     * dropped once and is now looking, and invisible to one who is running.
+     *
+     * That standard is met by one hatch drawn at **alpha 0.55 of `stoneEdge` on
+     * vellum and 0.16 of `gold` on charcoal** — a different colour and a third
+     * of the strength. An asymmetry of exactly that kind is what left twenty
+     * klipot nearly invisible on one ground for the whole of P8, and it was a
+     * pair of pictures side by side that found it, not a number.
+     *
+     * So the run stops at three moments and photographs them, the first and
+     * last on both grounds:
+     *
+     *   1. **whole** — a stone still intact in the floor a stride ahead. The
+     *      picture that matters most, because it is the only one a player gets
+     *      *before* anything happens to them, and the whole of the legibility
+     *      question lives in it.
+     *   2. **giving way** — the instant the floor empties, which the world
+     *      announces in its own words.
+     *   3. **after** — the drop taken and whatever came out of the hole. The
+     *      mended stone is a row above by then and may sit at the frame's edge
+     *      or out of it; what this shows is what the player is looking at, not
+     *      what the tile did.
+     *
+     * A high rung, because the kingdom lays none at all and the budget is three
+     * only at the top of the Tree. If the run never meets one, `check` says so
+     * — a script that photographed nothing must not report a clean run.
+     */
+    warp: { rung: 8, letters: "as-of-rung", lamps: 3, seed: 5 },
+    seconds: 240,
+    driver: { ontoMaskit: true },
+    until: (p, seen) => Boolean(seen.after) || p.finished,
+    watch: async (page, p, look, { seen, release, report }) => {
+      const R = 4;
+      // `neighbourhood` centres on the row the Scribe's feet are in, so dy 0 is
+      // the floor he stands on and dy 0, dx 1..3 is the floor just ahead.
+      const at = (dx, dy) => look[R + dy]?.[R + dx] ?? "out";
+      const note = (what, extra) => report.moments.push({ what, tick: p.tick, ...extra });
+
+      if (!seen.whole) {
+        // **A stone anywhere in view, and not under his own feet.** In view,
+        // because a tile within four of the Scribe is a tile on screen, and
+        // what is being judged is a picture. Not underfoot, because a stone
+        // beneath a body already standing is a stone breaking this very tick —
+        // `breakMaskit` fires on exactly that — so that column photographs the
+        // hole, and the only picture worth having is of the floor still whole.
+        // **Where it is, in tiles from the Scribe**, and not merely that one is
+        // somewhere on screen. A picture of a floor with a lie in it is no use
+        // to an eye that does not know which tile is lying: the first of these
+        // photographed a stone four tiles off and the report said only that it
+        // had seen one, which left both grounds unjudgeable.
+        let where;
+        let near = Infinity;
+        for (let dy = -4; dy <= 4; dy += 1) {
+          for (let dx = -4; dx <= 4; dx += 1) {
+            if (at(dx, dy) !== "maskit" || (dx === 0 && dy === 0)) continue;
+            if (Math.abs(dx) + Math.abs(dy) >= near) continue;
+            near = Math.abs(dx) + Math.abs(dy);
+            where = { dx, dy };
+          }
+        }
+        if (where && at(0, 0) !== "maskit" && p.onGround) {
+          seen.whole = { tick: p.tick, where };
+          note("whole", { where, sefirah: p.sefirah, facing: p.vx >= 0 ? "right" : "left" });
+          await bothGrounds(page, release, "maskit-1-whole");
+        }
+        return;
+      }
+
+      if (!seen.gaveWay) {
+        // **The world's own word for it**, rather than anything inferred. Both
+        // branches of `breakMaskit` say something — one names what was under
+        // the stone, the other admits there was nothing — and either way the
+        // sentence is proof the tile broke under this body, which no count of
+        // husks or reading of position can be.
+        if (/under the stone|never stone/.test(p.message ?? "")) {
+          seen.gaveWay = { tick: p.tick, said: p.message, lamps: p.lamps };
+          note("giving-way", { said: p.message, lamps: p.lamps });
+          await page.screenshot({ path: join(outDir, "maskit-2-giving-way.png") });
+        }
+        return;
+      }
+
+      // A second and a half on: the fall is over, the stone above has mended,
+      // and the pacer's own second of coming up has run out — so what is on
+      // screen is the trap's whole consequence rather than its middle.
+      if (p.tick > seen.gaveWay.tick + 90) {
+        seen.after = { tick: p.tick, lamps: p.lamps, husks: p.husks.standing };
+        note("after", { lamps: p.lamps, standing: p.husks.standing });
+        await bothGrounds(page, release, "maskit-3-after");
+      }
+    },
+    check: (p, seen) => {
+      if (!seen.whole) {
+        throw new Error(
+          `no figured stone was ever seen in the floor of ${p.sefirah ?? "the rung"} — ` +
+            "either the rung laid none or look() cannot see them again",
+        );
+      }
+      if (!seen.gaveWay) throw new Error("a stone was seen and never stood on");
+      if (!seen.after) throw new Error("the stone gave way and the run ended before the landing");
+    },
   },
   {
     name: "house",
@@ -1730,6 +1876,34 @@ function decide(p, look, memory, opts) {
     t === "maskit" ||
     t === "seal";
 
+  /**
+   * **The nearest figured stone in view, as something to walk to.**
+   *
+   * Only `maskit` asks for this. Walking right and hoping is not enough to
+   * *meet* one — measured in the suite, a body that never stops springs 54 of
+   * the 240 stones laid across ten rungs and twelve seeds, and on the rung this
+   * script first warped to, three of thirty-six. Four browser runs each saw a
+   * stone and none ever stood on one.
+   *
+   * So it is treated exactly as a House or a pedestal is: the thing is spotted,
+   * and the driver turns around for it and jumps at it. The tile underfoot is
+   * skipped — a stone there is already breaking.
+   */
+  let maskitSeen;
+  if (opts?.ontoMaskit) {
+    let near = Infinity;
+    for (let dy = -R; dy <= R; dy += 1) {
+      for (let dx = -R; dx <= R; dx += 1) {
+        if (at(dx, dy) !== "maskit" || (dx === 0 && dy === 0)) continue;
+        const far = Math.abs(dx) + Math.abs(dy);
+        if (far >= near) continue;
+        near = far;
+        // In pixels and in the shape the `seek` machinery below already reads.
+        maskitSeen = { dx: dx * 24, dy: dy * 24 };
+      }
+    }
+  }
+
   const progressing = p.x > memory.mark + 0.5;
   memory.stuckFor = progressing ? 0 : memory.stuckFor + 1;
   memory.mark = Math.max(memory.mark, p.x);
@@ -1801,6 +1975,7 @@ function decide(p, look, memory, opts) {
     opts?.seekHouse ? p.house
     : opts?.seekVessel ? p.vessel
     : opts?.seekRelic ? p.relic
+    : opts?.ontoMaskit ? maskitSeen
     : undefined;
 
   /**
@@ -1833,7 +2008,30 @@ function decide(p, look, memory, opts) {
   const seekBehind = Boolean(seek && seek.dx < -16);
   const seekAbove = Boolean(seek && Math.abs(seek.dx) < 110 && seek.dy < -20);
 
-  const wantJump = !backingOff && (gapAhead || wallAhead || seekAbove || memory.stuckFor > 6);
+  /**
+   * **A script that came to stand on one.**
+   *
+   * Off everywhere but `maskit`, and deliberately so: a driver that steered
+   * toward the traps — or around them — would measure a game nobody is
+   * playing. All this does is decline to *jump over* the tile, which is not a
+   * player's instinct but is the difference between photographing the trap and
+   * photographing the floor beside it. Measured: with the ordinary gait the
+   * run met one figured stone in four minutes, cleared it in the stride it was
+   * seen, and never touched another. A body that leaps every second crosses a
+   * one-tile lie far more often than it lands on one.
+   *
+   * **The floor row ahead, and only that.** Widening this to "a stone anywhere
+   * in view" made it worse, not better: a stone on a shelf above stays in sight
+   * for a long stretch, and a driver forbidden to jump for all of it cannot
+   * climb to the thing it is being held still for. Jumping only ever *carries a
+   * body over* a stone that is in the line it is already walking, so that is
+   * the only place worth declining to jump.
+   */
+  const seekingMaskit =
+    Boolean(opts?.ontoMaskit) && [1, 2, 3, 4].some((dx) => at(dx, 0) === "maskit");
+
+  const wantJump =
+    !backingOff && !seekingMaskit && (gapAhead || wallAhead || seekAbove || memory.stuckFor > 6);
 
   // **Jump is an edge, not a state.** `GameCanvas` reads `jump` from the keys
   // *pressed since the last frame* and `jumpHeld` from the keys still down —
@@ -2034,6 +2232,8 @@ async function play(script, browser) {
   };
 
   const memory = { mark: 0, stuckFor: 0, jumpFor: 0, leaveGate: 0, actFor: 0, tick: 0 };
+  /** A watching script's own scratch — see `script.watch` in the loop below. */
+  const watching = {};
   const report = {
     script: script.name,
     about: script.about,
@@ -2041,6 +2241,8 @@ async function play(script, browser) {
     startedAt: new Date().toISOString(),
     samples: [],
     captions: [],
+    /** What a watching script stopped to photograph, and when. */
+    moments: [],
     plates: [],
     letters: [],
     found,
@@ -2116,7 +2318,7 @@ async function play(script, browser) {
         await page.screenshot({ path: join(outDir, file) });
         report.plates.at(-1).image = file;
       }
-      if (script.until(p)) {
+      if (script.until(p, watching)) {
         reason = `reached: ${p.plate}`;
         break;
       }
@@ -2132,7 +2334,23 @@ async function play(script, browser) {
       continue;
     }
 
-    if (script.until(p)) {
+    /**
+     * **A script that is here for a moment rather than for a run.**
+     *
+     * The contact sheet is spaced evenly over however long the run turns out to
+     * be, which is right for watching a climb and useless for catching an
+     * event: a figured stone gives way, drops a body and mends itself inside
+     * two thirds of a second, and a sheet shooting every second and a half will
+     * photograph the floor before and the floor after and nothing in between.
+     *
+     * So a script may watch the world itself and shoot on its own trigger.
+     * `seen` is its scratch across ticks — a moment is photographed once — and
+     * `release` lets it stop the Scribe first, because a picture taken of a
+     * body still walking is a picture of somewhere else.
+     */
+    if (script.watch) await script.watch(page, p, look, { seen: watching, release, report });
+
+    if (script.until(p, watching)) {
       reason = "the script's own condition";
       break;
     }
@@ -2178,7 +2396,7 @@ async function play(script, browser) {
    * ends cleanly on a timeout and reports a tidy percentage, which is how a
    * driver that never reached anything reads as a pass.
    */
-  if (script.check) script.check(last ?? {});
+  if (script.check) script.check(last ?? {}, watching);
 
   await context.close();
   const video = page.video();

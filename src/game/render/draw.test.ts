@@ -1,0 +1,75 @@
+import { describe, expect, it } from "vitest";
+import { stoneInks } from "./draw";
+import { paletteOf, PLACES, readPalette, type Palette } from "./palette";
+
+const DARK: Palette = readPalette();
+const VELLUM: Palette = { ...DARK, stone: "#cbbb90", stoneEdge: "#9c8955", bg: "#f4efe2", light: true };
+
+/** The rgb of an `rgba(...)` string, without its alpha. */
+const hue = (ink: string) => ink.replace(/,\s*[\d.]+\)$/, ")");
+
+/**
+ * **A figured stone has to be findable, and on one ground it was not.**
+ *
+ * `Tile.Maskit` is a piece of floor that gives way, and it sets itself a
+ * standard no unit test had ever been pointed at: legible to a player who has
+ * already been dropped once and is now looking, invisible to one who is
+ * running. Everything else about it was proved — solid until stood on, empties,
+ * mends as hewn stone, something comes up — and all of that can be true of a
+ * tile nobody can see.
+ *
+ * It was not. The hatch expression was written out twice, and the seam was
+ * written to sit beside one of the copies rather than against it: on vellum
+ * both were `stoneEdge`, one at 0.75 and the other at 0.55. A line in the same
+ * colour, at the same angle, among fifteen others. Photographed through the
+ * `maskit` playtest script and measured off the picture: the strongest mark
+ * anywhere on a figured tile came out at 1.54 contrast against its own stone,
+ * where an ordinary hatched tile beside it reached 1.57. **The tell was quieter
+ * than the texture it was hiding in.**
+ *
+ * These are the claims that would have caught it. They are about a difference
+ * rather than a particular colour, in the discipline `testCanvas` sets out: a
+ * test that pinned the seam to an exact ink would have to be rewritten every
+ * time the ink changed, and would then be pinning whatever it was last
+ * rewritten to.
+ */
+describe("the ink a stone is marked with", () => {
+  it("does not draw the seam in the hatch's own colour, on either ground", () => {
+    for (const [ground, palette] of [
+      ["charcoal", DARK],
+      ["vellum", VELLUM],
+    ] as const) {
+      const { hatch, seam } = stoneInks(palette);
+      expect(seam, `the seam is the hatch exactly on ${ground}`).not.toBe(hatch);
+      // And not the same ink at another opacity, which is what it was: a mark
+      // has to differ in colour, or it is the texture again slightly harder.
+      expect(hue(seam), `the seam is the hatch's colour on ${ground}`).not.toBe(hue(hatch));
+    }
+  });
+
+  /**
+   * And on **every Sefirah's palette**, not only the two the themes ship.
+   *
+   * `paletteOf` tints all ten places off the ground's base, so a seam and a
+   * hatch that part company on charcoal can meet again somewhere up the Tree —
+   * and a stone nobody can read in Binah is exactly as bad as one nobody can
+   * read anywhere, while being far easier to miss.
+   *
+   * Deliberately a claim about **hue and not about strength**. The obvious
+   * numeric rule — the seam must depart from its stone further than the hatch
+   * does — is one this very bug would have passed: `stoneEdge` at 0.75 does
+   * depart further than `stoneEdge` at 0.55, and it was still invisible,
+   * because a darker line of the same colour at the same angle among fifteen
+   * others reads as one of the fifteen. What makes a mark a mark here is that
+   * it is not made of what surrounds it.
+   */
+  it("keeps them apart on all ten places, on both grounds", () => {
+    for (const base of [DARK, VELLUM]) {
+      for (const sefirah of Object.keys(PLACES)) {
+        const { hatch, seam } = stoneInks(paletteOf(base, sefirah));
+        const where = `${sefirah} on ${base.light ? "vellum" : "charcoal"}`;
+        expect(hue(seam), `the seam is drawn in the hatch's colour at ${where}`).not.toBe(hue(hatch));
+      }
+    }
+  });
+});

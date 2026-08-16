@@ -410,6 +410,31 @@ function drawSeal(
   ctx.stroke();
 }
 
+/**
+ * **The two inks a stone is marked with**, in one place because the whole of
+ * P13e's finding was that on one ground they were the same ink.
+ *
+ * `hatch` is the engraver's hatching on any stone with air above it. `seam` is
+ * the single curved line that says a stone is figured — `Tile.Maskit` — and it
+ * is the only thing distinguishing a lie in the floor from the floor.
+ *
+ * The hatch expression used to be written out twice, once in `drawStone` and
+ * once in `drawMaskit`, and the seam was written to sit *beside* one of those
+ * copies rather than against it: on vellum both were `stoneEdge`, at 0.75 and
+ * 0.55. A line in the same colour and at the same angle as the fifteen around
+ * it is not a mark, and measurement agreed — the loudest thing on a figured
+ * tile came out quieter than the plain stone beside it.
+ *
+ * The rule this now has a name for: **the seam runs against the hatch.** Dark
+ * where the hatching is pale, so a body that stops and looks can find it.
+ */
+export function stoneInks(palette: Palette): { hatch: string; seam: string } {
+  return {
+    hatch: alpha(palette.light ? palette.stoneEdge : palette.gold, palette.light ? 0.55 : 0.16),
+    seam: alpha(palette.light ? palette.text : palette.bgDeep, palette.light ? 0.5 : 0.75),
+  };
+}
+
 function drawStone(
   ctx: CanvasRenderingContext2D,
   world: World,
@@ -438,10 +463,7 @@ function drawStone(
       c.beginPath();
       c.rect(0, 0, TILE_SIZE, TILE_SIZE);
       c.clip();
-      c.strokeStyle = alpha(
-        palette.light ? palette.stoneEdge : palette.gold,
-        palette.light ? 0.55 : 0.16,
-      );
+      c.strokeStyle = stoneInks(palette).hatch;
       c.lineWidth = 1;
       for (let i = -TILE_SIZE; i < TILE_SIZE; i += HATCH_SPACING) {
         c.beginPath();
@@ -520,7 +542,7 @@ function drawMaskit(
   ctx.beginPath();
   ctx.rect(x, y, TILE_SIZE, TILE_SIZE);
   ctx.clip();
-  ctx.strokeStyle = alpha(palette.light ? palette.stoneEdge : palette.gold, palette.light ? 0.55 : 0.16);
+  ctx.strokeStyle = stoneInks(palette).hatch;
   ctx.lineWidth = 1;
   for (let i = -TILE_SIZE; i < TILE_SIZE; i += HATCH_SPACING) {
     ctx.beginPath();
@@ -528,9 +550,29 @@ function drawMaskit(
     ctx.lineTo(x + i + TILE_SIZE, y);
     ctx.stroke();
   }
-  // The seam. One line where the hatch should be, and the only thing on the
-  // whole tile that is not what stone looks like.
-  ctx.strokeStyle = alpha(palette.light ? palette.stoneEdge : palette.bgDeep, 0.75);
+  /**
+   * The seam. One line where the hatch should be, and the only thing on the
+   * whole tile that is not what stone looks like.
+   *
+   * **It has to run against the hatch, not along it.** On charcoal it always
+   * did: the hatch is `gold` and the seam is `bgDeep`, a dark line through pale
+   * ones, and the tile's loudest mark by a clear margin. On vellum the seam was
+   * drawn in `stoneEdge` — *the very colour the hatch is drawn in* — at 0.75
+   * against the hatch's 0.55. One line slightly more opaque than the fifteen
+   * beside it, in the same ink, at the same angle.
+   *
+   * Photographed and measured rather than argued: on the vellum ground the
+   * strongest departure from the stone anywhere on a figured tile was 1.54,
+   * against 1.57 on an ordinary hatched tile beside it. The seam was quieter
+   * than the texture it was hiding in — which is not a stone made to be looked
+   * at, it is a stone nobody can look at. `Tile.Maskit` asks to be legible to
+   * someone who has been dropped once and is now looking; on half the grounds
+   * this game ships, there was nothing there to find.
+   *
+   * So vellum gets true ink, the way charcoal gets true shadow: the darkest
+   * thing in the palette, running the other way from the hatch.
+   */
+  ctx.strokeStyle = stoneInks(palette).seam;
   ctx.lineWidth = 1.2;
   ctx.beginPath();
   ctx.moveTo(x + 3, y + 6.5);
