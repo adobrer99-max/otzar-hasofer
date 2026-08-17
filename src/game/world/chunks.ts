@@ -808,12 +808,68 @@ export const GATE_FALL: Chunk = chunk("word-gate-fall", { demand: 1 }, [
  * that quietly moved the mouth would move it for one path in four and nowhere
  * else.
  */
+/**
+ * **The booth** — Sukkot's own chamber, laid on that week and no other.
+ *
+ * The interior is `GATE_HOUSE` with a roof: a run of ledges over the figure's
+ * head, which is the most literal s'chach the tile alphabet can build — a
+ * covering a body sees through and stands under, solid only from above. The
+ * figure beneath it is the rung's own House brought into the booth (the
+ * GATE_HOUSE pattern exactly, fallback included: on a rung with no House the
+ * gate opens onto the hoard instead), and P10-4 seats the *night's* guest at
+ * this table. Outside the chamber it is the base screen to the tile, which is
+ * the contract the whole family is swept against.
+ */
+export const GATE_SUKKAH: Chunk = chunk("word-gate-sukkah", { demand: 1 }, [
+  E, E, E, E, E, E, E, E,
+  "......########..",
+  ".....##..===.#..",
+  "......W...H..#..",
+  ".....?W..*...#..",
+  ".....#########..",
+  E,
+  "...==...........",
+  E,
+  F,
+  F,
+]);
+
+/**
+ * **The lamps** — Hanukkah's chamber: eight lights in two rows of four, and
+ * nothing else. More light than any chamber in the family, on the one week
+ * whose whole note is that the light lasted longer than it had any right to.
+ * The mote-displacement arithmetic that capped the hoard at four does not
+ * bind here: the day's own budget is up 1.5× (`FESTIVAL_RULES`), festival
+ * days sit outside every committed band pool, and eight is the number — it
+ * is not available for tuning.
+ */
+export const GATE_LAMPS: Chunk = chunk("word-gate-lamps", { demand: 1 }, [
+  E, E, E, E, E, E, E, E,
+  "......########..",
+  ".....##.****.#..",
+  "......W.****.#..",
+  ".....?W......#..",
+  ".....#########..",
+  E,
+  "...==...........",
+  E,
+  F,
+  F,
+]);
+
 export const GATE_ROOMS: readonly Chunk[] = [
   WORD_GATE_CHUNK,
   GATE_HOARD,
   GATE_HOUSE,
   GATE_DEN,
   GATE_FALL,
+  // The festival chambers. In the family — so the identical-outside-the-
+  // chamber contract sweeps them — and deliberately NOT in `GATE_ODDS`:
+  // an ordinary day's selection stays byte-identical to what every committed
+  // seed was measured on, and these are laid only when the day names them
+  // (`gateRoomFor`'s festival argument).
+  GATE_SUKKAH,
+  GATE_LAMPS,
 ];
 
 /**

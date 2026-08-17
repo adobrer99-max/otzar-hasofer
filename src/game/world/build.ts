@@ -52,11 +52,15 @@ import {
   VESSEL_CHUNK,
   GATE_HOARD,
   GATE_HOUSE,
+  GATE_SUKKAH,
   GATE_ODDS,
+  GATE_ROOMS,
   WORD_GATE_CHUNK,
 } from "./chunks";
 import { HUSK_CHARS, HUSKS, kindForRole, LAMPS, type HuskKind } from "../combat";
 import { VEIL_COST } from "../encounter";
+import { festivalKnob } from "../festivalRules";
+import type { FestivalId } from "../../types/festival";
 import { drawKeli, keliFor, poolFor, type Keli } from "../items";
 import { guardianOf } from "../guardians";
 import { relicAt } from "../relics";
@@ -279,7 +283,12 @@ function layout(
    * That is P9d's finding run backwards, and it is the second time the same
    * arithmetic has caught a change nobody thought touched it.
    */
-  const gate = gateRoom.id === GATE_HOUSE.id && !region.hasHouse ? GATE_HOARD : gateRoom;
+  // Both figure-bearing chambers fall back where there is no figure to stand
+  // — the booth carries an `H` exactly as GATE_HOUSE does.
+  const gate =
+    (gateRoom.id === GATE_HOUSE.id || gateRoom.id === GATE_SUKKAH.id) && !region.hasHouse
+      ? GATE_HOARD
+      : gateRoom;
   const verbs = verbsOf(held);
 
   /**
@@ -1610,7 +1619,23 @@ export const SPENT_LIGHT = 0.15;
  * Hashed rather than drawn, in fact: there is nothing random about it once the
  * day and the path are known, and a hash cannot be got out of order.
  */
-export function gateRoomFor(pathId: string, seed: number): Chunk {
+export function gateRoomFor(
+  pathId: string,
+  seed: number,
+  /**
+   * The named days the climb was begun on, **frozen from the record** — never
+   * the live clock, or a climb crossing midnight would change the room behind
+   * a gate already seen. On a day whose rule names a chamber, the day *is*
+   * the room, everywhere, for everyone; ordinary days keep the byte-identical
+   * hash draw every committed seed was measured on.
+   */
+  festivals: readonly FestivalId[] = [],
+): Chunk {
+  const named = festivalKnob(festivals, "gateRoom");
+  if (named) {
+    const room = GATE_ROOMS.find((c) => c.id === named);
+    if (room) return room;
+  }
   const at = (hashOf(`${pathId}:gate:${seed}`) >>> 0) % GATE_ODDS.length;
   return GATE_ODDS[at];
 }
@@ -1749,6 +1774,8 @@ export function buildPath(
    * see `RELIC_CHUNK` on why the screen is laid either way.
    */
   relicsFound: readonly string[] = [],
+  /** The record's frozen festival ids — see `gateRoomFor`. */
+  festivalIds: readonly FestivalId[] = [],
 ): World {
   const region = regionOfPath(path, held, klipot);
   // Seeded by the path rather than the region, so walking Malchut→Hod is not
@@ -1766,7 +1793,7 @@ export function buildPath(
     undefined,
     held,
     keli,
-    gateRoomFor(path.id, seed),
+    gateRoomFor(path.id, seed, festivalIds),
   );
 
   return paint(

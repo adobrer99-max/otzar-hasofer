@@ -67,4 +67,13 @@ export interface UshpizinEntry {
   figure: string;
   middah: string;
   description: string;
+  /**
+   * What the guest says when met **on their own Sukkot night** — Abraham on
+   * the first, Isaac on the second, in the Zohar's order, which is also the
+   * order of this array. Traditional in shape (the ushpizin are *invited*,
+   * and the invitation is answered), authored for this work in its voice.
+   * Absent nowhere: a guest with no greeting on their own night would be the
+   * empty-plate class of gap, and `ushpizin.test.ts` counts seven.
+   */
+  sukkotSaying: string;
 }

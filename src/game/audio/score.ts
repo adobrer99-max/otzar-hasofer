@@ -2,8 +2,9 @@ import { lettersById } from "../../data/letters";
 import type { SefirahId } from "../../types/letter";
 import { misparKatan } from "../values";
 import { modeFor, pitchOf, RUNG_VOICES, type Mode } from "./modes";
-import { FESTIVAL_NIGUNIM, nigunimById, type Nigun } from "./nigunim";
+import { nigunimById, type Nigun } from "./nigunim";
 import type { FestivalId } from "../../types/festival";
+import { festivalKnob } from "../festivalRules";
 
 /**
  * What the climb sounds like — decided here, and rendered elsewhere.
@@ -125,10 +126,10 @@ export function isSupernal(sefirah: SefirahId): boolean {
 
 /** Which nigun this moment calls for — the day's, else the rung's. */
 export function nigunFor(ctx: ScoreContext): Nigun {
-  for (const id of ctx.festivalIds ?? []) {
-    const named = FESTIVAL_NIGUNIM[id];
-    if (named && nigunimById[named]) return nigunimById[named];
-  }
+  // Off FESTIVAL_RULES now — the one exhaustive home for what a day does.
+  // Same read as ever: the first active festival that names a tune names it.
+  const named = festivalKnob(ctx.festivalIds ?? [], "nigun");
+  if (named && nigunimById[named]) return nigunimById[named];
   return nigunimById[isSupernal(ctx.sefirah) ? "supernal-phrase" : "ascent-phrase"];
 }
 

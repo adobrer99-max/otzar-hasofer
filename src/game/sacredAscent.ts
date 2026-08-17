@@ -1,8 +1,10 @@
 import { festivalsById } from "../data/festivals";
+import { ushpizin } from "../data/ushpizin";
 import { formatHebrewDateEnglish, resolveAdar } from "../data/hebrewCalendar";
 import { mazalotByMonth } from "../data/mazalot";
 import { computeSacredTime } from "../data/sacredTime";
-import type { FestivalId, Gesture } from "../types/festival";
+import { FESTIVAL_RULES } from "./festivalRules";
+import type { Gesture } from "../types/festival";
 import type { GeographyMode } from "../types/herald";
 import type { SacredTimeSnapshot } from "../types/sacredTime";
 import type { Grace } from "./abilities";
@@ -92,27 +94,6 @@ const GESTURE_GRACES: Record<Gesture, Grace> = {
   Gather: "draw-motes", // what is scattered comes in
 };
 
-/**
- * Days that reach onto the board. The rest of the calendar is still shown —
- * every active festival is named in the notes — but only these change play,
- * and each change is the one the day already means in the practice.
- */
-const DAY_EFFECTS: Partial<Record<FestivalId, { light: number; note: string }>> = {
-  shabbat: { light: 1.4, note: "Shabbat — the regions lie brighter than on any working day." },
-  hanukkah: { light: 1.5, note: "Hanukkah — the light that lasted longer than it had any right to." },
-  tubishvat: { light: 1.3, note: "Tu Bishvat — the sap rises in the Tree, and the Tree is lit." },
-  sukkot: { light: 1.3, note: "Sukkot — the guests are welcomed, and the booth is hung with light." },
-  pesach: { light: 1.3, note: "Pesach — the narrow place is behind you." },
-  shavuot: { light: 1.4, note: "Shavuot — the letters themselves were given on this day." },
-  "rosh-hashanah": { light: 1.2, note: "Rosh Hashanah — the year turns." },
-  purim: { light: 1.2, note: "Purim — the hidden face; even the light is in disguise." },
-  "yom-kippur": { light: 0.7, note: "Yom Kippur — the regions are spare. Little is strewn, and little is needed." },
-  tishabav: { light: 0.55, note: "Tisha B'Av — the light is scarce. What is destroyed is climbed through, not around." },
-  "fast-of-gedaliah": { light: 0.75, note: "A fast day — less lies waiting on the ground." },
-  "tenth-of-tevet": { light: 0.75, note: "A fast day — less lies waiting on the ground." },
-  "seventeenth-of-tammuz": { light: 0.75, note: "A fast day — less lies waiting on the ground." },
-  "fast-of-esther": { light: 0.75, note: "A fast day — less lies waiting on the ground." },
-};
 
 /**
  * Reads a date into everything the run needs from it.
@@ -160,12 +141,24 @@ export function readAscentTime(
       }
     }
 
-    const effect = DAY_EFFECTS[id];
-    if (effect) {
-      lightOfTheDay *= effect.light;
-      notes.push(effect.note);
-    } else if (festival && !gesture) {
+    // The day's rule — light multiplies across every active festival (Shabbat
+    // in Hanukkah is 2.1, and has been since the multipliers existed); the
+    // note is the rule's own line. A day whose rule is `null` is named and
+    // leaves the board alone.
+    const rule = FESTIVAL_RULES[id];
+    if (rule?.light !== undefined) lightOfTheDay *= rule.light;
+    if (rule?.note) notes.push(rule.note);
+    else if (festival && !gesture && !rule) {
       notes.push(`${festival.name} — the day is named, though the board is unchanged.`);
+    }
+
+    // The booth's own line: which of the seven guests presides tonight. The
+    // Zohar's order is the ushpizin array's order, and `festivalDays` counts
+    // the nights 1-based — see `dayOfDateRule`.
+    if (id === "sukkot") {
+      const night = snapshot.festivalDays?.sukkot;
+      const guest = night !== undefined ? ushpizin[night - 1] : undefined;
+      if (guest) notes.push(`Night ${night} of the booth — tonight the guest is ${guest.figure}.`);
     }
   }
 

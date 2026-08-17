@@ -7,6 +7,7 @@ import { dormantFor, GRACE_NEEDS, offerFor, vowKept } from "./ushpizinOffers";
 import { buildPath, regionOfPath, verbsOf } from "./world/build";
 import { TREE_PATHS } from "./tree";
 import { dorotCardsById } from "../data/dorot";
+import { ushpizin } from "../data/ushpizin";
 
 /**
  * **The guests of the Houses — the bargain the game asks most directly.**
@@ -52,6 +53,28 @@ describe("the seven guests", () => {
   it("gives seven different graces", () => {
     const given = SEFIROT_WITH_GUESTS.map((s) => offerFor(s)!.grants);
     expect(new Set(given).size).toBe(given.length);
+  });
+});
+
+describe("the seven nights of the booth", () => {
+  /**
+   * The Zohar's order is the array's order — Abraham the first night, David
+   * the seventh — and `festivalDays.sukkot` (1-based) indexes it directly, so
+   * this is the claim the House plate's night-greeting stands on. Annotation
+   * only, by owner decision: nothing here touches a bargain's price or vow,
+   * and the offers' own tests hold that unchanged.
+   */
+  it("gives every guest a greeting for their own night, distinct and in order", () => {
+    expect(ushpizin).toHaveLength(7);
+    expect(ushpizin.map((u) => u.sefirah)).toEqual([
+      "chesed", "gevurah", "tiferet", "netzach", "hod", "yesod", "malchut",
+    ]);
+    const sayings = ushpizin.map((u) => u.sukkotSaying);
+    for (const [i, saying] of sayings.entries()) {
+      expect(saying.length, `${ushpizin[i].figure} has no real greeting`).toBeGreaterThan(60);
+      expect(saying, `${ushpizin[i].figure} does not claim the night`).toContain("Tonight the booth is");
+    }
+    expect(new Set(sayings).size, "two guests share a greeting").toBe(7);
   });
 });
 

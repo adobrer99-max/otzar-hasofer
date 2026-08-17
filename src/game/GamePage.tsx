@@ -108,6 +108,7 @@ import { readWarp, warpDate, warpParams, warpRecord, type WarpOptions } from "./
 import { frameStats, installProbe, neighbourhood, phaseStats, probeOf } from "./dev/probe";
 import type { World } from "./world/types";
 import styles from "./GamePage.module.css";
+import { ushpizin } from "../data/ushpizin";
 
 /**
  * Ma'alot — the Ascent of the Tree.
@@ -362,6 +363,11 @@ export function GamePage() {
     };
   }, []);
   lightRef.current = time.lightOfTheDay;
+  // Which Sukkot night it is, when it is Sukkot at all. Live rather than
+  // frozen on purpose: the booth outside changes guests at the day's turn
+  // whatever night a climb was begun on, and the greeting is an annotation on
+  // the meeting, not part of the record's promised ground.
+  const sukkotNight = time.snapshot.festivalDays?.sukkot;
 
   // Which of the Seven Encounters this climb is. Past the seventh there is
   // none, and the ascent is simply beyond the unfolding order.
@@ -1266,6 +1272,10 @@ export function GamePage() {
         // The screen is laid either way, so this changes no tile and no draw;
         // see `RELIC_CHUNK` for why that is not optional.
         [...kept.map((r) => r.id), ...(ascent.relicsFound ?? [])],
+        // **The record's frozen day, never the live one** — a climb crossing
+        // midnight keeps the room its gates promised. Records from before the
+        // field read as ordinary days, which is what they were measured as.
+        ascent.festivalIds ?? [],
       );
       const carried = powersFrom(ascent.items ?? [], boons, keeps);
       next.player.lamps = (warpLamps.current ?? next.player.lamps) + carried.lamps;
@@ -1784,6 +1794,7 @@ export function GamePage() {
           ascent={ascent}
           world={world}
           verbs={verbs}
+          sukkotNight={sukkotNight}
           encounter={encounter}
           onWalk={walkPath}
           onSeal={sealAscent}
@@ -2654,6 +2665,7 @@ function PlateOverlay({
   ascent,
   world,
   verbs,
+  sukkotNight,
   encounter,
   onWalk,
   onSeal,
@@ -2674,6 +2686,8 @@ function PlateOverlay({
   world: World | null;
   /** What this body can do — the House plate says when a boon would sleep. */
   verbs: readonly Verb[];
+  /** Which Sukkot night it is, 1–7, when it is Sukkot at all. */
+  sukkotNight?: number;
   encounter: ReturnType<typeof encounterFor>;
   /** Step onto the path the Abyss plate is standing at the near edge of. */
   onWalk: (path: TreePath) => void;
@@ -2742,6 +2756,7 @@ function PlateOverlay({
             cardId={plate.cardId}
             or={world.or}
             verbs={verbs}
+            sukkotNight={sukkotNight}
             onAccept={onAccept}
             onClose={onClose}
           />
@@ -3341,6 +3356,7 @@ function HousePlate({
   cardId,
   or,
   verbs,
+  sukkotNight,
   onAccept,
   onClose,
 }: {
@@ -3348,6 +3364,8 @@ function HousePlate({
   or: number;
   /** What this body can do — so a boon it could not use yet says so. */
   verbs: readonly Verb[];
+  /** Which Sukkot night it is, 1–7, when it is Sukkot at all — see `festivalDays`. */
+  sukkotNight?: number;
   onAccept: (offer: UshpizinOffer) => void;
   onClose: () => void;
 }) {
@@ -3400,6 +3418,18 @@ function HousePlate({
           <p className={styles.offerGuest}>
             {offer.figure} — {offer.middah}
           </p>
+          {/* **The night's own guest, in the booth.** On Sukkot the seven are
+              invited one a night in the Zohar's order, and when the House met
+              is the night-guest's own, the greeting is theirs — an annotation
+              on the meeting, never a change to the bargain: the price, the
+              vow and the grant below are exactly what they are on any day.
+              (Owner's decision, 17 Av: annotation only.) */}
+          {sukkotNight !== undefined && ushpizin[sukkotNight - 1]?.sefirah === sefirah && (
+            <p className={styles.offerSaying}>
+              <em>Tonight the booth is {offer.figure}&rsquo;s.</em>{" "}
+              &ldquo;{ushpizin[sukkotNight - 1].sukkotSaying}&rdquo;
+            </p>
+          )}
           <p className={styles.offerSaying}>&ldquo;{offer.saying}&rdquo;</p>
           <p className={styles.offerGrants}>{offer.grantsLabel}</p>
           {/* **What a vow is**, said where it is taken. The three vow guests

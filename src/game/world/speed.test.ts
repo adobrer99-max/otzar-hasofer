@@ -231,7 +231,10 @@ describe("what a screen asks of a body in a hurry", () => {
   it("measures every screen a rung can lay, and files each in exactly one place", { timeout: 300000 }, () => {
     const rows = sweep().hurried;
     expect(rows.length, "some screen has no way in and no way out").toBe(SUBJECTS.length);
-    expect(SUBJECTS.length).toBe(76);
+    // 76 became 78 when P10-3 added the two festival chambers (the booth and
+    // the lamps). Both file as free: the chamber is sealed off the walking
+    // lane, which is the whole of the gate family's contract.
+    expect(SUBJECTS.length).toBe(78);
     const free = rows.filter((r) => r.crossed === SEEDS.length && r.veilings === 0 && r.sprung === 0);
     expect(free.length + TAKES_SOMETHING.length + ASKS_A_MOVE.length).toBe(rows.length);
     // Unanimity, which is what lets these be lists rather than thresholds: not

@@ -57,8 +57,11 @@ const SEEDS = [3, 91, 555, 12345, 777, 40404, 1, 2, 8, 99, 1000, 65535];
  * `abyss.test.ts`, and answered there by the machine that only ever poses a
  * root the Scribe already holds the letters for.
  */
-function ground(path: TreePath, seed: number, held: readonly string[]) {
-  const world = buildPath(path, seed, held);
+function ground(path: TreePath, seed: number, held: readonly string[], festival?: "sukkot" | "hanukkah") {
+  const world = buildPath(
+    path, seed, held, 1, false, false, 1, [], 0, [],
+    festival ? [festival] : [],
+  );
   if (crossesAbyss(path)) openWordGate(world, "The gate opens.");
   return world;
 }
@@ -305,4 +308,29 @@ describe("the way out, on the Tree", () => {
     expect(asked, "no upper paths were asked about").toBeGreaterThan(20);
     expect(barred, `the upper Tree was crossable holding nothing on all ${asked}`).toBeGreaterThan(0);
   }, 60000);
+});
+
+/**
+ * **Festival ground keeps the guarantee.** The booth and the lamps are laid
+ * in place of the ordinary chamber on their days — same envelope to the tile,
+ * which the chunk contract already proves — and this is the other half: a way
+ * out still exists across every path on a festival day, with the floors on.
+ * Fewer seeds than the ordinary sweep because the chamber is one screen of a
+ * rung and the envelope is contract-identical; what is being caught here is a
+ * booth whose interior ledge or lamps somehow reached the walking line.
+ */
+describe("the way out, on the days that are not ordinary", () => {
+  it("exists on every path on Sukkot and on Hanukkah", { timeout: 120000 }, () => {
+    const lost: string[] = [];
+    for (const festival of ["sukkot", "hanukkah"] as const) {
+      for (const path of TREE_PATHS) {
+        for (const seed of [3, 91, 555]) {
+          const world = ground(path, seed, TREE_PATHS.map((p) => p.letter), festival);
+          const route = routeTo(world, verbsOf(TREE_PATHS.map((p) => p.letter)));
+          if (!route.usable) lost.push(`${festival}:${path.id}/${seed}`);
+        }
+      }
+    }
+    expect(lost, lost.join(", ")).toEqual([]);
+  });
 });

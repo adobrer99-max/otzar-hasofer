@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { lettersOnEntering, regionAt, regions, TOTAL_REGIONS } from "../regions";
-import { CHUNKS, CHUNK_H, CHUNK_W, chunksById, GATE_ROOMS, TEACH_CHUNKS } from "./chunks";
+import { GATE_ODDS, CHUNKS, CHUNK_H, CHUNK_W, chunksById, GATE_ROOMS, TEACH_CHUNKS } from "./chunks";
 import {
   buildPath,
   buildRegion,
@@ -511,14 +511,42 @@ describe("the rooms behind a Word-Gate", () => {
       Array.from({ length: 40 }, (_, d) => gateRoomFor(TREE_PATHS[0].id, d).id),
     );
     expect(overDays.size, "one path holds the same thing for ever").toBeGreaterThan(1);
-    // And all four are actually reachable, or one of them is decoration.
-    // All five are reachable, or one of them is decoration. Taken over a wide
-    // sweep because the fall is laid at one gate in nine — see `GATE_ODDS`.
+    // Every ordinary-day room is reachable, or one of them is decoration.
+    // Taken over a wide sweep because the fall is laid at one gate in nine —
+    // see `GATE_ODDS`. The festival chambers are deliberately absent here:
+    // they are not in the odds, and the claim that they are reachable is the
+    // festival test below.
     const everywhere = new Set(
       TREE_PATHS.flatMap((p) => Array.from({ length: 60 }, (_, d) => gateRoomFor(p.id, d).id)),
     );
-    expect(everywhere.size).toBe(GATE_ROOMS.length);
+    expect(everywhere).toEqual(new Set(GATE_ODDS.map((c) => c.id)));
     void OUTSIDE;
+  });
+
+  /**
+   * **A named day is the room, and an ordinary day never is.**
+   *
+   * Two claims with one witness each way. Forced: on Sukkot every gate on
+   * every path opens onto the booth, and on Hanukkah onto the lamps —
+   * whatever the hash would have said, because the day outranks the draw.
+   * Unforced: a sweep of ordinary days never lays either chamber, which is
+   * also the proof that adding them changed no committed seed's ground —
+   * `GATE_ODDS` kept its exact table and the hash kept its modulus.
+   */
+  it("lays the festival chamber on its day, and never otherwise", () => {
+    for (const path of TREE_PATHS) {
+      expect(gateRoomFor(path.id, 7, ["sukkot"]).id).toBe("word-gate-sukkah");
+      expect(gateRoomFor(path.id, 7, ["hanukkah"]).id).toBe("word-gate-lamps");
+      // Shabbat inside Sukkot: the booth still wins — per-knob, most specific first.
+      expect(gateRoomFor(path.id, 7, ["sukkot", "shabbat"]).id).toBe("word-gate-sukkah");
+      // A day with no room falls through to the ordinary draw, untouched.
+      expect(gateRoomFor(path.id, 7, ["shabbat"]).id).toBe(gateRoomFor(path.id, 7).id);
+    }
+    const ordinary = new Set(
+      TREE_PATHS.flatMap((p) => Array.from({ length: 60 }, (_, d) => gateRoomFor(p.id, d).id)),
+    );
+    expect(ordinary.has("word-gate-sukkah")).toBe(false);
+    expect(ordinary.has("word-gate-lamps")).toBe(false);
   });
 
   /**
