@@ -28,6 +28,34 @@ describe("Derekh Ha'Dorot data integrity", () => {
     }
   });
 
+  /**
+   * **The Houses made whole — P10-7.** Every matriarchal card now carries the
+   * patriarchal shape (title, practice, question) on top of its core energy.
+   * The lints here are the batch gates the enrichment shipped through: a
+   * title that merely repeats its episode is the exact thinness this pass
+   * retired, and it must not creep back one card at a time.
+   */
+  it("gives every card a title of its own, a practice, and a question that asks", () => {
+    for (const card of dorotCards) {
+      expect(card.title.trim().length, card.id).toBeGreaterThan(0);
+      expect(card.title, `${card.id} titles itself with its episode`).not.toBe(card.episode);
+      expect(card.humanPractice?.trim(), `${card.id} has no practice`).toBeTruthy();
+      expect(card.question?.trim().endsWith("?"), `${card.id}'s question does not ask`).toBe(true);
+    }
+    // Distinct titles within each House — sixteen cards may not share a name.
+    for (const house of dorotHouses) {
+      const titles = dorotCards.filter((c) => c.houseId === house.id).map((c) => c.title);
+      expect(new Set(titles).size, `${house.id} repeats a title`).toBe(titles.length);
+    }
+    // And the matriarchal cards keep the line they always had.
+    for (const card of dorotCards) {
+      const house = dorotHouses.find((h) => h.id === card.houseId);
+      if (house?.kind === "matriarchal") {
+        expect(card.coreEnergy?.trim(), `${card.id} lost its core energy`).toBeTruthy();
+      }
+    }
+  });
+
   it("gives every patriarchal card a practice + question, every matriarchal card a core energy", () => {
     for (const card of dorotCards) {
       const house = dorotHousesById[card.houseId];

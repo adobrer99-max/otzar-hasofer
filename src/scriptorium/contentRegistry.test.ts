@@ -35,8 +35,9 @@ describe("content registry", () => {
 
   it("flags a matriarchal card as a gap when it lacks a practice or question", () => {
     const dorot = datasetsById["dorot-matriarchal"];
-    // Every matriarchal card ships thin (no practice, no question) → all gaps.
-    expect(dorot.entries.every((e) => e.isGap)).toBe(true);
+    // P10-7 brought all 112 matriarchal cards to the full shape — the honest
+    // gap count is zero, and the per-entry rule keeps the machinery proven.
+    expect(dorot.entries.every((e) => !e.isGap)).toBe(true);
   });
 
   it("round-trips draft keys", () => {
