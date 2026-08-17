@@ -251,6 +251,11 @@ describe("what a second and third breaking are worth", () => {
     for (const guardian of GUARDIAN_LIST) {
       expect(guardian.deepLine.length, `${guardian.sefirah}`).toBeGreaterThan(24);
       expect(guardian.deepLine, `${guardian.sefirah} repeats itself`).not.toBe(guardian.boonLine);
+      // The tier cap has its own sentence — tiers 2 and 3 shared one for as
+      // long as tiers existed, so the last fight ended in words already read.
+      expect(guardian.crownLine.length, `${guardian.sefirah}`).toBeGreaterThan(24);
+      expect(guardian.crownLine, `${guardian.sefirah}'s cap repeats tier 2`).not.toBe(guardian.deepLine);
+      expect(guardian.crownLine, `${guardian.sefirah}'s cap repeats tier 1`).not.toBe(guardian.boonLine);
     }
   });
 

@@ -76,6 +76,13 @@ export interface Guardian {
   deepens: Effect;
   /** What the deeper tiers are, in the same voice. */
   deepLine: string;
+  /**
+   * And what the third break says — the tier cap. Tier 2 and tier 3 shared
+   * `deepLine` from the day tiers existed, so the last fight a guardian could
+   * ever offer ended in a sentence the Scribe had already read: the census
+   * filed it with the fasts' shared note. Ten more lines, one apiece.
+   */
+  crownLine: string;
 }
 
 /** How many breakings a guardian's gift keeps growing for. */
@@ -98,6 +105,8 @@ export const GUARDIANS: Record<SefirahId, Guardian> = {
     boonLine: "You have written at a great many of them, and your hand is quicker for it.",
     deepens: { cooldown: 0.96 },
     deepLine: "You have come back to the many more than once. The hand is quicker still.",
+    crownLine:
+      "Three times at the writing, and the many hold nothing for you now. The hand does not hurry — it arrives.",
   },
   yesod: {
     sefirah: "yesod",
@@ -107,6 +116,8 @@ export const GUARDIANS: Record<SefirahId, Guardian> = {
     boonLine: "Something came down on you and you got up. The next thing takes longer to reach you.",
     deepens: { iframes: 1.08 },
     deepLine: "You have got up here before. What lands on you next has longer to wait.",
+    crownLine:
+      "A third rising. Whatever falls on you from here on finds you already standing.",
   },
   hod: {
     sefirah: "hod",
@@ -117,6 +128,8 @@ export const GUARDIANS: Record<SefirahId, Guardian> = {
     boonLine: "You looked up. What you gather is worth a little more than it was.",
     deepens: { light: 1.06 },
     deepLine: "You looked up again, knowing what was there. It is worth more again.",
+    crownLine:
+      "A third look up, and no dread left in it. What you gather answers like it knows you.",
   },
   netzach: {
     sefirah: "netzach",
@@ -126,6 +139,8 @@ export const GUARDIANS: Record<SefirahId, Guardian> = {
     boonLine: "It went where it was pointed. So does what you throw now.",
     deepens: { speed: 1.06 },
     deepLine: "It did not turn the second time either, and neither does what you throw.",
+    crownLine:
+      "A third throw, and the line between you and the mark has worn straight. It could not miss you if it tried.",
   },
   tiferet: {
     sefirah: "tiferet",
@@ -135,6 +150,8 @@ export const GUARDIANS: Record<SefirahId, Guardian> = {
     boonLine: "It got bigger every time you struck it, and you struck it anyway.",
     deepens: { bite: 1.08 },
     deepLine: "You came back for it knowing it would grow. What you write lands harder.",
+    crownLine:
+      "You fed it a third time and broke it a third time. What you write now lands with everything it ate.",
   },
   gevurah: {
     sefirah: "gevurah",
@@ -146,6 +163,8 @@ export const GUARDIANS: Record<SefirahId, Guardian> = {
     // body, which is a different game. Judgment is severe about what it gives.
     deepens: { iframes: 1.1 },
     deepLine: "You went back under the ceiling. It takes longer now for anything to reach you.",
+    crownLine:
+      "Three times under the ceiling, and the ceiling has learned your name. Almost nothing reaches you first.",
   },
   chesed: {
     sefirah: "chesed",
@@ -155,6 +174,8 @@ export const GUARDIANS: Record<SefirahId, Guardian> = {
     boonLine: "You learned to reach across water. What you write carries further.",
     deepens: { reach: 3 },
     deepLine: "You crossed the water again. It carries further still.",
+    crownLine:
+      "A third crossing. There is no far side of the water your writing does not reach.",
   },
 
   // ---------------------------------------------------------------------------
@@ -177,6 +198,8 @@ export const GUARDIANS: Record<SefirahId, Guardian> = {
     // reach: it cannot be come at without one.
     deepens: { reach: 4 },
     deepLine: "You went back into the sea for it. What you throw goes further out.",
+    crownLine:
+      "A third time into the sea, and the sea gives it up without being asked. What you throw comes back fed.",
   },
   chochmah: {
     sefirah: "chochmah",
@@ -191,6 +214,8 @@ export const GUARDIANS: Record<SefirahId, Guardian> = {
     boonLine: "What comes apart above you comes apart. So does what you throw.",
     deepens: { speed: 1.08 },
     deepLine: "You reached the roof twice. What you throw gets there faster.",
+    crownLine:
+      "The roof a third time, and the way up is worn smooth. What you throw is there before the thought is.",
   },
   keter: {
     sefirah: "keter",
@@ -205,6 +230,8 @@ export const GUARDIANS: Record<SefirahId, Guardian> = {
     boonLine: "Nothing stopped it. Stone no longer stops what you throw either.",
     deepens: { bite: 1.1 },
     deepLine: "You stopped the unstoppable thing again. What you write lands like it.",
+    crownLine:
+      "Three times the unstoppable thing stopped. Nothing you write can be refused now.",
   },
 };
 

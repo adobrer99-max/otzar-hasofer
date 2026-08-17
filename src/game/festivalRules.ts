@@ -88,6 +88,7 @@ export const FESTIVAL_RULES: Record<FestivalId, FestivalRule | null> = {
   hanukkah: {
     light: 1.5,
     note: "Hanukkah — the light that lasted longer than it had any right to.",
+    nigun: "lamps-phrase",
     gateRoom: "word-gate-lamps",
   },
   "simchat-torah": { nigun: "hava-nagila" },

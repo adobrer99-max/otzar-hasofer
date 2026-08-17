@@ -113,6 +113,19 @@ export const nigunim: Nigun[] = [
     transcription: { confidence: "high", note: "Original — nothing to verify." },
   },
   {
+    id: "lamps-phrase",
+    name: "A phrase for the eight nights",
+    tradition: "—",
+    attribution: "Composed for the Treasury, in the idiom",
+    era: "—",
+    rights: {
+      basis: "composed-for-this-work",
+      note: "Original. Written for Hanukkah after Maoz Tzur was weighed and left in PENDING_NIGUNIM — the tune everyone knows deserves better than one person's half-memory with a rebbe-less name attached. A small rising figure that adds a step each phrase, the way the lamps add a light.",
+    },
+    phrase: [1, 3, 0, 1, 3, 4, 0, 1, 3, 4, 5, 0, 1, 3, 4, 5, 6, 0],
+    transcription: { confidence: "high", note: "Original — nothing to verify." },
+  },
+  {
     id: "supernal-phrase",
     name: "A phrase for the upper three",
     tradition: "—",
@@ -140,6 +153,11 @@ export const nigunimById: Record<string, Nigun> = Object.fromEntries(
  * Added properly — from a source — they should be.
  */
 export const PENDING_NIGUNIM = [
+  {
+    name: "Maoz Tzur",
+    attribution: "Traditional; the familiar melody is 15th-century German, long out of copyright",
+    why: "The obvious Hanukkah entry, and exactly the trap the header names: the tune is so familiar that a half-remembered contour would pass for it. Wants a printed source, not a recollection — until then Hanukkah sings a phrase composed for this work and labeled as such.",
+  },
   {
     name: "Niggun Daled Bavos",
     attribution: "R. Schneur Zalman of Liadi (1745–1812), the Alter Rebbe",

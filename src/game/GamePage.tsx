@@ -3594,7 +3594,7 @@ function GuardianDonePlate({
           more here, because a Scribe grinding a guardian that has stopped
           paying should be told rather than left to find out. */}
       <p className={styles.offerGrants}>
-        {tier <= 1 ? guardian.boonLine : guardian.deepLine}
+        {tier <= 1 ? guardian.boonLine : tier === 2 ? guardian.deepLine : guardian.crownLine}
       </p>
       {tier > 1 && tier <= TIERS && (
         <p className={styles.plateDerivation}>

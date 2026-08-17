@@ -11,7 +11,7 @@ import type { Encounter } from "../types/encounter";
  * planning doc's table. `question` is quoted from the doc where given
  * (First, Third, Sixth); for Second, Fourth, Fifth, and Seventh the doc
  * gives only themes/aspect with no quoted question, so these are
- * first-draft editorial content authored in the same voice — treat as a
+ * editorial content (tightened in P10-6) authored in the same voice — treat as a
  * starting point to rewrite, same posture as the 22 letters' content.
  *
  * `sefirah` follows the established kabbalistic correspondence of the seven
@@ -35,7 +35,7 @@ export const encounters: Encounter[] = [
     aspect: "Separation — the waters above, the waters below",
     themes: "Boundaries, distinctions, sacred order, competing obligations.",
     question:
-      "Where are the waters above and the waters below in your life — what needs to be kept separate, and what obligations are competing for the same space?",
+      "What must be kept separate in your life, and what is fighting to share its space?",
   },
   {
     number: 3,
@@ -51,7 +51,7 @@ export const encounters: Encounter[] = [
     name: "Fourth",
     aspect: "Luminaries / Sacred Time",
     themes: "Rhythm, calling, seasons, vocation, recurring patterns.",
-    question: "What season of your life are you in, and what rhythm or calling is asking to be honored?",
+    question: "By what lights do you tell your seasons — and which one governs you now?",
   },
   {
     number: 5,
@@ -59,7 +59,7 @@ export const encounters: Encounter[] = [
     name: "Fifth",
     aspect: "Living Creatures",
     themes: "Relationships, movement, abundance, community.",
-    question: "Which relationships are moving and multiplying in your life right now, and which ones are asking for your attention?",
+    question: "What in your life is truly multiplying, and what merely swarms?",
   },
   {
     number: 6,
@@ -75,7 +75,7 @@ export const encounters: Encounter[] = [
     name: "Seventh",
     aspect: "Shabbat",
     themes: "Creation is complete. Nothing new is made. Only lived.",
-    question: "What does it mean to rest in what has already been created, rather than to make something new?",
+    question: "What would it cost you to stop, and to call what you have made good?",
   },
 ];
 
