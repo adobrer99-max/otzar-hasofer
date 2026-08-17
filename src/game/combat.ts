@@ -185,7 +185,27 @@ export type Opening =
    * the creature for the rest of its life at the first blow, which is the
    * Korach fault exactly. Checked before it was written, not after.
    */
-  | "spent";
+  | "spent"
+  /**
+   * **Reeling — shut for a while after a blow that landed.**
+   *
+   * Rahav's, and it is the inverse of `"stopped"` on the same field: Behemoth
+   * is open *while* `cooldown` runs, because a set stone put it there; Rahav
+   * is open while it is *zero*, because a blow put it there. Its line is the
+   * mechanic — *every shell you take off it makes it bigger* — so the blow
+   * knocks it back and it is leaving while it swells, and a second word
+   * written on its back while it reels away counts for nothing. The fight
+   * becomes a rhythm rather than a volley: strike, let it come back bigger,
+   * strike again.
+   *
+   * The reel is set by `strikeHusk` on the blow that **takes a shell**, never
+   * by the stagger: a refused blow also sets `struck`, so a reel triggered
+   * from the creature's own case would refire from its own refusals — a
+   * klipah made unhittable by hitting it, which is the Korach fault with a
+   * new face. Its shut phase is one it spends moving *away*, so the pairing
+   * rule holds by construction.
+   */
+  | "reeling";
 
 export interface HuskSpec {
   kind: HuskKind;
@@ -453,7 +473,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     reading: "Pride does not diminish when it is opposed. It is the one thing that grows on being struck.",
     role: "charger",
     shells: 5,
-    opening: "always",
+    opening: "reeling",
     speed: 62,
     light: 6,
     size: { w: 18, h: 20 },

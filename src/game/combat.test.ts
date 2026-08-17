@@ -194,7 +194,17 @@ describe("when a klipah is open to a mark", () => {
       .filter((s) => s.opening !== "always")
       .map((s) => s.kind)
       .sort();
-    expect(conditional).toEqual(["behemot", "calf", "izevel", "livyatan", "nefilim", "og", "reem", "saraf"]);
+    expect(conditional).toEqual([
+      "behemot",
+      "calf",
+      "izevel",
+      "livyatan",
+      "nefilim",
+      "og",
+      "rahav",
+      "reem",
+      "saraf",
+    ]);
     // For the two great ones the condition is something a letter *arranges in
     // the world* rather than a permission a letter grants — Vav puts Leviathan
     // ashore, Bet stops Behemoth. That is the difference between a puzzle and a
@@ -233,6 +243,16 @@ describe("when a klipah is open to a mark", () => {
     // than a tell it lacked: what it drops falls seven tiles, which is already
     // eight tenths of a second of warning.
     expect(HUSKS.og.opening).toBe("spent");
+    // **Rahav is the seventh, and the only one whose condition is not
+    // `"spent"`.** *Every shell you take off it makes it bigger* — so the blow
+    // that takes one knocks it back, and while it reels away swelling, a
+    // second word counts for nothing. Keyed to the blow that took a shell
+    // (`strikeHusk` sets the cooldown) rather than to the stagger, because a
+    // refused blow staggers too and a reel refired from its own refusals
+    // would be a creature made unhittable by hitting it. Its shut phase is
+    // spent moving away, so the pairing rule holds by construction: bench
+    // unfair 0.04 at its worst posture, against a band of 0.45.
+    expect(HUSKS.rahav.opening).toBe("reeling");
   });
 });
 

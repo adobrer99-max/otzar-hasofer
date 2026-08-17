@@ -1511,6 +1511,11 @@ export function opened(world: World, husk: Husk): boolean {
     // creature that has finished, which is the fight its own line describes.
     case "spent":
       return husk.charging === 0;
+    // The blow that took a shell set `cooldown`, and while it runs the
+    // creature is reeling away, swelling — the inverse of "stopped" on the
+    // same field. Open again the moment it turns back.
+    case "reeling":
+      return husk.cooldown === 0;
     case "always":
       return true;
   }
@@ -1588,6 +1593,14 @@ export function strikeHusk(
   husk.shells = full ? Math.max(1, husk.shells - take) : husk.shells - take;
   husk.struck = 8;
   husk.vx += push * (husk.x < from ? -1 : 1) * 90;
+  // **Rahav reels** — see `Opening`'s "reeling". Set here, on the blow that
+  // took a shell, and deliberately not in the creature's own case keyed to
+  // `struck`: a refused blow sets `struck` too, and a reel that refired from
+  // its own refusals would be a klipah made unhittable by hitting it. Thirty
+  // -six ticks is two mark cooldowns and change, so the volley that emptied
+  // it in four rapid words becomes four exchanges with a swelling thing
+  // coming back between them.
+  if (husk.kind === "rahav") husk.cooldown = 36;
   if (husk.shells > 0) return;
 
   // The shell breaks, and what was held in it comes out. This is the whole
@@ -2341,6 +2354,15 @@ function stepHusks(world: World, ctx: StepContext): void {
         husk.w = spec.size.w * swollen;
         husk.h = spec.size.h * swollen;
         husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
+        // The reel: the blow knocked it back, and it is leaving while it
+        // swells — watching you as it goes, which is what pride does. Shut
+        // for exactly these ticks (`opening: "reeling"`), and moving away,
+        // so the shut phase costs a Scribe who stands their ground nothing.
+        if (husk.cooldown > 0) {
+          husk.facing = (toward > 0 ? 1 : -1) as 1 | -1;
+          husk.vx = -husk.facing * spec.speed * swollen * 0.8;
+          break;
+        }
         if (near < spec.notices) {
           husk.facing = (toward > 0 ? 1 : -1) as 1 | -1;
           husk.vx = husk.facing * spec.speed * swollen;

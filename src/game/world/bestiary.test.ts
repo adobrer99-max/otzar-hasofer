@@ -319,6 +319,16 @@ describe("nothing hides for most of its life", () => {
      * is how both read as unconditional for the whole of the sitting they were
      * written in.
      */
+    /**
+     * **And Rahav, the first whose condition is a reel rather than a charge**:
+     * only the `struck` posture ever lands a blow, so only there does the
+     * bench see it shut — 0.96 open on a 900-tick watch with one blow in it,
+     * which is one 36-tick reel, exactly. Every other posture reads 1.00.
+     * The number that carries the fight is `breakIn` (a volley of four rapid
+     * words became four exchanges, 94 ticks), not this share.
+     */
+    expect(openness("rahav", 900, "struck"), "Rahav no longer reels from a blow")
+      .toBeLessThan(0.99);
     expect(openness("calf", 1500, "struck"), "the Calf no longer commits to a run")
       .toBeLessThan(0.9);
     expect(openness("nefilim", 1500, "under"), "the Nefilim no longer commits to a fall")
