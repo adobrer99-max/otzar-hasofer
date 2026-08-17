@@ -361,3 +361,86 @@ describe("Binah's room asks for the Hook, and nothing else", () => {
     }
   }, 300000);
 });
+
+describe("a guardian holds its own room", () => {
+  /**
+   * **The walking entry — the one this file's duels never make.** `duel`
+   * starts inside the room, so the seal rises with the guardian still in it
+   * and every claim above is taken on a fight that happens. A player walks in
+   * from the door, and two guardians used to cross the porch before a walking
+   * Scribe reached the room — Behemoth charging toward the sound of them, the
+   * Ziz following overhead. The seal is held on the room's *assignment*, not
+   * on where the creature stands, and a sealed mouth is solid: the room
+   * closed on a Scribe alone in it, the guardian shut out, no hazard inside
+   * to lift the seal by a veiling. Found on the arenas contact sheet — a
+   * Keter frame reading "The way closes" with nothing in it — never by a
+   * probe, because no probe walked in at a walking pace.
+   *
+   * The claim: from the door, holding right and nothing else, the guardian is
+   * inside its own room on every tick the Scribe spends there. Passive on
+   * purpose — a Scribe who fights is a Scribe the duels already cover.
+   *
+   * The Ziz is the one honest exception, held to its own claim below: it
+   * patrols at roof height, above the mouths the seal writes across, so the
+   * seal cannot shut it out — and turning it at the room's edge would restore
+   * the corner-hover its own case documents killing.
+   */
+  it("is inside on every tick the Scribe spends there, entered at a walk", () => {
+    for (const region of regions) {
+      if (guardianOf(region.sefirah).kind === "ziz") continue;
+      for (const seed of SEEDS) {
+        const world = buildArena(region.sefirah, seed);
+        const room = world.rooms[1] ?? world.rooms[0];
+        const input: Input = { ...NO_INPUT, right: true };
+        for (let t = 0; t < 900; t += 1) {
+          step(world, input, FULL);
+          const g = world.husks[0];
+          // The Re'em breaks itself on the walls it charges — a broken
+          // guardian opens the room, and there is nothing left to hold.
+          if (!g) break;
+          const px = (world.player.x + world.player.w / 2) / TILE_SIZE;
+          if (px < room.x || px >= room.x + room.w) continue;
+          const gx = (g.x + g.w / 2) / TILE_SIZE;
+          expect(
+            gx >= room.x && gx < room.x + room.w,
+            `${region.sefirah} seed ${seed} tick ${t}: the Scribe stands in ` +
+              `[${room.x}..${room.x + room.w}] and ${g.kind} is at ${gx.toFixed(1)}`,
+          ).toBe(true);
+        }
+      }
+    }
+  }, 300000);
+
+  it("the Ziz comes back over the seal — a window on every pass", () => {
+    /**
+     * The flier's version of the same guarantee. It may be over the porch
+     * when the way closes — its patrol spans the arena — but a Scribe
+     * standing in the sealed room is never waiting on a creature that cannot
+     * arrive: the roof it holds is above the sealed mouths, and each sweep
+     * brings it back through the room. Asserted as time actually spent
+     * inside after the Scribe settles there.
+     */
+    for (const seed of SEEDS) {
+      const world = buildArena("chochmah", seed);
+      const room = world.rooms[1] ?? world.rooms[0];
+      let settled = -1;
+      let inside = 0;
+      for (let t = 0; t < 3000; t += 1) {
+        const px = (world.player.x + world.player.w / 2) / TILE_SIZE;
+        const mid = px >= room.x + 4 && px < room.x + room.w;
+        // Walk to the middle of the room and stand there, sealed in.
+        const input: Input = { ...NO_INPUT, right: !mid || px < room.x + room.w / 2 };
+        step(world, input, FULL);
+        const g = world.husks[0];
+        if (!g) break;
+        if (mid && settled < 0) settled = t;
+        const gx = (g.x + g.w / 2) / TILE_SIZE;
+        if (settled >= 0 && gx >= room.x && gx < room.x + room.w) inside += 1;
+      }
+      expect(
+        inside,
+        `seed ${seed}: the Ziz never returned to the sealed room`,
+      ).toBeGreaterThan(200);
+    }
+  }, 300000);
+});

@@ -2612,6 +2612,45 @@ function stepHusks(world: World, ctx: StepContext): void {
 
     moveHusk(world, ctx, husk);
 
+    // **A guardian holds its own room.** The seal is held on the room's
+    // *assignment* — `room.husks` names the creature whether or not it is
+    // standing there — and a sealed mouth is solid, so a guardian that
+    // wandered out before the way closed can never come back: the Scribe is
+    // shut in an empty room whose door only the absent creature can open,
+    // and an arena has no hazard, so not even a veiling can lift it. Both
+    // fast movers did exactly that — Behemoth's charge crossed the porch
+    // toward a walking Scribe before the Scribe reached the room, and the
+    // Ziz followed the Scribe back over it. Photographed rather than
+    // deduced: the arenas sheet showed Keter's room closed and empty. The
+    // duel probe never saw it because it starts inside the room; a player
+    // walks in. Hitting the bound reads as hitting a wall, which is a thing
+    // every guardian already knows how to do.
+    //
+    // The Ziz is exempt, for both halves of the reason. It cannot be sealed
+    // out — it patrols at roof height, above the mouths the seal writes
+    // across, and measured from a walking entry it re-enters the sealed room
+    // on every pass — and it must not be turned at the room's edge: its own
+    // case turns at the *world's* walls precisely so that every sweep gets
+    // past the Scribe, and turning it early is the corner-hover its comment
+    // records killing, the bird hanging inside the one distance a mark aimed
+    // up can never reach.
+    if (world.arena && husk.kind !== "ziz") {
+      const own = world.rooms.find((r) => r.husks.includes(husk.id));
+      if (own) {
+        const left = own.x * TILE_SIZE;
+        const right = (own.x + own.w) * TILE_SIZE - husk.w;
+        if (husk.x < left) {
+          husk.x = left;
+          husk.vx = Math.abs(husk.vx);
+          husk.facing = 1;
+        } else if (husk.x > right) {
+          husk.x = right;
+          husk.vx = -Math.abs(husk.vx);
+          husk.facing = -1;
+        }
+      }
+    }
+
     if (p.veiled === 0 && !world.out && harmful(husk, world) && bodiesTouch(husk, p)) {
       // Almost all of them take a lamp, because that is what a husk is.
       // Delilah takes what you gathered instead — nothing you feel at the time.
