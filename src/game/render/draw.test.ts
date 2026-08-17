@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { stoneInks } from "./draw";
+import { buildRegion } from "../world/build";
+import { drawWorld, stoneInks } from "./draw";
 import { paletteOf, PLACES, readPalette, type Palette } from "./palette";
+import { recorder } from "./testCanvas";
 
 const DARK: Palette = readPalette();
 const VELLUM: Palette = { ...DARK, stone: "#cbbb90", stoneEdge: "#9c8955", bg: "#f4efe2", light: true };
@@ -71,5 +73,35 @@ describe("the ink a stone is marked with", () => {
         expect(hue(seam), `the seam is drawn in the hatch's colour at ${where}`).not.toBe(hue(hatch));
       }
     }
+  });
+});
+
+/**
+ * **The `light` grace, finally read.** It was declared in the `Grace` union,
+ * granted by Yod, by David's bargain and by four festival gestures — and had
+ * no consumer anywhere: Hanukkah's grace did nothing, and nothing failed. The
+ * claim here is the `testCanvas` discipline: a *difference*, never a pinned
+ * picture — the whole class of bug was that with and without were the same
+ * frame, so the guard is that they can never be again.
+ */
+describe("the held light", () => {
+  const frame = (lit: boolean) => {
+    const world = buildRegion(1, 3, 1, false, 1);
+    const { ctx, log } = recorder();
+    drawWorld(ctx, world, { x: world.player.x - 200, y: 0 }, DARK, 800, 450, [], lit);
+    return log();
+  };
+
+  it("draws a different frame when the grace is held", () => {
+    expect(frame(true)).not.toBe(frame(false));
+  });
+
+  it("changes nothing when it is not held — the default is the old picture", () => {
+    // Drawn with the argument omitted entirely, as every caller that predates
+    // the grace draws: byte-identical to an explicit `false`.
+    const world = buildRegion(1, 3, 1, false, 1);
+    const { ctx, log } = recorder();
+    drawWorld(ctx, world, { x: world.player.x - 200, y: 0 }, DARK, 800, 450, []);
+    expect(log()).toBe(frame(false));
   });
 });

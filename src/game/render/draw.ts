@@ -31,6 +31,14 @@ export interface Camera {
 const HATCH_SPACING = 6;
 
 /**
+ * How far the held light reaches, in pixels, when the `light` grace is in
+ * hand — the lamp's ordinary glow is 62. Four tiles: far enough that a mote
+ * answers before the body arrives, near enough that the answering reads as
+ * the lamp's doing rather than the world's.
+ */
+const LIT_REACH = TILE_SIZE * 4;
+
+/**
  * How close the view sits to the Scribe.
  *
  * Drawn one-to-one, a wide canvas shows forty tiles at once and the Scribe is
@@ -70,6 +78,19 @@ export function drawWorld(
   viewW: number,
   viewH: number,
   verbs: readonly string[],
+  /**
+   * Whether the Scribe holds the `light` grace — Yod's own, David's boon, and
+   * the gesture of four festivals.
+   *
+   * **This parameter is the grace's first consumer.** It was declared, granted
+   * and mapped from the day it existed, and nothing in the step, the fight or
+   * the draw ever read it — Hanukkah's grace was inert, and David's "your lamp
+   * reaches further" was a plate label about nothing. What it does is exactly
+   * what both shipped texts promise and nothing more: the carried lamp's glow
+   * reaches further, and motes inside that reach answer it. Pure appearance —
+   * `step.ts` does not know it exists, so no measured band can move.
+   */
+  lit = false,
 ): void {
   const zoom = zoomFor(viewW, viewH);
   // The camera lives in world units, so the visible span shrinks as we zoom.
@@ -110,11 +131,21 @@ export function drawWorld(
   drawMarks(ctx, world, palette);
   for (const entity of world.entities) {
     if (entity.x + TILE_SIZE < camera.x || entity.x > camera.x + spanW) continue;
-    drawEntity(ctx, entity, palette, world.tick);
+    // A mote inside the held light's reach answers it — see `LIT_REACH`.
+    // Computed here rather than in `drawEntity` because only this loop has
+    // both bodies in hand, and only motes answer: a letter or a vessel
+    // glowing brighter for a grace would say the grace does something to
+    // them, and it does not.
+    const glows =
+      lit &&
+      entity.kind === "mote" &&
+      Math.abs(entity.x + TILE_SIZE / 2 - (world.player.x + world.player.w / 2)) < LIT_REACH &&
+      Math.abs(entity.y + TILE_SIZE / 2 - (world.player.y + world.player.h / 2)) < LIT_REACH;
+    drawEntity(ctx, entity, palette, world.tick, glows);
   }
 
   drawGrapple(ctx, world, palette);
-  drawScribe(ctx, world, palette);
+  drawScribe(ctx, world, palette, lit);
   if (import.meta.env.DEV) recordPhase("bodies", performance.now() - restAt, 0);
   ctx.restore();
 
@@ -864,7 +895,13 @@ function drawWordGate(ctx: CanvasRenderingContext2D, x: number, y: number, palet
 // entities
 // ---------------------------------------------------------------------------
 
-function drawEntity(ctx: CanvasRenderingContext2D, e: Entity, palette: Palette, tick: number): void {
+function drawEntity(
+  ctx: CanvasRenderingContext2D,
+  e: Entity,
+  palette: Palette,
+  tick: number,
+  glows = false,
+): void {
   if (e.taken && (e.kind === "mote" || e.kind === "letter" || e.kind === "fragment")) return;
   // The gate's porch is a place, not a thing — nothing is drawn for it; the
   // barrier tiles beside it already say what it is.
@@ -875,13 +912,16 @@ function drawEntity(ctx: CanvasRenderingContext2D, e: Entity, palette: Palette, 
   switch (e.kind) {
     case "mote": {
       const bob = Math.sin(tick / 18 + e.x / 40) * 2.4;
-      ctx.fillStyle = alpha(palette.goldBright, 0.16);
+      // Inside the held light's reach a mote answers it — the corona widens
+      // and warms. Appearance only: nothing about being seen changes what
+      // gathering it pays.
+      ctx.fillStyle = alpha(palette.goldBright, glows ? 0.3 : 0.16);
       ctx.beginPath();
-      ctx.arc(cx, cy + bob, 7, 0, Math.PI * 2);
+      ctx.arc(cx, cy + bob, glows ? 10 : 7, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = palette.goldBright;
       ctx.beginPath();
-      ctx.arc(cx, cy + bob, 2.6, 0, Math.PI * 2);
+      ctx.arc(cx, cy + bob, glows ? 3.4 : 2.6, 0, Math.PI * 2);
       ctx.fill();
       break;
     }
@@ -1098,7 +1138,7 @@ function drawEntity(ctx: CanvasRenderingContext2D, e: Entity, palette: Palette, 
 // the Scribe
 // ---------------------------------------------------------------------------
 
-function drawScribe(ctx: CanvasRenderingContext2D, world: World, palette: Palette): void {
+function drawScribe(ctx: CanvasRenderingContext2D, world: World, palette: Palette, lit = false): void {
   const p = world.player;
   // Veiling: the Scribe thins out and returns, rather than dying.
   const fade = p.veiled > 0 ? 0.22 + 0.16 * Math.sin(world.tick / 3) : 1;
@@ -1110,13 +1150,16 @@ function drawScribe(ctx: CanvasRenderingContext2D, world: World, palette: Palett
   const height = p.crouching ? p.h * 0.55 : p.h;
   const top = bottom - height;
 
-  // The lamp the Scribe carries — the reason anything here is visible.
-  const lamp = ctx.createRadialGradient(cx, top + height * 0.4, 2, cx, top + height * 0.4, 62);
-  lamp.addColorStop(0, alpha(palette.goldBright, 0.2));
+  // The lamp the Scribe carries — the reason anything here is visible. With
+  // the `light` grace in hand it reaches further, which is the whole of what
+  // Yod's plate and David's boon have promised since they shipped.
+  const reach = lit ? LIT_REACH : 62;
+  const lamp = ctx.createRadialGradient(cx, top + height * 0.4, 2, cx, top + height * 0.4, reach);
+  lamp.addColorStop(0, alpha(palette.goldBright, lit ? 0.26 : 0.2));
   lamp.addColorStop(1, alpha(palette.goldBright, 0));
   ctx.fillStyle = lamp;
   ctx.beginPath();
-  ctx.arc(cx, top + height * 0.4, 62, 0, Math.PI * 2);
+  ctx.arc(cx, top + height * 0.4, reach, 0, Math.PI * 2);
   ctx.fill();
 
   // A robe: one drawn shape, gold-limned, leaning the way it moves.

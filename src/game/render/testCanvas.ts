@@ -52,6 +52,15 @@ export function recorder(): { ctx: CanvasRenderingContext2D; log: () => string }
   const ctx = new Proxy(target, {
     get(_, prop: string) {
       if (prop in target) return target[prop];
+      // **The transform answers too**, for the same reason a gradient does:
+      // `drawWorld` reads `getTransform().a` to learn the scale it will stamp
+      // tile faces at, and a proxy that answers `undefined` throws before the
+      // first tile. Identity is the honest answer for an instrument that has
+      // no real surface — under it the face path falls back to painting in
+      // place, which is also what happens under node with no canvas at all.
+      if (prop === "getTransform") {
+        return () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 });
+      }
       if (prop === "createRadialGradient" || prop === "createLinearGradient") {
         return (...args: unknown[]) => {
           calls.push(`${prop}(${args.map(round).join(",")})`);

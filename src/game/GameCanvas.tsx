@@ -272,6 +272,10 @@ export function GameCanvas({
     themeWatcher.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
     const farsight = graces.includes("farsight");
+    // The held light — Yod's grace, David's boon, four festivals' gesture.
+    // Read beside `farsight` because the canvas is where graces meet the
+    // picture: this one widens the carried lamp (`drawWorld`'s last arg).
+    const lit = graces.includes("light");
 
     const loop = (now: number) => {
       if (!running) return;
@@ -320,6 +324,7 @@ export function GameCanvas({
         view.current.w,
         view.current.h,
         verbs as readonly string[],
+        lit,
       );
       if (import.meta.env.DEV) recordFrame(performance.now() - drawnAt);
 
