@@ -11,6 +11,7 @@ import { witnessesOf, WITNESSES_POSSIBLE } from "../story";
 import {
   DEV_MARKER,
   lettersFor,
+  warpDate,
   readWarp,
   warpParams,
   warpRecord,
@@ -31,6 +32,46 @@ const base = {
 const options = (over: Partial<WarpOptions> = {}): WarpOptions => ({
   ...WARP_DEFAULTS,
   ...over,
+});
+
+describe("the day a warp stands on", () => {
+  it("round-trips through the URL", () => {
+    const options = { ...WARP_DEFAULTS, day: "2025-10-09" };
+    const read = readWarp(new URLSearchParams(warpParams(options)));
+    expect(read?.day).toBe("2025-10-09");
+  });
+
+  it("drops garbage rather than warping to Invalid Date", () => {
+    // A NaN seed would poison every draw after it — see `readDay`.
+    for (const bad of ["yesterday", "2025-13-45", "2025-1-1", ""]) {
+      const params = new URLSearchParams({ rung: "2", day: bad });
+      expect(readWarp(params)?.day, JSON.stringify(bad)).toBeUndefined();
+    }
+  });
+
+  it("means local noon, whatever the timezone", () => {
+    // `new Date("2025-10-09")` is UTC midnight — west of Greenwich that is
+    // still the 8th, and the warp would land on the wrong Hebrew day.
+    const at = warpDate("2025-10-09");
+    expect(at.getDate()).toBe(9);
+    expect(at.getHours()).toBe(12);
+  });
+
+  it("freezes the day's character onto the record exactly as a real Begin does", () => {
+    const record = warpRecord(
+      { ...WARP_DEFAULTS, rung: 3 },
+      {
+        id: "w",
+        seed: 9,
+        seedLabel: "17 Tishri 5786",
+        notes: [],
+        lightOfTheDay: 1.3,
+        festivalIds: ["sukkot"],
+      },
+    );
+    expect(record.lightOfTheDay).toBe(1.3);
+    expect(record.festivalIds).toEqual(["sukkot"]);
+  });
 });
 
 describe("what the warped Scribe is holding", () => {

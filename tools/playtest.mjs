@@ -212,6 +212,88 @@ const SCRIPTS = [
     seconds: 90,
   },
   {
+    name: "midnight",
+    about: "The day turns under an open session — the label rolls, and the lent grace is taken back.",
+    /**
+     * **The one transition no warp can reach.** `WarpOptions.day` stands the
+     * game *on* a chosen day; this script watches the game cross from one day
+     * into the next, which is a different claim: the sixty-second poll fires,
+     * `seedLabel` changes, the festival attribute falls off the root, and
+     * whatever the old day lent is taken back. `mechanics.test.ts` says
+     * outright that the poll and the `visibilitychange` listener are not
+     * testable from node — this is where they are testable.
+     *
+     * Playwright's clock is the instrument: install a fake time and the
+     * page's own `Date` and `setInterval` follow it, so fast-forwarding five
+     * minutes fires the poll exactly as a night at the desk would.
+     *
+     * **The Saturday is found, never hardcoded.** The calendar's own
+     * `computeSacredTime` is imported out of the dev server (the `bestiary`
+     * pattern) and walked forward until a Shabbat whose morrow is an ordinary
+     * day — festivals.ts's header says postponement rules are unmodeled, so a
+     * Gregorian constant would rot, and a Sunday that is itself a festival
+     * would make "the attribute falls off" false for the right reasons.
+     */
+    warp: {},
+    seconds: 60,
+    noPlay: true,
+    enter: async (page) => {
+      const found = await page.evaluate(async () => {
+        const { computeSacredTime } = await import("/src/data/sacredTime.ts");
+        for (let ahead = 0; ahead < 60; ahead += 1) {
+          const day = new Date();
+          day.setDate(day.getDate() + ahead);
+          day.setHours(12, 0, 0, 0);
+          const morrow = new Date(day);
+          morrow.setDate(morrow.getDate() + 1);
+          const today = computeSacredTime(day, "galut");
+          const next = computeSacredTime(morrow, "galut");
+          if (today.activeFestivalIds.includes("shabbat") && next.activeFestivalIds.length === 0) {
+            return { at: day.getTime(), label: day.toDateString() };
+          }
+        }
+        return null;
+      });
+      if (!found) throw new Error("no Shabbat with an ordinary morrow inside sixty days");
+
+      const ground = () => page.evaluate(() => document.querySelector("[data-festival]")?.getAttribute("data-festival") ?? null);
+      const dayLine = () => page.locator("main, body").first().innerText().then((t) => t.slice(0, 4000));
+
+      // Noon on the found Shabbat — installed and then *reloaded into*,
+      // because the poll's interval is registered at mount and only timers
+      // registered under the fake clock answer to `fastForward`. A clock
+      // installed over a running page changes what `Date` says and leaves
+      // the interval on the real clock, which was measured here as a
+      // midnight that never came.
+      await page.clock.install({ time: new Date(found.at) });
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(700);
+      const before = await ground();
+      if (before !== "shabbat") {
+        throw new Error(`at noon on ${found.label} the ground says ${JSON.stringify(before)}, not shabbat`);
+      }
+      const labelBefore = await dayLine();
+      await page.screenshot({ path: join(outDir, "midnight-1-shabbat.png") });
+
+      // To 23:58, then across. Two fake minutes past midnight the poll has
+      // fired at least once on the far side.
+      await page.clock.fastForward("11:58:00");
+      await page.clock.fastForward("04:00");
+      await page.waitForTimeout(300);
+      const after = await ground();
+      if (after !== null) {
+        throw new Error(`the day turned and the ground still says ${JSON.stringify(after)}`);
+      }
+      const labelAfter = await dayLine();
+      if (labelBefore === labelAfter) {
+        throw new Error("the day turned and the threshold still shows yesterday");
+      }
+      await page.screenshot({ path: join(outDir, "midnight-2-ordinary.png") });
+      return { turned: true, shabbat: found.label };
+    },
+    until: () => true,
+  },
+  {
     name: "porch",
     about: "The taught opening in Malchut — the three lessons and the first gap.",
     warp: { rung: 1, letters: "as-of-rung", lamps: 3, porch: 1, seed: 7 },
@@ -1704,6 +1786,19 @@ const overrides = Object.fromEntries(
   }),
 );
 const seconds = flag("seconds", undefined);
+
+/**
+ * `--day=2025-10-09` — run every script on a chosen calendar day.
+ *
+ * Sugar over `--warp=day=…`, worth its own flag because it is the axis this
+ * harness was blind on: festival content is content that exists one day a
+ * year, and until the warp learned the date every script measured whatever
+ * day the container happened to boot on. `first-run` and the panel scripts,
+ * which begin at the threshold rather than warping, still run on the wall
+ * clock — the day rides the warp, and they have no warp to ride.
+ */
+const warpDay = flag("day", undefined);
+if (warpDay) overrides.day = warpDay;
 
 /**
  * `--motion=no-preference` — how to check that `panel-still` can fail.

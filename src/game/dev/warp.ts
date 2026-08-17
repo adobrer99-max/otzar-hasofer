@@ -5,6 +5,7 @@ import { LAMPS } from "../combat";
 import { lettersOnEntering, regionAt, regions, TOTAL_REGIONS } from "../regions";
 import { pathsFrom, type TreePath } from "../tree";
 import type { SefirahId } from "../../types/letter";
+import type { FestivalId } from "../../types/festival";
 import { SCROLL_LETTER } from "../scroll";
 import { carried, relicById, RELICS } from "../relics";
 
@@ -96,6 +97,21 @@ export interface WarpOptions {
    * objects, which is the same failure the `freed` flag is off for.
    */
   relics: readonly string[];
+  /**
+   * **The day to warp to**, as a plain ISO date — `2025-10-09` is Sukkot's
+   * third night. Absent, the warp runs on the wall-clock day, which is what
+   * every warp did until P10 put content on the calendar.
+   *
+   * This exists for the same reason `look()` had to learn the figured stone's
+   * name: content that only exists on Yom Kippur is content nobody can see —
+   * or script, or photograph — the other 364 days of the year. The override
+   * reaches everything the real day reaches: the seed, the light, the lent
+   * grace, the notes, the festival ids frozen onto the record, and the
+   * `data-festival` ground the page stands on. The midnight poll respects it
+   * (`GamePage` reads the override inside its own refresh), so a warped day
+   * survives longer than sixty seconds.
+   */
+  day?: string;
 }
 
 export const WARP_DEFAULTS: WarpOptions = {
@@ -148,7 +164,30 @@ export function readWarp(params: URLSearchParams): WarpOptions | undefined {
     freed: params.get("freed") === "1",
     lit: params.get("lit") === "1",
     relics: readRelics(params.get("relics")),
+    day: readDay(params.get("day")),
   };
+}
+
+/**
+ * A warp day off the URL: `YYYY-MM-DD` or nothing. Anything else is dropped
+ * for the same reason a typo'd relic id is — the value comes off a URL, and a
+ * harness script's bad date should warp to today rather than to `Invalid
+ * Date`, whose `NaN` seed would poison every draw after it.
+ */
+function readDay(raw: string | null): string | undefined {
+  if (!raw || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return undefined;
+  return Number.isNaN(warpDate(raw).getTime()) ? undefined : raw;
+}
+
+/**
+ * The `Date` a warp day means — **local noon**, not midnight. `new
+ * Date("2025-10-09")` is UTC midnight, which west of Greenwich is still the
+ * evening of the 8th, so a bare parse would warp every American harness run
+ * to the wrong Hebrew day. Noon is unambiguous in every timezone this side
+ * of the date line.
+ */
+export function warpDate(day: string): Date {
+  return new Date(`${day}T12:00:00`);
 }
 
 /**
@@ -191,6 +230,7 @@ export function warpParams(options: WarpOptions): string {
   if (options.relics.length > 0) {
     params.set("relics", options.relics.length === RELICS.length ? "all" : options.relics.join(","));
   }
+  if (options.day) params.set("day", options.day);
   return params.toString();
 }
 
@@ -250,6 +290,14 @@ export function warpRecord(
     notes: string[];
     ascendantLetterId?: string;
     encounterNumber?: number;
+    /**
+     * The day's character, frozen exactly as a real Begin freezes it. A
+     * warped record used to write neither, so every warped climb fell back
+     * to the *live* day's light — which made a festival warp a warp to the
+     * festival's seed on today's ground.
+     */
+    lightOfTheDay?: number;
+    festivalIds?: FestivalId[];
   },
 ): AscentRecord {
   const now = new Date().toISOString();
@@ -283,5 +331,7 @@ export function warpRecord(
       : {}),
     ascendantLetterId: base.ascendantLetterId,
     encounterNumber: base.encounterNumber,
+    lightOfTheDay: base.lightOfTheDay,
+    festivalIds: base.festivalIds,
   };
 }

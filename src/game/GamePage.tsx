@@ -104,7 +104,7 @@ import {
   type Relic,
 } from "./relics";
 import { afterWalking, crossesAbyss, nodeOf, otherEnd, TREE_PATHS, type TreePath } from "./tree";
-import { readWarp, warpParams, warpRecord, type WarpOptions } from "./dev/warp";
+import { readWarp, warpDate, warpParams, warpRecord, type WarpOptions } from "./dev/warp";
 import { frameStats, installProbe, neighbourhood, phaseStats, probeOf } from "./dev/probe";
 import type { World } from "./world/types";
 import styles from "./GamePage.module.css";
@@ -338,10 +338,20 @@ export function GamePage() {
    * seed label, because the day turns at nightfall and no civil-date check
    * knows when that is.
    */
+  /**
+   * A dev warp's day, when one was asked for — see `WarpOptions.day`. A ref
+   * rather than state because the refresh below closes over it: the poll that
+   * exists to catch midnight would otherwise catch the *override* within
+   * sixty seconds and put the wall-clock day back, which would make every
+   * festival warp a sixty-second festival.
+   */
+  const dayOverride = useRef<string | null>(null);
   const [time, setTime] = useState(() => readAscentTime(new Date()));
   useEffect(() => {
     const refresh = () => {
-      const now = readAscentTime(new Date());
+      const at =
+        import.meta.env.DEV && dayOverride.current ? warpDate(dayOverride.current) : new Date();
+      const now = readAscentTime(at);
       setTime((prev) => (prev.seedLabel === now.seedLabel ? prev : now));
     };
     const every = window.setInterval(refresh, 60_000);
@@ -737,6 +747,13 @@ export function GamePage() {
       const written = warpParams(options);
       warped.current = written;
       warpLamps.current = options.lamps;
+      // The warped day, if one was asked for: the override the refresh poll
+      // reads, the state swap the UI reads, and — below — the day whose seed,
+      // light and names the record freezes. One source (`readAscentTime` of
+      // the same date) for all three, so they cannot disagree.
+      dayOverride.current = options.day ?? null;
+      const day = options.day ? readAscentTime(warpDate(options.day)) : time;
+      if (options.day) setTime(day);
       setParams(written, { replace: true });
       // A Scribe warped to Gevurah holding twenty-two letters does not need to
       // be told which key walks. State only — never `writeTaught`, so using
@@ -752,11 +769,13 @@ export function GamePage() {
       persist(
         warpRecord(options, {
           id: NEW_ID(),
-          seed: time.seed,
-          seedLabel: time.seedLabel,
-          notes: time.notes,
-          ascendantLetterId: time.ascendantLetterId,
+          seed: day.seed,
+          seedLabel: day.seedLabel,
+          notes: day.notes,
+          ascendantLetterId: day.ascendantLetterId,
           encounterNumber: encounterFor(sealedBefore)?.number,
+          lightOfTheDay: day.lightOfTheDay,
+          festivalIds: day.snapshot.activeFestivalIds,
         }),
       );
       setWorld(null);
@@ -1600,7 +1619,14 @@ export function GamePage() {
   const region = ascent ? regionAt(ascent.regionIndex) : undefined;
 
   return (
-    <div className={styles.page}>
+    <div
+      className={styles.page}
+      // The day's ground: `theme.css` keeps accent overrides per festival and
+      // the Herald has worn them for as long as they have existed — the game
+      // never set the attribute, so its festival days looked like Tuesdays.
+      // Undefined on an ordinary day, which removes the attribute entirely.
+      data-festival={time.snapshot.activeFestivalIds[0]}
+    >
       {/* **No header.** The page used to open with a page title, a Hebrew
           subtitle and a nine-line lede before anything playable — see
           `GameShell.tsx`. What is left is the corner bar at the foot of this

@@ -136,6 +136,16 @@ export function DevPanel({ onWarp }: { onWarp: (options: WarpOptions) => void })
           }
         />
 
+        {/* The calendar in the hand — a festival is visitable without waiting
+            a year for it. Empty means the wall-clock day, as it always did. */}
+        <label htmlFor="warp-day">Day</label>
+        <input
+          id="warp-day"
+          type="date"
+          value={options.day ?? ""}
+          onChange={(e) => set("day", e.target.value || undefined)}
+        />
+
         <span />
         <label className={styles.check}>
           <input
