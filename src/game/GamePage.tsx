@@ -3394,8 +3394,16 @@ function HousePlate({
       </p>
       <h2 className={styles.plateTitle}>{card.title}</h2>
       {house?.houseName && <p className={styles.plateHeb}>{house.houseName}</p>}
-      <p className={styles.plateUse}>{card.episode}</p>
+      {/* Title equals episode on every matriarchal card, and a plate that
+          says one thing twice says nothing — show the episode line only when
+          it adds a word. */}
+      {card.episode !== card.title && <p className={styles.plateUse}>{card.episode}</p>}
       {card.humanPractice && <p className={styles.plateDerivation}>{card.humanPractice}</p>}
+      {/* The one line all 112 matriarchal cards have always carried — shown
+          in the Herald and the Guide since they existed, and never in-game,
+          which left two-thirds of the Houses' content rendering as a title
+          and the same string repeated. Found by the P10 census. */}
+      {card.coreEnergy && <p className={styles.plateDerivation}>{card.coreEnergy}</p>}
       {card.question && <p className={styles.plateQuestion}>{card.question}</p>}
       {house && (
         <p className={styles.plateSource}>

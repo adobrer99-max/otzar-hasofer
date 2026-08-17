@@ -1,5 +1,6 @@
 import { festivalsById } from "../data/festivals";
 import { ushpizin } from "../data/ushpizin";
+import { omerLine } from "../data/omer";
 import { formatHebrewDateEnglish, resolveAdar } from "../data/hebrewCalendar";
 import { mazalotByMonth } from "../data/mazalot";
 import { computeSacredTime } from "../data/sacredTime";
@@ -163,7 +164,20 @@ export function readAscentTime(
   }
 
   if (snapshot.omer) {
-    notes.push(`Day ${snapshot.omer.day} of the Omer — the count itself is an ascent.`);
+    // Each of the forty-nine days by its own name — see `data/omer.ts`. The
+    // old line said the same sentence for seven weeks.
+    notes.push(omerLine(snapshot.omer.day));
+  }
+
+  // Rosh Chodesh was computed on every snapshot from the day the calendar
+  // existed and read by nothing in the game — the census's smallest finding
+  // and the cheapest: the new moon is at least a sentence.
+  if (snapshot.roshChodesh) {
+    notes.push(
+      snapshot.roshChodesh.days === 2
+        ? "Rosh Chodesh — two days at the turn of the month, and this is one of them."
+        : "Rosh Chodesh — the moon begins again, and the month with it.",
+    );
   }
 
   return { snapshot, seed, seedLabel, ascendantLetterId, lightOfTheDay, graceOfTheDay, notes };

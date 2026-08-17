@@ -27,9 +27,10 @@ describe("content registry", () => {
     for (const entry of festivals.entries) {
       expect(entry.isGap).toBe(entry.base.contemplativeQuestion.trim() === "");
     }
-    // A real gap exists today, and it is the documented count.
+    // P10-5 filled every festival's question, so the honest count is zero —
+    // the per-entry rule above is what keeps the flagging machinery proven.
     const gaps = festivals.entries.filter((e) => e.isGap).length;
-    expect(gaps).toBe(20);
+    expect(gaps).toBe(0);
   });
 
   it("flags a matriarchal card as a gap when it lacks a practice or question", () => {

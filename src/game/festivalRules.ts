@@ -44,7 +44,13 @@ export interface FestivalRule {
   gateRoom?: "word-gate-sukkah" | "word-gate-lamps";
 }
 
-const FAST = { light: 0.75, note: "A fast day — less lies waiting on the ground." };
+/**
+ * The four minor fasts share a multiplier — that is the measured economy and
+ * it holds — and no longer a sentence: four days that remember four different
+ * griefs were shipping one line verbatim, which the census filed beside the
+ * Omer's single sentence for forty-nine days.
+ */
+const FAST_LIGHT = 0.75;
 
 /**
  * The values are the shipped ones, byte for byte — this table *absorbed*
@@ -86,10 +92,22 @@ export const FESTIVAL_RULES: Record<FestivalId, FestivalRule | null> = {
   },
   "simchat-torah": { nigun: "hava-nagila" },
   "lag-baomer": { nigun: "hava-nagila" },
-  "fast-of-gedaliah": { ...FAST },
-  "tenth-of-tevet": { ...FAST },
-  "seventeenth-of-tammuz": { ...FAST },
-  "fast-of-esther": { ...FAST },
+  "fast-of-gedaliah": {
+    light: FAST_LIGHT,
+    note: "The Fast of Gedaliah — a governor murdered, a remnant scattered; less lies waiting on the ground.",
+  },
+  "tenth-of-tevet": {
+    light: FAST_LIGHT,
+    note: "The Tenth of Tevet — the siege begins, and the walls still hold; less lies waiting on the ground.",
+  },
+  "seventeenth-of-tammuz": {
+    light: FAST_LIGHT,
+    note: "The Seventeenth of Tammuz — the walls are breached, and three weeks begin; less lies waiting on the ground.",
+  },
+  "fast-of-esther": {
+    light: FAST_LIGHT,
+    note: "The Fast of Esther — the day before the lot falls, fasting in the king's city; less lies waiting on the ground.",
+  },
   "yom-hashoah": null,
   "yom-hazikaron": null,
   "yom-haatzmaut": null,

@@ -53,3 +53,32 @@ describe("the calendar's names", () => {
     }
   });
 });
+
+describe("the calendar's own words", () => {
+  /**
+   * P10-5 retired two shipped placeholders: nine entries carried the literal
+   * string "No ritual override defined yet." and twenty-one of twenty-three
+   * had no contemplative question at all. These hold the fills to the same
+   * standard the fast-day notes were held to — distinct words for distinct
+   * days, never one sentence stamped across a family.
+   */
+  it("gives every day a question of its own", () => {
+    for (const f of festivals) {
+      expect(f.contemplativeQuestion, `${f.id} has no question`).toBeDefined();
+      expect(f.contemplativeQuestion!.trim().endsWith("?"), `${f.id}'s question does not ask`).toBe(true);
+    }
+    const all = festivals.map((f) => f.contemplativeQuestion);
+    expect(new Set(all).size, "two days share a question").toBe(festivals.length);
+  });
+
+  it("leaves no ritual unwritten, and no two fasts with one sentence", () => {
+    for (const f of festivals) {
+      expect(f.ritualMechanic, `${f.id}`).not.toContain("No ritual override defined yet");
+    }
+    const fasts = festivals
+      .filter((f) => f.id.startsWith("fast-") || f.id === "tenth-of-tevet" || f.id === "seventeenth-of-tammuz")
+      .map((f) => f.ritualMechanic);
+    expect(new Set(fasts).size, "the fasts share a ritual sentence").toBe(fasts.length);
+  });
+});
+

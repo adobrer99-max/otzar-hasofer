@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { computeSacredTime, computeLunarPhase } from "./sacredTime";
+import { omerLine } from "./omer";
 
 describe("computeSacredTime", () => {
   it("computes the correct Omer day (2 Iyyar 5786 = Omer day 17)", () => {
@@ -114,3 +115,16 @@ describe("computeLunarPhase", () => {
     expect(computeLunarPhase(30)).toBe("waningCrescent");
   });
 });
+
+describe("the Omer, counted in its own words", () => {
+  it("gives each of the forty-nine days a distinct line, on the 7×7 grid", () => {
+    const lines = Array.from({ length: 49 }, (_, i) => omerLine(i + 1));
+    expect(new Set(lines).size).toBe(49);
+    expect(lines[0]).toContain("Chesed within Chesed");
+    expect(lines[9]).toContain("Tiferet within Gevurah"); // day 10 — tiferet she-b'gevurah
+    expect(lines[16]).toContain("Tiferet within Tiferet"); // day 17
+    expect(lines[48]).toContain("Malchut within Malchut");
+    for (const line of lines) expect(line).toMatch(/^Day \d+ of the Omer/);
+  });
+});
+

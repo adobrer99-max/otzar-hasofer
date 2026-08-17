@@ -27,7 +27,7 @@ import type { FestivalOverride } from "../types/festival";
  *   `HeraldLayer.input.festivalId` values from readings saved before this
  *   change.
  * - Several entries have a `gesture` (the doc's Gesture/Verb/Theme) but no
- *   transcribed `contemplativeQuestion` yet — a first-draft content gap
+ *   transcribed `contemplativeQuestion` yet — filled in P10-5; the header's old note kept for history: a first-draft content gap
  *   to fill in later, not a bug.
  */
 export const festivals: FestivalOverride[] = [
@@ -37,6 +37,7 @@ export const festivals: FestivalOverride[] = [
     description:
       "No festival override. The cleanest, simplest Herald render — the baseline against which every sacred-time accent reads as distinct.",
     ritualMechanic: "Standard reading; no override.",
+    contemplativeQuestion: "What is unrepeatable about today, given that nothing marks it?",
   },
   {
     id: "shabbat",
@@ -60,6 +61,7 @@ export const festivals: FestivalOverride[] = [
     heraldAccent: { motif: "broken-vessel" },
     dateRule: { kind: "range", month: "Nisan", startDay: 15, lengthLand: 7, lengthGalut: 8 },
     gesture: "Depart",
+    contemplativeQuestion: "What narrow place am I still living in, and what would leaving cost?",
   },
   {
     id: "sukkot",
@@ -71,6 +73,7 @@ export const festivals: FestivalOverride[] = [
     heraldAccent: { forceMode: "sefirot" },
     dateRule: { kind: "range", month: "Tishri", startDay: 15, lengthLand: 7, lengthGalut: 7 },
     gesture: "Dwell",
+    contemplativeQuestion: "What am I trusting to hold that I did not build to last?",
   },
   {
     id: "high-holy-days",
@@ -81,6 +84,7 @@ export const festivals: FestivalOverride[] = [
     ritualMechanic: "Interface shifts to solemnity/sealing/judgment.",
     heraldAccent: { accentColor: "var(--color-silver)", motif: "seal" },
     dateRule: { kind: "range", month: "Tishri", startDay: 1, lengthLand: 10, lengthGalut: 10 },
+    contemplativeQuestion: "What account am I avoiding, and who holds the other copy?",
   },
   {
     id: "rosh-hashanah",
@@ -90,6 +94,7 @@ export const festivals: FestivalOverride[] = [
     ritualMechanic: "See The High Holy Days above for the full ritual override.",
     dateRule: { kind: "range", month: "Tishri", startDay: 1, lengthLand: 2, lengthGalut: 2 },
     gesture: "Listen/Reflect",
+    contemplativeQuestion: "If the year turned on what I did next, what would I do next?",
   },
   {
     id: "yom-kippur",
@@ -99,6 +104,7 @@ export const festivals: FestivalOverride[] = [
     ritualMechanic: "See The High Holy Days above for the full ritual override.",
     dateRule: { kind: "fixed", month: "Tishri", day: 10 },
     gesture: "Return/Repent",
+    contemplativeQuestion: "What do I need to say aloud before it can be let go?",
   },
   {
     id: "purim",
@@ -110,6 +116,7 @@ export const festivals: FestivalOverride[] = [
     heraldAccent: { accentColor: "var(--color-blue-bright)", motif: "veil" },
     dateRule: { kind: "fixed", month: "Adar", day: 14 },
     gesture: "Reveal/Unmask",
+    contemplativeQuestion: "What am I disguising as its opposite, and who am I fooling?",
   },
   {
     id: "shavuot",
@@ -121,6 +128,7 @@ export const festivals: FestivalOverride[] = [
     heraldAccent: { motif: "unveiled" },
     dateRule: { kind: "range", month: "Sivan", startDay: 6, lengthLand: 1, lengthGalut: 2 },
     gesture: "Receive",
+    contemplativeQuestion: "What was I given long ago that I have never unrolled?",
   },
   {
     id: "tishabav",
@@ -132,6 +140,7 @@ export const festivals: FestivalOverride[] = [
     heraldAccent: { lockLetters: true, accentColor: "#7a7a7a", motif: "cracked" },
     dateRule: { kind: "fixed", month: "Av", day: 9 },
     gesture: "Remember",
+    contemplativeQuestion: "What ruin do I walk past daily without looking at?",
   },
   {
     id: "tubishvat",
@@ -143,6 +152,7 @@ export const festivals: FestivalOverride[] = [
     heraldAccent: { accentColor: "#7a9a5a", motif: "rooted" },
     dateRule: { kind: "fixed", month: "Shevat", day: 15 },
     gesture: "Plant",
+    contemplativeQuestion: "What am I feeding at the root that no one will see for years?",
   },
   {
     id: "tubav",
@@ -154,13 +164,14 @@ export const festivals: FestivalOverride[] = [
     heraldAccent: { accentColor: "var(--color-gold-bright)", motif: "synthesis" },
     dateRule: { kind: "fixed", month: "Av", day: 15 },
     gesture: "Connect",
+    contemplativeQuestion: "What would I offer if I trusted it would be received?",
   },
   {
     id: "hanukkah",
     name: "Hanukkah",
     hebrewName: "חנוכה",
     description: "Illuminate. Eight days commemorating the rededication of the Temple and the miracle of the oil.",
-    ritualMechanic: "No ritual override defined yet.",
+    ritualMechanic: "One extra card is drawn each of the eight nights; the reading brightens as it goes.",
     dateRule: { kind: "range", month: "Kislev", startDay: 25, lengthLand: 8, lengthGalut: 8 },
     gesture: "Illuminate",
     contemplativeQuestion: "What darkness needs a light shone on it?",
@@ -171,90 +182,100 @@ export const festivals: FestivalOverride[] = [
     hebrewName: "שמחת תורה",
     description:
       "Rejoice. The completion and immediate restart of the annual Torah-reading cycle, bundled here with Shmini Atzeret (the 8th day of assembly following Sukkot).",
-    ritualMechanic: "No ritual override defined yet.",
+    ritualMechanic: "The reading ends and immediately begins again — the last card is laid as the first of a new draw.",
     dateRule: { kind: "range", month: "Tishri", startDay: 22, lengthLand: 1, lengthGalut: 2 },
     gesture: "Rejoice",
+    contemplativeQuestion: "What have I finished that I should begin again, rejoicing?",
   },
   {
     id: "lag-baomer",
     name: "Lag Ba'Omer",
     hebrewName: "ל״ג בעומר",
     description: "Illuminate. The 33rd day of the Omer count, a customary day of joy amid the semi-mourning period.",
-    ritualMechanic: "No ritual override defined yet.",
+    ritualMechanic: "The Omer's semi-mourning constraints lift for this day only; the deck is unrestricted.",
     dateRule: { kind: "fixed", month: "Iyyar", day: 18 },
     gesture: "Illuminate",
+    contemplativeQuestion: "What fire is permitted me in the middle of mourning?",
   },
   {
     id: "fast-of-gedaliah",
     name: "Fast of Gedaliah",
     hebrewName: "צום גדליה",
     description: "Hone. A minor fast mourning the assassination of Gedaliah and the final end of Jewish sovereignty after the First Temple's destruction.",
-    ritualMechanic: "No ritual override defined yet.",
+    ritualMechanic: "A narrowed draw — one card fewer, each held longer; the reading asks what was abandoned.",
     dateRule: { kind: "fixed", month: "Tishri", day: 3 },
     gesture: "Hone",
+    contemplativeQuestion: "What did I let be destroyed because it was already wounded?",
   },
   {
     id: "tenth-of-tevet",
     name: "Tenth of Tevet",
     hebrewName: "עשרה בטבת",
     description: "Hone. A minor fast marking the beginning of the Babylonian siege of Jerusalem.",
-    ritualMechanic: "No ritual override defined yet.",
+    ritualMechanic: "A narrowed draw — one card fewer, each held longer; the reading watches for what is encircling.",
     dateRule: { kind: "fixed", month: "Tevet", day: 10 },
     gesture: "Hone",
+    contemplativeQuestion: "What siege have I stopped noticing because the walls still hold?",
   },
   {
     id: "seventeenth-of-tammuz",
     name: "Seventeenth of Tammuz",
     hebrewName: "י״ז בתמוז",
     description: "Hone. A minor fast marking the first breach of Jerusalem's walls, beginning the Three Weeks leading to Tisha B'Av.",
-    ritualMechanic: "No ritual override defined yet.",
+    ritualMechanic: "A narrowed draw — one card fewer, each held longer; the reading looks for the first breach.",
     dateRule: { kind: "fixed", month: "Tammuz", day: 17 },
     gesture: "Hone",
+    contemplativeQuestion: "Where is the first breach — the small one that admits all the rest?",
   },
   {
     id: "fast-of-esther",
     name: "Fast of Esther",
     hebrewName: "תענית אסתר",
     description: "Hone. A minor fast observed the day before Purim, commemorating Esther's fast before approaching the king.",
-    ritualMechanic: "No ritual override defined yet.",
+    ritualMechanic: "A narrowed draw — one card fewer, each held longer; the reading faces tomorrow's door.",
     dateRule: { kind: "fixed", month: "Adar", day: 13 },
     gesture: "Hone",
+    contemplativeQuestion: "What am I fasting toward, and what door will I walk through tomorrow?",
   },
   {
     id: "yom-hashoah",
     name: "Yom HaShoah",
     hebrewName: "יום השואה",
     description: "Bear Witness. Holocaust Remembrance Day.",
-    ritualMechanic: "No ritual override defined yet.",
+    ritualMechanic: "Six lights stand over the reading, and no card may be reversed into consolation.",
     dateRule: { kind: "fixed", month: "Nisan", day: 27 },
     gesture: "Bear Witness",
+    contemplativeQuestion: "What testimony is mine to carry, now that the witnesses are few?",
   },
   {
     id: "yom-hazikaron",
     name: "Yom HaZikaron",
     hebrewName: "יום הזיכרון",
     description: "Honour. Israel's Memorial Day for fallen soldiers and victims of terror.",
-    ritualMechanic: "No ritual override defined yet.",
+    ritualMechanic: "The reading stands silent twice — two cards laid face down and left so.",
     dateRule: { kind: "fixed", month: "Iyyar", day: 4 },
     gesture: "Honour",
+    contemplativeQuestion: "Whose cost am I living on, and how do I honour the debt?",
   },
   {
     id: "yom-haatzmaut",
     name: "Yom HaAtzmaut",
     hebrewName: "יום העצמאות",
     description: "Build. Israel's Independence Day.",
-    ritualMechanic: "No ritual override defined yet.",
+    ritualMechanic: "A building spread: each card laid upon the one before, foundation upward.",
     dateRule: { kind: "fixed", month: "Iyyar", day: 5 },
     gesture: "Build",
+    contemplativeQuestion: "What am I building that should outlast my need for credit?",
   },
   {
     id: "yom-yerushalayim",
     name: "Yom Yerushalayim",
     hebrewName: "יום ירושלים",
     description: "Gather. Jerusalem Day, commemorating the reunification of Jerusalem.",
-    ritualMechanic: "No ritual override defined yet.",
+    ritualMechanic: "A gathering spread: the cards drawn far apart, then read as one sentence.",
     dateRule: { kind: "fixed", month: "Iyyar", day: 28 },
     gesture: "Gather",
+    contemplativeQuestion: "What scattered thing in me is asking to be gathered to one place?",
   },
 ];
 
