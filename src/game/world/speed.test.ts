@@ -46,25 +46,27 @@ import type { Chunk } from "./types";
  * screen came back unanimous — ten of ten or none of ten, not one marginal** —
  * so the buckets below are facts rather than roundings.
  *
+ * **As of P10-3 (78 screens):**
+ *
  * | | |
  * |---|---|
- * | free to a runner | **70** |
- * | takes something and lets you through | **0** |
+ * | free to a runner | **63** |
+ * | takes something and lets you through | **9** |
  * | asks a move you must stop to make | **6** |
  *
- * And the cross-tab, which is the sharper half:
+ * The two committed lists below (`TAKES_SOMETHING`, `ASKS_A_MOVE`) are the
+ * living record — the buckets test derives "free" and holds all three to the
+ * measurement, so the numbers in this table cannot silently drift the way the
+ * previous version of it did: it still said **70 / 0 / 6 over 76** two phases
+ * after P13d authored nine figured-stone screens into the takes column and
+ * P10-3 added the two festival chambers (both free — a sealed chamber is off
+ * the walking lane). Found in P13e-4's doc audit.
  *
- * - **Every one of the thirty-nine letterless screens is free.** Not one screen
- *   in this game that a Scribe with no letters walks asks anything at all of a
- *   body in a hurry.
- * - Of the thirty-seven gated screens, thirty-one are free; all six that are
- *   not are gated, and half of those are the three Bet screens.
- * - By demand band: **28 of 30 at demand 1, 22 of 23 at demand 2, 20 of 23 at
- *   demand 3.** The crown's ground is very nearly as free to run past as the
- *   kingdom's, which is *still far too easy to progress* stated as a number.
- * - All fourteen fixed screens are free, and twelve of them are crossed in the
- *   same number of ticks by both probes — the same walk, not merely the same
- *   outcome.
+ * P13b's original cross-tab — every letterless screen free, the crown's
+ * ground nearly as free to run as the kingdom's — was the finding that
+ * *started* P13: it is history now, kept in the phase notes rather than
+ * restated here, because seven of the nine screens P13d charged are exactly
+ * the letterless kind that table said were all free.
  */
 
 /** Every screen a rung can lay. The two harness screens are the chain, not the subject. */
