@@ -108,6 +108,23 @@ describe("the pages", () => {
   });
 });
 
+describe("the day a page belongs to", () => {
+  /**
+   * The names come off the *frozen* ids, never off a re-run calendar — the
+   * whole reason `festivalIds` is stored is that "14 Nisan" only says Pesach
+   * to a reader who counts, and calendar rules are authored data that may
+   * move under old records.
+   */
+  it("names the festivals a climb was begun on, and stays silent otherwise", () => {
+    const pages = pagesOf([
+      climb({ id: "chag", sealedAt: "2026-01-03T00:00:00.000Z", festivalIds: ["yom-kippur", "high-holy-days"] }),
+      climb({ id: "plain", sealedAt: "2026-01-04T00:00:00.000Z" }),
+    ]);
+    expect(pages.find((p) => p.id === "chag")?.festivals).toEqual(["Yom Kippur", "The High Holy Days"]);
+    expect(pages.find((p) => p.id === "plain")?.festivals).toEqual([]);
+  });
+});
+
 describe("the Houses met", () => {
   it("groups cards under their figure, and says how many that figure has", () => {
     const met = housesMet([climb({ housesMet: [cardsOfMalchut[0].id] })]);

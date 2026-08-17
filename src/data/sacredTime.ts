@@ -1,5 +1,5 @@
 import type { SacredTimeSnapshot } from "../types/sacredTime";
-import type { FestivalDateRule } from "../types/festival";
+import type { FestivalDateRule, FestivalId } from "../types/festival";
 import type { GeographyMode } from "../types/herald";
 import {
   hebrewDateFromGregorian,
@@ -67,29 +67,44 @@ function specificity(rule: FestivalDateRule, geography: GeographyMode): number {
   return 8; // "weekly" (Shabbat) — sorts after any specific Yom Tov it might coincide with
 }
 
-function matchesDateRule(rule: FestivalDateRule, hebrewDate: HebrewDate, gregorianDate: Date, geography: GeographyMode): boolean {
+/**
+ * Which day of the rule this date is — **1-based, or undefined if the rule
+ * does not match at all.**
+ *
+ * This function used to answer only yes-or-no, and to do it the `range`
+ * branch computed the offset into the festival and then threw it away. That
+ * discarded number is the difference between "it is Sukkot" and "it is the
+ * third night of Sukkot" — the fact the seven Ushpizin need to be seated on
+ * their seven nights, and the reason nothing downstream could ever say more
+ * than the festival's name. Weekly and fixed rules are single days, so a
+ * match is always day 1.
+ */
+function dayOfDateRule(rule: FestivalDateRule, hebrewDate: HebrewDate, gregorianDate: Date, geography: GeographyMode): number | undefined {
   if (rule.kind === "weekly") {
-    return dayOfWeek(gregorianDate) === rule.dayOfWeek;
+    return dayOfWeek(gregorianDate) === rule.dayOfWeek ? 1 : undefined;
   }
   if (rule.kind === "fixed") {
     const month = resolveAdar(hebrewDate.year, rule.month);
-    return hebrewDate.month === month && hebrewDate.day === rule.day;
+    return hebrewDate.month === month && hebrewDate.day === rule.day ? 1 : undefined;
   }
   // range
   const month = resolveAdar(hebrewDate.year, rule.month);
   const start = gregorianFromHebrewDate({ year: hebrewDate.year, month, day: rule.startDay });
   const length = geography === "land" ? rule.lengthLand : rule.lengthGalut;
   const offset = daysBetween(start, gregorianDate);
-  return offset >= 0 && offset < length;
+  return offset >= 0 && offset < length ? offset + 1 : undefined;
 }
 
 export function computeSacredTime(date: Date, geography: GeographyMode): SacredTimeSnapshot {
   const hebrewDate = hebrewDateFromGregorian(date);
 
-  const activeFestivalIds = festivals
-    .filter((f) => f.dateRule && matchesDateRule(f.dateRule, hebrewDate, date, geography))
-    .sort((a, b) => specificity(a.dateRule!, geography) - specificity(b.dateRule!, geography))
-    .map((f) => f.id);
+  const active = festivals
+    .map((f) => ({ f, day: f.dateRule && dayOfDateRule(f.dateRule, hebrewDate, date, geography) }))
+    .filter((m): m is { f: (typeof festivals)[number]; day: number } => m.day !== undefined)
+    .sort((a, b) => specificity(a.f.dateRule!, geography) - specificity(b.f.dateRule!, geography));
+  const activeFestivalIds = active.map((m) => m.f.id);
+  const festivalDays: Partial<Record<FestivalId, number>> = {};
+  for (const m of active) festivalDays[m.f.id] = m.day;
 
   const parshaWeek = computeParsha(date, geography);
 
@@ -101,6 +116,7 @@ export function computeSacredTime(date: Date, geography: GeographyMode): SacredT
     roshChodesh: computeRoshChodesh(hebrewDate),
     omer: computeOmer(hebrewDate, date),
     activeFestivalIds,
+    festivalDays,
     parsha: parshaWeek
       ? {
           ids: parshaWeek.parshiyot.map((p) => p.id),

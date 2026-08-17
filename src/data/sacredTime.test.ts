@@ -41,6 +41,38 @@ describe("computeSacredTime", () => {
     expect(computeSacredTime(dayAfter, "galut").activeFestivalIds).toHaveLength(0);
   });
 
+  /**
+   * **Which day of the festival it is, and not merely that it is one.**
+   *
+   * `matchesDateRule` always computed the offset into a range and threw it
+   * away, so nothing downstream could tell Sukkot's first night from its
+   * seventh — the fact the seven Ushpizin need. These pin the 1-based count
+   * against real dates, in both geographies, because the galut day 8 is the
+   * kind of edge the offset must survive.
+   */
+  it("counts the nights of a range festival, 1-based, in both geographies", () => {
+    // 15 Tishri 5786 = 7 Oct 2025 begins Sukkot.
+    for (let night = 1; night <= 7; night += 1) {
+      const date = new Date(2025, 9, 6 + night);
+      expect(computeSacredTime(date, "land").festivalDays?.sukkot, `land night ${night}`).toBe(night);
+      expect(computeSacredTime(date, "galut").festivalDays?.sukkot, `galut night ${night}`).toBe(night);
+    }
+    // Pesach's galut-only day 8: the count keeps going where the rule does.
+    const day8 = new Date(2026, 3, 9); // 22 Nisan 5786
+    expect(computeSacredTime(day8, "galut").festivalDays?.pesach).toBe(8);
+    expect(computeSacredTime(day8, "land").festivalDays?.pesach).toBeUndefined();
+  });
+
+  it("reports single-day rules as day 1, and counts the umbrella beside the day", () => {
+    // Yom Kippur, 10 Tishri 5786 — a fixed rule inside the ten-day range.
+    const yomKippur = computeSacredTime(new Date(2025, 9, 2), "land");
+    expect(yomKippur.festivalDays?.["yom-kippur"]).toBe(1);
+    expect(yomKippur.festivalDays?.["high-holy-days"]).toBe(10);
+    // And a weekly rule is likewise its own day 1.
+    const shabbat = computeSacredTime(new Date(2026, 0, 10), "land");
+    expect(shabbat.festivalDays?.shabbat).toBe(1);
+  });
+
   it("orders simultaneous matches most-specific first (Yom Kippur within the High Holy Days)", () => {
     const yomKippur = computeSacredTime(new Date(2025, 9, 2), "land");
     expect(yomKippur.activeFestivalIds[0]).toBe("yom-kippur");

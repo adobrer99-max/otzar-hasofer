@@ -2,6 +2,7 @@ import { festivalsById } from "../data/festivals";
 import { formatHebrewDateEnglish, resolveAdar } from "../data/hebrewCalendar";
 import { mazalotByMonth } from "../data/mazalot";
 import { computeSacredTime } from "../data/sacredTime";
+import type { FestivalId, Gesture } from "../types/festival";
 import type { GeographyMode } from "../types/herald";
 import type { SacredTimeSnapshot } from "../types/sacredTime";
 import type { Grace } from "./abilities";
@@ -53,8 +54,15 @@ export interface AscentTime {
  * guarantee rests on `lettersOnEntering` being the complete truth about what
  * verbs a region can demand. A grace changes how the world meets you and
  * unlocks nothing, so it is safe to give and safe to take away at midnight.
+ *
+ * **`Record<Gesture, Grace>` and not `Record<string, Grace>`**, which is what
+ * it was: under the loose key a gesture authored with a typo'd name — or a new
+ * gesture added to `festivals.ts` and forgotten here — looked up `undefined`,
+ * lent nothing, and no one noticed, because a day lending nothing is also what
+ * an ordinary day does. Exhaustive both ways now: every member of `Gesture`
+ * must appear here, and a key not in the union will not compile.
  */
-const GESTURE_GRACES: Record<string, Grace> = {
+const GESTURE_GRACES: Record<Gesture, Grace> = {
   Rest: "slow-fall", // upheld, as on Shabbat
   Depart: "high-jump", // rising out of the narrow place
   Dwell: "second-stone", // a booth is built and stood in
@@ -89,7 +97,7 @@ const GESTURE_GRACES: Record<string, Grace> = {
  * every active festival is named in the notes — but only these change play,
  * and each change is the one the day already means in the practice.
  */
-const DAY_EFFECTS: Record<string, { light: number; note: string }> = {
+const DAY_EFFECTS: Partial<Record<FestivalId, { light: number; note: string }>> = {
   shabbat: { light: 1.4, note: "Shabbat — the regions lie brighter than on any working day." },
   hanukkah: { light: 1.5, note: "Hanukkah — the light that lasted longer than it had any right to." },
   tubishvat: { light: 1.3, note: "Tu Bishvat — the sap rises in the Tree, and the Tree is lit." },

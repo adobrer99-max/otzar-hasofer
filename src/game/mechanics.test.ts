@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { festivals } from "../data/festivals";
+import type { Gesture } from "../types/festival";
 import { ushpizinBySefirah } from "../data/ushpizin";
 import { encounterFor, encounterTitle, illuminedBy, ruleByNumber, sealedCount } from "./encounter";
 import { readAscentTime } from "./sacredAscent";
@@ -91,7 +92,9 @@ describe("the day's gesture", () => {
 
   it("has a mapping for every gesture the calendar actually names", () => {
     // Guards against a festival being authored with a gesture no one reads.
-    const gestures = new Set(festivals.map((f) => f.gesture).filter(Boolean));
+    // Widened to string on purpose: the notes are prose, and what is being
+    // checked is that the prose names nothing the table cannot answer.
+    const gestures = new Set<string>(festivals.map((f) => f.gesture).filter((g): g is Gesture => Boolean(g)));
     const mapped = new Set<string>();
     for (let day = 0; day < 400; day += 1) {
       const time = readAscentTime(new Date(2026, 0, 1 + day));

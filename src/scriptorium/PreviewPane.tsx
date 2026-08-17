@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { FestivalCard } from "../guide/components/FestivalCard";
 import { DorotCardView } from "../guide/components/DorotCardView";
 import { festivalsById } from "../data/festivals";
+import type { Gesture } from "../types/festival";
 import { dorotCardsById } from "../data/dorot";
 import { liturgiesById } from "../data/liturgies";
 import { encountersByNumber } from "../data/encounters";
@@ -44,7 +45,10 @@ export function PreviewPane({
           <FestivalCard
             festival={{
               ...base,
-              gesture: v("gesture"),
+              // The scriptorium previews drafts, and a draft gesture may not
+              // be one of the seventeen yet — the card renders it as text
+              // either way, so the cast is confined to this preview.
+              gesture: v("gesture") as Gesture | undefined,
               contemplativeQuestion: v("contemplativeQuestion"),
             }}
           />

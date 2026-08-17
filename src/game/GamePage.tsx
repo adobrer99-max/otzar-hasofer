@@ -598,6 +598,9 @@ export function GamePage() {
         // "safe to give and safe to take away at midnight", and it is the one
         // piece of the day that is lent rather than kept.
         lightOfTheDay: day.lightOfTheDay,
+        // And the day's *name*, for the Book — the light alone stores the
+        // effect, and 1.3 could be three different festivals.
+        festivalIds: day.snapshot.activeFestivalIds,
         createdAt: now,
         updatedAt: now,
         regionIndex: 1,

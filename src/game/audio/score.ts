@@ -3,6 +3,7 @@ import type { SefirahId } from "../../types/letter";
 import { misparKatan } from "../values";
 import { modeFor, pitchOf, RUNG_VOICES, type Mode } from "./modes";
 import { FESTIVAL_NIGUNIM, nigunimById, type Nigun } from "./nigunim";
+import type { FestivalId } from "../../types/festival";
 
 /**
  * What the climb sounds like — decided here, and rendered elsewhere.
@@ -37,7 +38,7 @@ export interface ScoreContext {
   /** Letter ids the Scribe carries. */
   lettersHeld: readonly string[];
   /** Active festival ids, most-specific first (from the Sacred Time snapshot). */
-  festivalIds?: readonly string[];
+  festivalIds?: readonly FestivalId[];
   /** True while the Scribe is veiled — everything drops away. */
   veiled?: boolean;
   /** True in the region this climb's Encounter illuminates. */

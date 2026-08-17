@@ -14,6 +14,7 @@ import {
 } from "./engine";
 import { scoreFor, type Score } from "./score";
 import type { World } from "../world/types";
+import type { FestivalId } from "../../types/festival";
 
 /**
  * Wires the score and the effects to the game.
@@ -56,7 +57,7 @@ export function useGameAudio(
   worldRef: { current: World | null },
   sefirah: SefirahId | undefined,
   lettersHeld: readonly string[],
-  festivalIds: readonly string[] | undefined,
+  festivalIds: readonly FestivalId[] | undefined,
   illumined: boolean,
 ): GameAudio {
   const [on, setOn] = useState(false);

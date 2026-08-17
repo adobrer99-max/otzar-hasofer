@@ -1,3 +1,4 @@
+import type { FestivalId } from "../../types/festival";
 /**
  * The nigunim the Tree sings.
  *
@@ -165,8 +166,14 @@ export const PENDING_NIGUNIM = [
 /**
  * Which nigun a day calls for, when the calendar names one. Festivals not
  * listed simply use the rung's own phrase.
+ *
+ * Keyed by `FestivalId` rather than `string`, so a festival renamed or
+ * mistyped here stops compiling instead of silently playing the rung's own
+ * phrase forever. The nigun side stays checked by `nigunFor`'s lookup into
+ * `NIGUNIM`, and `audio.test.ts` holds that every value here names a real
+ * tune.
  */
-export const FESTIVAL_NIGUNIM: Record<string, string> = {
+export const FESTIVAL_NIGUNIM: Partial<Record<FestivalId, string>> = {
   tubav: "hava-nagila",
   "lag-baomer": "hava-nagila",
   "simchat-torah": "hava-nagila",

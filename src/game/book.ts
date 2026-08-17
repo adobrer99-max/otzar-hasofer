@@ -1,4 +1,5 @@
 import { dorotCardsById, dorotHousesById } from "../data/dorot";
+import { festivalsById } from "../data/festivals";
 import { timesFreed, type AscentRecord, type FormedWord } from "../storage/ascentRepo";
 import type { SefirahId } from "../types/letter";
 import { relicById, type Relic } from "./relics";
@@ -34,6 +35,13 @@ export interface BookPage {
   id: string;
   /** The Hebrew date it was seeded by — the day it belongs to. */
   seedLabel: string;
+  /**
+   * The named days the climb was begun on, if any — frozen on the record at
+   * Begin, so the Book can say "on Yom Kippur" without re-running a calendar
+   * whose rules may since have moved. Empty for ordinary days and for
+   * records from before the field existed.
+   */
+  festivals: string[];
   /** When it was sealed, ISO, for ordering and for showing. */
   sealedAt: string;
   /** Which ending: a lit Tree, or a crown taken out of what held it. */
@@ -75,6 +83,9 @@ export function pagesOf(ascents: readonly AscentRecord[]): BookPage[] {
       return {
         id: a.id,
         seedLabel: a.seedLabel,
+        festivals: (a.festivalIds ?? [])
+          .map((id) => festivalsById[id]?.name)
+          .filter((name): name is string => Boolean(name)),
         sealedAt: a.sealedAt,
         ending: sealKindOf(a),
         plea: frozen.plea,

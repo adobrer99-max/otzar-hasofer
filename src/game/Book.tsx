@@ -244,6 +244,10 @@ function Page({ page }: { page: BookPage }) {
       <div className={styles.pageBody}>
         <p className={styles.pageWhen}>
           {page.seedLabel}
+          {/* The day's own name, when it had one — "14 Nisan" already says
+              Pesach to a reader who counts, but the Book should not make a
+              reader count. */}
+          {page.festivals.length > 0 && ` · ${page.festivals.join(" · ")}`}
           {encounter && ` · ${encounterTitle(encounter)}`}
         </p>
         <p className={styles.pageEnding}>

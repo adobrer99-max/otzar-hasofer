@@ -3,6 +3,7 @@ import type { Grace } from "../game/abilities";
 import type { PleaKind } from "../game/story";
 import type { SefirahId } from "../types/letter";
 import { getDb } from "./db";
+import type { FestivalId } from "../types/festival";
 
 /**
  * A climb of the Tree, saved.
@@ -66,6 +67,21 @@ export interface AscentRecord {
    * to the live day's value.
    */
   lightOfTheDay?: number;
+  /**
+   * **Which named days the climb was begun on**, frozen at Begin beside the
+   * light — most-specific first, empty on an ordinary day, absent on records
+   * from before the field existed.
+   *
+   * Frozen rather than derived, twice over. Derived would mean parsing
+   * `seedLabel` back into a date and re-running the calendar, and the
+   * calendar's own rules are authored data that will drift — the argument
+   * `endingPlea` makes below: what the Scribe was shown must not change
+   * under them. And frozen because `lightOfTheDay` alone stores the day's
+   * *effect*, not its identity — 1.3 could be Sukkot, Pesach or Tu Bishvat,
+   * so without this the Book could never say "this climb was made on
+   * Yom Kippur", which is most of what a festival climb is for.
+   */
+  festivalIds?: FestivalId[];
   /** Letter ids found so far, in the order they were taken. */
   lettersHeld: string[];
   /**
