@@ -164,6 +164,196 @@ const bothGrounds = async (page, release, name) => {
   await page.waitForTimeout(60);
 };
 
+/**
+ * **A date the calendar itself vouches for.** Every festival script warps to
+ * a day it *finds* by walking `computeSacredTime` forward — never a Gregorian
+ * constant, because postponement rules are unmodeled (festivals.ts's own
+ * header) and a hardcoded date rots the first year it slips. `only` asks for
+ * a day where the festival is the *most specific* active one, so the ground
+ * attribute and the day-line belong to it and not to a coinciding Shabbat.
+ */
+const findFestivalDay = async (page, id, opts = {}) => {
+  const found = await page.evaluate(
+    async ({ id, night, horizon }) => {
+      const { computeSacredTime } = await import("/src/data/sacredTime.ts");
+      for (let ahead = 0; ahead < horizon; ahead += 1) {
+        const day = new Date();
+        day.setDate(day.getDate() + ahead);
+        day.setHours(12, 0, 0, 0);
+        const snap = computeSacredTime(day, "galut");
+        if (snap.activeFestivalIds[0] !== id) continue;
+        if (night !== undefined && snap.festivalDays?.[id] !== night) continue;
+        const y = day.getFullYear();
+        const m = String(day.getMonth() + 1).padStart(2, "0");
+        const d = String(day.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+      }
+      return null;
+    },
+    { id, night: opts.night, horizon: opts.horizon ?? 420 },
+  );
+  if (!found) throw new Error(`no ${id} inside the search horizon`);
+  return found;
+};
+
+/**
+ * Warp the page onto a found day, wait for the probe, and walk out of the
+ * Tree map into a rung — the pause menu that tells the day's own lines only
+ * exists over ground, and a warp stands the Scribe on the map.
+ */
+const warpToDay = async (page, day, rung) => {
+  await page.goto(`${url}/#/game?rung=${rung}&letters=as-of-rung&lamps=3&seed=5&day=${day}`, {
+    waitUntil: "domcontentloaded",
+  });
+  await page.waitForFunction((k) => Boolean(globalThis[k]?.read?.()), PROBE_KEY, { timeout: 15000 });
+  await page.waitForTimeout(600);
+  await walkOut(page);
+  await page.waitForTimeout(400);
+};
+
+/** The ground the page stands on, and the day-line the pause menu tells. */
+const dayFacts = async (page) => {
+  const ground = await page.evaluate(
+    () => document.querySelector("[data-festival]")?.getAttribute("data-festival") ?? null,
+  );
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(400);
+  const pause = await page.locator('[role="dialog"]').innerText().catch(() => "");
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+  return { ground, pause };
+};
+
+/**
+ * **The five festival scripts**, one per named day the phase gave ground to —
+ * together they cover all three date-rule kinds, both light extremes, both
+ * new chambers, the guest nights and the palette. Each asserts three things
+ * no unit test can hold at once: the warped day reaches the page (the
+ * `data-festival` ground), the day-line says the rule's own words, and the
+ * thing the day changes is on screen and photographed.
+ */
+function festivalScripts() {
+  const plain = (id, rung, mustSay, extra = {}) => ({
+    name: `festival-${id}`,
+    about: extra.about ?? `${id} — the ground, the day-line, and the look of the day.`,
+    warp: {},
+    seconds: 60,
+    noPlay: true,
+    until: () => true,
+    enter: async (page) => {
+      const day = await findFestivalDay(page, id, extra);
+      await warpToDay(page, day, rung);
+      const { ground, pause } = await dayFacts(page);
+      if (ground !== id) throw new Error(`the ground says ${JSON.stringify(ground)}, not ${id}`);
+      for (const line of mustSay) {
+        if (!pause.includes(line)) throw new Error(`the day-line never says "${line}"`);
+      }
+      // A few strides so the sheet is the day in play, not a spawn point.
+      await page.keyboard.down("ArrowRight");
+      await page.waitForTimeout(2500);
+      await page.keyboard.up("ArrowRight");
+      await page.screenshot({ path: join(outDir, `festival-${id}.png`) });
+      return { day, ground };
+    },
+    ...extra.overrides,
+  });
+
+  /**
+   * The two chamber days also paint their room straight through the shipping
+   * painter — the bestiary pattern: `buildPath` with the frozen festival, the
+   * camera stood on the Word-Gate's own tiles, `drawWorld` onto a bare
+   * canvas. No driving, no luck, the picture every time.
+   */
+  const paintChamber = async (page, festival, file) => {
+    const shot = await page.evaluate(
+      async ({ festival }) => {
+        const { buildPath, gateRoomFor } = await import("/src/game/world/build.ts");
+        const { TREE_PATHS } = await import("/src/game/tree.ts");
+        const { drawWorld } = await import("/src/game/render/draw.ts");
+        const { readPalette, paletteOf } = await import("/src/game/render/palette.ts");
+        const { Tile, TILE_SIZE } = await import("/src/game/world/tiles.ts");
+        const letters = TREE_PATHS.map((p) => p.letter);
+        // A path out of the kingdom, whose lower end holds a House — the
+        // booth moves the figure in, and a room with no figure falls back.
+        const path = TREE_PATHS.find((p) => p.ends.includes("malchut"));
+        const room = gateRoomFor(path.id, 5, [festival]).id;
+        const world = buildPath(path, 5, letters, 1, false, false, 1, [], 0, [], [festival]);
+        let at = -1;
+        for (let i = 0; i < world.tiles.length; i += 1) {
+          if (world.tiles[i] === Tile.WordGate) { at = i; break; }
+        }
+        if (at < 0) return { room, image: null };
+        const tx = at % world.width;
+        const ty = Math.floor(at / world.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = 820;
+        canvas.height = 460;
+        const ctx = canvas.getContext("2d");
+        const camera = { x: tx * TILE_SIZE - 260, y: Math.max(0, ty * TILE_SIZE - 240) };
+        drawWorld(ctx, world, camera, paletteOf(readPalette(), world.sefirah), 820, 460, []);
+        return { room, image: canvas.toDataURL("image/png") };
+      },
+      { festival },
+    );
+    if (!shot.image) throw new Error(`${festival}: no gate found to photograph`);
+    await writeFile(join(outDir, file), Buffer.from(shot.image.split(",")[1], "base64"));
+    return shot.room;
+  };
+
+  return [
+    plain("shabbat", 2, [
+      "Shabbat — the regions lie brighter than on any working day.",
+      "The day's gesture is Rest",
+    ]),
+    {
+      ...plain("sukkot", 2, [
+        "Sukkot — the guests are welcomed, and the booth is hung with light.",
+        "Night 3 of the booth — tonight the guest is Jacob.",
+      ], { night: 3, about: "Sukkot night 3 — the booth behind the gate, and whose booth tonight is." }),
+      enter: async (page) => {
+        const day = await findFestivalDay(page, "sukkot", { night: 3 });
+        await warpToDay(page, day, 2);
+        const { ground, pause } = await dayFacts(page);
+        if (ground !== "sukkot") throw new Error(`the ground says ${JSON.stringify(ground)}`);
+        if (!pause.includes("Night 3 of the booth — tonight the guest is Jacob.")) {
+          throw new Error("the day-line never seats the night's guest");
+        }
+        const room = await paintChamber(page, "sukkot", "festival-sukkot-booth.png");
+        if (room !== "word-gate-sukkah") throw new Error(`the gate opens onto ${room}`);
+        await page.screenshot({ path: join(outDir, "festival-sukkot.png") });
+        return { day, room };
+      },
+    },
+    {
+      ...plain("hanukkah", 2, [
+        "Hanukkah — the light that lasted longer than it had any right to.",
+      ], { about: "Hanukkah — the widened lamp in play, and the eight lights behind the gate." }),
+      enter: async (page) => {
+        const day = await findFestivalDay(page, "hanukkah");
+        await warpToDay(page, day, 2);
+        const { ground, pause } = await dayFacts(page);
+        if (ground !== "hanukkah") throw new Error(`the ground says ${JSON.stringify(ground)}`);
+        if (!pause.includes("the light that lasted longer")) throw new Error("the day-line is silent");
+        const room = await paintChamber(page, "hanukkah", "festival-hanukkah-lamps.png");
+        if (room !== "word-gate-lamps") throw new Error(`the gate opens onto ${room}`);
+        // The halo in play — the grace is lent by the day, so a few strides
+        // photograph the widened lamp with no warp flag at all.
+        await page.keyboard.down("ArrowRight");
+        await page.waitForTimeout(2500);
+        await page.keyboard.up("ArrowRight");
+        await page.screenshot({ path: join(outDir, "festival-hanukkah.png") });
+        return { day, room };
+      },
+    },
+    plain("yom-kippur", 2, [
+      "Yom Kippur — the regions are spare. Little is strewn, and little is needed.",
+    ], { about: "Yom Kippur — the spare ground, 0.7 of an ordinary day's light." }),
+    plain("tishabav", 2, [
+      "Tisha B'Av — the light is scarce. What is destroyed is climbed through, not around.",
+    ], { about: "Tisha B'Av — the scarcest ground, and the day's own palette accent." }),
+  ];
+}
+
 const SCRIPTS = [
   {
     name: "first-run",
@@ -293,6 +483,7 @@ const SCRIPTS = [
     },
     until: () => true,
   },
+  ...festivalScripts(),
   {
     name: "porch",
     about: "The taught opening in Malchut — the three lessons and the first gap.",
