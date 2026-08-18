@@ -65,6 +65,16 @@ export interface RungRule {
    * is taken against terrain no hand can edit. `set` is said as one lays.
    */
   stonesFounded?: { set: string; kept: string };
+  /**
+   * **Hod's knob — a shrine that answers gives the lamps back.** Rides the
+   * Tav activation and nothing else: setting the mark *is* the naming, so a
+   * Scribe without Tav is offered nothing new (the shrine already says the
+   * Mark is not yet theirs), and a hand whose lamps are all burning hears
+   * the ordinary line — what was not taken cannot be given back. The string
+   * is what the shrine says when it relights, instead of "Your mark is set
+   * here."; the shrine still activates once, so the gift is once per shrine.
+   */
+  shrinesRelight?: string;
 }
 
 export const RUNG_RULES: Record<SefirahId, RungRule | null> = {
@@ -91,7 +101,33 @@ export const RUNG_RULES: Record<SefirahId, RungRule | null> = {
       kept: "The Foundation keeps what you set on it. Nothing founded here returns to the hand.",
     },
   },
-  hod: null,
+  /**
+   * **P15-R4 — Splendour.** The question is "What will you name as given,
+   * before you reach for the next?", and the rule is thanksgiving made
+   * mechanical: setting your mark at a shrine names the road so far as
+   * given, and what is named as given is given again — the lamps relight.
+   * The gift rides the shrine's own gates, all of them standing: Tav must
+   * be in the hand, the shrine answers once, and lamps already burning get
+   * the ordinary line. Three roads are bound here (from Malchut, Yesod and
+   * Netzach), which makes Hod the counterweight to its own pillar-mate:
+   * Netzach's cold shrines take the checkpoint away, Hod's warm ones give
+   * back more than a checkpoint.
+   *
+   * Measured on landing: `fight`, `curve`, `economy` and `climb` re-run
+   * over all three seed pools with the rule live and no band moved — and
+   * the reason was checked rather than assumed: over twenty-four fighting
+   * walks on these roads the probe lit **no shrine at all**. The roads from
+   * Yesod and Netzach lay theirs 2,800–4,800px in, past where the fight
+   * budget usually ends, and the road from Malchut lays none — a rung's
+   * shrine follows the *lower* end's `hasShrine`, and the kingdom keeps no
+   * shrine. So the gift is a player's, met at a player's pace, and the
+   * instruments walk past it.
+   */
+  hod: {
+    says: "The shrines on this road give back. Set your mark, and what you name as given is given again.",
+    shrinesRelight:
+      "Your mark is set — and what was named as given is given again. The lamps are relit.",
+  },
   /**
    * **P15-R1 — Endurance.** The question is "What will you carry the whole
    * way, without setting it down?", and the rule is its answer in the hands:

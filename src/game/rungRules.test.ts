@@ -42,15 +42,15 @@ describe("the rungs' own rules — filled one slice at a time", () => {
    * a named assertion of what its rule says.
    *
    * Ruled so far: **netzach** (P15-R1 — the shrines are cold), **gevurah**
-   * (P15-R2 — the throws are rationed), and **yesod** (P15-R3 — a set stone
-   * is founded).
+   * (P15-R2 — the throws are rationed), **yesod** (P15-R3 — a set stone is
+   * founded), and **hod** (P15-R4 — the shrines give back).
    */
   it("holds every rung at null until a slice fills it on purpose", () => {
     const ruled = Object.entries(RUNG_RULES)
       .filter(([, rule]) => rule !== null)
       .map(([sefirah]) => sefirah)
       .sort();
-    expect(ruled).toEqual(["gevurah", "netzach", "yesod"]);
+    expect(ruled).toEqual(["gevurah", "hod", "netzach", "yesod"]);
     const filled = new Set(ruled);
     for (const region of regions) {
       if (filled.has(region.sefirah)) continue;
@@ -69,6 +69,10 @@ describe("the rungs' own rules — filled one slice at a time", () => {
       if (rule.marksRationed !== undefined) {
         expect(rule.marksRationed.spent.length, `${sefirah}'s spent ration says nothing`).toBeGreaterThan(20);
         expect(rule.marksRationed.spent).not.toBe(rule.says);
+      }
+      if (rule.shrinesRelight !== undefined) {
+        expect(rule.shrinesRelight.length, `${sefirah}'s relight says nothing`).toBeGreaterThan(20);
+        expect(rule.shrinesRelight).not.toBe(rule.says);
       }
       if (rule.stonesFounded !== undefined) {
         for (const line of [rule.stonesFounded.set, rule.stonesFounded.kept]) {
@@ -217,6 +221,57 @@ describe("P15-R2 — Gevurah: the throws are rationed", () => {
     step(world, strike, ctx);
     expect(world.toward).toBeUndefined();
     expect(world.marks.filter((m) => m.mine)).toHaveLength(1);
+  });
+});
+
+describe("P15-R4 — Hod: the shrines give back", () => {
+  function altarRoom(toward: "hod" | "tiferet", lamps: number) {
+    const world = buildRegion(2, 5);
+    world.toward = toward;
+    world.player.lamps = lamps;
+    const shrine = world.entities.find((e) => e.kind === "mark");
+    expect(shrine).toBeDefined();
+    if (shrine) {
+      world.player.x = shrine.x;
+      world.player.y = shrine.y;
+    }
+    return { world, shrine };
+  }
+  const relight = RUNG_RULES.hod!.shrinesRelight!;
+  const ctx: StepContext = { verbs: ["mark"], graces: [] };
+
+  it("relights the lamps when the mark is set with some gone out", () => {
+    const { world, shrine } = altarRoom("hod", 1);
+    step(world, NO_INPUT, ctx);
+    expect(shrine?.active).toBe(true);
+    expect(world.marksSet).toBe(1);
+    expect(world.respawn.x).toBe(shrine?.x);
+    expect(world.player.lamps).toBe(3);
+    expect(world.message?.text).toBe(relight);
+  });
+
+  it("says the ordinary line to a hand whose lamps are all burning", () => {
+    // What was not taken cannot be given back.
+    const { world, shrine } = altarRoom("hod", 3);
+    step(world, NO_INPUT, ctx);
+    expect(shrine?.active).toBe(true);
+    expect(world.player.lamps).toBe(3);
+    expect(world.message?.text).toBe("Your mark is set here.");
+  });
+
+  it("offers nothing without Tav — the gift rides the answer, not the visit", () => {
+    const { world, shrine } = altarRoom("hod", 1);
+    step(world, NO_INPUT, { verbs: [], graces: [] });
+    expect(shrine?.active).toBeFalsy();
+    expect(world.player.lamps).toBe(1);
+  });
+
+  it("gives nothing back on any other road — the mark alone is the answer", () => {
+    const { world, shrine } = altarRoom("tiferet", 1);
+    step(world, NO_INPUT, ctx);
+    expect(shrine?.active).toBe(true);
+    expect(world.player.lamps).toBe(1);
+    expect(world.message?.text).toBe("Your mark is set here.");
   });
 });
 

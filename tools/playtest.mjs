@@ -922,6 +922,69 @@ const SCRIPTS = [
     },
   },
   {
+    name: "rung-rule-hod",
+    about: "P15-R4 — a shrine on the road to Hod gives the lamps back, and says why.",
+    /**
+     * The fourth rung rule, and the one no instrument in the suite ever
+     * touches: over twenty-four fighting walks on hod-bound roads the node
+     * probe lit no shrine at all — they stand past where its budget ends —
+     * so this run is the rule's only witness. Three runs taught this script
+     * its warp, and each lesson is recorded: `lamps: 2` left no margin (two
+     * lives went out short of the shrine — full lamps instead, and nothing
+     * else in a rung restores one, so a Scribe who bleeds anywhere on the
+     * road is still short at the shrine); the road is walled without
+     * `intoGates` (the rung's own Word-Gate); and two seeds tried first
+     * drew `word-gate-fall` for their gate — the P13g-4 trapdoor, which
+     * ends the rung with the shrine never reached. This seed's gate opens
+     * onto the hoard, its shrine stands at x 2472 on the walking line, and
+     * three klipot hold the road before it.
+     */
+    warp: { rung: 4, letters: "all", lamps: 3, seed: 7 },
+    toward: "Hod",
+    /**
+     * `intoGates` because the road is walled without it: the node fighter
+     * with a full hand ends at x 660 of 2088 on every seed tried — the
+     * rung's own Word-Gate stands shut in front of anything that cannot
+     * spell, which is also why no node instrument ever reaches these
+     * shrines. The driver answers the gate honestly off the probe's clue.
+     */
+    driver: { seekShrine: true, intoGates: true },
+    onPlate: async (page, plate) => {
+      if (plate !== "word-gate") return false;
+      return await answerGate(page);
+    },
+    until: (p) => (p.message ?? "").includes("The lamps are relit"),
+    seconds: 240,
+    watch: async (page, p, _look, { seen, report }) => {
+      if (p.shrine && !seen.sighted) {
+        seen.sighted = true;
+        report.moments.push({ what: "shrine sighted", tick: p.tick, ...p.shrine });
+      }
+      if ((p.message ?? "").includes("The lamps are relit") && !seen.relit) {
+        seen.relit = true;
+        report.moments.push({ what: "the lamps relit", tick: p.tick, lamps: p.lamps });
+        await page.screenshot({ path: join(outDir, "rung-rule-hod-relit.png") });
+      }
+      // Another life if the road wins: kingdom → Netzach is the R1 road and
+      // dear, but a retry that exists beats a clean timeout.
+      if (p.onMap) {
+        const wanted = p.at === "netzach" ? "Hod" : "Netzach";
+        const way = page.locator("[class*=wayButton]", { hasText: wanted }).first();
+        if (await way.count()) {
+          report.moments.push({ what: `re-entered toward ${wanted}`, tick: p.tick });
+          await way.click();
+          await page.waitForTimeout(900);
+        }
+      }
+    },
+    check: (p, seen) => {
+      if (!seen.sighted) throw new Error("no shrine was ever seen on the road to Hod");
+      if (!seen.relit) {
+        throw new Error(`the lamps were never relit — ${p.lamps} burning when the clock ran out`);
+      }
+    },
+  },
+  {
     name: "crown-presented",
     about: "The other ending — a crown nothing is holding, and a Tree still mostly dark.",
     /**

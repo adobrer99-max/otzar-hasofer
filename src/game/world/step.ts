@@ -27,6 +27,7 @@ import {
   MARK_HUNT,
   KNOCKBACK_X,
   KNOCKBACK_Y,
+  LAMPS,
   MARK_COOLDOWN,
   MARK_FALL,
   MARK_HANGS,
@@ -1172,7 +1173,20 @@ function touchEntities(world: World, ctx: StepContext): void {
           world.marksSet += 1;
           spendVerb(world, ctx, "mark");
           world.respawn = { x: e.x, y: e.y - 6 };
-          say(world, "Your mark is set here.");
+          /**
+           * **Hod's rule rides the answer** (P15-R4): on ground bound for
+           * Splendour, setting the mark names the road so far as given, and
+           * what is named as given is given again — the lamps relight. Only
+           * when something was actually taken: a full hand hears the
+           * ordinary line, because what was not taken cannot be given back.
+           */
+          const relight = world.toward ? rungRule(world.toward)?.shrinesRelight : undefined;
+          if (relight !== undefined && p.lamps < LAMPS) {
+            p.lamps = LAMPS;
+            say(world, relight);
+          } else {
+            say(world, "Your mark is set here.");
+          }
         } else if (!e.active) {
           say(world, "A shrine, and nothing to set on it. The Mark is not yet yours.");
         }
