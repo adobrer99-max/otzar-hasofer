@@ -75,6 +75,25 @@ export interface RungRule {
    * here."; the shrine still activates once, so the gift is once per shrine.
    */
   shrinesRelight?: string;
+  /**
+   * **Chesed's knob — a sealed door opens to a gift.** Kneel at the seal
+   * (crouch + act) with `price` light in hand and the light is poured out:
+   * the room unseals, latches open (`room.cleared` — without the latch
+   * `stepRooms` rewrites the seal on the next tick), and everything holding
+   * the door is left standing. `given` is said as the way opens; `wanting`
+   * when the hand is short, with nothing spent.
+   *
+   * The crouch is load-bearing, not flavour: the fight probes press act
+   * while grounded (the unstick rhythm) and are regularly stuck against the
+   * very seal they are fighting behind, so a plain-act gift would let every
+   * instrument buy its way out and move the fight bands. Measured against
+   * the probes' own input blocks: the fighter presses down only airborne,
+   * `hurried` never presses down, and the traversal probe presses down
+   * grounded only over a ledge — where `p.crouching` is false by
+   * construction. Kneeling is unreachable by every instrument, and it is
+   * also the right image: you kneel to give.
+   */
+  sealOpensTo?: { price: number; given: string; wanting: string };
 }
 
 export const RUNG_RULES: Record<SefirahId, RungRule | null> = {
@@ -172,7 +191,33 @@ export const RUNG_RULES: Record<SefirahId, RungRule | null> = {
       spent: "The ration is spent. What is left standing stays standing.",
     },
   },
-  chesed: null,
+  /**
+   * **P15-R5 — Loving-kindness.** The question is "What will you give away,
+   * here where everything was given to you?", and the rule answers it at
+   * the one place the game demands force: a sealed room on a chesed-bound
+   * road opens to a gift of light, with everything that held the door left
+   * standing. Eight light sits inside the 4–15 the door-holders would have
+   * *paid* if broken (the mid-tree kinds are worth 3–6 each) and four times
+   * what a veiling costs, so the gift is a real trade — roughly a dozen or
+   * two of light swung against fighting — and one number a hand can hold.
+   * Two roads are bound here: netzach-chesed and tiferet-chesed.
+   *
+   * Affordability was measured, not assumed: over sixteen fighting walks on
+   * the two roads the probe gathered 0–24 light, median 9 — and those are
+   * budget-truncated walks; a Scribe who crosses the whole rung gathers
+   * more. Eight is a real reach into the purse, not a toll and not a wall.
+   * Bands: `fight`, `curve`, `economy` and `climb` stand over all three
+   * seed pools — the crouch gate makes the gift unreachable by every probe,
+   * so the instruments measure exactly the ground they measured before.
+   */
+  chesed: {
+    says: "A sealed door on this road opens to giving: kneel before it with eight light, and what holds it keeps its light.",
+    sealOpensTo: {
+      price: 8,
+      given: "The light is given, and the way opens. What held the door keeps everything it holds.",
+      wanting: "The door would open to a gift of eight light. You do not yet have it to give.",
+    },
+  },
   binah: null,
   chochmah: null,
   // The crown's rule is the presentation itself. Likely permanent null.

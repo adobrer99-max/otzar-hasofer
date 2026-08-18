@@ -985,6 +985,69 @@ const SCRIPTS = [
     },
   },
   {
+    name: "rung-rule-chesed",
+    about: "P15-R5 — a room sealed on the road to Chesed, given open with light and nothing broken.",
+    /**
+     * The fifth rung rule, and the moment no instrument can reach: the
+     * crouch gate makes the gift unreachable by every probe (that is what
+     * keeps the fight bands honest), so this run is the one place it is
+     * ever played. The driver fights its way up the road — husk light is
+     * how the purse fills — and the instant a room closes on it the watch
+     * kneels: ArrowDown held, act tapped, until the world says the light is
+     * given. The mechanics live in the unit tests; this proves the words
+     * and the moment reach a player, and photographs a door bought open.
+     *
+     * Tiferet → Chesed on this seed by three rounds of measurement, each a
+     * lesson: the first seed sealed the driver with six light in hand — one
+     * veiling short of the price forever, because a sealed fight *drains* a
+     * purse; the second held twenty-eight by the end but only two at the
+     * moment the door closed, and the moment never came again. So the sweep
+     * was redone asking the exact question the run asks: on which seed does
+     * the purse already hold the price at the *first* tick a seal exists?
+     * This one answers with seventeen — double the margin of any other —
+     * and its gate is the house, not the P13g-4 trapdoor.
+     */
+    warp: { rung: 5, letters: "as-of-rung", lamps: 3, seed: 60 },
+    toward: "Chesed",
+    driver: { intoGates: true },
+    onPlate: async (page, plate) => {
+      if (plate !== "word-gate") return false;
+      return await answerGate(page);
+    },
+    until: (p) => (p.message ?? "").includes("The light is given"),
+    seconds: 300,
+    watch: async (page, p, _look, { seen, report }) => {
+      if ((p.message ?? "").includes("The way closes")) {
+        if (!seen.sealed) report.moments.push({ what: "a room closed", tick: p.tick, or: p.or });
+        seen.sealed = true;
+      }
+      if ((p.message ?? "").includes("The light is given") && !seen.given) {
+        seen.given = true;
+        report.moments.push({ what: "the door given open", tick: p.tick, or: p.or });
+        await page.screenshot({ path: join(outDir, "rung-rule-chesed-given.png") });
+      }
+      // Kneel whenever the purse can pay — the first run gated the kneel on
+      // the first "way closes" sighting and the purse held two light at that
+      // moment; by the time it held twenty-eight, no kneel ever coincided
+      // with a live seal again. Keyed to the purse, every door that closes
+      // from here on is a chance, and a kneel beside no seal costs nothing.
+      if (!seen.given && p.or >= 8) {
+        await page.keyboard.down(KEYS.down);
+        for (let i = 0; i < 3; i += 1) {
+          await page.keyboard.press(KEYS.act);
+          await page.waitForTimeout(60);
+        }
+        await page.keyboard.up(KEYS.down);
+      }
+    },
+    check: (p, seen) => {
+      if (!seen.sealed) throw new Error("no room ever closed on the road to Chesed");
+      if (!seen.given) {
+        throw new Error(`a room closed and was never given open — ${p.or} light in hand at the end`);
+      }
+    },
+  },
+  {
     name: "crown-presented",
     about: "The other ending — a crown nothing is holding, and a Tree still mostly dark.",
     /**

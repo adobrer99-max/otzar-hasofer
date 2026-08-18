@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { HUSKS } from "./combat";
+import { VEIL_COST } from "./encounter";
 import { lettersOnEntering, regions } from "./regions";
 import { RUNG_RULES, rungRule } from "./rungRules";
 import { TREE_PATHS } from "./tree";
-import { buildArena, buildPath, buildRegion, regionOfPath, tileAt } from "./world/build";
+import { buildArena, buildPath, buildRegion, regionOfPath, setTile, tileAt } from "./world/build";
 import { step, type StepContext } from "./world/step";
 import { Tile, TILE_SIZE } from "./world/tiles";
 import { NO_INPUT } from "./world/types";
@@ -43,14 +45,15 @@ describe("the rungs' own rules — filled one slice at a time", () => {
    *
    * Ruled so far: **netzach** (P15-R1 — the shrines are cold), **gevurah**
    * (P15-R2 — the throws are rationed), **yesod** (P15-R3 — a set stone is
-   * founded), and **hod** (P15-R4 — the shrines give back).
+   * founded), **hod** (P15-R4 — the shrines give back), and **chesed**
+   * (P15-R5 — a sealed door opens to a gift).
    */
   it("holds every rung at null until a slice fills it on purpose", () => {
     const ruled = Object.entries(RUNG_RULES)
       .filter(([, rule]) => rule !== null)
       .map(([sefirah]) => sefirah)
       .sort();
-    expect(ruled).toEqual(["gevurah", "hod", "netzach", "yesod"]);
+    expect(ruled).toEqual(["chesed", "gevurah", "hod", "netzach", "yesod"]);
     const filled = new Set(ruled);
     for (const region of regions) {
       if (filled.has(region.sefirah)) continue;
@@ -80,6 +83,13 @@ describe("the rungs' own rules — filled one slice at a time", () => {
           expect(line).not.toBe(rule.says);
         }
         expect(rule.stonesFounded.set).not.toBe(rule.stonesFounded.kept);
+      }
+      if (rule.sealOpensTo !== undefined) {
+        for (const line of [rule.sealOpensTo.given, rule.sealOpensTo.wanting]) {
+          expect(line.length, `${sefirah}'s gift says nothing`).toBeGreaterThan(20);
+          expect(line).not.toBe(rule.says);
+        }
+        expect(rule.sealOpensTo.given).not.toBe(rule.sealOpensTo.wanting);
       }
     }
   });
@@ -221,6 +231,125 @@ describe("P15-R2 — Gevurah: the throws are rationed", () => {
     step(world, strike, ctx);
     expect(world.toward).toBeUndefined();
     expect(world.marks.filter((m) => m.mine)).toHaveLength(1);
+  });
+});
+
+describe("P15-R5 — Chesed: a sealed door opens to a gift", () => {
+  const gift = RUNG_RULES.chesed!.sealOpensTo!;
+
+  /**
+   * A sealed door arranged by hand: the player's own room given a door whose
+   * one tile is a written `Tile.Seal` beside the Scribe at foot height —
+   * inside `nearestTile`'s reach, exactly where `stepRooms` writes them. The
+   * entrance flag is cleared so the fixture is genuinely sealable, which the
+   * control test proves rather than assumes.
+   */
+  const kneel = { ...NO_INPUT, down: true, act: true };
+  const ctx: StepContext = { verbs: [], graces: [] };
+
+  /**
+   * Two lessons this fixture had to learn are its shape. The room must hold
+   * a **live door-holder always** — `stepRooms`'s quiet branch erases a seal
+   * the moment nothing holds the room, so a holderless fixture unseals
+   * itself on the first tick and every assertion after it is about the
+   * wrong world. And it must **settle one tick** before anything kneels:
+   * `p.crouching` reads the previous tick's `onGround`, which a
+   * freshly-built player has not earned yet. The holder is a charger far
+   * off but registered to the room — `holding` reads the registry, never
+   * positions.
+   */
+  function sealedDoor(toward?: "chesed" | "hod") {
+    const world = buildRegion(2, 5);
+    world.entities = [];
+    world.toward = toward;
+    const p = world.player;
+    const room = world.rooms[world.roomIndex];
+    expect(room).toBeDefined();
+    room.entrance = false;
+    const spec = HUSKS.esav;
+    world.husks = [{
+      id: "h-holder", kind: "esav" as const,
+      x: p.x + TILE_SIZE * 40, y: p.y,
+      w: spec.size.w, h: spec.size.h, vx: 0, vy: 0, facing: -1 as const,
+      home: { x: p.x + TILE_SIZE * 40, y: p.y },
+      shells: spec.shells, cooldown: 0, charging: 0, struck: 0,
+    }];
+    room.husks.push("h-holder");
+    // Land first, place second: a freshly-built body falls for dozens of
+    // ticks before it meets its floor, `p.crouching` reads the previous
+    // tick's ground contact, and the seal must stand at the *landed* feet
+    // row or the kneel reaches for a tile two storeys up.
+    for (let t = 0; t < 240 && !p.onGround; t += 1) step(world, NO_INPUT, ctx);
+    expect(p.onGround, "the body never landed to kneel from").toBe(true);
+    const tx = Math.floor((p.x + p.w / 2) / TILE_SIZE) + p.facing;
+    const ty = Math.floor((p.y + p.h - 1) / TILE_SIZE);
+    room.doors.push({ side: "right", tiles: [{ x: tx, y: ty }] });
+    setTile(world, tx, ty, Tile.Seal);
+    world.or = 10;
+    return { world, room, tx, ty };
+  }
+
+  it("opens to the gift — light spent, door open, room latched, nothing broken", () => {
+    const { world, room, tx, ty } = sealedDoor("chesed");
+    step(world, kneel, ctx);
+    expect(world.or).toBe(10 - gift.price);
+    expect(tileAt(world, tx, ty)).toBe(Tile.Empty);
+    expect(room.cleared, "the gift must latch the room open").toBe(true);
+    expect(world.message?.text).toBe(gift.given);
+    expect(world.husks[0].broken, "the gift leaves what held the door standing").toBeFalsy();
+    // The latch holds: the holder still stands, and the seal does not return.
+    for (let t = 0; t < 6; t += 1) step(world, NO_INPUT, ctx);
+    expect(tileAt(world, tx, ty)).toBe(Tile.Empty);
+  });
+
+  it("re-seals without the gift — the fixture is honest, the latch is real", () => {
+    // The control: same room, same holder, door tile emptied by hand rather
+    // than given open. `stepRooms` writes the seal back, which is exactly
+    // what the latch exists to stop.
+    const { world, tx, ty } = sealedDoor("chesed");
+    setTile(world, tx, ty, Tile.Empty);
+    for (let t = 0; t < 6; t += 1) step(world, NO_INPUT, ctx);
+    expect(tileAt(world, tx, ty), "the control room never resealed — the latch test is vacuous").toBe(Tile.Seal);
+  });
+
+  it("wants what it wants — short of light, nothing is spent and the door stands", () => {
+    const { world, room, tx, ty } = sealedDoor("chesed");
+    world.or = gift.price - 1;
+    step(world, kneel, ctx);
+    expect(world.or).toBe(gift.price - 1);
+    expect(tileAt(world, tx, ty)).toBe(Tile.Seal);
+    expect(room.cleared).toBe(false);
+    expect(world.message?.text).toBe(gift.wanting);
+  });
+
+  it("opens only to a kneeling hand — standing act gives nothing", () => {
+    // The crouch gate is the claim that keeps every probe honest: the
+    // fighter presses act while grounded but crouches never, so no
+    // instrument can buy its way out of a fight.
+    const { world, tx, ty } = sealedDoor("chesed");
+    step(world, { ...NO_INPUT, act: true }, ctx);
+    expect(world.or).toBe(10);
+    expect(tileAt(world, tx, ty)).toBe(Tile.Seal);
+  });
+
+  it("gives nothing on any other road", () => {
+    const { world, tx, ty } = sealedDoor("hod");
+    step(world, kneel, ctx);
+    expect(world.or).toBe(10);
+    expect(tileAt(world, tx, ty)).toBe(Tile.Seal);
+  });
+
+  /**
+   * **The price is a trade, held to the numbers it was chosen against**: a
+   * door-holding klipah pays 3–6 light broken and a room holds one to three,
+   * so force earns roughly 4–15 a room; a veiling costs `VEIL_COST`. The
+   * gift must cost more than dying and no more than the dearest fight would
+   * have paid — inside that band it is generosity, outside it it is either
+   * free or a fine.
+   */
+  it("prices the gift above a veiling and inside what force would earn", () => {
+    expect(gift.price).toBeGreaterThan(VEIL_COST);
+    expect(gift.price).toBeLessThanOrEqual(15);
   });
 });
 

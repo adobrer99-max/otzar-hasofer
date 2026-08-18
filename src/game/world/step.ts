@@ -484,6 +484,39 @@ function applyVerbs(world: World, input: Input, ctx: StepContext): void {
     }
   }
 
+  /**
+   * **Chesed's rule — a sealed door opens to a gift** (P15-R5). Kneeling
+   * (crouch + act) beside a seal on chesed-bound ground pours out the
+   * rule's price of light: the room unseals, latches open (`room.cleared`,
+   * or `stepRooms` writes the seal straight back), and everything holding
+   * the door is left standing. The crouch gate is load-bearing: the fight
+   * probes press act while grounded and stand stuck against the very seals
+   * they fight behind, but none of them ever crouches — the fighter presses
+   * down only airborne, `hurried` never presses down, and the traversal
+   * probe presses down grounded only over a ledge, where `p.crouching` is
+   * false by construction. So no instrument can buy its way out of a fight,
+   * and the bands measure exactly what they measured before.
+   *
+   * No `spendVerb`: a gift is not a verb use — and it needs no letter, only
+   * light, which is the point of the rung. Placed above the barrier chain
+   * and the stone so a kneeling Scribe at a seal always gives, whatever the
+   * hand holds; a seal is a tile no verb in the chain answers, so nothing
+   * is shadowed on any other road.
+   */
+  const gift = world.toward ? rungRule(world.toward)?.sealOpensTo : undefined;
+  const giftRoom = gift ? world.rooms[world.roomIndex] : undefined;
+  if (gift && giftRoom && p.crouching && nearestTile(world, p, Tile.Seal, TILE_SIZE * 2.2)) {
+    if (world.or >= gift.price) {
+      world.or -= gift.price;
+      giftRoom.cleared = true;
+      unseal(world, giftRoom);
+      say(world, gift.given);
+    } else {
+      say(world, gift.wanting);
+    }
+    return;
+  }
+
   // The Edge, the Flame, the Door — each clears the barrier it answers.
   // `spendVerb` returns true, so appending it counts the use without
   // changing what the chain short-circuits on.
