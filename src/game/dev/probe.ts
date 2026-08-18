@@ -83,6 +83,11 @@ export interface Probe {
   relics: string[];
   revealed: boolean;
   marks: number;
+  /**
+   * Marks thrown on this rung — `World.marksThrown`, the count Gevurah's
+   * ration is judged against, so a script can watch a ration spend down.
+   */
+  thrown: number;
   letters: string[];
   /** The vessels actually lifted, so a script can assert taking rather than offering. */
   items: string[];
@@ -210,6 +215,7 @@ export function probeOf(
       nearest: nearest === undefined ? undefined : Math.round(nearest),
     },
     marks: world.marks.length,
+    thrown: world.marksThrown,
     vessel: keli
       ? { dx: Math.round(keli.x - world.player.x), dy: Math.round(keli.y - world.player.y) }
       : undefined,
@@ -270,6 +276,7 @@ const EMPTY_WORLD = {
   progress: 0,
   husks: { total: 0, standing: 0, broken: 0, nearest: undefined },
   marks: 0,
+  thrown: 0,
   revealed: false,
   message: undefined,
   finished: false,

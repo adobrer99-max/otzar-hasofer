@@ -842,6 +842,48 @@ const SCRIPTS = [
     },
   },
   {
+    name: "rung-rule-gevurah",
+    about: "P15-R2 — the ration spent on gevurah-bound ground, and the sixty-first press refused.",
+    /**
+     * The second rung rule, proven the way a player would find it: sixty
+     * marks fly on the road to Severity and the next press spends nothing.
+     * The watch hammers the strike key — the ration counts throws, not hits,
+     * so no fight is needed to reach the edge of it — and the run ends when
+     * the world says the ration is spent. The check holds the line exactly:
+     * `thrown` reaches sixty and never passes it.
+     *
+     * Hod and this seed because the ground has to be survivable for the ~60
+     * seconds the spend-down takes: on the node fighter's sweep, hod-gevurah
+     * seed 5 stood the whole 9000-tick budget without going out.
+     */
+    warp: { rung: 3, letters: "all", lamps: 3, seed: 5 },
+    toward: "Gevurah",
+    until: (p) => p.thrown >= 60 && (p.message ?? "").includes("The ration is spent"),
+    seconds: 240,
+    watch: async (page, p, _look, { seen, report }) => {
+      // Write, write, write — the middah this road exists to teach against.
+      for (let i = 0; i < 6; i += 1) {
+        await page.keyboard.press(KEYS.strike);
+        await page.waitForTimeout(35);
+      }
+      if (p.thrown > 60) seen.over = p.thrown;
+      if ((p.message ?? "").includes("The ration is spent") && !seen.spent) {
+        seen.spent = true;
+        report.moments.push({ what: "the ration spent", tick: p.tick, thrown: p.thrown });
+        await page.screenshot({ path: join(outDir, "rung-rule-gevurah-spent.png") });
+      }
+    },
+    check: (p, seen) => {
+      if (seen.over) throw new Error(`the ration did not hold — ${seen.over} marks flew`);
+      if (!seen.spent) {
+        throw new Error(`the ration was never spent — ${p.thrown} thrown when the clock ran out`);
+      }
+      if (p.thrown !== 60 && !p.onMap) {
+        throw new Error(`the ledger reads ${p.thrown} thrown, not the ration's sixty`);
+      }
+    },
+  },
+  {
     name: "crown-presented",
     about: "The other ending — a crown nothing is holding, and a Tree still mostly dark.",
     /**

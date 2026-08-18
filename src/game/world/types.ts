@@ -348,6 +348,14 @@ export interface World {
   veilings: number;
   marksSet: number;
   /**
+   * Marks the Scribe has thrown on this rung — counted in `throwMark` at the
+   * moment one actually flies, so a press swallowed by the cooldown counts
+   * nothing. Per-rung, like `marksSet`; never folded onto the record. It is
+   * the state Gevurah's rung rule (P15-R2) reads: on gevurah-bound ground the
+   * throws are rationed, and a ration needs a count.
+   */
+  marksThrown: number;
+  /**
    * How many times each verb was actually used on this rung — the dash
    * dashed, the thorn cut, the stone set — counted by `spendVerb` at the
    * moment the world answers, never per tick a state holds. Folded onto the

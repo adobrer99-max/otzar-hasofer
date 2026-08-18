@@ -1274,6 +1274,18 @@ const bodiesTouch = (a: { x: number; y: number; w: number; h: number }, b: typeo
 function throwMark(world: World, input: Input, ctx: StepContext): void {
   const p = world.player;
   if (!input.strike || p.markCooldown > 0 || p.veiled > 0) return;
+  /**
+   * **Gevurah's rule is asked before the hand moves.** On ground bound for
+   * Severity the throws are rationed (`RungRule.marksRationed`); a press past
+   * the ration spends nothing — no mark, no cooldown — and says why. Keyed to
+   * `world.toward` exactly as the cold shrines are, so an arena is never
+   * rationed and neither is any world that is not a rung of the Tree.
+   */
+  const ration = world.toward ? rungRule(world.toward)?.marksRationed : undefined;
+  if (ration && world.marksThrown >= ration.count) {
+    say(world, ration.spent);
+    return;
+  }
   const powers = markPowers(ctx.verbs, ctx.graces, ctx.items, ctx.boons, ctx.keeps);
   const up = input.up ? -0.62 : input.down ? 0.62 : 0;
   const speed = MARK_SPEED * (powers.speed ?? 1);
@@ -1298,6 +1310,10 @@ function throwMark(world: World, input: Input, ctx: StepContext): void {
     returns: powers.returns,
     glyph: ctx.markGlyph ?? "א",
   });
+  world.marksThrown += 1;
+  // The throw that spends the last of a ration says so — the moment itself,
+  // not only the refusals after it.
+  if (ration && world.marksThrown === ration.count) say(world, ration.spent);
   p.markCooldown = Math.max(4, Math.round(MARK_COOLDOWN * (powers.cooldown ?? 1)));
 }
 

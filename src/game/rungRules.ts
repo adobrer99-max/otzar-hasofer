@@ -42,6 +42,16 @@ export interface RungRule {
    * carry the whole way, because nothing on this road will hold it for you.
    */
   shrinesCold?: string;
+  /**
+   * **Gevurah's knob — the throws are rationed on ground bound here.**
+   * `count` marks may fly on the rung; the one that spends the ration and
+   * every refused press after it say `spent`. Counted on `World.marksThrown`
+   * at the moment a mark actually flies, so the ration survives a veiling
+   * (the world does) and resets only with the rung itself. Only the Scribe's
+   * own hand is counted — a klipah's throw goes through its own case in
+   * `stepHusks` and never touches the counter.
+   */
+  marksRationed?: { count: number; spent: string };
 }
 
 export const RUNG_RULES: Record<SefirahId, RungRule | null> = {
@@ -66,7 +76,33 @@ export const RUNG_RULES: Record<SefirahId, RungRule | null> = {
     shrinesCold: "The shrine is cold. This road keeps no mark but the walking of it.",
   },
   tiferet: null,
-  gevurah: null,
+  /**
+   * **P15-R2 — Severity.** The question is "What will you leave untaken,
+   * though it stands within reach?", and the rule answers it in the writing
+   * hand: sixty marks for the whole road, and not one more. Sixty is
+   * generous by measurement, not by feeling — the fighting probe was run
+   * over all three gevurah-bound paths and eight seeds before the number
+   * was chosen, and no run that *broke* anything ever needed more than 31
+   * throws; the only runs past sixty were three that sprayed 286–389 marks
+   * into something they could not kill and broke nothing doing it. So the
+   * ration never binds a deliberate hand, and what it takes from a spraying
+   * one was buying nothing anyway. Restraint is the middah; the mechanics
+   * are the middah's own claim that what you decline to spend was never
+   * yours to waste.
+   *
+   * Measured on landing: with the ration live the same 24-walk sweep came
+   * back **bit-identical** in broken, shells taken, goings-out and ticks —
+   * only the three spray runs changed, capped at sixty with the outcomes
+   * they already had — and `fight`, `curve`, `economy` and `climb` stand
+   * over all three seed pools. The tour and the dash are untouched.
+   */
+  gevurah: {
+    says: "The hand is rationed here: sixty marks, and not one more. What stands within reach may be left standing.",
+    marksRationed: {
+      count: 60,
+      spent: "The ration is spent. What is left standing stays standing.",
+    },
+  },
   chesed: null,
   binah: null,
   chochmah: null,

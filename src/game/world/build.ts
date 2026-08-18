@@ -1243,6 +1243,7 @@ function paint(
     orGathered: 0,
     veilings: 0,
     marksSet: 0,
+    marksThrown: 0,
     verbUses: {},
     husks,
     marks: [],
