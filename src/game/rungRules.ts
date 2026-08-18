@@ -11,7 +11,7 @@ import type { SefirahId } from "../types/letter";
  * forgotten; one resolver, so a rule reaches the game through a single seam
  * and never as a scattered `if`.
  *
- * **All ten are `null` today, and two are load-bearing nulls.** Malchut's
+ * **Most are `null` still, and two are load-bearing nulls.** Malchut's
  * rule is the taught opening — the kingdom asks you to receive, and its
  * standing exemptions (rooms that never seal, a figured-stone budget of zero)
  * are precedent that null is a decision, not an absence. Keter's rule is
@@ -28,6 +28,20 @@ export interface RungRule {
    * question at first sight, so a place with its own law says so on arrival.
    */
   says: string;
+  /**
+   * **Netzach's knob — the shrines do not answer on ground bound here.**
+   * The Tav shrine still stands and the chunk that lays it is byte-identical
+   * (a rule may change behaviour, never a tile — the P5a law), but standing at
+   * it sets nothing: no respawn, no `marksSet`, no verb spent. The string is
+   * what a cold shrine says instead of "Your mark is set here." — the voice
+   * stays in this table so the rule and its words live in one place.
+   *
+   * A veiling on such ground carries the Scribe back to wherever the last
+   * *answering* shrine set them down — the rung's own start, for a rung
+   * walked cold — which is endurance made mechanical: what you carry, you
+   * carry the whole way, because nothing on this road will hold it for you.
+   */
+  shrinesCold?: string;
 }
 
 export const RUNG_RULES: Record<SefirahId, RungRule | null> = {
@@ -35,7 +49,22 @@ export const RUNG_RULES: Record<SefirahId, RungRule | null> = {
   malchut: null,
   yesod: null,
   hod: null,
-  netzach: null,
+  /**
+   * **P15-R1 — Endurance.** The question is "What will you carry the whole
+   * way, without setting it down?", and the rule is its answer in the hands:
+   * the shrines are cold, so there is no setting anything down. Ground is the
+   * one thing the rung asks you to keep — every fall on a netzach-bound path
+   * is paid for in the whole road back.
+   *
+   * Measured on landing: `fight`, `curve`, `economy` and `climb` re-run over
+   * all three seed pools with the rule live and **no band moved** — the tour
+   * and the dash stand untouched. The cost falls only where it is meant to:
+   * on a body that falls, on this road, after where a mark would have been.
+   */
+  netzach: {
+    says: "The shrines on this road are cold. What you carry, you carry the whole way.",
+    shrinesCold: "The shrine is cold. This road keeps no mark but the walking of it.",
+  },
   tiferet: null,
   gevurah: null,
   chesed: null,

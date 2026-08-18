@@ -763,6 +763,85 @@ const SCRIPTS = [
     },
   },
   {
+    name: "rung-rule",
+    about: "P15-R1 — a shrine on netzach-bound ground stands cold, and says why.",
+    /**
+     * The first rung rule in play. Standing at Yesod and walking toward
+     * Netzach lays ground whose destination is the rung of endurance, and on
+     * that road every Tav shrine refuses: no respawn, no count, the authored
+     * cold line instead of "Your mark is set here." The unit tests hold the
+     * mechanics (`rungRules.test.ts`); this run proves the *surface* — the
+     * words reaching a player standing at a real shrine on a real rung — and
+     * photographs the one picture no other script has: a shrine met and left
+     * standing un-lit.
+     *
+     * `letters: "all"` and this seed, both by measurement. A rung-2 hand was
+     * tried first and went out at x 1584 of 3240 — the path takes its klipot
+     * from the union of its two ends, so netzach-tier creatures stand on this
+     * road whatever is held, and the walking driver cannot fight them with a
+     * small hand's marks. The full hand also raises the ground to index 4,
+     * two storeys, where a node-side sweep of sixty seeds found the shrine up
+     * the shaft (dy −456) on nearly all of them — the driver's named debt —
+     * and on the walking line (dy −24, x 3984) on a handful; **seed 52** is
+     * the one of those with the fewest klipot between the door and the
+     * shrine (four). Holding Tav is also the sharper claim: the refusal is
+     * proven against a Scribe who could set a mark anywhere else.
+     *
+     * **And the run gets more than one life, because the rule itself is what
+     * kills the first.** With every shrine on this road cold there is no
+     * mid-rung respawn: each veiling carries the driver back to the door, so
+     * one life rarely crosses four thousand pixels of netzach-tier ground.
+     * Rather than pretend otherwise, the watch re-enters from the map after a
+     * going-out — kingdom → Yesod (a corridor this driver finishes) → the
+     * netzach road again with fresh lamps. A player would do the same.
+     */
+    warp: { rung: 2, letters: "all", lamps: 3, seed: 52 },
+    toward: "Netzach",
+    driver: { seekShrine: true },
+    until: (p) => (p.message ?? "").includes("The shrine is cold") || false,
+    seconds: 300,
+    watch: async (page, p, _look, { seen, report }) => {
+      if (p.shrine && !seen.sighted) {
+        seen.sighted = true;
+        report.moments.push({ what: "shrine sighted", tick: p.tick, ...p.shrine });
+      }
+      // Verbatim rather than imported — this file cannot read TS. The unit
+      // test guards the table; this guards the words reaching the world.
+      if ((p.message ?? "").includes("The shrine is cold")) {
+        if (!seen.cold) report.moments.push({ what: "the cold line said", tick: p.tick });
+        seen.cold = true;
+        // Photograph only a frame with the Scribe *at* the shrine — the first
+        // run shot on the message alone and caught the tick after a veiling,
+        // a Scribe waking at the door under the rung's teaching line.
+        if (!seen.shot && p.shrine && Math.abs(p.shrine.dx) < 200) {
+          seen.shot = true;
+          await page.screenshot({ path: join(outDir, "rung-rule-cold-shrine.png") });
+        }
+      }
+      if ((p.message ?? "").includes("Your mark is set here")) seen.answered = true;
+      // Another life: wake in the kingdom, take the corridor up to Yesod,
+      // and set out for Netzach again.
+      if (p.onMap) {
+        const wanted = p.at === "yesod" ? "Netzach" : "Yesod";
+        const way = page.locator("[class*=wayButton]", { hasText: wanted }).first();
+        if (await way.count()) {
+          report.moments.push({ what: `re-entered toward ${wanted}`, tick: p.tick });
+          await way.click();
+          await page.waitForTimeout(900);
+        }
+      }
+    },
+    check: (_p, seen) => {
+      if (!seen.sighted) {
+        throw new Error("no shrine was ever seen on the netzach road — did the ground lay none?");
+      }
+      if (!seen.cold) throw new Error("a shrine was seen and its cold line was never said");
+      if (seen.answered) {
+        throw new Error("a shrine answered on netzach-bound ground — the rule did not hold");
+      }
+    },
+  },
+  {
     name: "crown-presented",
     about: "The other ending — a crown nothing is holding, and a Tree still mostly dark.",
     /**
@@ -2429,6 +2508,7 @@ function decide(p, look, memory, opts) {
     opts?.seekHouse ? p.house
     : opts?.seekVessel ? p.vessel
     : opts?.seekRelic ? p.relic
+    : opts?.seekShrine ? p.shrine
     : opts?.ontoMaskit ? maskitSeen
     : undefined;
 

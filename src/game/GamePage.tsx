@@ -3033,8 +3033,8 @@ function FirstSightPlate({ sefirah, onGoOn }: { sefirah: SefirahId; onGoOn: () =
           the answer either happened or did not. */}
       <p className={styles.plateQuestion}>{place.question}</p>
       {/* A rung with its own law says so on arrival — the RUNG_RULES seam,
-          null for every Sefirah until its P15-R slice lands, so today this
-          renders nothing anywhere and the seam is what ships. */}
+          filled one P15-R slice at a time. Netzach speaks first (the cold
+          shrines); a Sefirah still at null renders nothing here. */}
       {rungRule(sefirah)?.says && (
         <p className={styles.plateUse}>{rungRule(sefirah)?.says}</p>
       )}

@@ -4,6 +4,7 @@ import { setTile, tileAt } from "./build";
 import { CHUNK_H } from "./chunks";
 import { powersFrom, type Effect } from "../items";
 import type { Keeping } from "../relics";
+import { rungRule } from "../rungRules";
 import {
   isClimbable,
   isHazard,
@@ -1126,14 +1127,25 @@ function touchEntities(world: World, ctx: StepContext): void {
           world.fork = { x: e.x, y: e.y - 6 };
         }
         break;
-      case "mark":
+      case "mark": {
         // **The Mark is asked for.** Tav grants the `mark` verb and for the
         // whole life of this file nothing ever checked it — the shrine set a
         // respawn for anybody who walked into it, which made Tav the one
         // letter in the alphabet that did nothing at all. It is asked for
         // here, and the shrines start at Yesod so that every one of them is
         // met by a Scribe who already found Tav in the kingdom below.
-        if (!e.active && has(ctx, "mark")) {
+        //
+        // **And the rung's own rule is asked first.** On ground bound for
+        // Netzach the shrine stands in its tile — the chunk is byte-identical,
+        // a rule may never move a tile — and does not answer: no respawn, no
+        // count, no verb spent, whatever the hand holds. Keyed to
+        // `world.toward`, the walked path's destination, so an arena (which
+        // never sets it) keeps its shrines warm, as does any world that is
+        // not a rung of the Tree.
+        const cold = world.toward ? rungRule(world.toward)?.shrinesCold : undefined;
+        if (!e.active && cold !== undefined) {
+          say(world, cold);
+        } else if (!e.active && has(ctx, "mark")) {
           e.active = true;
           world.marksSet += 1;
           spendVerb(world, ctx, "mark");
@@ -1143,6 +1155,7 @@ function touchEntities(world: World, ctx: StepContext): void {
           say(world, "A shrine, and nothing to set on it. The Mark is not yet yours.");
         }
         break;
+      }
       case "fragment":
         e.taken = true;
         if (e.ref) ctx.onFragment?.(Number(e.ref));

@@ -246,6 +246,14 @@ export interface World {
    * way out means a Sefirah has been freed.
    */
   arena?: SefirahId;
+  /**
+   * Where this rung is *going* — the walked path's upper end, set by
+   * `buildPath` and never by an arena. The rungs' own rules key on it
+   * (`rungRules.ts`): a path's question is its destination's, and so is its
+   * law. `sefirah` above is the lower end (the fixed screens' home) and
+   * cannot serve — see `regionOfPath`'s two-end notes.
+   */
+  toward?: SefirahId;
   /** Column-major-free: `tiles[y * width + x]`. */
   tiles: Uint8Array;
   width: number;

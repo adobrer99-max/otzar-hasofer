@@ -72,6 +72,13 @@ export interface Probe {
    * is standing beside you.
    */
   relic?: { dx: number; dy: number };
+  /**
+   * Where the rung's un-answered Tav shrine stands, from the Scribe. Absent
+   * once it has answered — so on netzach-bound ground, where the rung rule
+   * keeps every shrine cold (P15-R1), it never goes absent at all, which is
+   * itself the fact a script can steer by and then assert.
+   */
+  shrine?: { dx: number; dy: number };
   /** What this climb has brought out of a chamber — the twin of `items`. */
   relics: string[];
   revealed: boolean;
@@ -176,6 +183,7 @@ export function probeOf(
    */
   const keli = world.entities.find((e) => e.kind === "vessel" && !e.taken);
   const hidden = world.entities.find((e) => e.kind === "relic" && !e.taken);
+  const altar = world.entities.find((e) => e.kind === "mark" && !e.active);
   return {
     tick: world.tick,
     regionIndex: world.regionIndex,
@@ -207,6 +215,9 @@ export function probeOf(
       : undefined,
     relic: hidden
       ? { dx: Math.round(hidden.x - world.player.x), dy: Math.round(hidden.y - world.player.y) }
+      : undefined,
+    shrine: altar
+      ? { dx: Math.round(altar.x - world.player.x), dy: Math.round(altar.y - world.player.y) }
       : undefined,
     relics: [...(ascent?.relicsFound ?? [])],
     revealed: world.revealed,

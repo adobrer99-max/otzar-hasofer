@@ -1802,7 +1802,7 @@ export function buildPath(
     gateRoomFor(path.id, seed, festivalIds),
   );
 
-  return paint(
+  const world = paint(
     laid,
     region.index,
     region.sefirah,
@@ -1821,6 +1821,10 @@ export function buildPath(
     relicsFound,
     spent,
   );
+  // The rung's destination, for its rule — set after paint so the generator's
+  // draws cannot see it: a rule may never move a tile. See `World.toward`.
+  world.toward = path.ends[1];
+  return world;
 }
 
 /**
