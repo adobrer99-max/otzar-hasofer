@@ -3,7 +3,14 @@ import type { AscentRecord } from "../storage/ascentRepo";
 import { abilityForVerb, type Grace, type Verb } from "./abilities";
 import { regions } from "./regions";
 import { sefirahOfCard } from "./story";
-import { dormantFor, GRACE_NEEDS, offerFor, vowKept } from "./ushpizinOffers";
+import {
+  dormantFor,
+  GRACE_NEEDS,
+  judgeBargain,
+  offerFor,
+  recordBargain,
+  vowKept,
+} from "./ushpizinOffers";
 import { buildPath, regionOfPath, verbsOf } from "./world/build";
 import { TREE_PATHS } from "./tree";
 import { dorotCardsById } from "../data/dorot";
@@ -247,5 +254,47 @@ describe("which guest is offered", () => {
       return region.sefirah !== regions[region.index - 1].sefirah;
     });
     expect(diverging.length, "no path's index differs from its lower end any more").toBeGreaterThan(0);
+  });
+});
+
+describe("the bargain remembered", () => {
+  /**
+   * The transitions `AscentRecord.bargains` allows, held here because the
+   * writing points live in `GamePage` callbacks nothing in this suite can
+   * render — the same reason `onVessel` went missing for a phase. The pure
+   * pair is what the page calls; if these hold, the page can only mis-wire,
+   * and the playtest assertions cover the wiring.
+   */
+  it("appends acceptance and refusal in the order they happened", () => {
+    let list = recordBargain(undefined, "chesed", "accepted");
+    list = recordBargain(list, "gevurah", "declined");
+    expect(list).toEqual([
+      { sefirah: "chesed", outcome: "accepted" },
+      { sefirah: "gevurah", outcome: "declined" },
+    ]);
+  });
+
+  it("judges the latest acceptance for that guest, and nothing else", () => {
+    let list = recordBargain(undefined, "gevurah", "accepted");
+    list = recordBargain(list, "hod", "accepted");
+    list = judgeBargain(list, "gevurah", false);
+    expect(list).toEqual([
+      { sefirah: "gevurah", outcome: "broken" },
+      { sefirah: "hod", outcome: "accepted" },
+    ]);
+    // Judged is terminal: a second verdict finds no `accepted` entry and
+    // invents nothing.
+    expect(judgeBargain(list, "gevurah", true)).toEqual(list);
+  });
+
+  it("leaves a refusal alone — declined is terminal", () => {
+    const list = recordBargain(undefined, "tiferet", "declined");
+    expect(judgeBargain(list, "tiferet", true)).toEqual(list);
+  });
+
+  it("changes nothing when a verdict has no acceptance to land on", () => {
+    expect(judgeBargain(undefined, "yesod", true)).toEqual([]);
+    const list = recordBargain(undefined, "chesed", "accepted");
+    expect(judgeBargain(list, "yesod", false)).toEqual(list);
   });
 });

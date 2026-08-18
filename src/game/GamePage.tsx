@@ -9,6 +9,7 @@ import {
   kindleCost,
   standingAt,
   listAscents,
+  mergeVerbUses,
   saveAscent,
   type AscentRecord,
   type FormedWord,
@@ -65,7 +66,14 @@ import {
   type WordGateTarget,
   type WordGateVerdict,
 } from "./wordGate";
-import { dormantFor, offerFor, vowKept, type UshpizinOffer } from "./ushpizinOffers";
+import {
+  dormantFor,
+  judgeBargain,
+  offerFor,
+  recordBargain,
+  vowKept,
+  type UshpizinOffer,
+} from "./ushpizinOffers";
 import { openWordGate, say } from "./world/step";
 import { useGameAudio } from "./audio/useGameAudio";
 import { readAscentTime } from "./sacredAscent";
@@ -1064,10 +1072,43 @@ export function GamePage() {
       } else {
         giveBoon(offer.grants);
       }
+      // The bargain itself, remembered — written at the moment of choice,
+      // never held for a later flush (the `boons` burn). A vow stands as
+      // `accepted` until the exit judges it.
+      setAscent((prev) => {
+        if (!prev) return prev;
+        const next: AscentRecord = {
+          ...prev,
+          bargains: recordBargain(prev.bargains, offer.sefirah, "accepted"),
+          updatedAt: new Date().toISOString(),
+        };
+        void saveAscent(next).catch(() => undefined);
+        return next;
+      });
       setPlate(null);
     },
     [world, encounter, giveBoon],
   );
+
+  /**
+   * A guest refused. The refusal is a decision too, and it was the one this
+   * game forgot entirely: Decline was a bare close, so an honest no and a
+   * House never met left the same record — none. The House stays consumed
+   * (a refusal that can be retried until accepted is not a refusal).
+   */
+  const declineOffer = useCallback((offer: UshpizinOffer) => {
+    setAscent((prev) => {
+      if (!prev) return prev;
+      const next: AscentRecord = {
+        ...prev,
+        bargains: recordBargain(prev.bargains, offer.sefirah, "declined"),
+        updatedAt: new Date().toISOString(),
+      };
+      void saveAscent(next).catch(() => undefined);
+      return next;
+    });
+    setPlate(null);
+  }, []);
 
   const onHouse = useCallback((cardId: string) => {
     setPlate({ kind: "house", cardId });
@@ -1140,6 +1181,8 @@ export function GamePage() {
           ...prev,
           or: prev.or + (world?.or ?? 0),
           guardiansBroken: [...new Set([...(prev.guardiansBroken ?? []), freed])],
+          verbUses: mergeVerbUses(prev.verbUses, world?.verbUses),
+          ...(world ? { lampsAtSeal: world.player.lamps } : {}),
           updatedAt: new Date().toISOString(),
         };
         void saveAscent(next).catch(() => undefined);
@@ -1154,6 +1197,7 @@ export function GamePage() {
     // A vow taken at a House is judged here, on the way out, against how the
     // rest of the region was actually crossed.
     let vowOutcome: { kept: boolean; figure: string; grantsLabel: string; terms: string } | undefined;
+    let vowJudged: { sefirah: SefirahId; kept: boolean } | undefined;
     if (vow && world) {
       const since = {
         orGathered: world.orGathered - vow.at.orGathered,
@@ -1161,6 +1205,7 @@ export function GamePage() {
         marksSet: world.marksSet - vow.at.marksSet,
       };
       const kept = vowKept(vow.offer.vow!, since);
+      vowJudged = { sefirah: vow.offer.sefirah, kept };
       if (kept) giveBoon(vow.offer.grants);
       // **Said out loud, either way.** A vow was the one bargain in this game
       // with a delayed outcome and the only one that reported nothing: the
@@ -1195,6 +1240,13 @@ export function GamePage() {
         relicsSpent: spentHere(prev, world),
         regionsCleared: cleared,
         or: prev.or + (world?.or ?? 0),
+        // The rung's practice kept, and the vow just judged written down —
+        // both at the way out, the same moment the light is folded.
+        verbUses: mergeVerbUses(prev.verbUses, world?.verbUses),
+        ...(world ? { lampsAtSeal: world.player.lamps } : {}),
+        ...(vowJudged
+          ? { bargains: judgeBargain(prev.bargains, vowJudged.sefirah, vowJudged.kept) }
+          : {}),
         ...(moved
           ? {
               at: moved.at,
@@ -1804,6 +1856,7 @@ export function GamePage() {
           onInscribe={inscribe}
           onAsk={askTheUrim}
           onAccept={acceptOffer}
+          onDecline={declineOffer}
           onTakeVessel={takeVessel}
           onTakeRelic={takeRelic}
           onFirstSight={passFirstSight}
@@ -2675,6 +2728,7 @@ function PlateOverlay({
   onInscribe,
   onAsk,
   onAccept,
+  onDecline,
   onTakeVessel,
   onTakeRelic,
   onFirstSight,
@@ -2702,6 +2756,8 @@ function PlateOverlay({
   /** The Urim answers, for a lamp. False if there is no lamp to spare. */
   onAsk: () => boolean;
   onAccept: (offer: UshpizinOffer) => void;
+  /** A guest refused — recorded, unlike a bare close. */
+  onDecline: (offer: UshpizinOffer) => void;
   /** A vessel accepted off its pedestal. Declining is `onClose`. */
   onTakeVessel: (keliId: string) => void;
   /** A hidden thing brought out of its chamber. Declining is `onClose`. */
@@ -2758,6 +2814,7 @@ function PlateOverlay({
             verbs={verbs}
             sukkotNight={sukkotNight}
             onAccept={onAccept}
+            onDecline={onDecline}
             onClose={onClose}
           />
         )}
@@ -3358,6 +3415,7 @@ function HousePlate({
   verbs,
   sukkotNight,
   onAccept,
+  onDecline,
   onClose,
 }: {
   cardId: string;
@@ -3367,6 +3425,8 @@ function HousePlate({
   /** Which Sukkot night it is, 1–7, when it is Sukkot at all — see `festivalDays`. */
   sukkotNight?: number;
   onAccept: (offer: UshpizinOffer) => void;
+  /** Refusal is a decision too — recorded, where a bare close never was. */
+  onDecline: (offer: UshpizinOffer) => void;
   onClose: () => void;
 }) {
   const card = dorotCardsById[cardId];
@@ -3481,7 +3541,7 @@ function HousePlate({
             >
               {offer.terms}
             </Button>
-            <Button onClick={onClose}>Decline</Button>
+            <Button onClick={() => onDecline(offer)}>Decline</Button>
           </div>
         </div>
       )}

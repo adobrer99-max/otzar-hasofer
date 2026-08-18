@@ -330,6 +330,14 @@ export interface World {
   orGathered: number;
   veilings: number;
   marksSet: number;
+  /**
+   * How many times each verb was actually used on this rung — the dash
+   * dashed, the thorn cut, the stone set — counted by `spendVerb` at the
+   * moment the world answers, never per tick a state holds. Folded onto the
+   * record at every way out that keeps progress, exactly as `or` is; a rung
+   * that ends in a veiling keeps nothing.
+   */
+  verbUses: Partial<Record<Verb, number>>;
   /** Whether the Wrapper's one mercy has been spent on this rung. */
   spared?: boolean;
   /** Whether the Lampstand's middle light has already refused to go out. */

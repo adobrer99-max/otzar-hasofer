@@ -1,4 +1,4 @@
-import type { Grace } from "../game/abilities";
+import type { Grace, Verb } from "../game/abilities";
 // Type-only, so there is no runtime cycle: `story.ts` reads nothing from here.
 import type { PleaKind } from "../game/story";
 import type { SefirahId } from "../types/letter";
@@ -193,6 +193,55 @@ export interface AscentRecord {
    * inside one.
    */
   boons?: Grace[];
+  /**
+   * Every bargain struck or refused at a House on this climb, in the order
+   * they happened — which guest (by their Sefirah), and how it went.
+   *
+   * `boons` above records what a bargain *paid*; this records the bargain
+   * itself, which is a different fact and was being lost: an accepted offer,
+   * a declined one, and a vow kept or broken all left the same residue (a
+   * grace, or nothing), so the Leaf could never say "Isaac was refused" or
+   * "the word given to Moses was broken." Declining is terminal; accepting a
+   * vow is `accepted` until the region exit judges it `kept` or `broken` —
+   * see `judgeBargain` in `game/ushpizinOffers.ts`.
+   *
+   * On the record and not in React state for `boons`'s own reason, one field
+   * up: a decision held in component state dies at the top of `walkPath`,
+   * and a vow's verdict lands a whole rung after the choice it judges.
+   */
+  bargains?: Bargain[];
+  /**
+   * The lamps in hand at the last way out of a rung — overwritten on every
+   * exit, so once the climb seals it holds what the Scribe walked out of the
+   * *final* rung carrying.
+   *
+   * Not captured at the seal itself, deliberately: sealing happens on the
+   * Tree, between rungs, where there is no world and no lamps — a lamp is a
+   * rung's own candle, relit at three on every way in. What the Leaf can
+   * honestly say is how the last stretch of ground was crossed.
+   */
+  lampsAtSeal?: number;
+  /**
+   * How many times each verb has actually been used on this climb — the dash
+   * dashed, the thorn cut, the stone set, counted at the moment the world
+   * answers. Folded in from `World.verbUses` at every way out that keeps
+   * progress (a path done, a guardian freed), so a rung that ends in a
+   * veiling keeps nothing — a letter is not practiced by falling with it.
+   *
+   * This is the letters' memory: the first tick from nothing to one is the
+   * moment a letter stopped being a plate and became a hand's knowledge, and
+   * the Book reads the totals as mastery. See `LETTER_ECHOES` when it lands.
+   */
+  verbUses?: Partial<Record<Verb, number>>;
+  /**
+   * Set at Begin when this climb is the first ascent — the short form, to
+   * the Foundation and back out in peace. Frozen on the record exactly as
+   * `ruleNumber` and `reliquary` are, and for their reason: a threshold
+   * choice held only in React state is the abandon-and-resume exploit
+   * wearing a new coat. A first ascent seals at a lit Yesod, gets its own
+   * SealKind, and never advances the Seven Encounters.
+   */
+  firstAscent?: true;
   ascendantLetterId?: string;
   /**
    * How many times the last lamp went out on this climb.
@@ -242,6 +291,37 @@ export interface AscentRecord {
    * drawer is closed: kept, countable, and never picked back up by accident.
    */
   abandonedAt?: string;
+}
+
+/**
+ * How a bargain at a House went. `declined` is terminal; `accepted` is what a
+ * vow is until the region exit judges it `kept` or `broken` — a priced or
+ * free offer stays `accepted` forever, since there is nothing left to judge.
+ */
+export type BargainOutcome = "accepted" | "declined" | "kept" | "broken";
+
+/** One bargain struck or refused at a House, named by the guest's Sefirah. */
+export interface Bargain {
+  sefirah: SefirahId;
+  outcome: BargainOutcome;
+}
+
+/**
+ * Fold a rung's verb counts onto the climb's — pure, called at every way out
+ * that keeps progress (a path done, a guardian freed), the same moments `or`
+ * is folded. Returns `base` untouched when the rung used nothing, so a record
+ * that has never counted stays without the field.
+ */
+export function mergeVerbUses(
+  base: Partial<Record<Verb, number>> | undefined,
+  gained: Partial<Record<Verb, number>> | undefined,
+): Partial<Record<Verb, number>> | undefined {
+  if (!gained || Object.keys(gained).length === 0) return base;
+  const out: Partial<Record<Verb, number>> = { ...base };
+  for (const [verb, n] of Object.entries(gained)) {
+    out[verb as Verb] = (out[verb as Verb] ?? 0) + (n ?? 0);
+  }
+  return out;
 }
 
 /** A root the Scribe put together at a Word-Gate. */

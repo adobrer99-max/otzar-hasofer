@@ -149,6 +149,19 @@ export interface StepContext {
 }
 
 const has = (ctx: StepContext, verb: Verb) => ctx.verbs.includes(verb);
+
+/**
+ * Count a verb actually *used* — the letters' memory
+ * (`AscentRecord.verbUses`). Counted at the moment the world answers, never
+ * per tick a state merely holds: a dash is one use when it fires, a vine is
+ * one use when the body takes hold of it, a thorn is one use when it parts.
+ * Returns true so it can ride a short-circuit chain without changing what
+ * the chain means.
+ */
+function spendVerb(world: World, verb: Verb): boolean {
+  world.verbUses[verb] = (world.verbUses[verb] ?? 0) + 1;
+  return true;
+}
 const grace = (ctx: StepContext, g: Grace) => ctx.graces.includes(g);
 
 // ---------------------------------------------------------------------------
@@ -233,7 +246,9 @@ export function step(world: World, input: Input, ctx: StepContext): void {
   }
 
   if (p.grappleCooldown > 0) p.grappleCooldown -= 1;
+  const wasInWater = p.inWater;
   p.inWater = anyTile(world, p, isWater);
+  if (p.inWater && !wasInWater && has(ctx, "swim")) spendVerb(world, "swim");
   const onVine = has(ctx, "climb") && anyTile(world, p, isClimbable);
   /**
    * **Down does one of two things, and which one is decided by the floor.**
@@ -256,6 +271,7 @@ export function step(world: World, input: Input, ctx: StepContext): void {
   if (p.inWater) {
     swimTick(p, input, ctx);
   } else if (onVine && (input.up || input.down || p.climbing)) {
+    if (!p.climbing) spendVerb(world, "climb");
     climbTick(p, input);
   } else {
     p.climbing = false;
@@ -311,12 +327,14 @@ function walkTick(world: World, p: Player, input: Input, ctx: StepContext): void
   }
 
   // Clinging to a wall: Chet, the fence held rather than resented.
+  const wasClinging = p.clinging;
   p.clinging = 0;
   if (!p.onGround && has(ctx, "wall-cling") && p.vy > 0) {
     const towardLeft = input.left && wallBeside(world, ctx, p, -1);
     const towardRight = input.right && wallBeside(world, ctx, p, 1);
     if (towardLeft) p.clinging = -1;
     if (towardRight) p.clinging = 1;
+    if (p.clinging !== 0 && wasClinging === 0) spendVerb(world, "wall-cling");
   }
 
   if (p.coyote > 0) p.coyote -= 1;
@@ -343,6 +361,7 @@ function walkTick(world: World, p: Player, input: Input, ctx: StepContext): void
       p.vy = -jumpSpeed * 0.92;
       p.airJump = false;
       p.jumpBuffer = 0;
+      spendVerb(world, "double-jump");
     }
   }
 
@@ -430,6 +449,7 @@ function applyVerbs(world: World, input: Input, ctx: StepContext): void {
   if (input.dash && has(ctx, "dash") && p.dash === 0 && p.dashCooldown === 0 && !p.inWater) {
     p.dash = DASH_TICKS;
     p.dashCooldown = DASH_COOLDOWN_TICKS;
+    spendVerb(world, "dash");
     return;
   }
 
@@ -440,21 +460,31 @@ function applyVerbs(world: World, input: Input, ctx: StepContext): void {
     const anchor = nearestAnchor(world, p);
     if (anchor) {
       p.grappleTo = anchor;
+      spendVerb(world, "grapple");
       say(world, "The hook holds.");
       return;
     }
   }
 
   // The Edge, the Flame, the Door — each clears the barrier it answers.
+  // `spendVerb` returns true, so appending it counts the use without
+  // changing what the chain short-circuits on.
   const cleared =
-    (has(ctx, "cut") && clearAdjacent(world, p, Tile.Thorn, Tile.Empty, "The thorn parts.")) ||
-    (has(ctx, "flame") && clearAdjacent(world, p, Tile.Growth, Tile.Empty, "The overgrowth burns back.")) ||
-    (has(ctx, "open") && clearAdjacent(world, p, Tile.Door, Tile.Empty, "The door opens."));
+    (has(ctx, "cut") &&
+      clearAdjacent(world, p, Tile.Thorn, Tile.Empty, "The thorn parts.") &&
+      spendVerb(world, "cut")) ||
+    (has(ctx, "flame") &&
+      clearAdjacent(world, p, Tile.Growth, Tile.Empty, "The overgrowth burns back.") &&
+      spendVerb(world, "flame")) ||
+    (has(ctx, "open") &&
+      clearAdjacent(world, p, Tile.Door, Tile.Empty, "The door opens.") &&
+      spendVerb(world, "open"));
   if (cleared) return;
 
   // The Eye — the hidden light was never absent, only unseen.
   if (has(ctx, "reveal") && !world.revealed) {
     world.revealed = true;
+    spendVerb(world, "reveal");
     say(world, "Or HaGanuz — the hidden stone stands revealed.");
     return;
   }
@@ -541,6 +571,7 @@ function toggleStone(world: World, ctx: StepContext): void {
   }
   world.placed.push({ x: tx, y: ty });
   setTile(world, tx, ty, Tile.Placed);
+  spendVerb(world, "block");
   say(world, "A stone stands where you set it.");
 }
 
@@ -1089,6 +1120,7 @@ function touchEntities(world: World, ctx: StepContext): void {
         if (!e.active && has(ctx, "mark")) {
           e.active = true;
           world.marksSet += 1;
+          spendVerb(world, "mark");
           world.respawn = { x: e.x, y: e.y - 6 };
           say(world, "Your mark is set here.");
         } else if (!e.active) {

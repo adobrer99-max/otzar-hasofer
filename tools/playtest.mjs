@@ -620,28 +620,77 @@ const SCRIPTS = [
     name: "house",
     about: "A figure of the Dorot standing on a rung, and what they say.",
     /**
-     * **This script has never once met a figure, and now it is known why.**
+     * **This script meets a figure now, and the move that made it possible is
+     * worth keeping.** For its whole prior life it shipped green having met
+     * none — `until` also passed on `p.finished`, so "the clock ran out ·
+     * plates: fragment" read as a pass run after run. P15-0's check exposed it
+     * on its first run, and the diagnosis took three layers:
      *
-     * It has shipped green for its whole life because `until` also passes on
-     * `p.finished`, and its reports quietly read "the clock ran out · plates:
-     * fragment" run after run. Chasing a vow through it produced the
-     * measurement: the probe reports where the House stands, and on two
-     * different rungs it came back **174px and 392px above the Scribe's
-     * head**, with the horizontal offset at 26 and −31 — the driver standing
-     * directly underneath it, jumping, and getting nowhere.
+     * 1. `letters: "as-of-rung"` can never open a House plate at all — Peh is
+     *    assembled from scroll fragments, not found in an alcove, and without
+     *    the `speech` grace the figure inclines their head and says nothing.
+     * 2. On a two-storey rung (index 4+) the sighting watch put the figure at
+     *    **dy −450** — `HOUSE_CHUNK` laid on the upper floor, up the shaft
+     *    this driver still cannot take (that debt stands).
+     * 3. On a corridor rung (index ≤ 3, one row) the same figure stands at
+     *    **dy −18**, on the walking line.
      *
-     * So the figures are up on ledges, off the walking line, reached by a
-     * shaft or a stone. Meeting one is an *optional climb*, which is a fact
-     * about the game worth knowing; and this driver climbs nothing, which is
-     * the same limitation already written down against `up` below. Whoever
-     * teaches it to take a shaft gets the Houses, the vows and the vow HUD in
-     * one go — `seekHouse` is the half of it that already works: the probe
-     * says where the figure is and the driver walks to its column.
+     * So: Yesod, the whole alphabet, and `seekHouse` — and the script now
+     * proves the P15-0 chain whole: figure met, offer answered, the bargain
+     * written to the record at the moment of choice and read back off the
+     * probe.
      */
-    warp: { rung: 4, letters: "as-of-rung", lamps: 3, seed: 3 },
-    until: (p) => p.housesMet > 0 || p.finished,
+    /**
+     * `letters: "all"` because Peh is the gate: a figure met without the
+     * `speech` grace inclines their head and says nothing, and Peh is never
+     * in `as-of-rung` — it is assembled from three scroll fragments, not
+     * found in an alcove. The old warp could not open a House plate at all,
+     * and the script shipped green anyway because `until` also passed on
+     * `p.finished` — the generous-until fault `check` exists to kill, caught
+     * here by its own new check on the first run.
+     */
+    warp: { rung: 2, letters: "all", lamps: 3, seed: 3 },
+    /**
+     * Met is not enough any more: the plate must be *answered* and the answer
+     * must reach the record. `p.bargains` is the ledger read back off the
+     * probe, so this script now proves the whole P15-0 chain — the offer
+     * accepted, the bargain written at the moment of choice, and the record
+     * carrying it — rather than that a dialog once existed.
+     */
+    until: (p) => p.bargains.length > 0 || p.finished,
     seconds: 180,
     driver: { seekHouse: true },
+    /** Where the figure stood when seen — so a miss names its reason. */
+    watch: async (_page, p, _look, { seen, report }) => {
+      if (p.house && !seen.sighted) {
+        seen.sighted = true;
+        report.moments.push({ what: "figure sighted", tick: p.tick, ...p.house });
+      }
+      if (p.house) seen.lastHouse = { ...p.house, sefirah: p.sefirah };
+    },
+    onPlate: async (page, plate) => {
+      if (plate !== "house") return false;
+      // The offer's terms are the primary button; Decline is its sibling.
+      // Clicked by role rather than trusted to focus, because whether Enter
+      // lands on the accept is exactly the kind of thing this script must
+      // not assume.
+      const accept = page.locator('[role="dialog"] button').first();
+      if (await accept.count()) {
+        await accept.click();
+        await page.waitForTimeout(400);
+        return true;
+      }
+      return false;
+    },
+    check: (p) => {
+      if (!p.bargains.length) {
+        throw new Error("a House was met and no bargain was ever written to the record");
+      }
+      const outcome = p.bargains[0].outcome;
+      if (outcome !== "accepted" && outcome !== "kept" && outcome !== "broken") {
+        throw new Error(`the offer was answered and the ledger says "${outcome}"`);
+      }
+    },
   },
   {
     name: "crown-presented",

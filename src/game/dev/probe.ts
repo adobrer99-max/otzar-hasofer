@@ -80,6 +80,12 @@ export interface Probe {
   /** The vessels actually lifted, so a script can assert taking rather than offering. */
   items: string[];
   housesMet: number;
+  /**
+   * The bargains ledger, verbatim off the record — so a script can assert a
+   * choice was *remembered*, not merely that a plate rose. The P13e-1 rule:
+   * content the harness cannot see is content that ships blind.
+   */
+  bargains: { sefirah: string; outcome: string }[];
   fragments: number;
   /** Which plate is up, if any — the only way to know a story beat landed. */
   plate?: string;
@@ -126,6 +132,7 @@ export function probeOf(
       items: [...(ascent.items ?? [])],
       relics: [...(ascent.relicsFound ?? [])],
       housesMet: ascent.housesMet.length,
+      bargains: [...(ascent.bargains ?? [])],
       fragments: ascent.scrollFragments?.length ?? 0,
       plate,
       onMap: true,
@@ -209,6 +216,7 @@ export function probeOf(
       : undefined,
     letters: [...(ascent?.lettersHeld ?? [])],
     housesMet: ascent?.housesMet.length ?? 0,
+    bargains: [...(ascent?.bargains ?? [])],
     fragments: ascent?.scrollFragments?.length ?? 0,
     plate,
     message: world.message?.text,
@@ -261,6 +269,7 @@ const EMPTY_WORLD = {
   | "items"
   | "relics"
   | "housesMet"
+  | "bargains"
   | "fragments"
   | "plate"
   | "onMap"

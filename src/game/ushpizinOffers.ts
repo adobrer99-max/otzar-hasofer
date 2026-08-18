@@ -1,4 +1,5 @@
 import { ushpizinBySefirah } from "../data/ushpizin";
+import type { Bargain } from "../storage/ascentRepo";
 import type { SefirahId } from "../types/letter";
 import type { Grace, Verb } from "./abilities";
 
@@ -185,4 +186,40 @@ export function vowKept(
     default:
       return false;
   }
+}
+
+/**
+ * The bargain remembered — pure, because a rule that lives inside a
+ * `useCallback` is a rule no test can see, which is how `onVessel` went
+ * missing for a whole phase. `GamePage` calls these at the moment of choice
+ * and writes the result straight to the record (`AscentRecord.bargains`).
+ *
+ * `recordBargain` appends; a House can only be met once per rung, so there is
+ * nothing to dedupe. `judgeBargain` upgrades the **latest** `accepted` entry
+ * for that Sefirah — the vow just judged is the one most recently taken — and
+ * touches nothing else: a declined offer stays declined, an already-judged
+ * vow stays judged, and a judgment with no matching acceptance changes
+ * nothing at all rather than inventing history.
+ */
+export function recordBargain(
+  bargains: readonly Bargain[] | undefined,
+  sefirah: SefirahId,
+  outcome: "accepted" | "declined",
+): Bargain[] {
+  return [...(bargains ?? []), { sefirah, outcome }];
+}
+
+export function judgeBargain(
+  bargains: readonly Bargain[] | undefined,
+  sefirah: SefirahId,
+  kept: boolean,
+): Bargain[] {
+  const list = [...(bargains ?? [])];
+  for (let i = list.length - 1; i >= 0; i -= 1) {
+    if (list[i].sefirah === sefirah && list[i].outcome === "accepted") {
+      list[i] = { sefirah, outcome: kept ? "kept" : "broken" };
+      break;
+    }
+  }
+  return list;
 }
