@@ -88,6 +88,12 @@ export interface Probe {
    * ration is judged against, so a script can watch a ration spend down.
    */
   thrown: number;
+  /**
+   * Stones standing where the Scribe set them — `World.placed.length`. The
+   * ordinary hand holds one (two with the grace), so a reading above that is
+   * itself the proof that Yesod's founding is live.
+   */
+  placed: number;
   letters: string[];
   /** The vessels actually lifted, so a script can assert taking rather than offering. */
   items: string[];
@@ -216,6 +222,7 @@ export function probeOf(
     },
     marks: world.marks.length,
     thrown: world.marksThrown,
+    placed: world.placed.length,
     vessel: keli
       ? { dx: Math.round(keli.x - world.player.x), dy: Math.round(keli.y - world.player.y) }
       : undefined,
@@ -277,6 +284,7 @@ const EMPTY_WORLD = {
   husks: { total: 0, standing: 0, broken: 0, nearest: undefined },
   marks: 0,
   thrown: 0,
+  placed: 0,
   revealed: false,
   message: undefined,
   finished: false,

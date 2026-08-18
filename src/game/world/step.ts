@@ -572,8 +572,23 @@ function toggleStone(world: World, ctx: StepContext): void {
   const tx = Math.floor((p.x + p.w / 2) / TILE_SIZE) + p.facing;
   const ty = Math.floor((p.y + p.h - 1) / TILE_SIZE);
 
+  /**
+   * **Yesod's rule is asked before the hand moves** (P15-R3). On ground
+   * bound for the Foundation a set stone is *founded*: laid as `Tile.Ledge`
+   * rather than `Tile.Placed`, so it bears a landing body and bars nothing —
+   * no accumulation of them can close a passage, which is what makes
+   * "no recall, no limit" safe against the no-soft-lock proof. Keyed to
+   * `world.toward` exactly as the cold shrines and the ration are, so an
+   * arena keeps the ordinary stone, as does any world off the Tree.
+   */
+  const founded = world.toward ? rungRule(world.toward)?.stonesFounded : undefined;
+
   const existing = world.placed.findIndex((s) => s.x === tx && s.y === ty);
   if (existing !== -1) {
+    if (founded) {
+      say(world, founded.kept);
+      return;
+    }
     world.placed.splice(existing, 1);
     setTile(world, tx, ty, Tile.Empty);
     say(world, "The stone is taken back.");
@@ -581,6 +596,13 @@ function toggleStone(world: World, ctx: StepContext): void {
   }
 
   if (tileAt(world, tx, ty) !== Tile.Empty) return;
+  if (founded) {
+    world.placed.push({ x: tx, y: ty });
+    setTile(world, tx, ty, Tile.Ledge);
+    spendVerb(world, ctx, "block");
+    say(world, founded.set);
+    return;
+  }
   const limit = ctx.graces.includes("second-stone") ? 2 : 1;
   if (world.placed.length >= limit) {
     const oldest = world.placed.shift();

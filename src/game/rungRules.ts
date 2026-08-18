@@ -52,12 +52,45 @@ export interface RungRule {
    * `stepHusks` and never touches the counter.
    */
   marksRationed?: { count: number; spent: string };
+  /**
+   * **Yesod's knob — a set stone is founded, and founding is one-way.**
+   * On ground bound here Bet lays `Tile.Ledge` rather than `Tile.Placed`:
+   * no recall (`kept` is what the refusal says), no limit (every press lays
+   * a new one and every one stands), and no wall — a ledge bears a landing
+   * body and bars nothing, horizontal and rising movement pass through and
+   * a held drop falls through, so no accumulation of founded stones can
+   * ever close a passage. That last property is the whole reason the rule
+   * is safe to ship: "stones stay set" with *solid* stones and no recall
+   * would let a hand seal a crawl mouth forever, and the no-soft-lock proof
+   * is taken against terrain no hand can edit. `set` is said as one lays.
+   */
+  stonesFounded?: { set: string; kept: string };
 }
 
 export const RUNG_RULES: Record<SefirahId, RungRule | null> = {
   // The kingdom's rule is the taught opening. Load-bearing null.
   malchut: null,
-  yesod: null,
+  /**
+   * **P15-R3 — Foundation.** The question is "What will you hold to, when
+   * the wall is all there is to hold?", and the rule gives the climb its
+   * answer to hold: what Bet sets on this road is *founded* — it cannot be
+   * taken back, it will bear you, and it will bar nothing. One road is
+   * bound here (malchut-yesod, the game's first), so this is the rule a
+   * climb meets before any other: the Foundation keeps what you set on it.
+   *
+   * Measured on landing: `route`, `traversal` and `speed` stand (the
+   * walking probes set stones at lips on this road and climb their own
+   * ledges), and `fight`, `curve`, `economy` and `climb` stand over all
+   * three seed pools — the tour re-walks this road every climb and the
+   * founding moved nothing.
+   */
+  yesod: {
+    says: "What is set on this ground is founded for good. It will bear you, and bar nothing, and it will not be taken back.",
+    stonesFounded: {
+      set: "The stone goes into the Foundation. It will bear you, and it will not be taken back.",
+      kept: "The Foundation keeps what you set on it. Nothing founded here returns to the hand.",
+    },
+  },
   hod: null,
   /**
    * **P15-R1 — Endurance.** The question is "What will you carry the whole

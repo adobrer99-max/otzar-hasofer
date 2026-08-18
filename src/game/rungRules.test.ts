@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { lettersOnEntering, regions } from "./regions";
 import { RUNG_RULES, rungRule } from "./rungRules";
 import { TREE_PATHS } from "./tree";
-import { buildArena, buildPath, buildRegion, regionOfPath } from "./world/build";
+import { buildArena, buildPath, buildRegion, regionOfPath, tileAt } from "./world/build";
 import { step, type StepContext } from "./world/step";
+import { Tile, TILE_SIZE } from "./world/tiles";
 import { NO_INPUT } from "./world/types";
 
 describe("the question of the rung", () => {
@@ -40,17 +41,19 @@ describe("the rungs' own rules — filled one slice at a time", () => {
    * when a slice lands, its Sefirah moves from the null side of this list to
    * a named assertion of what its rule says.
    *
-   * Ruled so far: **netzach** (P15-R1 — the shrines are cold) and
-   * **gevurah** (P15-R2 — the throws are rationed).
+   * Ruled so far: **netzach** (P15-R1 — the shrines are cold), **gevurah**
+   * (P15-R2 — the throws are rationed), and **yesod** (P15-R3 — a set stone
+   * is founded).
    */
   it("holds every rung at null until a slice fills it on purpose", () => {
     const ruled = Object.entries(RUNG_RULES)
       .filter(([, rule]) => rule !== null)
       .map(([sefirah]) => sefirah)
       .sort();
-    expect(ruled).toEqual(["gevurah", "netzach"]);
+    expect(ruled).toEqual(["gevurah", "netzach", "yesod"]);
+    const filled = new Set(ruled);
     for (const region of regions) {
-      if (region.sefirah === "netzach" || region.sefirah === "gevurah") continue;
+      if (filled.has(region.sefirah)) continue;
       expect(rungRule(region.sefirah), `${region.name} grew a rule without a slice`).toBeNull();
     }
   });
@@ -66,6 +69,13 @@ describe("the rungs' own rules — filled one slice at a time", () => {
       if (rule.marksRationed !== undefined) {
         expect(rule.marksRationed.spent.length, `${sefirah}'s spent ration says nothing`).toBeGreaterThan(20);
         expect(rule.marksRationed.spent).not.toBe(rule.says);
+      }
+      if (rule.stonesFounded !== undefined) {
+        for (const line of [rule.stonesFounded.set, rule.stonesFounded.kept]) {
+          expect(line.length, `${sefirah}'s founding says nothing`).toBeGreaterThan(20);
+          expect(line).not.toBe(rule.says);
+        }
+        expect(rule.stonesFounded.set).not.toBe(rule.stonesFounded.kept);
       }
     }
   });
@@ -207,5 +217,86 @@ describe("P15-R2 — Gevurah: the throws are rationed", () => {
     step(world, strike, ctx);
     expect(world.toward).toBeUndefined();
     expect(world.marks.filter((m) => m.mine)).toHaveLength(1);
+  });
+});
+
+describe("P15-R3 — Yesod: a set stone is founded", () => {
+  function masonRoom(toward?: "yesod" | "hod") {
+    const world = buildRegion(2, 5);
+    world.entities = [];
+    world.husks = [];
+    world.toward = toward;
+    return world;
+  }
+  const act = { ...NO_INPUT, act: true };
+  const ctx: StepContext = { verbs: ["block"], graces: [] };
+  const founded = RUNG_RULES.yesod!.stonesFounded!;
+  /** Where `toggleStone` lays: beside the Scribe, at the height of the feet. */
+  const besides = (world: ReturnType<typeof masonRoom>) => ({
+    tx: Math.floor((world.player.x + world.player.w / 2) / TILE_SIZE) + world.player.facing,
+    ty: Math.floor((world.player.y + world.player.h - 1) / TILE_SIZE),
+  });
+
+  it("lays a ledge, not a wall — it will bear a body and bar nothing", () => {
+    const world = masonRoom("yesod");
+    const { tx, ty } = besides(world);
+    step(world, act, ctx);
+    expect(tileAt(world, tx, ty)).toBe(Tile.Ledge);
+    expect(world.placed).toHaveLength(1);
+    expect(world.verbUses.block).toBe(1);
+    expect(world.message?.text).toBe(founded.set);
+  });
+
+  it("refuses the recall — nothing founded returns to the hand", () => {
+    const world = masonRoom("yesod");
+    const { tx, ty } = besides(world);
+    step(world, act, ctx);
+    for (let t = 0; t < 4; t += 1) step(world, NO_INPUT, ctx);
+    step(world, act, ctx);
+    expect(tileAt(world, tx, ty), "the founded stone was taken back").toBe(Tile.Ledge);
+    expect(world.placed).toHaveLength(1);
+    expect(world.message?.text).toBe(founded.kept);
+  });
+
+  it("has no limit — every stone set on this road stands, all of them", () => {
+    // The ordinary hand holds one stone (two with the grace); a founding that
+    // kept the limit would break the set-and-set screens, whose crossing is
+    // two placements. Unlimited is load-bearing, not generosity.
+    const world = masonRoom("yesod");
+    const first = besides(world);
+    step(world, act, ctx);
+    world.player.x += TILE_SIZE * 3;
+    const second = besides(world);
+    step(world, act, ctx);
+    world.player.x += TILE_SIZE * 3;
+    step(world, act, ctx);
+    expect(world.placed).toHaveLength(3);
+    expect(tileAt(world, first.tx, first.ty)).toBe(Tile.Ledge);
+    expect(tileAt(world, second.tx, second.ty)).toBe(Tile.Ledge);
+  });
+
+  it("keeps the ordinary stone on any other road — solid, recallable, limited", () => {
+    const world = masonRoom("hod");
+    const { tx, ty } = besides(world);
+    step(world, act, ctx);
+    expect(tileAt(world, tx, ty)).toBe(Tile.Placed);
+    // The limit holds: a second set elsewhere takes the first back out.
+    world.player.x += TILE_SIZE * 3;
+    step(world, act, ctx);
+    expect(world.placed).toHaveLength(1);
+    expect(tileAt(world, tx, ty)).toBe(Tile.Empty);
+  });
+
+  it("keeps the ordinary stone in an arena — a fight's stone is a shield", () => {
+    // A founded ledge bars nothing, and a shield that bars nothing is no
+    // shield — so the place this must never apply is a guardian's room.
+    const world = buildArena("yesod");
+    world.husks = [];
+    const { tx, ty } = besides(world);
+    if (tileAt(world, tx, ty) !== Tile.Empty) world.player.x += TILE_SIZE * 2;
+    const spot = besides(world);
+    step(world, act, ctx);
+    expect(world.toward).toBeUndefined();
+    expect(tileAt(world, spot.tx, spot.ty)).toBe(Tile.Placed);
   });
 });

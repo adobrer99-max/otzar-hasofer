@@ -884,6 +884,44 @@ const SCRIPTS = [
     },
   },
   {
+    name: "rung-rule-yesod",
+    about: "P15-R3 — stones founded on the road to Yesod: more than one hand could ever hold, none taken back.",
+    /**
+     * The third rung rule, proven by a count no ordinary world can reach:
+     * the hand holds one stone (two with a grace nobody is lent here), so
+     * the moment two of the Scribe's stones stand at once the founding is
+     * live — and the watch holds the high-water mark so a recall anywhere in
+     * the run would be caught as the count shrinking. The watch hammers the
+     * act key; the walking driver sets stones at lips of its own accord too.
+     * Every set on this road says the founding line, photographed the first
+     * time it is up.
+     */
+    warp: { rung: 1, letters: "all", lamps: 3, seed: 3 },
+    toward: "Yesod",
+    until: (p) => p.placed >= 3,
+    seconds: 240,
+    watch: async (page, p, _look, { seen, report }) => {
+      // Set, walk on, set again — the hand that never has to choose a spot.
+      await page.keyboard.press(KEYS.act);
+      if ((p.message ?? "").includes("goes into the Foundation") && !seen.set) {
+        seen.set = true;
+        report.moments.push({ what: "a stone founded", tick: p.tick, placed: p.placed });
+        await page.screenshot({ path: join(outDir, "rung-rule-yesod-founded.png") });
+      }
+      if ((p.message ?? "").includes("The stone is taken back")) seen.recalled = true;
+      if (p.placed < (seen.most ?? 0)) seen.shrank = true;
+      seen.most = Math.max(seen.most ?? 0, p.placed);
+    },
+    check: (_p, seen) => {
+      if (!seen.set) throw new Error("no stone was ever founded — the set line was never said");
+      if ((seen.most ?? 0) < 2) {
+        throw new Error(`at most ${seen.most ?? 0} stones ever stood — the limit is still binding`);
+      }
+      if (seen.recalled) throw new Error("a stone was taken back on the road to the Foundation");
+      if (seen.shrank) throw new Error("the standing count shrank — something recalled a stone");
+    },
+  },
+  {
     name: "crown-presented",
     about: "The other ending — a crown nothing is holding, and a Tree still mostly dark.",
     /**
