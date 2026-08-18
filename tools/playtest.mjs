@@ -497,6 +497,24 @@ const SCRIPTS = [
     warp: { rung: 5, letters: "as-of-rung", lamps: 3, seed: 11 },
     until: (p) => p.husks.broken >= 2 || p.finished,
     seconds: 90,
+    /**
+     * The break's own sentence, heard — birur said aloud (P15-1). Every
+     * shell breaks with its own line now, each naming the light it held; the
+     * retired one-voice line ("…the light in it is yours") must not be heard
+     * again. The unit test holds the table; this holds the wiring — that
+     * `strikeHusk` actually says `spec.release` into a world a player is in.
+     */
+    watch: async (_page, p, _look, { seen }) => {
+      if (p.message && /breaks|breaks away/.test(p.message)) seen.release = p.message;
+    },
+    check: (p, seen) => {
+      if (p.husks.broken >= 1 && !seen.release) {
+        throw new Error("a shell broke and no release was ever said");
+      }
+      if (seen.release && /the light in it is yours/.test(seen.release)) {
+        throw new Error("the one voice is back — a break said the retired generic line");
+      }
+    },
   },
   {
     name: "maskit",

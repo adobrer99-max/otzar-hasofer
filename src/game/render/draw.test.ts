@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { HUSKS } from "../combat";
 import { buildRegion } from "../world/build";
-import { drawWorld, stoneInks } from "./draw";
+import { drawEntity, drawWorld, stoneInks } from "./draw";
 import { paletteOf, PLACES, readPalette, type Palette } from "./palette";
 import { recorder } from "./testCanvas";
 
@@ -103,5 +104,40 @@ describe("the held light", () => {
     const { ctx, log } = recorder();
     drawWorld(ctx, world, { x: world.player.x - 200, y: 0 }, DARK, 800, 450, []);
     expect(log()).toBe(frame(false));
+  });
+});
+
+describe("freed light remembers its shell", () => {
+  /**
+   * **Birur visible — the P15-1 claim, held as pictures.**
+   *
+   * A mote spawned by a break carries `from: HuskKind` and the painter varies
+   * its *form* by it — corona reach, breathing rate, a small circling spark —
+   * never its colour: the shells were twenty but the light is one, and a
+   * shape survives both grounds and every festival palette where a tint would
+   * not. Asserted as differences through the recording canvas rather than as
+   * particular pictures (the P8 rule), so a retune of the form survives this
+   * test and only sameness fails it.
+   */
+  const KINDS = Object.keys(HUSKS) as (keyof typeof HUSKS)[];
+  const mote = (from?: (typeof KINDS)[number]) => {
+    const { ctx, log } = recorder();
+    drawEntity(ctx, { id: "m", kind: "mote", x: 96, y: 96, ...(from ? { from } : {}) }, DARK, 30);
+    return log();
+  };
+
+  it("draws twenty freed motes as twenty pictures, and none as the plain one", () => {
+    const plain = mote();
+    const pictures = KINDS.map((k) => mote(k));
+    expect(new Set(pictures).size, "two shells free identical light").toBe(KINDS.length);
+    for (const [i, p] of pictures.entries()) {
+      expect(p, `${KINDS[i]}'s freed mote is the scattered day-mote`).not.toBe(plain);
+    }
+  });
+
+  it("leaves the scattered day-mote exactly as it always drew", () => {
+    // No `from`, no change — the day's own light is not from a shell, and the
+    // field must stay a renderer's fact about freed light only.
+    expect(mote()).toBe(mote());
   });
 });

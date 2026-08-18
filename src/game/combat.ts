@@ -208,6 +208,16 @@ export interface HuskSpec {
    * everything else it holds; a defaulted field is a field nobody reads.
    */
   opening: Opening;
+  /**
+   * **The sentence this particular shell breaks with** — birur said aloud.
+   * Twenty shells, one light: every line names what *kind* of light this husk
+   * held and what its freeing undoes, drawn from the creature's own mechanic
+   * and source, because the break has always been a release in this game
+   * ("the motes the Scribe has always gathered were inside something") and it
+   * had one voice for twenty shells. Required, so a kind added to the table
+   * has to say — the TILE_NAMES lesson, applied at birth.
+   */
+  release: string;
   /** Pixels per second it moves under its own power. */
   speed: number;
   /** How much light was trapped in it, released when it breaks. */
@@ -239,6 +249,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     source: "Bereshit 4 — נָע וָנָד, a restless wanderer upon the earth",
     is: "It walks its ground and turns at the edge. It has never once looked up.",
     reading: "The first murder, and the sentence for it: to go back and forth over the same earth forever.",
+    release: "Cain breaks, and the light that could not rest is still.",
     role: "pacer",
     shells: 3,
     opening: "always",
@@ -254,6 +265,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     source: "Bereshit 37 — the pit, and the sale to the caravan",
     is: "Alone it hangs back. It is braver for every other one of them still standing.",
     reading: "Not one of them would have done it by himself, and that is the whole of what they are.",
+    release: "A brother breaks away, and the light between them thins.",
     role: "pacer",
     shells: 2,
     opening: "always",
@@ -274,6 +286,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     source: "Shemot 32 — made in a day, out of what everyone gave",
     is: "It does nothing whatever until you strike it. Then it never stops coming.",
     reading: "An idol is harmless until you grant it your attention, and then it has all of it.",
+    release: "The Calf breaks, and the light comes out of the gold.",
     role: "charger",
     shells: 5,
     opening: "spent",
@@ -289,6 +302,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     source: "Bereshit 25 — a man of the field, who despised the birthright",
     is: "It runs you down over open ground, and gives up the moment you are above it.",
     reading: "He sold what was higher for what was in front of him, and he has not learned to look up since.",
+    release: "Esau breaks, and the light he traded away is carried up after all.",
     role: "charger",
     shells: 4,
     opening: "spent",
@@ -304,6 +318,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     source: "Devarim 25 — he met you on the way and cut off the stragglers behind you",
     is: "It comes at your back, and stands still as stone while you face it.",
     reading: "The attack that will not be met — it waits for the moment your attention is elsewhere.",
+    release: "Amalek breaks, and the light stops watching its back.",
     role: "pacer",
     shells: 3,
     opening: "always",
@@ -319,6 +334,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     source: "Bamidbar 16 — the earth opened her mouth and swallowed them",
     is: "It travels inside the ground, and comes up under you — and for a moment after, it is out in the open and still.",
     reading: "The dispute that is not for the sake of heaven: it goes down out of sight and surfaces where you stand.",
+    release: "Korach breaks, and the light comes up out of the earth.",
     role: "floater",
     shells: 4,
     opening: "always",
@@ -336,6 +352,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     source: "Melachim I 18–21 — she cut off the prophets, and watched from her window",
     is: "Rooted where she stands. What she sends is slow, and it lingers after her.",
     reading: "She never went anywhere. Everything she did, she did at a distance and by other hands.",
+    release: "Jezebel breaks, and the light is in no one's hands but yours.",
     role: "thrower",
     shells: 3,
     opening: "spent",
@@ -352,6 +369,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     source: "Shofetim 16 — and she pressed him daily with her words",
     is: "It costs you no lamp at all. It costs you what you had gathered.",
     reading: "Nothing is taken by force. It is coaxed out, a little at a time, and the loss is only visible later.",
+    release: "Delilah breaks, and what was taken quietly returns as light.",
     role: "floater",
     shells: 2,
     opening: "always",
@@ -369,6 +387,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     source: "Melachim II 11 — she destroyed all the seed royal",
     is: "It goes for the loose light before you can, and puts it out.",
     reading: "She did not want the throne so much as she wanted no one else to have it.",
+    release: "Athaliah breaks, and the loose light is left for you.",
     role: "pacer",
     shells: 3,
     opening: "always",
@@ -384,6 +403,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     source: "Bereshit 3 — subtler than any beast of the field",
     is: "Slow, and it does not stop, and stone is nothing to it.",
     reading: "The first of them and the shape of all the rest: it never hurries, because it has never needed to.",
+    release: "The Serpent breaks, and the light passes out of the stone.",
     role: "floater",
     shells: 5,
     opening: "always",
@@ -405,6 +425,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     source: "Bereshit 1:21 — וַיִּבְרָא אֱלֹהִים אֶת־הַתַּנִּינִם הַגְּדֹלִים",
     is: "It stays in the water, where nothing can touch it, and comes out of it at you.",
     reading: "The great sea-creatures are the first thing the account of creation bothers to say was made — and they were made, which is the whole of what they are.",
+    release: "The Tannin breaks, and the light rises out of the deep.",
     role: "floater",
     shells: 4,
     opening: "always",
@@ -420,6 +441,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     source: "Bamidbar 23:22 — כְּתוֹעֲפֹת רְאֵם לוֹ, the horns of the wild ox",
     is: "It runs one line and will not turn. Stand aside and it goes into the wall.",
     reading: "Not malice. It has never once been asked to reconsider, and it would not know how.",
+    release: "The Re'em breaks, and the light is done running.",
     role: "charger",
     shells: 4,
     opening: "spent",
@@ -435,6 +457,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     source: "Bamidbar 21:6 — הַנְּחָשִׁים הַשְּׂרָפִים, the burning serpents",
     is: "The ground it has crossed goes on burning after it.",
     reading: "The bite is not what kills. What kills is the ground you have to go back over.",
+    release: "The Saraf breaks, and the burnt ground cools into light.",
     role: "pacer",
     shells: 3,
     opening: "spent",
@@ -451,6 +474,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     source: "Yeshayahu 51:9 — הֲלוֹא אַתְּ־הִיא הַמַּחְצֶבֶת רַהַב",
     is: "Every shell you take off it makes it bigger and faster.",
     reading: "Pride does not diminish when it is opposed. It is the one thing that grows on being struck.",
+    release: "Rahav breaks, and the light is the size it always was.",
     role: "charger",
     shells: 5,
     opening: "always",
@@ -466,6 +490,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     source: "Devarim 3:11 — his bedstead of iron, nine cubits its length",
     is: "Slow, and enormous, and its step brings the ceiling down where you stand.",
     reading: "The last of the giants, and what is dangerous about him is not that he is quick.",
+    release: "Og breaks, and the light stands under an open ceiling.",
     role: "pacer",
     shells: 6,
     opening: "spent",
@@ -488,6 +513,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     source: "Bereshit 6:4 — הַנְּפִלִים הָיוּ בָאָרֶץ, and the name means they fell",
     is: "It hangs where it is and does nothing until you are underneath it.",
     reading: "They are named for the one thing they did. Everything else about them is waiting.",
+    release: "The Nefilim breaks, and the light comes down of its own accord.",
     role: "floater",
     shells: 3,
     opening: "spent",
@@ -503,6 +529,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     source: "Shemot 10:14 — before them there were no such locusts, neither after them",
     is: "One of them is nothing. There are never one of them.",
     reading: "The eighth plague is the only one that is a number rather than a thing.",
+    release: "The Arbeh breaks, and the light gathers out of the swarm.",
     role: "floater",
     shells: 2,
     opening: "always",
@@ -530,6 +557,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     source: "Iyov 41:1 — תִּמְשֹׁךְ לִוְיָתָן בְּחַכָּה, canst thou draw out leviathan with an hook?",
     is: "Nothing touches it in the water. The question the book asks is whether you can get it out.",
     reading: "The verse is not a riddle and it is not rhetorical either. It is a list of what you cannot do, and the Hook is the first item on it.",
+    release: "Leviathan breaks, and the light comes ashore for good.",
     role: "floater",
     shells: 7,
     opening: "landed",
@@ -545,6 +573,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     source: "Iyov 40:19 — הָעֹשׂוֹ יַגֵּשׁ חַרְבּוֹ, he that made him can make his sword approach",
     is: "Nothing stops it while it is moving, and nothing marks it either.",
     reading: "Only the one who made it can bring a blade near it — so the answer is not a blade. It is something set in the way.",
+    release: "Behemoth breaks, and the light moves again.",
     role: "charger",
     shells: 8,
     opening: "stopped",
@@ -560,6 +589,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     source: "Tehillim 50:11 — וְזִיז שָׂדַי עִמָּדִי, and the ziz of the field is mine",
     is: "It never comes down. Whether you reach it is a question about how far you can throw.",
     reading: "The verse says only that it is His. Everything else about it is midrash, and all of the midrash agrees that it is enormous and that it is above you.",
+    release: "The Ziz breaks, and the light comes down at last.",
     role: "floater",
     shells: 7,
     opening: "always",

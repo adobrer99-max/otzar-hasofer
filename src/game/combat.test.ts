@@ -407,3 +407,24 @@ describe("a satchel is not a skeleton key", () => {
     ).toBeLessThan(small / Math.min(...shells));
   });
 });
+
+describe("birur said aloud", () => {
+  /**
+   * Twenty shells, twenty sentences, one light. Every release names the
+   * light rather than the victory — that is the whole reframe, and it is
+   * held as a word-level rule so a line that drifts into "slain" or "defeated"
+   * fails here rather than shipping. The retired one-voice line is pinned out
+   * so it cannot sneak back through a copy-paste.
+   */
+  it("gives every shell its own sentence, and every sentence names the light", () => {
+    const specs = Object.values(HUSKS);
+    expect(specs).toHaveLength(20);
+    const lines = specs.map((s) => s.release);
+    for (const [i, line] of lines.entries()) {
+      expect(line.length, `${specs[i].kind} has no real release`).toBeGreaterThan(25);
+      expect(line, `${specs[i].kind}'s release does not name the light`).toContain("light");
+      expect(line, `${specs[i].kind} kept the one voice`).not.toContain("the light in it is yours");
+    }
+    expect(new Set(lines).size, "two shells share a sentence").toBe(20);
+  });
+});

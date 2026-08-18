@@ -1638,11 +1638,15 @@ export function strikeHusk(
       kind: "mote",
       x: husk.x + (i - spec.light / 2) * 9,
       y: husk.y - 4,
+      // The renderer's fact, not the economy's — see `Entity.from`. The
+      // spill's positions above stay byte-identical for the same reason.
+      from: husk.kind,
     });
   }
   // Named, because the naming is the point: a klipah is a husk *around*
-  // something, and the something has a name in the sources.
-  say(world, `${spec.name} breaks, and the light in it is yours.`);
+  // something, and the something has a name in the sources — and now each
+  // shell breaks with its own sentence, naming the kind of light it held.
+  say(world, spec.release);
 }
 
 /**

@@ -52,6 +52,15 @@ export interface Entity {
   taken?: boolean;
   /** Marks light when the Scribe sets them. */
   active?: boolean;
+  /**
+   * The shell this mote came out of, when it came out of one — set by
+   * `strikeHusk`, read by the renderer alone. Inert on purpose: the light a
+   * break frees is worth the same and gathers the same as any other, and the
+   * field changes no value, no count, and no pickup. What it buys is the
+   * *look* — freed light hangs a little differently by what held it, which
+   * is birur made visible without an economy change wearing a costume.
+   */
+  from?: HuskKind;
 }
 
 export interface Player extends Body {

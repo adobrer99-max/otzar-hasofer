@@ -7,6 +7,7 @@ import { ROOM_H, ROOM_W } from "../world/rooms";
 import { opened, unseen } from "../world/step";
 import { recordPhase } from "../dev/probe";
 import { faceCount, paletteKey, setFaceScale, stamp } from "./faces";
+import { HUSKS } from "../combat";
 import { paintHusk } from "./husks";
 
 /**
@@ -895,7 +896,21 @@ function drawWordGate(ctx: CanvasRenderingContext2D, x: number, y: number, palet
 // entities
 // ---------------------------------------------------------------------------
 
-function drawEntity(
+/**
+ * A husk kind's position in the table, for the freed-mote form above — twenty
+ * distinct small integers with no collisions, where a string hash folded
+ * three kinds together on its moduli. An index rather than a second authored
+ * table: the form only has to be *distinct and stable*, not meaningful, and
+ * twenty authored form tuples would be a table nobody could review by
+ * reading. Stable because the HUSKS table's order is source order.
+ */
+const KIND_ORDER = Object.keys(HUSKS);
+function kindIndex(kind: string): number {
+  const i = KIND_ORDER.indexOf(kind);
+  return i < 0 ? 0 : i;
+}
+
+export function drawEntity(
   ctx: CanvasRenderingContext2D,
   e: Entity,
   palette: Palette,
@@ -912,17 +927,41 @@ function drawEntity(
   switch (e.kind) {
     case "mote": {
       const bob = Math.sin(tick / 18 + e.x / 40) * 2.4;
+      /**
+       * **Freed light hangs differently by what held it** — birur visible.
+       *
+       * A mote that came out of a shell (`e.from`) keeps a trace of it in its
+       * *form*, never its colour: the corona breathes at that kind's own
+       * rate, sits at its own reach, and a small second spark circles at a
+       * kind-fixed angle — the shape of the shell remembered by the light
+       * for as long as it hangs there. Form rather than hue, deliberately:
+       * the shells were twenty but the light is one, twenty tints would
+       * fight both grounds and every festival palette, and a shape survives
+       * any theme. Scattered day-motes carry no `from` and draw exactly as
+       * they always have, to the pixel.
+       */
+      const held = e.from ? kindIndex(e.from) : undefined;
+      const breathe = held !== undefined ? 1 + 0.18 * Math.sin(tick / (12 + held)) : 1;
+      const reach = held !== undefined ? 6 + (held % 5) * 0.7 : 7;
       // Inside the held light's reach a mote answers it — the corona widens
       // and warms. Appearance only: nothing about being seen changes what
       // gathering it pays.
       ctx.fillStyle = alpha(palette.goldBright, glows ? 0.3 : 0.16);
       ctx.beginPath();
-      ctx.arc(cx, cy + bob, glows ? 10 : 7, 0, Math.PI * 2);
+      ctx.arc(cx, cy + bob, (glows ? 10 : reach) * breathe, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = palette.goldBright;
       ctx.beginPath();
       ctx.arc(cx, cy + bob, glows ? 3.4 : 2.6, 0, Math.PI * 2);
       ctx.fill();
+      if (held !== undefined) {
+        const angle = held * (Math.PI / 10) + tick / 90;
+        const orbit = 4.5 + (held % 4) * 0.8;
+        ctx.fillStyle = alpha(palette.goldBright, 0.55);
+        ctx.beginPath();
+        ctx.arc(cx + Math.cos(angle) * orbit, cy + bob + Math.sin(angle) * orbit, 1.1, 0, Math.PI * 2);
+        ctx.fill();
+      }
       break;
     }
     case "letter": {
