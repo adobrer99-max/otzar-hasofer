@@ -85,6 +85,7 @@ import { describeEffect, keliById, powersFrom, synergiesIn } from "./items";
 import {
   ABYSS_WORD,
   endingOf,
+  guestsRemembered,
   pleaFor,
   PLEA_NAMED,
   PROLOGUE,
@@ -191,6 +192,8 @@ type Plate =
        * hidden behind this plate a frame later.
        */
       vow?: { kept: boolean; figure: string; grantsLabel: string; terms: string };
+      /** A guest refused on this rung — named at the exit as the vow is. */
+      refused?: { figure: string };
     }
   | {
       kind: "guardian-done";
@@ -266,6 +269,8 @@ export function GamePage() {
   const [vow, setVow] = useState<
     { offer: UshpizinOffer; at: { orGathered: number; veilings: number; marksSet: number } } | null
   >(null);
+  /** A guest refused on this rung, reported once at the exit beside the vow. */
+  const [refused, setRefused] = useState<{ figure: string } | null>(null);
   /** How many climbs were sealed before this one — which Encounter this is. */
   const [sealedBefore, setSealedBefore] = useState(0);
   /**
@@ -1107,7 +1112,10 @@ export function GamePage() {
       void saveAscent(next).catch(() => undefined);
       return next;
     });
-    setPlate(null);
+    // The plate stays up: the guest answers the refusal in their own middah
+    // (`offer.parting`) and the plate closes on the Scribe's next word, not
+    // on this one. HousePlate owns that second beat.
+    setRefused({ figure: offer.figure });
   }, []);
 
   const onHouse = useCallback((cardId: string) => {
@@ -1220,6 +1228,7 @@ export function GamePage() {
       };
       setVow(null);
     }
+    if (refused) setRefused(null);
 
     setAscent((prev) => {
       if (!prev) return prev;
@@ -1277,6 +1286,7 @@ export function GamePage() {
             kind: "path-done",
             path: walking,
             vow: vowOutcome,
+            refused: refused ?? undefined,
           })
         : ascent?.regionIndex === TOTAL_REGIONS
           ? { kind: "sealed" }
@@ -1291,7 +1301,7 @@ export function GamePage() {
             // fallback for a world the page did not start.
             { kind: "path-done", path: TREE_PATHS[0] },
     );
-  }, [ascent, world, vow, audio, walking, facing, giveBoon, freedEver, firstSight]);
+  }, [ascent, world, vow, refused, audio, walking, facing, giveBoon, freedEver, firstSight]);
 
   /**
    * Step onto a path from the overworld — which is what a rung is now.
@@ -1337,6 +1347,7 @@ export function GamePage() {
       setWalking(path);
       setWorld(next);
       setVow(null);
+      setRefused(null);
       setPlate(null);
     },
     [ascent, time.lightOfTheDay, layEncounter, encounter, stoodFor, kept, climbing],
@@ -1402,6 +1413,7 @@ export function GamePage() {
     setFacing(at);
     setWorld(room);
     setVow(null);
+    setRefused(null);
     setPlate(null);
   }, [ascent, learnTree, boons, keeps]);
 
@@ -2783,7 +2795,13 @@ function PlateOverlay({
       <div className={styles.plate} ref={body}>
         {plate.kind === "prologue" && <ProloguePlate page={plate.page} onTurn={onTurn} />}
         {plate.kind === "path-done" && ascent && (
-          <PathDonePlate ascent={ascent} path={plate.path} vow={plate.vow} onBack={onBack} />
+          <PathDonePlate
+            ascent={ascent}
+            path={plate.path}
+            vow={plate.vow}
+            refused={plate.refused}
+            onBack={onBack}
+          />
         )}
         {plate.kind === "guardian-done" && (
           <GuardianDonePlate sefirah={plate.sefirah} tier={plate.tier} onBack={onBack} />
@@ -3429,6 +3447,10 @@ function HousePlate({
   onDecline: (offer: UshpizinOffer) => void;
   onClose: () => void;
 }) {
+  // The refusal's second beat: Decline records the bargain and swaps the
+  // plate to the guest's parting rather than closing it — a refusal answered
+  // in character, then closed on the Scribe's own next word.
+  const [parted, setParted] = useState(false);
   const card = dorotCardsById[cardId];
   const house = card ? dorotHousesById[card.houseId] : undefined;
   // **The card says which rung this is**, and it is the only thing here that
@@ -3447,6 +3469,21 @@ function HousePlate({
     ? lettersById[abilityForVerb(dormant)?.letterId ?? ""]?.transliteration
     : undefined;
   if (!card) return null;
+  // The parting: the refusal answered in the guest's own middah, and the
+  // plate closed on the Scribe's next word rather than on the refusal itself.
+  // Nothing else of the plate remains — a parting is not a renegotiation.
+  if (parted && offer) {
+    return (
+      <>
+        <p className={styles.plateKicker}>The guest answers</p>
+        <h2 className={styles.plateTitle}>{offer.figure}</h2>
+        <p className={styles.offerSaying}>&ldquo;{offer.parting}&rdquo;</p>
+        <Button variant="primary" onClick={onClose} autoFocus>
+          Walk on
+        </Button>
+      </>
+    );
+  }
   return (
     <>
       <p className={styles.plateKicker}>
@@ -3541,7 +3578,14 @@ function HousePlate({
             >
               {offer.terms}
             </Button>
-            <Button onClick={() => onDecline(offer)}>Decline</Button>
+            <Button
+              onClick={() => {
+                onDecline(offer);
+                setParted(true);
+              }}
+            >
+              Decline
+            </Button>
           </div>
         </div>
       )}
@@ -3568,12 +3612,15 @@ function PathDonePlate({
   ascent,
   path,
   vow,
+  refused,
   onBack,
 }: {
   ascent: AscentRecord;
   path: TreePath;
   /** How a vow taken at this rung's House was judged, if one was taken. */
   vow?: { kept: boolean; figure: string; grantsLabel: string; terms: string };
+  /** A guest refused on this rung — named here as the vow's verdict is. */
+  refused?: { figure: string };
   onBack: () => void;
 }) {
   const arrived = regionOfSefirah(standingAt(ascent));
@@ -3604,6 +3651,17 @@ function PathDonePlate({
           {vow.kept
             ? `You said you would ${vow.terms.toLowerCase()}, and you did. ${vow.figure} keeps the bargain: ${vow.grantsLabel.toLowerCase()}.`
             : `You said you would ${vow.terms.toLowerCase()}, and you did not. ${vow.figure} says nothing about it, and the blessing stays where it was.`}
+        </p>
+      )}
+      {/* **The refusal, named.** The other decision a rung can hold, and the
+          one the game used to forget entirely — an honest no left the same
+          record as a House never met. Saying it here, beside where a vow's
+          verdict lands, is what makes declining read as a choice rather than
+          a missed click — and "it cost you nothing" is the doctrine
+          (`ushpizinOffers.ts`) said to the player's face. */}
+      {refused && (
+        <p className={styles.plateQuestion}>
+          You declined what {refused.figure} offered. It is written, and it cost you nothing.
         </p>
       )}
       <div className={styles.plateActions}>
@@ -3919,6 +3977,20 @@ function SealedPlate({
           without a mouth got none — the Houses were met and then could not be
           called on. Saying they stood for him directly contradicts the plea
           three lines above it. */}
+      {/* **The guests remembered.** The ledger read back in one voice —
+          `guestsRemembered` in story.ts, shared with the Book so the two
+          surfaces cannot drift. A refusal stands beside an acceptance as a
+          decision of equal standing, which is the whole point of the
+          ledger existing. */}
+      {(ascent.bargains ?? []).length > 0 && (
+        <div>
+          {guestsRemembered(ascent.bargains).map((line) => (
+            <p key={line} className={styles.plateDerivation}>
+              {line}
+            </p>
+          ))}
+        </div>
+      )}
       <p className={styles.plateDerivation}>
         {ascent.or} light carried · {witnesses.length} of {WITNESSES_POSSIBLE} Houses{" "}
         {plea.kind === "mute" ? "met on the way" : "stood for you"} · seeded by {ascent.seedLabel}.

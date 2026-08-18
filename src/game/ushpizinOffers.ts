@@ -21,7 +21,12 @@ import type { Grace, Verb } from "./abilities";
  * - a **vow** taken now and judged at the region's exit.
  *
  * A declined offer costs nothing. A broken vow costs nothing but the boon —
- * this game charges nothing for refusing a guest.
+ * this game charges nothing for refusing a guest. **That doctrine survives
+ * the partings below unchanged**: a refusal is now *remembered*
+ * (`AscentRecord.bargains`) and *answered* — the guest gives an authored
+ * parting line in their own middah — but it grants nothing, waives nothing,
+ * and prices nothing. Honoring a refusal with payment would make No a second
+ * Yes; honoring it with memory and a word keeps it a real choice.
  */
 
 export type VowKind =
@@ -49,9 +54,30 @@ export interface UshpizinOffer {
   grants: Grace;
   /** Named on the plate so the Scribe knows what they are being given. */
   grantsLabel: string;
+  /**
+   * What the guest says to a Scribe who declines — in that figure's middah,
+   * because a refusal met in character is the proof the offer was a person
+   * and not a vending machine. Isaac, who is restraint, honors the honest no
+   * outright: a vow taken and broken would have cost more than a vow never
+   * given.
+   */
+  parting: string;
 }
 
-const OFFERS: Record<string, Omit<UshpizinOffer, "figure" | "middah">> = {
+/** The seven Sefirot that seat a guest — Keter, Chochmah and Binah do not. */
+export type GuestSefirah =
+  | "chesed"
+  | "gevurah"
+  | "tiferet"
+  | "netzach"
+  | "hod"
+  | "yesod"
+  | "malchut";
+
+// Exhaustive over the seven by type — the TILE_NAMES lesson. It was
+// Record<string, …>, the silent-default shape, which would have let a typo'd
+// key ship a guest nobody could ever meet.
+const OFFERS: Record<GuestSefirah, Omit<UshpizinOffer, "figure" | "middah">> = {
   chesed: {
     sefirah: "chesed",
     saying:
@@ -60,6 +86,8 @@ const OFFERS: Record<string, Omit<UshpizinOffer, "figure" | "middah">> = {
     price: 0,
     grants: "swift-water",
     grantsLabel: "The Fish — the deep becomes your element",
+    parting:
+      "Then go with what you have, and go blessed. The tent stays open on the way back, and the way back is also a way.",
   },
   gevurah: {
     sefirah: "gevurah",
@@ -70,6 +98,8 @@ const OFFERS: Record<string, Omit<UshpizinOffer, "figure" | "middah">> = {
     vow: "gather-nothing",
     grants: "high-jump",
     grantsLabel: "The Staff — you rise higher from every leap",
+    parting:
+      "Good. A vow you could not keep would have cost us both more than this. Restraint that knows itself is the whole lesson — go up.",
   },
   tiferet: {
     sefirah: "tiferet",
@@ -80,6 +110,8 @@ const OFFERS: Record<string, Omit<UshpizinOffer, "figure" | "middah">> = {
     vow: "unveiled",
     grants: "return",
     grantsLabel: "The Beginning — veiled on a branch, you wake at the fork",
+    parting:
+      "Then you will not wrestle tonight. It is honest to say so, and honesty is most of what I was fighting for.",
   },
   netzach: {
     sefirah: "netzach",
@@ -90,6 +122,8 @@ const OFFERS: Record<string, Omit<UshpizinOffer, "figure" | "middah">> = {
     vow: "no-mark",
     grants: "farsight",
     grantsLabel: "The Window — the view widens before you",
+    parting:
+      "Then carry your own marks. It is a long way under any word, and no is a word too — hold it the whole road.",
   },
   hod: {
     sefirah: "hod",
@@ -99,6 +133,8 @@ const OFFERS: Record<string, Omit<UshpizinOffer, "figure" | "middah">> = {
     price: 10,
     grants: "draw-motes",
     grantsLabel: "The Angler — light comes to you of its own accord",
+    parting:
+      "Keep your light, and spend it where you must. A gift refused kindly leaves both of our hands full.",
   },
   yesod: {
     sefirah: "yesod",
@@ -108,6 +144,8 @@ const OFFERS: Record<string, Omit<UshpizinOffer, "figure" | "middah">> = {
     price: 6,
     grants: "slow-fall",
     grantsLabel: "The Support — you descend as though upheld",
+    parting:
+      "Then store your own grain. I kept mine for years before anyone was fed from it — a foundation knows how to wait.",
   },
   malchut: {
     sefirah: "malchut",
@@ -117,6 +155,8 @@ const OFFERS: Record<string, Omit<UshpizinOffer, "figure" | "middah">> = {
     price: 0,
     grants: "light",
     grantsLabel: "The Spark — your lamp reaches further",
+    parting:
+      "A king hears no gladly from a free man. Sing something on the stairs anyway, whether or not it is mine.",
   },
 };
 
@@ -165,9 +205,12 @@ export function dormantFor(offer: UshpizinOffer, verbs: readonly Verb[]): Verb |
 
 /** The guest standing in a region, if that Sefirah keeps one. */
 export function offerFor(sefirah: SefirahId): UshpizinOffer | undefined {
-  const base = OFFERS[sefirah];
+  // The narrowing is the exhaustiveness: above the Abyss there is no guest,
+  // and the table's type now says so instead of a lookup quietly missing.
+  if (!(sefirah in OFFERS)) return undefined;
+  const base = OFFERS[sefirah as GuestSefirah];
   const guest = ushpizinBySefirah[sefirah];
-  if (!base || !guest) return undefined;
+  if (!guest) return undefined;
   return { ...base, figure: guest.figure, middah: guest.middah };
 }
 

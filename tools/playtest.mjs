@@ -711,6 +711,42 @@ const SCRIPTS = [
     },
   },
   {
+    name: "house-declined",
+    about: "The same guest refused — the parting answered in their middah, and the refusal written.",
+    /**
+     * The other half of the House bargain, which for the game's whole life
+     * was a bare close: nothing recorded, nothing said, an honest no
+     * indistinguishable from a House never met. P15-2's claim has three
+     * parts and this run proves all of them in one pass — Decline writes
+     * `declined` to the ledger at the moment of choice, the guest answers
+     * with their authored parting (photographed, since it is a view no other
+     * script can reach), and nothing is granted for it.
+     */
+    warp: { rung: 2, letters: "all", lamps: 3, seed: 3 },
+    until: (p) => p.bargains.some((b) => b.outcome === "declined") || p.finished,
+    seconds: 180,
+    driver: { seekHouse: true },
+    onPlate: async (page, plate) => {
+      if (plate !== "house") return false;
+      const decline = page.locator('[role="dialog"] button', { hasText: "Decline" });
+      if (await decline.count()) {
+        await decline.first().click();
+        await page.waitForTimeout(400);
+        // The parting view — the one picture of a guest answering a refusal.
+        await page.screenshot({ path: join(outDir, "house-declined-parting.png") });
+        return true;
+      }
+      return false;
+    },
+    check: (p) => {
+      const declined = p.bargains.find((b) => b.outcome === "declined");
+      if (!declined) throw new Error("Decline was pressed and the ledger never says declined");
+      if (p.bargains.some((b) => b.outcome === "accepted" || b.outcome === "kept")) {
+        throw new Error("a refusal granted something — the ledger holds an acceptance too");
+      }
+    },
+  },
+  {
     name: "crown-presented",
     about: "The other ending — a crown nothing is holding, and a Tree still mostly dark.",
     /**

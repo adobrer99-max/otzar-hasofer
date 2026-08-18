@@ -5,6 +5,7 @@ import { SCROLL_LETTER } from "./scroll";
 import {
   endingOf,
   ABYSS_WORD,
+  guestsRemembered,
   pleaFor,
   PROLOGUE,
   PROLOGUE_PAGES,
@@ -187,5 +188,32 @@ describe("the ending a record keeps", () => {
     const cards = Object.values(dorotCardsById).filter((c) => c.houseId === house.id);
     const { witnessSefirot } = endingOf(["peh"], cards.map((c) => c.id));
     expect(witnessSefirot).toEqual(["malchut"]);
+  });
+});
+
+describe("the guests remembered at the seal", () => {
+  it("reads all four outcomes in four registers, naming the guest", () => {
+    const lines = guestsRemembered([
+      { sefirah: "chesed", outcome: "accepted" },
+      { sefirah: "gevurah", outcome: "declined" },
+      { sefirah: "tiferet", outcome: "kept" },
+      { sefirah: "netzach", outcome: "broken" },
+    ]);
+    expect(lines).toHaveLength(4);
+    expect(lines[0]).toContain("Abraham");
+    expect(lines[1]).toContain("refused");
+    expect(lines[2]).toContain("kept");
+    expect(lines[3]).toContain("broken");
+    // Four registers, not one sentence with a word swapped.
+    expect(new Set(lines).size).toBe(4);
+    // The doctrine: no line prices a refusal or penalizes a broken word.
+    for (const line of lines) {
+      expect(line).not.toMatch(/cost|price|penalt/i);
+    }
+  });
+
+  it("reads an empty or absent ledger as silence, not as an error", () => {
+    expect(guestsRemembered(undefined)).toEqual([]);
+    expect(guestsRemembered([])).toEqual([]);
   });
 });

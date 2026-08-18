@@ -1,4 +1,6 @@
 import { dorotCardsById, dorotHousesById } from "../data/dorot";
+import { ushpizinBySefirah } from "../data/ushpizin";
+import type { Bargain } from "../storage/ascentRepo";
 import type { SefirahId } from "../types/letter";
 
 /**
@@ -311,4 +313,32 @@ export function pleaFor(opts: { hasMouth: boolean; witnesses: readonly Witness[]
       `That is ${witnesses.length} of the ${WITNESSES_POSSIBLE} Houses. The rest of the charge is still lying on the rungs you passed, in the mouths of the figures you did not stop for.`,
     ],
   };
+}
+
+/**
+ * **The guests remembered at the seal — the bargains ledger read back in one
+ * voice.** One line per bargain struck or refused on the climb, in the order
+ * they happened, for the seal plate and the Book to share (the two must say
+ * the same things, so this is the one place the words live).
+ *
+ * The four outcomes get four registers, and the doctrine holds in each: a
+ * refusal is honored by memory, never priced — "and was answered kindly" is
+ * the parting recalled, not a debt. A broken word is stated without a
+ * penalty clause, because there is none: the guest said nothing about it,
+ * and the record saying so *is* the whole consequence.
+ */
+export function guestsRemembered(bargains: readonly Bargain[] | undefined): string[] {
+  return (bargains ?? []).map((b) => {
+    const figure = ushpizinBySefirah[b.sefirah]?.figure ?? b.sefirah;
+    switch (b.outcome) {
+      case "accepted":
+        return `${figure}'s offer was taken.`;
+      case "declined":
+        return `${figure} was refused, and answered kindly.`;
+      case "kept":
+        return `The word given to ${figure} was kept.`;
+      case "broken":
+        return `The word given to ${figure} was broken, and ${figure} said nothing about it.`;
+    }
+  });
 }

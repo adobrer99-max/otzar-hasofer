@@ -298,3 +298,22 @@ describe("the bargain remembered", () => {
     expect(judgeBargain(list, "yesod", false)).toEqual(list);
   });
 });
+
+describe("the guest honored in refusal", () => {
+  /**
+   * Seven partings, each in its guest's own middah, and the doctrine intact:
+   * a refusal is remembered and answered, never priced. The parting is text
+   * on the offer — no grant, no waiver, no number — so the only thing to
+   * hold here is that every guest has real words for a Scribe who says no,
+   * and that no two guests share them.
+   */
+  it("gives every guest a parting in their own voice", () => {
+    const partings = SEFIROT_WITH_GUESTS.map((s) => offerFor(s)!.parting);
+    expect(partings).toHaveLength(7);
+    for (const [i, parting] of partings.entries()) {
+      expect(parting.length, `${SEFIROT_WITH_GUESTS[i]}'s guest has no real parting`)
+        .toBeGreaterThan(60);
+    }
+    expect(new Set(partings).size, "two guests share a parting").toBe(7);
+  });
+});
