@@ -1194,6 +1194,14 @@ const SCRIPTS = [
           // the shelf must show the Bridge mastered and stay silent on the
           // Edge (P15-4's beat three).
           verbUses: { dash: 52, cut: 3 },
+          // The Leaf's rules on the page (P15-5): a ledger with a refusal in
+          // it, a hidden thing by name, and the last rung's lamps.
+          bargains: [
+            { sefirah: "chesed", outcome: "kept" },
+            { sefirah: "gevurah", outcome: "declined" },
+          ],
+          relicsFound: ["shamir"],
+          lampsAtSeal: 2,
           wordsFormed: [{
             letterIds: ["nun", "kaf", "lamed"], hebrew: "נכל", transliteration: "nêkel",
             gloss: "deceit", wasTarget: true, regionIndex: 6,
@@ -1255,6 +1263,11 @@ const SCRIPTS = [
         // is past MASTERY_AT, so the Bridge's mastered line is unlocked.
         "The letters practiced",
         "Distance folds for you",
+        // **The Leaf on the page** (P15-5): the ledger in guestsRemembered's
+        // voice, the hidden thing by name, the last rung's lamps.
+        "was refused, and answered kindly",
+        "Brought out of hiding: The Shamir",
+        "Out of the last rung with 2 lamps still burning",
         // What a Scribe has *become*, which is the only thing here that can
         // still be added to: the lit climb broke all ten, and the crown climb
         // broke all ten again, so those are at tier two.

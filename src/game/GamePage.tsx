@@ -3963,23 +3963,63 @@ function SealedPlate({
         </>
       )}
 
-      {(ascent.sefirotLit ?? []).length > 0 && (
-        <p className={styles.plateDerivation}>
-          Sefirot kindled: {(ascent.sefirotLit ?? []).map((id) => regions.find((r) => r.sefirah === id)?.name).filter(Boolean).join(" · ")}
-        </p>
-      )}
-
-      {/* **The falls, named.** A climb that went out four times and lit the Tree
-          anyway is a different climb from one that never went out, and until the
-          fall stopped ending a climb there was no such thing as the first kind.
-          Counted rather than dwelt on: one line, and no scolding. */}
-      {(ascent.falls ?? 0) > 0 && (
-        <p className={styles.plateDerivation}>
-          {ascent.falls === 1
-            ? "Your light went out once on the way, and you got up."
-            : `Your light went out ${ascent.falls} times on the way, and you got up every time.`}
-        </p>
-      )}
+      <DecoratedRule />
+      {/* **The rules of the Leaf** — the climb's facts gathered into one
+          ruled block, a ritual document rather than a scatter of paragraphs.
+          Every row degrades by absence: a record from before a field existed
+          simply has fewer rules, never a placeholder. The falls keep their
+          old voice — counted rather than dwelt on, one line, no scolding —
+          and the lamps are `lampsAtSeal`'s honest claim: how the *last*
+          stretch of ground was crossed, since sealing happens on the Tree
+          where no lamp burns. */}
+      <dl className={styles.leaf}>
+        <div>
+          <dt>Sealed standing on</dt>
+          <dd>{regionOfSefirah(standingAt(ascent)).name}</dd>
+        </div>
+        {(ascent.sefirotLit ?? []).length > 0 && (
+          <div>
+            <dt>Sefirot kindled</dt>
+            <dd>
+              {(ascent.sefirotLit ?? [])
+                .map((id) => regions.find((r) => r.sefirah === id)?.name)
+                .filter(Boolean)
+                .join(" · ")}
+            </dd>
+          </div>
+        )}
+        {(ascent.falls ?? 0) > 0 && (
+          <div>
+            <dt>The light went out</dt>
+            <dd>
+              {ascent.falls === 1
+                ? "once on the way, and you got up."
+                : `${ascent.falls} times on the way, and you got up every time.`}
+            </dd>
+          </div>
+        )}
+        {ascent.lampsAtSeal !== undefined && (
+          <div>
+            <dt>Out of the last rung</dt>
+            <dd>
+              {ascent.lampsAtSeal === 0
+                ? "with no lamp still burning"
+                : `with ${ascent.lampsAtSeal} ${ascent.lampsAtSeal === 1 ? "lamp" : "lamps"} still burning`}
+            </dd>
+          </div>
+        )}
+        {(ascent.relicsFound ?? []).length > 0 && (
+          <div>
+            <dt>Brought out of hiding</dt>
+            <dd>
+              {(ascent.relicsFound ?? [])
+                .map((id) => relicById[id]?.name)
+                .filter(Boolean)
+                .join(" · ")}
+            </dd>
+          </div>
+        )}
+      </dl>
 
       {encounter && (
         <>

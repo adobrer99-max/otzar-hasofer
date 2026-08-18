@@ -1,7 +1,7 @@
 import { dorotCardsById, dorotHousesById } from "../data/dorot";
 import type { Verb } from "./abilities";
 import { festivalsById } from "../data/festivals";
-import { timesFreed, type AscentRecord, type FormedWord } from "../storage/ascentRepo";
+import { timesFreed, type AscentRecord, type Bargain, type FormedWord } from "../storage/ascentRepo";
 import type { SefirahId } from "../types/letter";
 import { relicById, type Relic } from "./relics";
 import { sealKindOf, type SealKind } from "./sealing";
@@ -60,6 +60,18 @@ export interface BookPage {
   or: number;
   /** Which of the seven this climb was, if it was one of them. */
   encounterNumber?: number;
+  /**
+   * The bargains ledger, verbatim — the Book and the Leaf must say the same
+   * things, and both read it through `guestsRemembered`. Empty for records
+   * from before the ledger existed.
+   */
+  bargains: Bargain[];
+  /** The hidden things this climb brought out — names, via `relicById`. */
+  relicsFound: string[];
+  /** The chosen rule past the seven, when one was chosen. */
+  ruleNumber?: number;
+  /** Lamps still lit at the last way out — see `AscentRecord.lampsAtSeal`. */
+  lampsAtSeal?: number;
 }
 
 /**
@@ -99,6 +111,12 @@ export function pagesOf(ascents: readonly AscentRecord[]): BookPage[] {
         falls: a.falls ?? 0,
         or: a.or,
         encounterNumber: a.encounterNumber,
+        bargains: [...(a.bargains ?? [])],
+        relicsFound: (a.relicsFound ?? [])
+          .map((id) => relicById[id]?.name)
+          .filter((name): name is string => Boolean(name)),
+        ruleNumber: a.ruleNumber,
+        lampsAtSeal: a.lampsAtSeal,
       };
     })
     .sort((x, y) => y.sealedAt.localeCompare(x.sealedAt));

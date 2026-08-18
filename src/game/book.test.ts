@@ -428,3 +428,43 @@ describe("the Reliquary", () => {
     expect(relicsKept([climb({ sealedAt: "2026-01-01T00:00:00.000Z" })])).toEqual([]);
   });
 });
+
+describe("the Leaf's rules on the page", () => {
+  /**
+   * The Book and the seal plate must say the same things — both read the
+   * bargains through `guestsRemembered` and both degrade by absence, never by
+   * placeholder. A page from before a field existed simply says less.
+   */
+  it("carries the ledger, the hidden things by name, the rule and the lamps", () => {
+    const page = pagesOf([
+      climb({
+        sealedAt: "2026-01-02T00:00:00.000Z",
+        bargains: [
+          { sefirah: "chesed", outcome: "accepted" },
+          { sefirah: "gevurah", outcome: "declined" },
+        ],
+        relicsFound: ["shamir"],
+        ruleNumber: 3,
+        lampsAtSeal: 2,
+      }),
+    ])[0];
+    expect(page.bargains).toEqual([
+      { sefirah: "chesed", outcome: "accepted" },
+      { sefirah: "gevurah", outcome: "declined" },
+    ]);
+    // Names rather than ids — the page is for reading, and an id that names
+    // nothing is skipped, the relicsKept rule again.
+    expect(page.relicsFound).toEqual(["The Shamir"]);
+    expect(page.ruleNumber).toBe(3);
+    expect(page.lampsAtSeal).toBe(2);
+    expect(pagesOf([climb({ sealedAt: "2026-01-02T00:00:00.000Z", relicsFound: ["cut-thing"] })])[0].relicsFound).toEqual([]);
+  });
+
+  it("reads a record from before any of this existed as saying less, not as broken", () => {
+    const page = pagesOf([climb({ sealedAt: "2026-01-02T00:00:00.000Z" })])[0];
+    expect(page.bargains).toEqual([]);
+    expect(page.relicsFound).toEqual([]);
+    expect(page.ruleNumber).toBeUndefined();
+    expect(page.lampsAtSeal).toBeUndefined();
+  });
+});

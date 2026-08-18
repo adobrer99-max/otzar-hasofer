@@ -11,6 +11,7 @@ import { PLEA_NAMED } from "./story";
 import { pathById, pointOf, TREE_LINES, TREE_VIEW } from "./tree";
 import { CARDS_IN_ALL, housesMet, lexicon, marks, pagesOf, relicsKept, tally, versedIn, type BookPage } from "./book";
 import { LETTER_ECHOES, MASTERY_AT } from "./tutorial";
+import { guestsRemembered } from "./story";
 import { abilityForVerb, type Verb } from "./abilities";
 import { lettersById } from "../data/letters";
 import { RELICS } from "./relics";
@@ -302,9 +303,38 @@ function Page({ page }: { page: BookPage }) {
             Stood for you: {page.witnesses.map((s) => regionOfSefirah(s).name).join(" · ")}
           </p>
         )}
+        {/* **The Leaf's rules, on the page** — the same facts the seal plate
+            gathers, in the same voice: the bargains through guestsRemembered
+            (one function, two surfaces, no drift), the hidden things by
+            name, the chosen rule when one was chosen, the lamps of the last
+            rung. Every line degrades by absence — a page from before a field
+            existed simply says less. */}
+        {page.bargains.length > 0 && (
+          <p className={styles.pageWitnesses}>{guestsRemembered(page.bargains).join(" ")}</p>
+        )}
+        {page.relicsFound.length > 0 && (
+          <p className={styles.pageWitnesses}>
+            Brought out of hiding: {page.relicsFound.join(" · ")}
+          </p>
+        )}
+        {(page.ruleNumber !== undefined || page.lampsAtSeal !== undefined) && (
+          <p className={styles.pageWitnesses}>
+            {page.ruleNumber !== undefined && `Climbed under the ${nth(page.ruleNumber)} rule. `}
+            {page.lampsAtSeal !== undefined &&
+              (page.lampsAtSeal === 0
+                ? "Out of the last rung with no lamp still burning."
+                : `Out of the last rung with ${many(page.lampsAtSeal, "lamp")} still burning.`)}
+          </p>
+        )}
       </div>
     </li>
   );
+}
+
+/** "1st" through "7th", for the chosen rule past the seven. */
+function nth(n: number): string {
+  const names = ["", "first", "second", "third", "fourth", "fifth", "sixth", "seventh"];
+  return names[n] ?? `${n}th`;
 }
 
 /**

@@ -114,7 +114,10 @@ describe("the first real use, noticed and named", () => {
     for (let t = 0; t < 80; t += 1) step(world, NO_INPUT, ctx);
     step(world, press({ dash: true }), ctx);
     expect(world.verbUses.dash).toBe(2);
-    expect(world.message?.text).not.toBe(LETTER_ECHOES.dash.answered);
+    // Read through the type rather than the narrowing: the steps above can
+    // set a message again, which the flow analysis cannot see.
+    const after = world.message as { text: string } | undefined;
+    expect(after?.text).not.toBe(LETTER_ECHOES.dash.answered);
   });
 
   it("stays silent for a verb the record already knows", () => {

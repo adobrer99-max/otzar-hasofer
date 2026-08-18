@@ -1782,3 +1782,37 @@
   font-size: 0.78rem;
   color: var(--text-muted);
 }
+
+/* **The rules of the Leaf** — the sealed climb's facts as a ruled document:
+   small-caps terms in the margin column, hairline rules between rows, in the
+   plate's own ink. Tokens only, and only live ones (the dead-token episode):
+   the hairline is the idiom the whole folio rules with. On a narrow page the
+   two columns stack rather than squeeze. */
+.leaf {
+  display: grid;
+  margin: 0.5rem 0 0.25rem;
+  text-align: start;
+}
+.leaf > div {
+  display: grid;
+  grid-template-columns: minmax(9rem, 12rem) 1fr;
+  gap: 0.25rem 1rem;
+  padding: 0.45rem 0;
+  border-block-start: 1px solid var(--border-hairline);
+}
+.leaf > div:first-child {
+  border-block-start: none;
+}
+.leaf dt {
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.leaf dd {
+  margin: 0;
+}
+@media (max-width: 26rem) {
+  .leaf > div {
+    grid-template-columns: 1fr;
+  }
+}
