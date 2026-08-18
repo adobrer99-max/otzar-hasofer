@@ -319,6 +319,18 @@ describe("nothing hides for most of its life", () => {
      * is how both read as unconditional for the whole of the sitting they were
      * written in.
      */
+    /**
+     * **And Esau, whose run is the committed phase**: shut while it closes
+     * over open ground, open on arrival, on being risen above, and in the
+     * eighty-tick rest after every forty-tick burst. The postures that
+     * provoke it hardest are the two it can never win — beneath it and
+     * behind a set stone — where the counted burst is the whole difference
+     * between 0.64 open and the shut-for-life it first benched at.
+     */
+    expect(openness("esav", 900, "under"), "Esau no longer commits to the run")
+      .toBeLessThan(0.9);
+    expect(openness("esav", 900, "under"), "Esau never gives up — the burst has lost its count")
+      .toBeGreaterThan(0.4);
     expect(openness("calf", 1500, "struck"), "the Calf no longer commits to a run")
       .toBeLessThan(0.9);
     expect(openness("nefilim", 1500, "under"), "the Nefilim no longer commits to a fall")

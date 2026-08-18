@@ -1977,9 +1977,37 @@ function stepHusks(world: World, ctx: StepContext): void {
         husk.vy = Math.min(husk.vy + GRAVITY * DT, MAX_FALL);
         const above = husk.y - (p.y + p.h);
         const far = Math.abs(husk.x - husk.home.x) > TILE_SIZE * 9;
-        if (near < spec.notices && above < TILE_SIZE * 2 && !far) {
+        const chasing = near < spec.notices && above < TILE_SIZE * 2 && !far;
+        // **The run is the committed phase** (`opening: "spent"`): while it
+        // closes on you over open ground a word written at it counts for
+        // nothing — and the run is over the moment it has *run you down*
+        // (arrived at arm's length) or given up (you rose above it, or it
+        // strayed too far from its ground). Open on arrival is what keeps
+        // the pairing honest for a creature whose shut phase is spent
+        // closing: the dangerous stretch is short and ends where you are,
+        // and the moment it is on you it is answerable.
+        // **And the commitment is counted, like every other "spent" kind's.**
+        // Keyed to the condition alone it never ends for a quarry it can
+        // never arrive at — benched beneath it or behind a set stone it read
+        // shut for its whole life (open 0.00, unfair 1.00 against a band of
+        // 0.45), a pursuer made unanswerable by being unable to win. Forty
+        // ticks of sprint, then it gives up and rests eighty, open, whether
+        // or not it caught you — which is the creature exactly: no staying
+        // power, the birthright sold for what is in front of it.
+        if (husk.charging > 0 && (!chasing || near <= TILE_SIZE * 1.5)) {
+          husk.charging = 0;
+          husk.cooldown = 80;
+        }
+        if (husk.charging > 0) {
+          husk.charging -= 1;
+          if (husk.charging === 0) husk.cooldown = 80;
           husk.facing = (toward > 0 ? 1 : -1) as 1 | -1;
           husk.vx = husk.facing * spec.speed;
+        } else if (chasing && near > TILE_SIZE * 1.5 && husk.cooldown === 0) {
+          husk.charging = 40;
+        } else if (chasing) {
+          husk.facing = (toward > 0 ? 1 : -1) as 1 | -1;
+          husk.vx = husk.facing * spec.speed * 0.5;
         } else {
           husk.vx *= 0.9;
           pace(world, ctx, husk, spec.speed * 0.3, true);

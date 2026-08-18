@@ -194,7 +194,17 @@ describe("when a klipah is open to a mark", () => {
       .filter((s) => s.opening !== "always")
       .map((s) => s.kind)
       .sort();
-    expect(conditional).toEqual(["behemot", "calf", "izevel", "livyatan", "nefilim", "og", "reem", "saraf"]);
+    expect(conditional).toEqual([
+      "behemot",
+      "calf",
+      "esav",
+      "izevel",
+      "livyatan",
+      "nefilim",
+      "og",
+      "reem",
+      "saraf",
+    ]);
     // For the two great ones the condition is something a letter *arranges in
     // the world* rather than a permission a letter grants — Vav puts Leviathan
     // ashore, Bet stops Behemoth. That is the difference between a puzzle and a
@@ -233,7 +243,19 @@ describe("when a klipah is open to a mark", () => {
     // than a tell it lacked: what it drops falls seven tiles, which is already
     // eight tenths of a second of warning.
     expect(HUSKS.og.opening).toBe("spent");
-    // **Rahav was the seventh, built, measured, and refused** — and the
+    // **Esau is the seventh, and its commitment had to be counted.** *It
+    // runs you down over open ground, and gives up the moment you are above
+    // it* — so the run is the committed phase, shut while it closes, and it
+    // ends three ways, every one of them an opening: it arrives at arm's
+    // length (open on arrival is what keeps the pairing honest for a
+    // creature whose shut phase is spent closing), you rise above it, or
+    // forty ticks pass and it gives up and rests eighty — because keyed to
+    // the condition alone it never gave up on a quarry it could not reach,
+    // and benched beneath it or behind a set stone it read shut for its
+    // whole life. No staying power is the creature exactly. Worst posture
+    // 0.36 against the 0.45 band; breakIn 64.
+    expect(HUSKS.esav.opening).toBe("spent");
+    // **Rahav was the eighth attempted, built, measured, and refused** — and the
     // refusal is worth writing where the roster lives. A reel after the blow
     // that takes a shell (shut while the knockback carries it, in its line's
     // own words *leaving while it swells*) was tried in three shapes — a

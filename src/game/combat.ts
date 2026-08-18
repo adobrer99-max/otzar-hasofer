@@ -291,7 +291,7 @@ export const HUSKS: Record<HuskKind, HuskSpec> = {
     reading: "He sold what was higher for what was in front of him, and he has not learned to look up since.",
     role: "charger",
     shells: 4,
-    opening: "always",
+    opening: "spent",
     speed: 148,
     light: 5,
     size: { w: 20, h: 24 },
