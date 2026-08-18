@@ -194,17 +194,7 @@ describe("when a klipah is open to a mark", () => {
       .filter((s) => s.opening !== "always")
       .map((s) => s.kind)
       .sort();
-    expect(conditional).toEqual([
-      "behemot",
-      "calf",
-      "izevel",
-      "livyatan",
-      "nefilim",
-      "og",
-      "rahav",
-      "reem",
-      "saraf",
-    ]);
+    expect(conditional).toEqual(["behemot", "calf", "izevel", "livyatan", "nefilim", "og", "reem", "saraf"]);
     // For the two great ones the condition is something a letter *arranges in
     // the world* rather than a permission a letter grants — Vav puts Leviathan
     // ashore, Bet stops Behemoth. That is the difference between a puzzle and a
@@ -243,16 +233,25 @@ describe("when a klipah is open to a mark", () => {
     // than a tell it lacked: what it drops falls seven tiles, which is already
     // eight tenths of a second of warning.
     expect(HUSKS.og.opening).toBe("spent");
-    // **Rahav is the seventh, and the only one whose condition is not
-    // `"spent"`.** *Every shell you take off it makes it bigger* — so the blow
-    // that takes one knocks it back, and while it reels away swelling, a
-    // second word counts for nothing. Keyed to the blow that took a shell
-    // (`strikeHusk` sets the cooldown) rather than to the stagger, because a
-    // refused blow staggers too and a reel refired from its own refusals
-    // would be a creature made unhittable by hitting it. Its shut phase is
-    // spent moving away, so the pairing rule holds by construction: bench
-    // unfair 0.04 at its worst posture, against a band of 0.45.
-    expect(HUSKS.rahav.opening).toBe("reeling");
+    // **Rahav was the seventh, built, measured, and refused** — and the
+    // refusal is worth writing where the roster lives. A reel after the blow
+    // that takes a shell (shut while the knockback carries it, in its line's
+    // own words *leaving while it swells*) was tried in three shapes — a
+    // sprint away, a drift, a bounded recoil — at 18, 24 and 36 ticks, with
+    // and without the reel being harmless. Every shape failed the tour, and
+    // the failure was the instrument's, not the creature's: the fighting
+    // probe holds its mark while the nearest thing is closed, and against a
+    // closed *pursuer that stays* it disengages inside the first mark
+    // cooldown — identically at any reel length — leaving the kill
+    // unfinished and its whole trajectory phase-shifted off the committed
+    // seeds' knife edge (seed 3's only passable path out of Binah flipped
+    // from finished-at-2572-ticks to out-at-921, with the rahav itself never
+    // struck again). A reel at or under the mark's own 15-tick cooldown is
+    // pure decoration, for probe and player alike. So the condition is
+    // refused until the probe learns to finish an exchange it has started —
+    // that debt is the finding, and it is named here so the next attempt
+    // starts from it rather than from the roster.
+    expect(HUSKS.rahav.opening).toBe("always");
   });
 });
 
