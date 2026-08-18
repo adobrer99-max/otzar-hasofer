@@ -46,6 +46,7 @@ import { GameCanvas, type HudSample } from "./GameCanvas";
 import { SceneCanvas } from "./SceneCanvas";
 import { PLACE_SCENES, PROLOGUE_SCENES } from "./render/scenes";
 import { regionAt, regionOfSefirah, regions, TOTAL_REGIONS } from "./regions";
+import { rungRule } from "./rungRules";
 import {
   beyondTheSeven,
   encounterFor,
@@ -3024,6 +3025,17 @@ function FirstSightPlate({ sefirah, onGoOn }: { sefirah: SefirahId; onGoOn: () =
       </p>
       <p className={styles.plateDerivation}>{place.middah}</p>
       <p className={styles.plateUse}>{place.teaching}</p>
+      {/* **The rung asks on arrival** — the question its middah poses, and
+          the one thing here that expects something back. Echoed at the way
+          out (`PathDonePlate`), so a rung opens by asking and closes where
+          the answer either happened or did not. */}
+      <p className={styles.plateQuestion}>{place.question}</p>
+      {/* A rung with its own law says so on arrival — the RUNG_RULES seam,
+          null for every Sefirah until its P15-R slice lands, so today this
+          renders nothing anywhere and the seam is what ships. */}
+      {rungRule(sefirah)?.says && (
+        <p className={styles.plateUse}>{rungRule(sefirah)?.says}</p>
+      )}
       <Button variant="primary" onClick={onGoOn} autoFocus>
         Go on
       </Button>
@@ -3664,6 +3676,11 @@ function PathDonePlate({
           You declined what {refused.figure} offered. It is written, and it cost you nothing.
         </p>
       )}
+      {/* **The question, echoed.** Asked at first sight of this place; said
+          again at the way out, where the answer either happened or did not.
+          Deliberately unanswered by the game — the ledger above (vow,
+          refusal, letter) is the material the Scribe answers it with. */}
+      <p className={styles.plateDerivation}>{arrived.question}</p>
       <div className={styles.plateActions}>
         <Button variant="primary" onClick={onBack} autoFocus>
           Stand on the Tree

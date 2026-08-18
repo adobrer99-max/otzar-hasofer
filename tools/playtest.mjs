@@ -380,16 +380,32 @@ const SCRIPTS = [
       // The prologue, page by page, to its charge — and the map must stay down
       // until it is done. Pressing Enter is how a person turns it.
       let pages = 0;
+      /**
+       * **The kingdom's question, asked at Begin** (P15-3). Malchut's
+       * first-sight rises after the prologue's last page and its plate now
+       * carries the rung's question — asserted here because this is the one
+       * deterministic road to a first-sight plate: every path-done walker
+       * fights on wall-clock beats and can die, but Begin always arrives at
+       * the kingdom. Verbatim rather than imported (this file cannot read
+       * TS); the unit test guards the table, this guards the words reaching
+       * the plate.
+       */
+      let asked = false;
       for (; pages < 12; pages += 1) {
         const go = page.getByRole("button", { name: /^Go on$|^Begin the ascent$/ });
         if (!(await go.count())) break;
         if (await page.locator("[class*=wayButton]").count()) {
           throw new Error("the Tree rose while the prologue was still being told");
         }
+        const text = await page.locator('[role="dialog"]').innerText().catch(() => "");
+        if (text.includes("Will you receive what is already given, before you climb past it?")) {
+          asked = true;
+        }
         await page.keyboard.press("Enter");
         await page.waitForTimeout(250);
       }
       if (pages < 2) throw new Error(`the prologue played ${pages} pages`);
+      if (!asked) throw new Error("the kingdom was seen at Begin and never asked its question");
       await page.waitForTimeout(600);
       // And what is left is the Tree, teaching itself.
       const lesson = await page.locator("[class*=overlayLesson]").textContent().catch(() => "");
@@ -803,6 +819,19 @@ const SCRIPTS = [
     // feet is a question about wiring.
     warp: {},
     enter: async (page) => {
+      /**
+       * **The day is pinned, because this script has none of the warp's
+       * anchors.** Every other script fixes its ground with `seed=`; this one
+       * exists to prove the road that starts at the threshold, so its seed is
+       * the real date's — and the date changed under it: it shipped green in
+       * one day's sweep and went out twice in a row on the next day's ground,
+       * a bare-handed walk on whatever the calendar dealt. The `midnight`
+       * script's clock precedent makes it deterministic forever: install the
+       * clock, reload so nothing keeps the wall time, then begin.
+       */
+      await page.clock.install({ time: new Date("2026-08-17T12:00:00") });
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(700);
       await page.getByRole("button", { name: /^Begin/ }).first().click();
       await page.waitForTimeout(400);
       await pastThePrologue(page);
@@ -812,7 +841,22 @@ const SCRIPTS = [
       await page.getByRole("button", { name: /Yesod/ }).first().click();
     },
     until: (p) => p.plate === "path-done",
-    seconds: 150,
+    // 360, raised from 150 with the day pinned: a bare-handed walk is the
+    // slowest thing this harness does, its fight runs on wall-clock beats so
+    // completion varies run to run, and the old budget passed near the wire
+    // on the day it was drawn — measured here finishing at ~220s on one run
+    // and missing 240 on the next.
+    seconds: 360,
+    /**
+     * **No check, and the absence is documented rather than silent.** This
+     * driver fights on wall-clock beats holding nothing, and measured on the
+     * pinned day it completes some runs (~220s) and dies on others — a check
+     * on completion would make the script flaky, and a check that tolerates
+     * death proves nothing. The P15-3 question pairing is asserted on
+     * `kindled` instead, whose strong-handed walk completes reliably. The
+     * standing debt is the driver's bare-handed survivability, the same
+     * class as the fighting probe's disengage fault (P14g-4).
+     */
   },
   {
     name: "kindled",
@@ -2785,7 +2829,12 @@ async function play(script, browser) {
    * ends cleanly on a timeout and reports a tidy percentage, which is how a
    * driver that never reached anything reads as a pass.
    */
-  if (script.check) script.check(last ?? {}, watching);
+  // The report rides along as the third argument: a check may need to read
+  // what was *recorded* — plate texts above all — because two plates can rise
+  // back to back with no walking iteration between them, and the watch hook
+  // never runs while a plate is up. Found by the path script asserting a
+  // question both plates visibly carried.
+  if (script.check) script.check(last ?? {}, watching, report);
 
   await context.close();
   const video = page.video();

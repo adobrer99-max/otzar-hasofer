@@ -182,6 +182,18 @@ export interface Region {
    */
   fragmentsFrom?: number;
   teaching: string;
+  /**
+   * **The rung's question — its middah made interrogative**, asked at first
+   * sight of the place and echoed at the way out, so a rung opens by asking
+   * and closes where the answer either happened or did not. The design rule,
+   * stated here because the table must keep it: *a rung's question must be
+   * answerable by machinery the rung already has* — Gevurah's by the
+   * gather-nothing vow, Netzach's by no-mark, Hod's by the paid naming — so
+   * the question is never atmosphere over ground that cannot hear it. On the
+   * Tree the surfaced question is the **destination's** (`regionOfPath`
+   * carries the upper end's), because a path's question is where it is going.
+   */
+  question: string;
 }
 
 export const regions: Region[] = [
@@ -207,6 +219,8 @@ export const regions: Region[] = [
     hasShrine: false,
     teaching:
       "The kingdom — the world exactly as it is. Nothing is climbed that was not first stood upon. The breath is given here, at the bottom, because nothing rises without it.",
+    question:
+      "Will you receive what is already given, before you climb past it?",
   },
   {
     index: 2,
@@ -224,6 +238,8 @@ export const regions: Region[] = [
     hasShrine: true,
     teaching:
       "The foundation — the narrow channel everything above must pass through to reach the world. Here you learn to hold a wall instead of resenting it.",
+    question:
+      "What will you hold to, when the wall is all there is to hold?",
   },
   {
     index: 3,
@@ -240,6 +256,8 @@ export const regions: Region[] = [
     hasShrine: true,
     teaching:
       "Splendour — the yielding that makes room, and the thanksgiving that names what was given. What cannot be walked is crossed in one motion.",
+    question:
+      "What will you name as given, before you reach for the next?",
   },
   {
     index: 4,
@@ -256,6 +274,8 @@ export const regions: Region[] = [
     hasShrine: true,
     teaching:
       "Endurance — not the strength of the moment but the strength that outlasts it. The long way up is taken by whoever will make themselves small enough for it.",
+    question:
+      "What will you carry the whole way, without setting it down?",
   },
   {
     index: 5,
@@ -272,6 +292,8 @@ export const regions: Region[] = [
     hasShrine: true,
     teaching:
       "Beauty — the balance held between kindness and restraint, which is why it stands at the heart. Its letter is the hook: the one that joins, and holds.",
+    question:
+      "What will you hold in balance, when kindness and restraint both pull?",
   },
   {
     index: 6,
@@ -292,6 +314,8 @@ export const regions: Region[] = [
     hasShrine: true,
     teaching:
       "Restraint — the boundary that holds, and the discernment to know where it belongs. What is given here clears a way and burns one; neither conquers.",
+    question:
+      "What will you leave untaken, though it stands within reach?",
   },
   {
     index: 7,
@@ -308,6 +332,8 @@ export const regions: Region[] = [
     hasShrine: true,
     teaching:
       "Loving-kindness — the open tent and the open hand, given without condition. The deep that refused you becomes the way through.",
+    question:
+      "What will you give away, here where everything was given to you?",
   },
   {
     index: 8,
@@ -324,6 +350,8 @@ export const regions: Region[] = [
     hasShrine: false,
     teaching:
       "Understanding — the womb of forms, where a flash of insight is worked into something that can be held and said. Here the hidden light is simply seen.",
+    question:
+      "What will you work the flash into, so it can be held and said?",
   },
   {
     index: 9,
@@ -360,6 +388,8 @@ export const regions: Region[] = [
     hasShrine: false,
     teaching:
       "Wisdom — the first point, the flash before the form. Nothing here can be taken; it can only be received, and it is found by going low.",
+    question:
+      "What can you receive that cannot be taken?",
   },
   {
     index: 10,
@@ -376,6 +406,8 @@ export const regions: Region[] = [
     hasShrine: false,
     teaching:
       "The crown — will before thought, the silent Aleph beneath all speech. The last letter given is the smallest: the point from which every other letter is written.",
+    question:
+      "What is left of you to present, when everything carried has been spent?",
   },
 ];
 

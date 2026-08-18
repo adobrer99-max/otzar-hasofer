@@ -1664,6 +1664,11 @@ export function regionOfPath(
     // never a taller one than the Scribe has letters to climb.
     index: Math.min(upper.index, earned.index),
     name: `${lower.name} → ${upper.name}`,
+    // **The question is the destination's** — spread after `...lower` so the
+    // blend cannot average it away, and for `index`'s own reason: a path's
+    // question is where it is going. Asked at first sight of that place,
+    // echoed at the way out.
+    question: upper.question,
     letters: [path.letter],
     // **The whole band, or none of it.** Capping only the ceiling left the
     // *bias* untouched, so a Scribe held back to Malchut's ground still got a
