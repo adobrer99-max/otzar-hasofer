@@ -47,6 +47,7 @@ import { SceneCanvas } from "./SceneCanvas";
 import { PLACE_SCENES, PROLOGUE_SCENES } from "./render/scenes";
 import { regionAt, regionOfSefirah, regions, TOTAL_REGIONS } from "./regions";
 import { rungRule } from "./rungRules";
+import { LETTER_ECHOES } from "./tutorial";
 import {
   beyondTheSeven,
   encounterFor,
@@ -1812,6 +1813,7 @@ export function GamePage() {
             world={world}
             verbs={verbs}
             graces={graces}
+            practiced={Object.keys(ascent.verbUses ?? {}) as Verb[]}
             markGlyph={lettersById[ascent.ascendantLetterId ?? "aleph"]?.glyph ?? "א"}
             items={ascent.items ?? []}
             boons={boons}
@@ -3096,6 +3098,16 @@ function LetterPlate({ letterId, onClose }: { letterId: string; onClose: () => v
         {ability.hebrew}
       </p>
       <p className={styles.plateUse}>{ability.use}</p>
+      {/* **Beat one: safe discovery** — the found-invitation, for the twelve
+          verbs. The alcove's ground is structurally safe (layout filters by
+          verbs held on entering, so no screen on this rung can require what
+          was just found), and for the body verbs the line says try it *here*;
+          for the object verbs it points at what will answer. Grace letters
+          keep their plate as it was — their beats are a named debt in
+          LETTER_ECHOES' doc. */}
+      {ability.verb && LETTER_ECHOES[ability.verb] && (
+        <p className={styles.plateQuestion}>{LETTER_ECHOES[ability.verb].found}</p>
+      )}
       {/* The key, named at the one moment it can be learned. Without this the
           plate says what the power is and never how to use it. */}
       <p className={styles.platePress}>

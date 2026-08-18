@@ -93,6 +93,8 @@ export interface GameCanvasProps {
   world: World;
   verbs: readonly Verb[];
   graces: readonly Grace[];
+  /** Verbs already used on this climb — see `StepContext.practiced`. */
+  practiced: readonly Verb[];
   /**
    * The letter the Scribe writes with — the month's ascendant one, so the mark
    * he throws is the mark Sacred Time put in his hand.
@@ -130,6 +132,7 @@ export function GameCanvas({
   world,
   verbs,
   graces,
+  practiced,
   boons,
   keeps,
   markGlyph,
@@ -180,7 +183,7 @@ export function GameCanvas({
   };
 
   const ctxRef = useRef<StepContext>({ verbs, graces });
-  ctxRef.current = { verbs, graces, items, boons, keeps, markGlyph, ...forward };
+  ctxRef.current = { verbs, graces, practiced, items, boons, keeps, markGlyph, ...forward };
 
   // --- input --------------------------------------------------------------
 

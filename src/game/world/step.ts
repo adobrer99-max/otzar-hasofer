@@ -1,4 +1,5 @@
 import type { Grace, Verb } from "../abilities";
+import { LETTER_ECHOES } from "../tutorial";
 import { setTile, tileAt } from "./build";
 import { CHUNK_H } from "./chunks";
 import { powersFrom, type Effect } from "../items";
@@ -103,6 +104,13 @@ export interface StepContext {
   verbs: readonly Verb[];
   graces: readonly Grace[];
   /**
+   * Verbs already used on this *climb* (the record's `verbUses` keys), so the
+   * first-use echo fires once per climb rather than once per rung — a world
+   * counts from zero every rung, and without this the letter would introduce
+   * itself again on every way in.
+   */
+  practiced?: readonly Verb[];
+  /**
    * The letter the Scribe writes with — the month's ascendant one, so the mark
    * he throws is the mark Sacred Time put in his hand. Defaults to Aleph.
    */
@@ -158,8 +166,16 @@ const has = (ctx: StepContext, verb: Verb) => ctx.verbs.includes(verb);
  * Returns true so it can ride a short-circuit chain without changing what
  * the chain means.
  */
-function spendVerb(world: World, verb: Verb): boolean {
-  world.verbUses[verb] = (world.verbUses[verb] ?? 0) + 1;
+function spendVerb(world: World, ctx: StepContext, verb: Verb): boolean {
+  const before = world.verbUses[verb] ?? 0;
+  world.verbUses[verb] = before + 1;
+  // **The first real use, noticed and named** — LETTER_ECHOES' answered beat,
+  // fired when the world first honors the verb on this climb: zero uses this
+  // rung and none on the record. Observed rather than manufactured; no draw,
+  // no ground, one say.
+  if (before === 0 && !ctx.practiced?.includes(verb)) {
+    say(world, LETTER_ECHOES[verb].answered);
+  }
   return true;
 }
 const grace = (ctx: StepContext, g: Grace) => ctx.graces.includes(g);
@@ -248,7 +264,7 @@ export function step(world: World, input: Input, ctx: StepContext): void {
   if (p.grappleCooldown > 0) p.grappleCooldown -= 1;
   const wasInWater = p.inWater;
   p.inWater = anyTile(world, p, isWater);
-  if (p.inWater && !wasInWater && has(ctx, "swim")) spendVerb(world, "swim");
+  if (p.inWater && !wasInWater && has(ctx, "swim")) spendVerb(world, ctx, "swim");
   const onVine = has(ctx, "climb") && anyTile(world, p, isClimbable);
   /**
    * **Down does one of two things, and which one is decided by the floor.**
@@ -271,7 +287,7 @@ export function step(world: World, input: Input, ctx: StepContext): void {
   if (p.inWater) {
     swimTick(p, input, ctx);
   } else if (onVine && (input.up || input.down || p.climbing)) {
-    if (!p.climbing) spendVerb(world, "climb");
+    if (!p.climbing) spendVerb(world, ctx, "climb");
     climbTick(p, input);
   } else {
     p.climbing = false;
@@ -334,7 +350,7 @@ function walkTick(world: World, p: Player, input: Input, ctx: StepContext): void
     const towardRight = input.right && wallBeside(world, ctx, p, 1);
     if (towardLeft) p.clinging = -1;
     if (towardRight) p.clinging = 1;
-    if (p.clinging !== 0 && wasClinging === 0) spendVerb(world, "wall-cling");
+    if (p.clinging !== 0 && wasClinging === 0) spendVerb(world, ctx, "wall-cling");
   }
 
   if (p.coyote > 0) p.coyote -= 1;
@@ -361,7 +377,7 @@ function walkTick(world: World, p: Player, input: Input, ctx: StepContext): void
       p.vy = -jumpSpeed * 0.92;
       p.airJump = false;
       p.jumpBuffer = 0;
-      spendVerb(world, "double-jump");
+      spendVerb(world, ctx, "double-jump");
     }
   }
 
@@ -449,7 +465,7 @@ function applyVerbs(world: World, input: Input, ctx: StepContext): void {
   if (input.dash && has(ctx, "dash") && p.dash === 0 && p.dashCooldown === 0 && !p.inWater) {
     p.dash = DASH_TICKS;
     p.dashCooldown = DASH_COOLDOWN_TICKS;
-    spendVerb(world, "dash");
+    spendVerb(world, ctx, "dash");
     return;
   }
 
@@ -460,7 +476,7 @@ function applyVerbs(world: World, input: Input, ctx: StepContext): void {
     const anchor = nearestAnchor(world, p);
     if (anchor) {
       p.grappleTo = anchor;
-      spendVerb(world, "grapple");
+      spendVerb(world, ctx, "grapple");
       say(world, "The hook holds.");
       return;
     }
@@ -472,19 +488,19 @@ function applyVerbs(world: World, input: Input, ctx: StepContext): void {
   const cleared =
     (has(ctx, "cut") &&
       clearAdjacent(world, p, Tile.Thorn, Tile.Empty, "The thorn parts.") &&
-      spendVerb(world, "cut")) ||
+      spendVerb(world, ctx, "cut")) ||
     (has(ctx, "flame") &&
       clearAdjacent(world, p, Tile.Growth, Tile.Empty, "The overgrowth burns back.") &&
-      spendVerb(world, "flame")) ||
+      spendVerb(world, ctx, "flame")) ||
     (has(ctx, "open") &&
       clearAdjacent(world, p, Tile.Door, Tile.Empty, "The door opens.") &&
-      spendVerb(world, "open"));
+      spendVerb(world, ctx, "open"));
   if (cleared) return;
 
   // The Eye — the hidden light was never absent, only unseen.
   if (has(ctx, "reveal") && !world.revealed) {
     world.revealed = true;
-    spendVerb(world, "reveal");
+    spendVerb(world, ctx, "reveal");
     say(world, "Or HaGanuz — the hidden stone stands revealed.");
     return;
   }
@@ -571,7 +587,7 @@ function toggleStone(world: World, ctx: StepContext): void {
   }
   world.placed.push({ x: tx, y: ty });
   setTile(world, tx, ty, Tile.Placed);
-  spendVerb(world, "block");
+  spendVerb(world, ctx, "block");
   say(world, "A stone stands where you set it.");
 }
 
@@ -1120,7 +1136,7 @@ function touchEntities(world: World, ctx: StepContext): void {
         if (!e.active && has(ctx, "mark")) {
           e.active = true;
           world.marksSet += 1;
-          spendVerb(world, "mark");
+          spendVerb(world, ctx, "mark");
           world.respawn = { x: e.x, y: e.y - 6 };
           say(world, "Your mark is set here.");
         } else if (!e.active) {

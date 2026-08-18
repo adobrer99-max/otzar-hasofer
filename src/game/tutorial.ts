@@ -1,3 +1,4 @@
+import type { Verb } from "./abilities";
 import type { ControlId } from "./controls";
 
 /**
@@ -356,3 +357,107 @@ export function writeSeen(places: readonly string[]): void {
     // No worse than being shown a place twice.
   }
 }
+
+/**
+ * **The three beats of a letter** — safe discovery, first real use, and
+ * mastery — LETTER_ECHOES, keyed by the letter's *verb* because the beats are
+ * verb events and the twelve-member union keeps the table exhaustive where
+ * `LetterId` (a plain string) could not.
+ *
+ * - `found` joins the letter's plate: for the body verbs an invitation to try
+ *   it here and now — the alcove's ground is structurally safe, since
+ *   `layout` filters by the verbs held *on entering* and so no screen on this
+ *   rung can require what was just found — and for the object verbs (a door,
+ *   a thorn, the deep) a pointer at what will answer it, because an
+ *   invitation to try a key with no lock in sight would be a lie.
+ * - `answered` is said in-world the first time the verb actually lands on
+ *   this climb (`spendVerb`, guarded by `StepContext.practiced`) — the
+ *   necessary-use beat *observed* rather than manufactured, costing no draw.
+ * - `mastered` unlocks in the Book at `MASTERY_AT` uses across sealed climbs
+ *   — the Book is where a scribe's learning is kept, and the fold is the
+ *   Book's own idiom. One threshold for all twelve, on purpose: the sparse
+ *   verbs (the Eye is pressed once a region, the Mark a few times a climb)
+ *   take climbs to ripen while the body verbs ripen in one, which is the
+ *   natural shape of practice and needs no per-verb table to fake it.
+ *
+ * **The ten graces are deliberately absent, and the absence is a named
+ * debt.** A grace is never *used* — it is honored by the world (slow-fall in
+ * the falling, swift-water in the swimming) — so its beats need per-grace
+ * consumption events that do not exist yet. Half the alphabet still teaches
+ * only by its plate line; when the events exist, this table grows a sibling.
+ */
+export interface LetterEcho {
+  found: string;
+  answered: string;
+  mastered: string;
+}
+
+export const MASTERY_AT = 40;
+
+export const LETTER_ECHOES: Record<Verb, LetterEcho> = {
+  "double-jump": {
+    found:
+      "The air will hold a second step now. Try it here, where the ground forgives — leap, and leap again from nothing.",
+    answered: "The second step held — the Breath is in the body now.",
+    mastered: "The air is a floor to you. You leap from nothing without thinking of it.",
+  },
+  block: {
+    found:
+      "Ask, and a stone stands beneath you; ask again, and it is taken back. Set one here, where nothing needs it, and feel the ground obey.",
+    answered: "A stone stands where you asked — the House is in the hands now.",
+    mastered: "You build as you walk. Where you stand, there can be a step.",
+  },
+  dash: {
+    found:
+      "What cannot be walked is crossed in one motion. There is level ground here to learn the length of it.",
+    answered: "The gap crossed in a breath — the Bridge is in the legs now.",
+    mastered: "Distance folds for you. What was a gap is a doorway.",
+  },
+  open: {
+    found: "Doors have been waiting for this. The next sealed way you meet will know the key.",
+    answered: "The door knew you — the Door is yours in the doing.",
+    mastered: "No door delays you. You arrive with the key already in hand.",
+  },
+  grapple: {
+    found: "Where a ring is set, the Hook can reach it. Watch the high places for an anchor.",
+    answered: "The hook held — the Hook is in the reach now.",
+    mastered: "Whatever holds, you can reach. The ring is an extension of the arm.",
+  },
+  cut: {
+    found: "The thorn has held ground long enough. The next brake you meet parts for the Edge.",
+    answered: "The thorn parted — the Edge is in the wrist now.",
+    mastered: "The thorn is a curtain to you. You pass through what pricks others back.",
+  },
+  "wall-cling": {
+    found:
+      "A sheer face is a place to rest now, not a refusal. Hold toward the next wall you meet, and it will hold you back.",
+    answered: "The wall held you — the Fence is in the grip now.",
+    mastered: "The fence is a friend's shoulder. You rest where others slide.",
+  },
+  climb: {
+    found: "The vines bear weight now. Take hold of the next one and the Ascent is yours both ways.",
+    answered: "The vine bore you — the Ascent is in the arms now.",
+    mastered: "Up and down are one road to you now.",
+  },
+  reveal: {
+    found:
+      "Some stone is only veiled, not absent. Where a way seems missing, press the Eye and look again.",
+    answered: "The hidden stood revealed — the Eye is open now.",
+    mastered: "You look, and the world admits what it was hiding.",
+  },
+  flame: {
+    found: "The overgrowth has no answer to fire. The next green wall you meet burns back for the Flame.",
+    answered: "The overgrowth burned back — the Flame is in the palm now.",
+    mastered: "You carry fire the way others carry a lamp — the dark makes way.",
+  },
+  swim: {
+    found: "The deep refused you until now. The next water you meet will carry you through.",
+    answered: "The deep carried you — the Waters are in the breath now.",
+    mastered: "The deep is your element. You move through it as through air.",
+  },
+  mark: {
+    found: "The shrines have been waiting for a hand that writes. The next one answers you.",
+    answered: "The mark is set — Tav is in the standing now.",
+    mastered: "Wherever you set your mark, you are already home.",
+  },
+};

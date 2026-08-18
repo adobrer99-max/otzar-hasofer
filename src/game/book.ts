@@ -1,4 +1,5 @@
 import { dorotCardsById, dorotHousesById } from "../data/dorot";
+import type { Verb } from "./abilities";
 import { festivalsById } from "../data/festivals";
 import { timesFreed, type AscentRecord, type FormedWord } from "../storage/ascentRepo";
 import type { SefirahId } from "../types/letter";
@@ -295,6 +296,26 @@ export interface Mark {
   /** How it is come by, for a Scribe who has not. */
   how: string;
   earned: boolean;
+}
+
+/**
+ * **The letters practiced — verb use totalled across sealed climbs.**
+ *
+ * The mastery half of LETTER_ECHOES' three beats: the Book is where a
+ * scribe's learning is kept, and this is the Book's own fold-first idiom —
+ * sealed records only, for `relicsKept`'s reason (an abandoned climb minted
+ * nothing) and one more of this fold's own: `verbUses` lands on the record at
+ * every way out, so an unsealed climb's counts are still moving.
+ */
+export function versedIn(ascents: readonly AscentRecord[]): Partial<Record<Verb, number>> {
+  const out: Partial<Record<Verb, number>> = {};
+  for (const a of ascents) {
+    if (!a.sealedAt) continue;
+    for (const [verb, n] of Object.entries(a.verbUses ?? {})) {
+      out[verb as Verb] = (out[verb as Verb] ?? 0) + (n ?? 0);
+    }
+  }
+  return out;
 }
 
 export function marks(ascents: readonly AscentRecord[]): Mark[] {

@@ -1190,6 +1190,10 @@ const SCRIPTS = [
           lettersHeld: ["aleph", "bet", "gimel", "peh"], or: 40,
           regionsCleared: [], housesMet: [], sefirotLit: ALL, guardiansBroken: ALL,
           falls: 2, encounterNumber: 1, endingPlea: "alone", witnessSefirot: [],
+          // Practice past MASTERY_AT for one verb, under it for another —
+          // the shelf must show the Bridge mastered and stay silent on the
+          // Edge (P15-4's beat three).
+          verbUses: { dash: 52, cut: 3 },
           wordsFormed: [{
             letterIds: ["nun", "kaf", "lamed"], hebrew: "נכל", transliteration: "nêkel",
             gloss: "deceit", wasTarget: true, regionIndex: 6,
@@ -1247,6 +1251,10 @@ const SCRIPTS = [
         "You arrived without a mouth",
         "one climb was put down",
         "The Lexicon",
+        // **Beat three on the shelf** (P15-4): 52 dashes across sealed climbs
+        // is past MASTERY_AT, so the Bridge's mastered line is unlocked.
+        "The letters practiced",
+        "Distance folds for you",
         // What a Scribe has *become*, which is the only thing here that can
         // still be added to: the lit climb broke all ten, and the crown climb
         // broke all ten again, so those are at tier two.

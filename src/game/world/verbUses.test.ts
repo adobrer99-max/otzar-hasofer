@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { mergeVerbUses } from "../../storage/ascentRepo";
+import { versedIn } from "../book";
+import { LETTER_ECHOES } from "../tutorial";
 import { buildRegion, setTile } from "./build";
 import { step, type StepContext } from "./step";
 import { Tile, TILE_SIZE } from "./tiles";
@@ -98,5 +100,63 @@ describe("the fold onto the record", () => {
     // A record that has never counted stays without the field.
     expect(mergeVerbUses(undefined, {})).toBeUndefined();
     expect(mergeVerbUses(undefined, { swim: 1 })).toEqual({ swim: 1 });
+  });
+});
+
+describe("the first real use, noticed and named", () => {
+  it("says the answered echo once, and only for a verb new to the climb", () => {
+    const world = room();
+    const ctx: StepContext = { verbs: ["dash"], graces: [], practiced: [] };
+    step(world, press({ dash: true }), ctx);
+    expect(world.message?.text).toBe(LETTER_ECHOES.dash.answered);
+    // A second use later in the rung says nothing new.
+    world.message = undefined;
+    for (let t = 0; t < 80; t += 1) step(world, NO_INPUT, ctx);
+    step(world, press({ dash: true }), ctx);
+    expect(world.verbUses.dash).toBe(2);
+    expect(world.message?.text).not.toBe(LETTER_ECHOES.dash.answered);
+  });
+
+  it("stays silent for a verb the record already knows", () => {
+    // A new rung's world counts from zero, but the climb has dashed before —
+    // `practiced` is the record's memory, and the letter must not introduce
+    // itself again on every way in.
+    const world = room();
+    const ctx: StepContext = { verbs: ["dash"], graces: [], practiced: ["dash"] };
+    step(world, press({ dash: true }), ctx);
+    expect(world.verbUses.dash).toBe(1);
+    expect(world.message?.text).not.toBe(LETTER_ECHOES.dash.answered);
+  });
+});
+
+describe("the three beats of every verb letter", () => {
+  it("authors all twelve, three distinct beats each, none empty", () => {
+    const entries = Object.entries(LETTER_ECHOES);
+    expect(entries).toHaveLength(12);
+    for (const [verb, echo] of entries) {
+      for (const beat of ["found", "answered", "mastered"] as const) {
+        expect(echo[beat].length, `${verb}'s ${beat} beat is empty`).toBeGreaterThan(20);
+      }
+    }
+    for (const beat of ["found", "answered", "mastered"] as const) {
+      const lines = entries.map(([, e]) => e[beat]);
+      expect(new Set(lines).size, `two verbs share a ${beat} line`).toBe(12);
+    }
+  });
+});
+
+describe("mastery, folded across sealed climbs", () => {
+  it("sums sealed records only, and reads absence as nothing", () => {
+    const base = {
+      id: "x", seed: 1, seedLabel: "s", createdAt: "", updatedAt: "",
+      regionIndex: 1, lettersHeld: [], or: 0, regionsCleared: [], housesMet: [],
+    };
+    const sealed = (id: string, uses: Record<string, number>) =>
+      ({ ...base, id, verbUses: uses, sealedAt: "2026-01-01" }) as never;
+    const open = (id: string, uses: Record<string, number>) =>
+      ({ ...base, id, verbUses: uses }) as never;
+    expect(versedIn([sealed("a", { dash: 30 }), sealed("b", { dash: 15, cut: 2 }), open("c", { dash: 99 })]))
+      .toEqual({ dash: 45, cut: 2 });
+    expect(versedIn([])).toEqual({});
   });
 });

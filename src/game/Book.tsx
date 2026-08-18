@@ -9,7 +9,10 @@ import { guardianOf, TIERS, tierOf } from "./guardians";
 import { HUSKS } from "./combat";
 import { PLEA_NAMED } from "./story";
 import { pathById, pointOf, TREE_LINES, TREE_VIEW } from "./tree";
-import { CARDS_IN_ALL, housesMet, lexicon, marks, pagesOf, relicsKept, tally, type BookPage } from "./book";
+import { CARDS_IN_ALL, housesMet, lexicon, marks, pagesOf, relicsKept, tally, versedIn, type BookPage } from "./book";
+import { LETTER_ECHOES, MASTERY_AT } from "./tutorial";
+import { abilityForVerb, type Verb } from "./abilities";
+import { lettersById } from "../data/letters";
 import { RELICS } from "./relics";
 import styles from "./Book.module.css";
 
@@ -40,6 +43,7 @@ export function Book({ ascents, onClose }: { ascents: readonly AscentRecord[]; o
   const relics = useMemo(() => relicsKept(ascents), [ascents]);
   const totals = useMemo(() => tally(ascents), [ascents]);
   const freed = useMemo(() => timesFreed(ascents), [ascents]);
+  const versed = useMemo(() => versedIn(ascents), [ascents]);
   const allMarks = useMemo(() => marks(ascents), [ascents]);
   const won = allMarks.filter((m) => m.earned);
 
@@ -163,6 +167,39 @@ export function Book({ ascents, onClose }: { ascents: readonly AscentRecord[]; o
                             ? "It has nothing left to give."
                             : `Broken in ${many(times, "climb")} — walk that way again and it deepens.`}
                         </li>
+                      </ul>
+                    </li>
+                  );
+                })}
+            </ul>
+          </section>
+        )}
+
+        {Object.entries(versed).some(([, n]) => (n ?? 0) >= MASTERY_AT) && (
+          <section>
+            <DecoratedRule />
+            {/* **Beat three: mastery.** LETTER_ECHOES' mastered line unlocks
+                here at MASTERY_AT uses across sealed climbs — the Book is
+                where a scribe's learning is kept, and the fold (`versedIn`)
+                is the Book's own idiom. The sparse verbs ripen over several
+                climbs and the body verbs in one, which is practice's natural
+                shape and needs no per-verb threshold to fake it. */}
+            <h3 className={styles.section}>The letters practiced</h3>
+            <ul className={styles.houses}>
+              {(Object.entries(versed) as [Verb, number][])
+                .filter(([, n]) => n >= MASTERY_AT)
+                .sort((a, b) => b[1] - a[1])
+                .map(([verb, n]) => {
+                  const ability = abilityForVerb(verb);
+                  const letter = ability ? lettersById[ability.letterId] : undefined;
+                  return (
+                    <li key={verb} className={styles.house}>
+                      <span className={styles.houseFigure}>
+                        {letter ? `${letter.name} — ${ability?.name}` : verb}
+                      </span>
+                      <span className={styles.houseCount}>{many(n, "use")}</span>
+                      <ul className={styles.cards}>
+                        <li>{LETTER_ECHOES[verb].mastered}</li>
                       </ul>
                     </li>
                   );
