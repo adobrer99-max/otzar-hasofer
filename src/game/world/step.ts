@@ -536,7 +536,10 @@ function applyVerbs(world: World, input: Input, ctx: StepContext): void {
   if (has(ctx, "reveal") && !world.revealed) {
     world.revealed = true;
     spendVerb(world, ctx, "reveal");
-    say(world, "Or HaGanuz — the hidden stone stands revealed.");
+    // On ground bound for Binah the Eye's opening says the rung's own rule
+    // (P15-R6): from this press on, the floor's lies bear weight.
+    const bare = world.toward ? rungRule(world.toward)?.liesLaidBare : undefined;
+    say(world, bare?.revealed ?? "Or HaGanuz — the hidden stone stands revealed.");
     return;
   }
 
@@ -818,6 +821,15 @@ function mendFloor(world: World): void {
 function breakMaskit(world: World): void {
   const p = world.player;
   if (!p.onGround || p.veiled > 0) return;
+  /**
+   * **Binah's rule, tier two** (P15-R6): on ground bound for Understanding
+   * a seen lie does not give way — once the Eye is open, every figured
+   * stone bears weight. Behaviour only, never a tile and never `isSolid`:
+   * the route proof stays taken against the shipping grid. Keyed to
+   * `world.toward` like every rung rule, so `binah-keter` (bound for the
+   * crown), the arenas, and every other road keep their lies.
+   */
+  if (world.revealed && world.toward && rungRule(world.toward)?.liesLaidBare) return;
   const row = Math.floor((p.y + p.h + 1) / TILE_SIZE);
   const x0 = Math.floor(p.x / TILE_SIZE);
   const x1 = Math.floor((p.x + p.w - 1) / TILE_SIZE);

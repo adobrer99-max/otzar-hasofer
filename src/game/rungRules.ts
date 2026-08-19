@@ -94,6 +94,26 @@ export interface RungRule {
    * also the right image: you kneel to give.
    */
   sealOpensTo?: { price: number; given: string; wanting: string };
+  /**
+   * **Binah's knob — the lies are laid bare, in two tiers.** The knob's
+   * presence is tier one: every figured stone on ground bound here is
+   * *drawn* with its seam and hatch at full legibility, both palettes, no
+   * letter needed — Binah tells the truth about its floor, and the ground
+   * still charges a runner who ignores what is shown. Tier two is earned:
+   * once the Eye is open (`world.revealed`), a seen lie does not give way —
+   * `breakMaskit` refuses, and `revealed` is what the Eye's opening says on
+   * this road instead of the ordinary Or HaGanuz line. Behaviour and ink
+   * only, never a tile and never `isSolid`: the route proof is taken
+   * against the shipping grid and stays that way.
+   *
+   * The gate on tier two is the Tree's own: Ayin lies on `tiferet-keter`,
+   * not in Binah, so no straight-up climber holds the Eye on a binah-bound
+   * road — the full rule belongs to a Scribe who has been to the crown's
+   * road and come back down. That is the middah exactly: the flash is
+   * received elsewhere; Binah is where it is worked into something that
+   * can be stood on.
+   */
+  liesLaidBare?: { revealed: string };
 }
 
 export const RUNG_RULES: Record<SefirahId, RungRule | null> = {
@@ -218,7 +238,35 @@ export const RUNG_RULES: Record<SefirahId, RungRule | null> = {
       wanting: "The door would open to a gift of eight light. You do not yet have it to give.",
     },
   },
-  binah: null,
+  /**
+   * **P15-R6 — Understanding.** The question is "What will you work the
+   * flash into, so it can be held and said?", and the teaching's own last
+   * sentence — "Here the hidden light is simply seen" — is the rule cashed:
+   * the one deception in the game's ground, the figured stone, is shown
+   * plainly on binah-bound roads, and with the Eye open it cannot deceive
+   * at all — a seen lie bears weight. Three roads are bound here, and two
+   * of them cross the Abyss, where a shrine-less rung makes every fall the
+   * whole road again — the stone that cannot spring is worth the most
+   * exactly where the rule puts it. `binah-keter` is bound for the crown
+   * and keeps its lies: the rule follows the destination, as they all do.
+   *
+   * Measured on landing: `fight` hands binah rows `lettersOnEntering(8)`,
+   * which holds no Ayin, so the fight bands cannot see tier two by
+   * construction; `speed` and the figured-stone claims build worlds that
+   * never set `toward`. The exposed surfaces were `climb`'s two crossings
+   * tests — 21 letters including Ayin, the fighter opening the Eye on its
+   * unstick beat, so they exercise the rule on every run — and the tour on
+   * seeds where Ayin precedes a binah-bound leg. All four band files stand
+   * over all three seed pools; the only direction the rule could move a
+   * crossing rate is upward, and none moved at all.
+   */
+  binah: {
+    says: "Nothing in this floor hides from you: every stone that lies shows its seam. Open the Eye, and a seen lie will bear you.",
+    liesLaidBare: {
+      revealed:
+        "Or HaGanuz — and understanding holds it: the lies in the floor are laid bare, and what is seen will bear you.",
+    },
+  },
   chochmah: null,
   // The crown's rule is the presentation itself. Likely permanent null.
   keter: null,

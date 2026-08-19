@@ -1048,6 +1048,76 @@ const SCRIPTS = [
     },
   },
   {
+    name: "rung-rule-binah",
+    about: "P15-R6 — a lie on the road to Binah, laid bare and stood on whole.",
+    /**
+     * The sixth rung rule, whose success is a silence: the run opens the Eye
+     * on binah-bound ground, walks onto a figured stone, and the stone does
+     * not give way — no "was under the stone", no "never stone", the floor
+     * still reading maskit under the standing body poll after poll. The
+     * `ontoMaskit` driver is the maskit script's, pointed at the one road
+     * where the trap it declines to jump over cannot spring. Chochmah →
+     * Binah because it is the one binah-bound road that does not cross the
+     * Abyss; `letters: "all"` because on the Tree the Eye lies on
+     * tiferet-keter and no honest hand entering Binah holds it — the warp
+     * may hold what the Tree gates, and the rule's second tier is exactly
+     * for the Scribe who has been to the crown's road and come back.
+     */
+    warp: { rung: 9, letters: "all", lamps: 3, seed: 26, lit: 1 },
+    toward: "Binah",
+    driver: { ontoMaskit: true, intoGates: true },
+    onPlate: async (page, plate) => {
+      if (plate !== "word-gate") return false;
+      return await answerGate(page);
+    },
+    until: (p, seen) => Boolean(seen.borne),
+    seconds: 300,
+    watch: async (page, p, look, { seen, report }) => {
+      const R = 4;
+      const at = (dx, dy) => look[R + dy]?.[R + dx] ?? "out";
+      // Open the Eye on a slow beat until the probe says it landed — Ayin
+      // shares act with the Hook and four other letters, the relic script's
+      // lesson — and record the rung's own words when it does.
+      if (!p.revealed && p.onGround && p.tick % 33 < 4) {
+        await page.keyboard.press(KEYS.act);
+      }
+      if (p.revealed && !seen.eye) {
+        seen.eye = true;
+        report.moments.push({ what: "the Eye opened", tick: p.tick, said: p.message });
+        if ((p.message ?? "").includes("laid bare")) seen.ruleLine = true;
+      }
+      if (seen.eye && /under the stone|never stone/.test(p.message ?? "")) seen.sprung = true;
+      // One poll is decisive: `breakMaskit` fires on the very tick weight
+      // lands, so a body standing on an intact maskit with the Eye open is a
+      // state the shipped game cannot reach without the rule.
+      if (p.revealed && at(0, 0) === "maskit" && !seen.borne) {
+        seen.borne = true;
+        report.moments.push({ what: "a seen lie bearing weight", tick: p.tick });
+        await page.screenshot({ path: join(outDir, "rung-rule-binah-borne.png") });
+      }
+      // Another life: `lit: 1` makes Chochmah the wake after a going-out, so
+      // the road to Binah is one click away rather than a whole re-climb.
+      if (p.onMap) {
+        const way = page.locator("[class*=wayButton]", { hasText: "Binah" }).first();
+        if (await way.count()) {
+          report.moments.push({ what: "re-entered toward Binah", tick: p.tick });
+          await way.click();
+          await page.waitForTimeout(900);
+        }
+      }
+    },
+    check: (_p, seen) => {
+      if (!seen.eye) throw new Error("the Eye was never opened on the road to Binah");
+      if (!seen.ruleLine) {
+        throw new Error("the Eye opened and the rung's own words were never said");
+      }
+      if (seen.sprung) throw new Error("a seen lie gave way — the rule did not hold");
+      if (!seen.borne) {
+        throw new Error("the run never stood on a laid-bare stone with the Eye open");
+      }
+    },
+  },
+  {
     name: "crown-presented",
     about: "The other ending — a crown nothing is holding, and a Tree still mostly dark.",
     /**

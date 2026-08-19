@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { HUSKS } from "../combat";
-import { buildRegion } from "../world/build";
+import { buildRegion, setTile } from "../world/build";
 import { drawEntity, drawWorld, stoneInks } from "./draw";
+import { Tile, TILE_SIZE } from "../world/tiles";
 import { paletteOf, PLACES, readPalette, type Palette } from "./palette";
 import { recorder } from "./testCanvas";
 
@@ -36,6 +37,34 @@ const hue = (ink: string) => ink.replace(/,\s*[\d.]+\)$/, ")");
  * time the ink changed, and would then be pinning whatever it was last
  * rewritten to.
  */
+/**
+ * **The lie laid bare on the road to Binah** (P15-R6, tier one). On
+ * binah-bound ground a figured stone is drawn with its seam at full strength
+ * and its hatch thinned — no letter needed; Binah tells the truth about its
+ * floor. Asserted the `testCanvas` way, as a difference rather than a
+ * picture: the same world at the same tick, differing only in `toward`,
+ * must paint two different stones — and two ruleless roads must paint the
+ * same one, so the difference is the rule and not noise.
+ */
+describe("the lie laid bare on the road to Binah", () => {
+  it("paints a binah-bound stone as its own picture, and only there", () => {
+    const scene = (toward?: "binah" | "hod" | "netzach") => {
+      const world = buildRegion(2, 5);
+      world.entities = [];
+      world.husks = [];
+      world.toward = toward;
+      const px = Math.floor((world.player.x + world.player.w / 2) / TILE_SIZE);
+      const py = Math.floor((world.player.y + world.player.h + 1) / TILE_SIZE);
+      setTile(world, px + 2, py, Tile.Maskit);
+      const { ctx, log } = recorder();
+      drawWorld(ctx, world, { x: world.player.x - 200, y: 0 }, DARK, 800, 450, []);
+      return log();
+    };
+    expect(scene("binah")).not.toBe(scene("hod"));
+    expect(scene("hod")).toBe(scene("netzach"));
+  });
+});
+
 describe("the ink a stone is marked with", () => {
   it("does not draw the seam in the hatch's own colour, on either ground", () => {
     for (const [ground, palette] of [

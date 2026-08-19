@@ -45,15 +45,16 @@ describe("the rungs' own rules — filled one slice at a time", () => {
    *
    * Ruled so far: **netzach** (P15-R1 — the shrines are cold), **gevurah**
    * (P15-R2 — the throws are rationed), **yesod** (P15-R3 — a set stone is
-   * founded), **hod** (P15-R4 — the shrines give back), and **chesed**
-   * (P15-R5 — a sealed door opens to a gift).
+   * founded), **hod** (P15-R4 — the shrines give back), **chesed**
+   * (P15-R5 — a sealed door opens to a gift), and **binah** (P15-R6 — the
+   * lies are laid bare).
    */
   it("holds every rung at null until a slice fills it on purpose", () => {
     const ruled = Object.entries(RUNG_RULES)
       .filter(([, rule]) => rule !== null)
       .map(([sefirah]) => sefirah)
       .sort();
-    expect(ruled).toEqual(["chesed", "gevurah", "hod", "netzach", "yesod"]);
+    expect(ruled).toEqual(["binah", "chesed", "gevurah", "hod", "netzach", "yesod"]);
     const filled = new Set(ruled);
     for (const region of regions) {
       if (filled.has(region.sefirah)) continue;
@@ -83,6 +84,10 @@ describe("the rungs' own rules — filled one slice at a time", () => {
           expect(line).not.toBe(rule.says);
         }
         expect(rule.stonesFounded.set).not.toBe(rule.stonesFounded.kept);
+      }
+      if (rule.liesLaidBare !== undefined) {
+        expect(rule.liesLaidBare.revealed.length, `${sefirah}'s laid-bare line says nothing`).toBeGreaterThan(20);
+        expect(rule.liesLaidBare.revealed).not.toBe(rule.says);
       }
       if (rule.sealOpensTo !== undefined) {
         for (const line of [rule.sealOpensTo.given, rule.sealOpensTo.wanting]) {
@@ -231,6 +236,86 @@ describe("P15-R2 — Gevurah: the throws are rationed", () => {
     step(world, strike, ctx);
     expect(world.toward).toBeUndefined();
     expect(world.marks.filter((m) => m.mine)).toHaveLength(1);
+  });
+});
+
+describe("P15-R6 — Binah: the lies are laid bare", () => {
+  const bare = RUNG_RULES.binah!.liesLaidBare!;
+  const ctx: StepContext = { verbs: [], graces: [] };
+
+  /** A figured stone written under the standing body itself — `breakMaskit`
+   * fires on weight, so the very next step is the trap's own moment. The
+   * pool is pinned to Cain so the spring's pacer is deterministic. */
+  function liarsFloor(toward: "binah" | "hod" | "keter", revealed: boolean) {
+    const world = buildRegion(2, 5);
+    world.entities = [];
+    world.husks = [];
+    world.klipot = ["cain"] as never;
+    world.toward = toward;
+    const p = world.player;
+    for (let t = 0; t < 240 && !p.onGround; t += 1) step(world, NO_INPUT, ctx);
+    expect(p.onGround, "the body never landed on the liar's floor").toBe(true);
+    world.revealed = revealed;
+    const tx = Math.floor((p.x + p.w / 2) / TILE_SIZE);
+    const ty = Math.floor((p.y + p.h + 1) / TILE_SIZE);
+    setTile(world, tx, ty, Tile.Maskit);
+    return { world, tx, ty };
+  }
+
+  it("bears the Scribe once the Eye is open — no give-way, no pacer, no mend", () => {
+    const { world, tx, ty } = liarsFloor("binah", true);
+    step(world, NO_INPUT, ctx);
+    expect(tileAt(world, tx, ty), "a seen lie gave way").toBe(Tile.Maskit);
+    expect(world.husks).toHaveLength(0);
+    expect(world.mending).toHaveLength(0);
+  });
+
+  it("still springs on an unopened eye — tier two is earned, not given", () => {
+    const { world, tx, ty } = liarsFloor("binah", false);
+    step(world, NO_INPUT, ctx);
+    expect(tileAt(world, tx, ty)).toBe(Tile.Empty);
+    expect(world.mending).toHaveLength(1);
+    expect(world.husks).toHaveLength(1);
+    expect(world.message?.text).toContain("under the stone");
+  });
+
+  it("springs on any other road, Eye open or not", () => {
+    const { world, tx, ty } = liarsFloor("hod", true);
+    step(world, NO_INPUT, ctx);
+    expect(tileAt(world, tx, ty)).toBe(Tile.Empty);
+  });
+
+  it("springs on binah-keter ground — the rule follows the destination", () => {
+    // The sharpest other-road there is: a path *touching* Binah whose
+    // destination is the crown. `world.toward` there is keter, and Keter
+    // keeps its lies.
+    const { world, tx, ty } = liarsFloor("keter", true);
+    step(world, NO_INPUT, ctx);
+    expect(tileAt(world, tx, ty)).toBe(Tile.Empty);
+  });
+
+  it("gives the Eye's opening the rung's own words on bound ground", () => {
+    const world = buildRegion(2, 5);
+    world.entities = [];
+    world.husks = [];
+    world.toward = "binah";
+    const eye: StepContext = { verbs: ["reveal"], graces: [] };
+    for (let t = 0; t < 240 && !world.player.onGround; t += 1) step(world, NO_INPUT, eye);
+    step(world, { ...NO_INPUT, act: true }, eye);
+    expect(world.revealed).toBe(true);
+    expect(world.message?.text).toBe(bare.revealed);
+  });
+
+  it("keeps Or HaGanuz everywhere else", () => {
+    const world = buildRegion(2, 5);
+    world.entities = [];
+    world.husks = [];
+    world.toward = "hod";
+    const eye: StepContext = { verbs: ["reveal"], graces: [] };
+    for (let t = 0; t < 240 && !world.player.onGround; t += 1) step(world, NO_INPUT, eye);
+    step(world, { ...NO_INPUT, act: true }, eye);
+    expect(world.revealed).toBe(true);
+    expect(world.message?.text).toBe("Or HaGanuz — the hidden stone stands revealed.");
   });
 });
 

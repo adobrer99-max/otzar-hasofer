@@ -1,4 +1,5 @@
 import { lettersById } from "../../data/letters";
+import { rungRule } from "../rungRules";
 import { tileAt } from "../world/build";
 import { Tile, TILE_SIZE } from "../world/tiles";
 import type { Entity, World } from "../world/types";
@@ -567,6 +568,17 @@ function drawMaskit(
   y: number,
   palette: Palette,
 ): void {
+  /**
+   * **Binah's rule, tier one** (P15-R6): on ground bound for Understanding
+   * the lie is *laid bare* — the seam drawn in the palette's truest ink at
+   * full strength and double weight, the hatch thinned to a whisper so
+   * nothing competes with it, both grounds alike. No letter is needed for
+   * this half of the rule: Binah tells the truth about its floor, and the
+   * ground still charges a runner who ignores what is shown. Ink only —
+   * the tile, its solidity and its spring are exactly what they are
+   * everywhere else until the Eye is open.
+   */
+  const bare = Boolean(world.toward && rungRule(world.toward)?.liesLaidBare);
   ctx.fillStyle = palette.stone;
   ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
 
@@ -574,7 +586,9 @@ function drawMaskit(
   ctx.beginPath();
   ctx.rect(x, y, TILE_SIZE, TILE_SIZE);
   ctx.clip();
-  ctx.strokeStyle = stoneInks(palette).hatch;
+  ctx.strokeStyle = bare
+    ? alpha(palette.light ? palette.stoneEdge : palette.gold, palette.light ? 0.28 : 0.08)
+    : stoneInks(palette).hatch;
   ctx.lineWidth = 1;
   for (let i = -TILE_SIZE; i < TILE_SIZE; i += HATCH_SPACING) {
     ctx.beginPath();
@@ -604,8 +618,10 @@ function drawMaskit(
    * So vellum gets true ink, the way charcoal gets true shadow: the darkest
    * thing in the palette, running the other way from the hatch.
    */
-  ctx.strokeStyle = stoneInks(palette).seam;
-  ctx.lineWidth = 1.2;
+  ctx.strokeStyle = bare
+    ? alpha(palette.light ? palette.text : palette.bgDeep, 1)
+    : stoneInks(palette).seam;
+  ctx.lineWidth = bare ? 2.2 : 1.2;
   ctx.beginPath();
   ctx.moveTo(x + 3, y + 6.5);
   ctx.quadraticCurveTo(x + TILE_SIZE / 2, y + 9, x + TILE_SIZE - 3, y + 5.5);
