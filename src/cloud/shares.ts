@@ -18,46 +18,110 @@ export function isShareToken(token: string): boolean {
 
 export interface ShareInfo {
   token: string;
+  /** When the snapshot was last (re)published. */
   updatedAt: string;
+  /** When the link was first minted (absent on a pre-expiry database). */
+  createdAt?: string;
+  expiresAt: string | null;
+  lastViewedAt: string | null;
+  viewCount: number;
+  /**
+   * The database predates the expiry/views block in schema.sql, so those
+   * fields are defaults and the expiry controls cannot work yet.
+   */
+  legacy: boolean;
+}
+
+const COLUMNS = "token, updated_at, created_at, expires_at, last_viewed_at, view_count";
+const LEGACY_COLUMNS = "token, updated_at";
+/** Postgres "undefined column" — the R38 migration hasn't been run. */
+const UNDEFINED_COLUMN = "42703";
+
+/** Map a shared_heralds row to ShareInfo (pure, for testing). */
+export function toShareInfo(row: Record<string, unknown>, legacy = false): ShareInfo {
+  return {
+    token: row.token as string,
+    updatedAt: row.updated_at as string,
+    createdAt: (row.created_at as string | undefined) ?? undefined,
+    expiresAt: (row.expires_at as string | null | undefined) ?? null,
+    lastViewedAt: (row.last_viewed_at as string | null | undefined) ?? null,
+    viewCount: typeof row.view_count === "number" ? row.view_count : 0,
+    legacy,
+  };
 }
 
 /** The current share for a participant, if one exists (RLS scopes to owner). */
 export async function getShare(participantId: string): Promise<ShareInfo | null> {
   const { getSupabase } = await import("./supabaseClient");
-  const { data, error } = await getSupabase()
+  const supabase = getSupabase();
+  const full = await supabase.from(TABLE).select(COLUMNS).eq("participant_id", participantId).maybeSingle();
+  if (!full.error) return full.data ? toShareInfo(full.data) : null;
+  if (full.error.code !== UNDEFINED_COLUMN) throw new Error(full.error.message);
+  const legacy = await supabase
     .from(TABLE)
-    .select("token, updated_at")
+    .select(LEGACY_COLUMNS)
     .eq("participant_id", participantId)
     .maybeSingle();
-  if (error) throw new Error(error.message);
-  return data ? { token: data.token as string, updatedAt: data.updated_at as string } : null;
+  if (legacy.error) throw new Error(legacy.error.message);
+  return legacy.data ? toShareInfo(legacy.data, true) : null;
 }
 
 /**
  * Publish (or republish) a participant's share. Update-then-insert rather
  * than an upsert — a republish keeps the existing token, so the link the
- * participant already holds stays alive.
+ * participant already holds stays alive. `expiresAt` is written only when
+ * given (a republish leaves the link's expiry as it was).
  */
 export async function publishShare(
   participantId: string,
   payload: SharedHeraldPayload,
-): Promise<string> {
+  expiresAt?: string | null,
+): Promise<ShareInfo> {
   const { getSupabase } = await import("./supabaseClient");
   const supabase = getSupabase();
+  const fields = expiresAt === undefined ? { data: payload } : { data: payload, expires_at: expiresAt };
   const { data: updated, error: upErr } = await supabase
     .from(TABLE)
-    .update({ data: payload })
+    .update(fields)
     .eq("participant_id", participantId)
     .select("token");
   if (upErr) throw new Error(upErr.message);
-  if (updated && updated.length > 0) return updated[0].token as string;
-  const { data: inserted, error: insErr } = await supabase
+  if (!updated || updated.length === 0) {
+    const { error: insErr } = await supabase
+      .from(TABLE)
+      .insert({ participant_id: participantId, ...fields });
+    if (insErr) throw new Error(insErr.message);
+  }
+  const info = await getShare(participantId);
+  if (!info) throw new Error("The share was saved but could not be read back.");
+  return info;
+}
+
+/** Set (or clear, with null) when the link stops opening. */
+export async function setShareExpiry(participantId: string, expiresAt: string | null): Promise<ShareInfo> {
+  const { getSupabase } = await import("./supabaseClient");
+  const { error } = await getSupabase()
     .from(TABLE)
-    .insert({ participant_id: participantId, data: payload })
-    .select("token")
-    .single();
-  if (insErr) throw new Error(insErr.message);
-  return inserted.token as string;
+    .update({ expires_at: expiresAt })
+    .eq("participant_id", participantId);
+  if (error) throw new Error(error.message);
+  const info = await getShare(participantId);
+  if (!info) throw new Error("This share no longer exists.");
+  return info;
+}
+
+/**
+ * Reset the link: the old token goes dark and the given snapshot is
+ * published under a new one, keeping the expiry (for a link that reached
+ * the wrong hands). The view history starts afresh with the new token.
+ */
+export async function rotateShare(
+  participantId: string,
+  payload: SharedHeraldPayload,
+  expiresAt: string | null,
+): Promise<ShareInfo> {
+  await revokeShare(participantId);
+  return publishShare(participantId, payload, expiresAt);
 }
 
 /** Revoke the share — the link goes dark immediately. */

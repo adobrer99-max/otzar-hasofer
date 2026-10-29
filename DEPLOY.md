@@ -79,7 +79,11 @@ Treasury syncs privately across their devices.
    `SELECT`; `INSERT`/`UPDATE`/`DELETE` for authenticated users only.
    *(Upgrading an existing deployment? Each later block in the file is headed
    "existing deployments: run just this block" — run the `content_drafts`,
-   `shared_heralds`, and `delete_my_account` blocks to add R37's features.)*
+   `shared_heralds`, and `delete_my_account` blocks to add R37's features,
+   and the final `shared_heralds: expiry & views` block for share-link
+   expiry and open counts. That last block is idempotent and safe to re-run;
+   until it is run, share links still publish and revoke, and the panel says
+   expiry is waiting on it.)*
 3. In **Authentication → Sign In / Up**, make sure the **Email** provider is
    enabled with **Confirm email ON** (new accounts must open a verification
    link before they can sign in). Set the minimum password length to **8**
@@ -110,8 +114,13 @@ Two deliberate exceptions to "every row is locked to its owner":
   unguessable token can't be enumerated; anonymous readers reach a single
   row only through the `security definer` `get_shared_herald(token)` RPC,
   which requires the exact token. Revoking deletes the row — the link goes
-  dark at once. Anyone holding a live link can view it, so treat it like any
-  unlisted URL.
+  dark at once; **Reset link** does the same and mints a new token for the
+  current Herald. A link may carry an **expiry**, enforced inside the RPC
+  (an expired link reads exactly like a revoked one, so expiry can't be
+  probed). Each successful anonymous open bumps `view_count` and
+  `last_viewed_at` (the owner's own opens are not counted), which is the
+  RPC's only write. Anyone holding a live link can view it, so treat it like
+  any unlisted URL.
 
 Account deletion (`delete_my_account`, a `security definer` function scoped
 to `auth.uid()`) removes the Scribe's auth user; every `owner_id` foreign
@@ -155,7 +164,13 @@ to wake; the paid tier removes this.
       should render the Herald read-only with no edit controls. Revoke it and
       re-open the link → "This link is no longer lit." As a token-enumeration
       spot-check, a raw `select * from shared_heralds` with only the anon key
-      should return **no rows**.
+      should return **no rows**. Then publish again with **The link expires:
+      In 1 day** — it still opens; in the SQL editor set its `expires_at` to
+      the past and re-open → "no longer lit", and the panel shows it expired.
+      Open a live link twice from the private window and confirm the panel's
+      "Opened 2 times" (opening it while signed in as the Scribe does not
+      count). **Reset link** → the old URL goes dark, the new one opens.
+      **Show a QR code** and scan it with a phone → the shared Herald opens.
   11. **Mizrach finder**: on `/guide/mizbeach` (or the folio), tap "Find the
       Mizrach from here," grant location, and confirm a bearing + compass
       point appears; deny it and confirm the calm inline note instead.

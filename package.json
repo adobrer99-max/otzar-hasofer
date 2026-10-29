@@ -24,7 +24,8 @@
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.1.1",
-    "three": "^0.180.0"
+    "three": "^0.180.0",
+    "uqr": "^0.1.3"
   },
   "devDependencies": {
     "@types/fontkit": "^2.0.9",
