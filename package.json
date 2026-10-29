@@ -15,7 +15,8 @@
     "build:letterpaths": "node scripts/build-letterpaths.mjs",
     "build:icons": "node scripts/build-icons.mjs",
     "export:folio": "node scripts/export-folio-print.mjs",
-    "playtest": "node tools/playtest.mjs"
+    "playtest": "node tools/playtest.mjs",
+    "golive": "node tools/golive.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.0",
