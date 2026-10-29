@@ -200,6 +200,10 @@
 .otz-letter__glyph{font-family:var(--otz-hebrew);font-size:44px;line-height:1;color:var(--otz-gold-bright)}
 .otz-letter__name{font-family:var(--otz-display);font-size:18px;color:var(--otz-head-2);margin-top:4px}
 .otz-letter__meaning{font-size:13.5px;line-height:1.4;color:var(--otz-blue-light);text-wrap:pretty}
+/* with uploaded art: the card face, the glyph riding on it as a badge */
+.otz-letter--art{padding-top:14px}
+.otz-letter__art{position:relative;display:block;width:100%;max-width:96px;aspect-ratio:5/7;border-radius:6px;overflow:hidden;border:1px solid var(--otz-border-soft);background:var(--bg-sunken)}
+.otz-letter__badge{position:absolute;inset-inline-end:4px;bottom:4px;min-width:26px;padding:2px 5px;border-radius:6px;background:rgba(15,18,22,.78);font-family:var(--otz-hebrew);font-size:18px;line-height:1.1;color:var(--color-gold-bright)}
 
 /* four-tier pips (Peshat/Remez/Drash/Sod) */
 .otz-pips{display:flex;gap:7px}

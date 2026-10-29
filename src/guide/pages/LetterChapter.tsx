@@ -1,6 +1,8 @@
 import { Link, useParams } from "react-router-dom";
 import { letters, lettersById } from "../../data/letters";
 import { RichText } from "../../components/ui";
+import { CardArtImage } from "../../components/cardArt/CardArtImage";
+import { useCardArt } from "../../components/cardArt/useCardArt";
 import { ClassificationBadge } from "../components/ClassificationBadge";
 import { ReversedFraming, REVERSED_FRAMING_LABEL } from "../components/ReversedFraming";
 import { CommentarySection } from "../../commentaries/CommentarySection";
@@ -9,6 +11,7 @@ import styles from "./LetterChapter.module.css";
 export function LetterChapter() {
   const { id } = useParams<{ id: string }>();
   const letter = id ? lettersById[id] : undefined;
+  const { art, onError } = useCardArt(letter?.art);
 
   if (!letter) {
     return (
@@ -42,16 +45,7 @@ export function LetterChapter() {
         </div>
       </div>
 
-      {letter.art && (
-        <figure style={{ margin: "1rem 0", maxWidth: 360 }}>
-          <img src={letter.art.src} alt={letter.art.alt} style={{ maxWidth: "100%", height: "auto" }} />
-          {letter.art.credit && (
-            <figcaption style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>
-              {letter.art.credit}
-            </figcaption>
-          )}
-        </figure>
-      )}
+      {art && <CardArtImage art={art} variant="figure" onError={onError} maxWidth={360} />}
 
       <div className={styles.section}>
         <h3>Translation / Root</h3>

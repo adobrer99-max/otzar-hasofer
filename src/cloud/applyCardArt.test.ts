@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { applyCardArt, clearCardArt } from "./applyCardArt";
 import { lettersById } from "../data/letters";
 import { dorotCardsById } from "../data/dorot";
+import { getCardArtVersion } from "../data/cardArtVersion";
 
 const SAMPLE_DOROT_ID = Object.keys(dorotCardsById)[0];
 
@@ -45,5 +46,15 @@ describe("applyCardArt", () => {
     expect(lettersById.aleph.art?.src).toBe("https://cdn.example/a.jpg");
     clearCardArt("letter:aleph");
     expect(lettersById.aleph.art).toBeUndefined();
+  });
+
+  it("announces each apply and clear so mounted pages re-render", () => {
+    const before = getCardArtVersion();
+    applyCardArt([{ id: "letter:aleph", src: "https://cdn.example/a.jpg", alt: "Aleph" }]);
+    expect(getCardArtVersion()).toBe(before + 1);
+    clearCardArt("letter:aleph");
+    expect(getCardArtVersion()).toBe(before + 2);
+    applyCardArt([]);
+    expect(getCardArtVersion()).toBe(before + 2);
   });
 });

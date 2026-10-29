@@ -7,11 +7,13 @@
  * Startup order matters for offline + first paint: `initCardArt()` applies a
  * localStorage-cached copy synchronously before render (instant, works
  * offline), then refreshes from the cloud in the background and re-applies +
- * rewrites the cache. Freshly fetched art appears on the next route render.
+ * rewrites the cache. Each apply/clear bumps the art version, so pages
+ * already on screen re-render with freshly fetched art.
  */
 
 import { lettersById } from "../data/letters";
 import { dorotCardsById } from "../data/dorot";
+import { bumpCardArt } from "../data/cardArtVersion";
 import { isCloudConfigured } from "./config";
 import type { CardArtRow } from "./cardArt";
 
@@ -29,6 +31,7 @@ export function applyCardArt(rows: CardArtRow[]): void {
       if (card) card.art = art;
     }
   }
+  if (rows.length > 0) bumpCardArt();
 }
 
 /** Remove an entry's art from the live records (after a studio delete). */
@@ -40,6 +43,7 @@ export function clearCardArt(id: string): void {
     const card = dorotCardsById[id.slice("dorot:".length)];
     if (card) delete card.art;
   }
+  bumpCardArt();
 }
 
 export function readCardArtCache(): CardArtRow[] {
@@ -71,6 +75,12 @@ export function initCardArt(): void {
     try {
       const { fetchCardArtRows } = await import("./cardArt");
       const rows = await fetchCardArtRows();
+      // Art removed on another device: drop what the cache applied but the
+      // registry no longer lists, before applying the fresh rows.
+      const live = new Set(rows.map((r) => r.id));
+      for (const cached of readCardArtCache()) {
+        if (!live.has(cached.id)) clearCardArt(cached.id);
+      }
       applyCardArt(rows);
       writeCardArtCache(rows);
     } catch {
