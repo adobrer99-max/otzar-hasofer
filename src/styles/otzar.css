@@ -34,6 +34,8 @@
   --otz-gold-ink:#14100a;
   --otz-blue:var(--color-blue,#1f3a5f);
   --otz-blue-light:var(--color-blue-bright,#3f6ea5);
+  /* the canon blue lifted/deepened to clear 4.5:1 as small text, per theme */
+  --otz-blue-text:#6f9bd1;
   --otz-copper:var(--color-copper,#c98056);
   --otz-silver:var(--color-silver,#c7ccd4);
   /* ink — mapped to repo text tokens */
@@ -53,6 +55,7 @@
   --otz-maxw:var(--measure,1040px);
   --otz-read:860px;
 }
+[data-theme="light"]{--otz-blue-text:#315480}
 
 /* (box-sizing + body reset already provided by index.css) */
 
@@ -199,7 +202,7 @@
 .otz-letter:active{transform:translateY(0)}
 .otz-letter__glyph{font-family:var(--otz-hebrew);font-size:44px;line-height:1;color:var(--otz-gold-bright)}
 .otz-letter__name{font-family:var(--otz-display);font-size:18px;color:var(--otz-head-2);margin-top:4px}
-.otz-letter__meaning{font-size:13.5px;line-height:1.4;color:var(--otz-blue-light);text-wrap:pretty}
+.otz-letter__meaning{font-size:13.5px;line-height:1.4;color:var(--otz-blue-text);text-wrap:pretty}
 /* with uploaded art: the card face, the glyph riding on it as a badge */
 .otz-letter--art{padding-top:14px}
 .otz-letter__art{position:relative;display:block;width:100%;max-width:96px;aspect-ratio:5/7;border-radius:6px;overflow:hidden;border:1px solid var(--otz-border-soft);background:var(--bg-sunken)}
@@ -212,10 +215,12 @@
 /* ---- pillar / house panel --------------------------------------- */
 .otz-pillar{border:1px solid var(--otz-border-soft);border-inline-start:3px solid var(--otz-gold);border-radius:12px;padding:20px 24px;background:var(--otz-card)}
 .otz-pillar__head{font-family:var(--otz-serif);font-weight:600;font-size:12px;line-height:1.4;letter-spacing:.1em;text-transform:uppercase;color:var(--otz-gold);margin-bottom:14px}
+/* light: --accent is the decorative gold; small text takes the text gold */
+[data-theme="light"] .otz-pillar__head{color:var(--otz-gold-bright)}
 .otz-houses{display:flex;gap:32px;flex-wrap:wrap}
 .otz-house{display:flex;flex-direction:column;gap:3px;text-decoration:none}
 .otz-house__name{font-family:var(--otz-display);font-size:20px;color:var(--otz-head-2)}
-.otz-house__count{font-size:14px;color:var(--otz-blue-light)}
+.otz-house__count{font-size:14px;color:var(--otz-blue-text)}
 
 /* ---- shelf / spines (Sefarim) ----------------------------------- */
 .otz-shelf{display:flex;align-items:flex-end;justify-content:center;gap:20px}

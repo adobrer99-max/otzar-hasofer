@@ -134,9 +134,10 @@ export function SharePanel({
       const { setShareExpiry } = await import("../../cloud/shares");
       const info = await setShareExpiry(participant.id, expiryFromPreset(next));
       setShare(info);
-      toast(next === "never" ? "The link no longer expires" : `${expiryLabel(info.expiresAt)}`, {
-        tone: "success",
-      });
+      toast(
+        next === "never" ? "The link no longer expires" : `Expiry updated · ${expiryLabel(info.expiresAt)}`,
+        { tone: "success" },
+      );
     }, "Changing the expiry failed");
   }
 

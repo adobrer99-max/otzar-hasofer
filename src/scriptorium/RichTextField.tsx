@@ -33,10 +33,13 @@ export function RichTextField({
   id,
   value,
   onChange,
+  labelledBy,
 }: {
   id: string;
   value: string;
   onChange: (html: string) => void;
+  /** The id of the visible label (a <label for> can't name a contentEditable). */
+  labelledBy?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const lastEmitted = useRef<string>("");
@@ -250,6 +253,7 @@ export function RichTextField({
         suppressContentEditableWarning
         role="textbox"
         aria-multiline="true"
+        aria-labelledby={labelledBy}
         onInput={emit}
         onKeyUp={saveSelection}
         onMouseUp={saveSelection}

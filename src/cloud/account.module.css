@@ -56,6 +56,10 @@
 .danger summary {
   color: var(--color-copper);
 }
+/* Copper is too light to read on vellum; deepen it there. */
+:global([data-theme="light"]) .danger summary {
+  color: color-mix(in srgb, var(--color-copper) 60%, #000);
+}
 .danger[open] {
   border-inline-start: 2px solid var(--color-copper);
   padding-inline-start: var(--space-3);
