@@ -62,6 +62,16 @@ export function toLocalMidnight(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
+/**
+ * A `<input type="date">` value ("YYYY-MM-DD") as that local calendar day.
+ * (`new Date("YYYY-MM-DD")` is UTC midnight, which west of Greenwich is
+ * still the previous local day.)
+ */
+export function parseDateInput(value: string): Date {
+  const [y, m, d] = value.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
 export function hebrewDateFromGregorian(date: Date): HebrewDate {
   const jd = toJewishDate(toLocalMidnight(date));
   return { year: jd.year, month: jd.monthName, day: jd.day };

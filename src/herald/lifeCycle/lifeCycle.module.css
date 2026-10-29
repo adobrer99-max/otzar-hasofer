@@ -37,6 +37,14 @@
   cursor: pointer;
 }
 
+.inlineCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
 .eventList {
   list-style: none;
   margin: 0;

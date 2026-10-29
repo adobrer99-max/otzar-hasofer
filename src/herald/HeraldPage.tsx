@@ -205,6 +205,8 @@ export function HeraldPage() {
       {selectedParticipantId && selectedParticipant && (
         <LifeCycleEventsPanel
           participant={selectedParticipant}
+          allParticipants={participants}
+          currentHebrewYear={todayHebrewDate.year}
           onParticipantChange={handleParticipantChange}
           events={lifeCycleEvents}
           onEventsChange={setLifeCycleEvents}

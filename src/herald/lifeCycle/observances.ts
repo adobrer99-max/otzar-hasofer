@@ -2,6 +2,7 @@ import type { ParticipantRecord } from "../../types/herald";
 import type { LifeCycleEvent } from "../../types/lifeCycle";
 import type { HebrewDate } from "../../data/hebrewCalendar";
 import type { HebrewMonthDay } from "./recurringDates";
+import { isAnniversary } from "./hebrewAnniversary";
 
 /** A dated observance falling on a given Hebrew day — a Hebrew birthday or a
  *  life-cycle anniversary. `monthDay` is the recurring anchor used to find
@@ -38,7 +39,9 @@ export function todaysObservances(
 ): Observance[] {
   const observances: Observance[] = [];
 
-  if (participant.hebrewBirthDate && sameMonthDay(today, participant.hebrewBirthDate)) {
+  // Adar- and 30th-aware: an Adar I birthday still falls in a common year's
+  // Adar, and a 30 Cheshvan one on 1 Kislev when Cheshvan is short.
+  if (participant.hebrewBirthDate && isAnniversary(participant.hebrewBirthDate, today)) {
     const age = today.year - participant.hebrewBirthDate.year;
     observances.push({
       key: "birthday",
