@@ -6,8 +6,10 @@
  *   GOLIVE_URL=https://your.site npm run golive
  *   GOLIVE_URL=… GOLIVE_EMAIL=… GOLIVE_PASSWORD=… npm run golive
  *
- * Without credentials it runs only the public checks (headers, routes, the
- * service worker, and the cloud schema as an anonymous visitor sees it).
+ * Without credentials it runs the public checks (headers, routes, the
+ * service worker, the cloud schema as an anonymous visitor sees it) and the
+ * local ones (a reading kept across a reload, the calendar, the record).
+ * A deploy with no Supabase on purpose: pass --local-only.
  * With a *dedicated test account* (already email-verified) it also signs in
  * on two fresh "devices" and exercises sync, share links and draft sync,
  * cleaning up everything it creates.
@@ -19,13 +21,15 @@
  *   --reset-email     request a password-reset email for the test account
  *   --delete-account  finally delete the test account itself (also needs
  *                     GOLIVE_CONFIRM_DELETE set to the same email)
+ *   --local-only      this deploy has no cloud on purpose — "no cloud" passes
+ *                     (and a build that unexpectedly has one fails)
  *   --headed          show the browser
  *
  * Browser: Playwright's own Chromium if installed (`npx playwright install
  * chromium`), else PLAYWRIGHT_CHROMIUM_PATH, else your installed Chrome.
  */
 
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { chromium } from "playwright-core";
 
 // ——— options ———
@@ -39,6 +43,7 @@ const WITH_ART = args.has("--art");
 const WITH_RESET = args.has("--reset-email");
 const WITH_DELETE = args.has("--delete-account");
 const HEADED = args.has("--headed");
+const LOCAL_ONLY = args.has("--local-only") || process.env.GOLIVE_LOCAL_ONLY === "1";
 
 if (!BASE) {
   console.error("Set GOLIVE_URL (or pass the site URL) — e.g. GOLIVE_URL=https://otzar.example npm run golive");
@@ -183,11 +188,21 @@ await step("the cloud is configured in this build", async () => {
   await go(visitor.page, "/account");
   const unconfigured = await shown(visitor.page.getByText("This deployment has no cloud configured"), 4000);
   cloud = !unconfigured && (await shown(visitor.page.locator("#account-email"), 4000));
-  check(
-    cloud,
-    "the cloud is configured in this build",
-    cloud ? "" : "VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY were not set when it was built",
-  );
+  if (LOCAL_ONLY) {
+    check(
+      !cloud,
+      "this build is local-only, as intended",
+      cloud ? "it has a cloud configured — drop --local-only to check it" : "",
+    );
+  } else {
+    check(
+      cloud,
+      "the cloud is configured in this build",
+      cloud
+        ? ""
+        : "VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY were not set when it was built — or pass --local-only if this deploy is meant to have no cloud",
+    );
+  }
 });
 
 if (cloud && !anonKey) {
@@ -213,7 +228,7 @@ async function rest(path, init = {}) {
 const missing = (r) => r.status === 404 || r.body?.code === "42P01" || r.body?.code === "PGRST205" || r.body?.code === "PGRST202";
 
 if (!cloud) {
-  skip("schema checks", "no cloud in this build");
+  skip("schema checks", LOCAL_ONLY ? "local-only deploy" : "no cloud in this build");
 } else if (!anonKey) {
   fail("schema checks", "never saw the app call the cloud — is the card-art registry blocked (CSP connect-src)?");
 } else {
@@ -248,6 +263,55 @@ if (!cloud) {
     check(await shown(visitor.page.getByText("This link is no longer lit")), "an unknown share link shows the calm 'no longer lit' page");
   });
 }
+
+// ═══════════════════════════════ local ═══════════════════════════════
+// Everything below lives in the visitor's own browser (a fresh profile here),
+// so it runs on every deploy, cloud or not, and touches nobody's data.
+section("Local, in this browser");
+const local = await device("local");
+await step("local", async () => {
+  const page = local.page;
+  const name = `Go-live local ${STAMP}`;
+  const secret = `private reflection ${STAMP}`;
+  await go(page, "/account");
+  check(
+    await shown(cloud ? page.locator("#account-email") : page.getByText("This deployment has no cloud configured")),
+    cloud ? "the Account page offers sign-in" : "the Account page explains the Treasury lives in this browser",
+  );
+
+  await go(page, "/herald");
+  await page.getByPlaceholder("New participant name").fill(name);
+  await page.getByRole("button", { name: "+ New participant" }).click();
+  await page.getByLabel("Civil date of birth").fill("1990-04-10");
+  await page.getByRole("button", { name: "Set Hebrew Birthday" }).click();
+  await page.getByRole("button", { name: "✦ Deal the whole spread" }).click();
+  await page.locator("#reflection").fill(secret);
+  await page.getByRole("button", { name: "Create this Reading's Herald" }).click();
+  check(await shown(page.getByRole("button", { name: "Print the record" })), "a reading is recorded");
+  check(await selectParticipant(page, name), "it is still there after a reload (kept in the browser)");
+
+  const [download] = await Promise.all([
+    page.waitForEvent("download", { timeout: 10000 }),
+    page.getByRole("button", { name: "Add to calendar (.ics)" }).click(),
+  ]);
+  const ics = readFileSync(await download.path(), "utf8");
+  check(
+    ics.startsWith("BEGIN:VCALENDAR\r\n") && (ics.match(/BEGIN:VEVENT/g) ?? []).length === 20,
+    "the Hebrew birthday exports as a 20-year calendar",
+    download.suggestedFilename(),
+  );
+
+  await page.getByRole("button", { name: "Print the record" }).click();
+  check(await shown(page.getByRole("heading", { name, level: 1 })), "the printable record opens");
+  check(await shown(page.getByRole("region", { name: "The Origin Herald" })), "with the reading in it");
+  check(!(await page.content()).includes(secret), "and the reflection left out by default");
+
+  if (!(await selectParticipant(page, name))) throw new Error("participant vanished");
+  await page.getByRole("button", { name: "Remove participant" }).click();
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await page.getByText("Participant removed").waitFor({ timeout: 10000 });
+  check(!(await selectParticipant(page, name)), "removing it removes it for good");
+});
 
 // ═══════════════════════════════ signed in ═══════════════════════════════
 async function signIn(page) {
@@ -333,7 +397,10 @@ async function selectParticipant(page, name) {
 const signedIn = cloud && EMAIL && PASSWORD;
 section("Signed in — sync between two devices");
 if (!signedIn) {
-  skip("signed-in checks", cloud ? "set GOLIVE_EMAIL and GOLIVE_PASSWORD (a dedicated, verified test account)" : "no cloud");
+  skip(
+    "signed-in checks",
+    cloud ? "set GOLIVE_EMAIL and GOLIVE_PASSWORD (a dedicated, verified test account)" : LOCAL_ONLY ? "local-only deploy" : "no cloud",
+  );
 }
 
 const a = signedIn ? await device("device A") : null;
@@ -508,7 +575,7 @@ if (ready) {
   }
 }
 
-const stray = [visitor, a, b].filter(Boolean).flatMap((d) => d.page.errors);
+const stray = [visitor, local, a, b].filter(Boolean).flatMap((d) => d.page.errors);
 section("Console");
 check(stray.length === 0, "no uncaught errors in any page", stray.slice(0, 3).join(" | "));
 

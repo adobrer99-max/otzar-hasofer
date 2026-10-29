@@ -136,7 +136,8 @@ to wake; the paid tier removes this.
 Start with **[GOLIVE.md](./GOLIVE.md)**: `npm run golive` drives the live
 site (headers, schema, sync across two devices, share links, draft sync) and
 lists the few checks only a person can do. The list below is the longer,
-per-feature version.
+per-feature version. A deploy with no Supabase runs
+`npm run golive -- --local-only`.
 
 - Visit the deployed URL; click through the guide, the Herald, the
   Mizbe'ach, the Sefarim. Install it as a PWA and confirm it loads offline.

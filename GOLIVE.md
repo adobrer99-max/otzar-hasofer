@@ -5,10 +5,31 @@ Half of it is a script (`npm run golive`) that drives the live site in a real
 browser; the other half is a short list of things only a person can do (open
 an email, scan a code with a phone, install the app).
 
-Run it after every deploy that touches the cloud, and once before telling
-anyone the site is ready.
+Run it after every deploy, and once before telling anyone the site is ready.
 
-## 1. Before you start
+## A local-only deploy (no Supabase)
+
+If the site is deployed without a cloud — the Treasury lives entirely in each
+visitor's browser — run:
+
+```sh
+npm ci
+npx playwright install chromium   # once
+GOLIVE_URL=https://your.site npm run golive -- --local-only
+```
+
+It checks the security headers, the manifest, nine pages with no console
+errors, the service worker, that the build really has no cloud (so a deploy
+that picked one up by accident is flagged), and then, in a fresh browser:
+a reading is recorded and still there after a reload; the Hebrew birthday
+exports as a calendar; the printable record opens without the private
+parts; and removing the participant removes it. The cloud sections are
+skipped. Of the by-hand checks in §3, do 5–8 (install, offline, the
+record, the calendar) — 1–4 need the cloud.
+
+Everything from here on is for a deploy **with** the Supabase cloud.
+
+## 1. Before you start (with a cloud)
 
 - **Supabase SQL.** In the project's SQL editor, run every block of
   [`supabase/schema.sql`](./supabase/schema.sql) your project doesn't have
@@ -91,8 +112,9 @@ The script can't read email or hold a phone. After it passes:
 5. **Install.** On a phone, *Add to Home Screen* — the icon is the gold
    aleph shield (not a generic glyph), and the app opens full-screen.
 6. **Offline.** With the installed app open, go offline (airplane mode):
-   pages still open, the nav shows **Offline**, a reading can be recorded;
-   back online, the Account page's "Awaiting push" drains to 0.
+   pages still open and a reading can be recorded. With a cloud, the nav
+   also shows **Offline**, and back online the Account page's "Awaiting
+   push" drains to 0.
 7. **The record.** On `/herald`, "Print the record" → the print dialog's
    *Save as PDF* gives a clean, white document.
 8. **Calendar.** "Add to calendar (.ics)" on a participant's Hebrew Birthday
