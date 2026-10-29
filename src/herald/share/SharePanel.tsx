@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button, ConfirmButton } from "../../components/ui";
 import { toast } from "../../components/ui/toast";
+import { useOnline } from "../../components/useOnline";
 import type { ParticipantRecord, HeraldLayer, HeraldStyle } from "../../types/herald";
 import { copyText } from "../export/blazon";
 import { buildSharePayload } from "./sharePayload";
@@ -24,7 +25,10 @@ export function SharePanel({
   const [signedIn, setSignedIn] = useState<boolean>();
   const [share, setShare] = useState<{ token: string; updatedAt: string } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [busy, setBusy] = useState(false);
+  const online = useOnline();
 
   useEffect(() => {
     let cancelled = false;
@@ -52,13 +56,19 @@ export function SharePanel({
     }
     let cancelled = false;
     setLoading(true);
+    setLoadFailed(false);
     void (async () => {
       try {
         const { getShare } = await import("../../cloud/shares");
         const info = await getShare(participant.id);
         if (!cancelled) setShare(info);
       } catch {
-        if (!cancelled) setShare(null);
+        // Not "unpublished" — we simply couldn't ask. Publishing now could
+        // mint a second token, so hold the actions until a retry succeeds.
+        if (!cancelled) {
+          setShare(null);
+          setLoadFailed(true);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -66,7 +76,7 @@ export function SharePanel({
     return () => {
       cancelled = true;
     };
-  }, [participant.id, signedIn]);
+  }, [participant.id, signedIn, attempt]);
 
   function shareUrl(token: string): string {
     return `${location.origin}${location.pathname}#/shared/${token}`;
@@ -119,6 +129,17 @@ export function SharePanel({
         </p>
       ) : loading || signedIn === undefined ? (
         <p className={styles.note}>Checking the share…</p>
+      ) : loadFailed ? (
+        <div role="alert" className={styles.note}>
+          <p>
+            {online
+              ? "Couldn't check this Herald's share link."
+              : "You're offline, so this Herald's share link can't be checked."}
+          </p>
+          <Button variant="subtle" onClick={() => setAttempt((n) => n + 1)}>
+            Try again
+          </Button>
+        </div>
       ) : (
         <>
           <p className={styles.note}>
@@ -132,7 +153,12 @@ export function SharePanel({
             </p>
           )}
           <div className={styles.actions}>
-            <Button variant="primary" onClick={handlePublish} disabled={busy}>
+            {!online && (
+              <p className={styles.note} role="status">
+                You're offline — publishing and revoking wait for a connection.
+              </p>
+            )}
+            <Button variant="primary" onClick={handlePublish} disabled={busy || !online}>
               {share ? "Republish" : "Publish the link"}
             </Button>
             {share && (
@@ -140,7 +166,11 @@ export function SharePanel({
                 <Button variant="subtle" onClick={handleCopy} disabled={busy}>
                   Copy link
                 </Button>
-                <ConfirmButton onConfirm={() => void handleRevoke()} ariaLabel="Confirm revoking the share link">
+                <ConfirmButton
+                  onConfirm={() => void handleRevoke()}
+                  ariaLabel="Confirm revoking the share link"
+                  disabled={busy || !online}
+                >
                   Revoke
                 </ConfirmButton>
               </>

@@ -3,6 +3,7 @@ import { PageHeader, SegmentedControl, ConfirmButton } from "../components/ui";
 import { toast } from "../components/ui/toast";
 import { isCloudConfigured } from "./config";
 import { syncNow } from "./orchestrator";
+import { useOnline } from "../components/useOnline";
 import { getPendingCount, createIdbAdapter } from "./sync";
 import {
   validateNewPassword,
@@ -47,7 +48,9 @@ export function AccountPage() {
   const [pwOpen, setPwOpen] = useState(false);
   const [pending, setPending] = useState(0);
   const [lastSyncAt, setLastSyncAt] = useState<string>();
+  const [syncFailed, setSyncFailed] = useState(false);
   const [busy, setBusy] = useState(false);
+  const online = useOnline();
 
   async function refreshStatus() {
     setPending(await getPendingCount());
@@ -88,11 +91,20 @@ export function AccountPage() {
       }
       await refreshStatus();
     })();
-    const onDone = () => void refreshStatus();
+    const onDone = () => {
+      setSyncFailed(false);
+      void refreshStatus();
+    };
+    const onFailed = () => {
+      setSyncFailed(true);
+      void refreshStatus();
+    };
     window.addEventListener("otzar:sync-done", onDone);
+    window.addEventListener("otzar:sync-failed", onFailed);
     return () => {
       unsub?.();
       window.removeEventListener("otzar:sync-done", onDone);
+      window.removeEventListener("otzar:sync-failed", onFailed);
     };
   }, [configured]);
 
@@ -245,7 +257,11 @@ export function AccountPage() {
       await refreshStatus();
       toast("Synced", { tone: "success" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Sync failed — your changes remain queued locally.");
+      setError(
+        navigator.onLine
+          ? `Sync failed — your changes remain queued locally.${err instanceof Error && err.message ? ` (${err.message})` : ""}`
+          : "You're offline — your changes remain queued and will sync when you reconnect.",
+      );
     } finally {
       setBusy(false);
     }
@@ -316,7 +332,7 @@ export function AccountPage() {
               Set the new password
             </button>
           </div>
-          {error && <p className={styles.error}>{error}</p>}
+          {error && <p className={styles.error} role="alert">{error}</p>}
         </form>
       )}
 
@@ -398,7 +414,7 @@ export function AccountPage() {
           )}
 
           {notice && <p className={styles.sent}>{notice}</p>}
-          {error && <p className={styles.error}>{error}</p>}
+          {error && <p className={styles.error} role="alert">{error}</p>}
         </div>
       )}
 
@@ -412,8 +428,19 @@ export function AccountPage() {
             {" · "}
             Awaiting push: <strong>{pending}</strong>
           </p>
+          {!online ? (
+            <p className={styles.statusLine} role="status">
+              Offline — changes save on this device and sync when you reconnect.
+            </p>
+          ) : (
+            syncFailed && (
+              <p className={styles.statusLine} role="status">
+                The last background sync didn't complete — your changes stay queued. Try “Sync now”.
+              </p>
+            )
+          )}
           <div className={styles.actions}>
-            <button type="button" onClick={handleSyncNow} disabled={busy}>
+            <button type="button" onClick={handleSyncNow} disabled={busy || !online}>
               Sync now
             </button>
             <button type="button" onClick={handleSignOut} disabled={busy}>
@@ -452,7 +479,7 @@ export function AccountPage() {
             </ConfirmButton>
           </details>
           {notice && <p className={styles.sent}>{notice}</p>}
-          {error && <p className={styles.error}>{error}</p>}
+          {error && <p className={styles.error} role="alert">{error}</p>}
         </div>
       )}
     </div>

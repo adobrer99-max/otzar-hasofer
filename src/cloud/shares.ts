@@ -67,15 +67,39 @@ export async function revokeShare(participantId: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-/** Anonymous read by exact token; null for anything invalid/revoked. */
-export async function fetchSharedHerald(token: string): Promise<SharedHeraldPayload | null> {
-  if (!isShareToken(token)) return null;
+/**
+ * The outcome of an anonymous read. `missing` covers invalid, revoked,
+ * expired and garbage tokens alike — they stay indistinguishable. `error` is
+ * only for not reaching the Treasury at all (offline, or a server fault), so
+ * the page can say "try again" instead of "this link is dark".
+ */
+export type SharedFetchResult =
+  | { kind: "found"; payload: SharedHeraldPayload }
+  | { kind: "missing" }
+  | { kind: "error" };
+
+/** Map a PostgREST RPC response to a fetch result (pure, for testing). */
+export function classifySharedFetch(response: {
+  data: unknown;
+  error: { message: string } | null;
+  status: number;
+}): SharedFetchResult {
+  if (response.error) {
+    // Status 0 is supabase-js's report of a fetch that never completed.
+    return response.status === 0 || response.status >= 500 ? { kind: "error" } : { kind: "missing" };
+  }
+  if (!response.data) return { kind: "missing" };
+  return { kind: "found", payload: response.data as SharedHeraldPayload };
+}
+
+/** Anonymous read by exact token. */
+export async function fetchSharedHerald(token: string): Promise<SharedFetchResult> {
+  if (!isShareToken(token)) return { kind: "missing" };
   try {
     const { getSupabase } = await import("./supabaseClient");
-    const { data, error } = await getSupabase().rpc("get_shared_herald", { share_token: token });
-    if (error || !data) return null;
-    return data as SharedHeraldPayload;
+    const response = await getSupabase().rpc("get_shared_herald", { share_token: token });
+    return classifySharedFetch(response);
   } catch {
-    return null;
+    return { kind: "error" };
   }
 }

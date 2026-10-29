@@ -246,6 +246,7 @@ export function ConfirmButton({
   onConfirm,
   ariaLabel,
   className,
+  disabled,
 }: {
   children: ReactNode;
   confirmLabel?: string;
@@ -253,6 +254,7 @@ export function ConfirmButton({
   onConfirm: () => void;
   ariaLabel?: string;
   className?: string;
+  disabled?: boolean;
 }) {
   const [armed, setArmed] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
@@ -266,12 +268,13 @@ export function ConfirmButton({
     return () => document.removeEventListener("keydown", onKey);
   }, [armed]);
 
-  if (!armed) {
+  if (!armed || disabled) {
     return (
       <button
         type="button"
         className={[styles.confirmTrigger, className ?? ""].filter(Boolean).join(" ")}
         onClick={() => setArmed(true)}
+        disabled={disabled}
       >
         {children}
       </button>

@@ -3,6 +3,7 @@ import { createHashRouter } from "react-router-dom";
 import App from "./App";
 import { Home } from "./guide/pages/Home";
 import { NotFound } from "./guide/pages/NotFound";
+import { RouteErrorElement } from "./components/ErrorBoundary";
 
 // The Home landing and the 404 stay eager so the first paint and unknown paths
 // are instant. Every other route is code-split, so heavy modules — above all the
@@ -44,6 +45,7 @@ export const router = createHashRouter([
   {
     path: "/",
     element: <App />,
+    errorElement: <RouteErrorElement />,
     children: [
       { index: true, element: <Home /> },
       { path: "guide/foundations", element: <Foundations /> },
@@ -77,6 +79,7 @@ export const router = createHashRouter([
   {
     path: "/game",
     element: <GameShell />,
+    errorElement: <RouteErrorElement />,
     children: [{ index: true, element: <GamePage /> }],
   },
 ]);
