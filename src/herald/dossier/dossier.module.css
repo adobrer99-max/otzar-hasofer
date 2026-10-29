@@ -1,0 +1,236 @@
+/* The Scribe's record — a paper document in either theme: dark ink on a
+   white sheet on screen, and nothing but the sheet when printed. */
+
+.shell {
+  min-height: 100vh;
+  padding: var(--space-4) var(--space-3) var(--space-6);
+  background: var(--bg-sunken);
+  color: var(--text);
+}
+
+.status {
+  max-width: 48rem;
+  margin: var(--space-5) auto;
+}
+
+.toolbar {
+  max-width: 48rem;
+  margin: 0 auto var(--space-3);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.toolbar a {
+  color: var(--accent-bright);
+}
+
+.options {
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  margin: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+
+.options legend {
+  padding: 0 4px;
+  color: var(--accent-bright);
+  font-weight: 600;
+}
+
+.options label {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.hint {
+  margin: 0 0 4px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.printButton {
+  font: inherit;
+  font-weight: 600;
+  padding: var(--space-2) var(--space-3);
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--color-charcoal);
+  cursor: pointer;
+}
+
+.paper {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: clamp(1.25rem, 5vw, 3.5rem);
+  background: #ffffff;
+  color: #1d1a14;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  font-family: var(--font-latin);
+  line-height: 1.55;
+}
+
+/* The sheet sets its own ink — the page theme's heading colours don't apply. */
+.paper h1,
+.paper h2,
+.paper h3,
+.paper strong {
+  color: inherit;
+}
+
+.paper h1 {
+  margin: 0;
+  font-size: 2.1rem;
+  line-height: 1.15;
+}
+
+.paper h2 {
+  margin: var(--space-5) 0 var(--space-2);
+  font-size: 1.25rem;
+  border-bottom: 1px solid #c9b78c;
+  padding-bottom: 4px;
+  break-after: avoid;
+}
+
+.paper h3 {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+}
+
+.kicker {
+  margin: 0 0 var(--space-1);
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #6a5010;
+}
+
+.hebrewName {
+  margin: 2px 0 0;
+  font-family: var(--font-hebrew);
+  font-size: 1.4rem;
+  color: #6a5010;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px var(--space-3);
+  margin: var(--space-3) 0 var(--space-2);
+  font-size: 0.95rem;
+}
+
+.facts dt {
+  color: #5e5640;
+}
+
+.facts dd {
+  margin: 0;
+}
+
+.private {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #5e5640;
+  font-style: italic;
+}
+
+.heraldSection {
+  break-inside: avoid;
+}
+
+.herald {
+  max-width: 22rem;
+  margin: 0 auto;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.blazon {
+  white-space: pre-wrap;
+  font-size: 0.85rem;
+  color: #3b352a;
+}
+
+.reading {
+  padding: var(--space-2) 0 var(--space-3);
+  border-bottom: 1px solid #e6dcc4;
+  break-inside: avoid;
+}
+
+.date {
+  font-weight: 400;
+  color: #5e5640;
+}
+
+.meta {
+  margin: 0 0 var(--space-2);
+  font-size: 0.85rem;
+  color: #5e5640;
+}
+
+.letters,
+.dorot,
+.events {
+  margin: 0 0 var(--space-2);
+  padding-inline-start: 1.2rem;
+}
+
+.glyph {
+  font-family: var(--font-hebrew);
+  font-size: 1.15rem;
+  color: #6a5010;
+}
+
+.sod {
+  border-inline-start: 2px dashed #a9812f;
+  padding-inline-start: var(--space-2);
+}
+
+.reflection {
+  margin: var(--space-2) 0 0;
+  padding-inline-start: var(--space-3);
+  border-inline-start: 2px solid #c9b78c;
+  font-style: italic;
+  white-space: pre-wrap;
+}
+
+.eventNotes {
+  color: #5e5640;
+}
+
+@page {
+  margin: 16mm 14mm;
+}
+
+@media print {
+  /* A dark colour scheme would have the browser paint the page margins
+     dark; the sheet is always paper. */
+  :global(html),
+  :global(body) {
+    color-scheme: light !important;
+    background: #ffffff !important;
+  }
+  .shell {
+    padding: 0;
+    background: none;
+  }
+  .toolbar {
+    display: none;
+  }
+  .paper {
+    max-width: none;
+    padding: 0;
+    box-shadow: none;
+    border-radius: 0;
+  }
+}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { PageHeader, EmptyState, ConfirmButton } from "../components/ui";
 import { toast } from "../components/ui/toast";
 import type { ParticipantRecord, HeraldLayer, ReadingPath, HeraldStyle } from "../types/herald";
@@ -56,6 +56,7 @@ export function HeraldPage() {
   const wasRevealed = useRef(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   useEffect(() => {
     listParticipants().then((list) => {
@@ -323,6 +324,13 @@ export function HeraldPage() {
                   />
                 )}
                 <div className={styles.exportRow}>
+                  <button
+                    type="button"
+                    onClick={() => selectedParticipant && navigate(`/dossier/${selectedParticipant.id}`)}
+                    title="The whole history — Herald, blazon, every reading — as one document to print or save as PDF"
+                  >
+                    Print the record
+                  </button>
                   <button
                     type="button"
                     onClick={() =>
