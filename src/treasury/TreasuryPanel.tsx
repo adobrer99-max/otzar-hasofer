@@ -4,7 +4,7 @@ import { toast } from "../components/ui/toast";
 import { downloadText } from "../herald/export/blazon";
 import {
   BACKUP_STORES,
-  STORE_LABELS,
+  countLabel,
   backupDue,
   backupFilename,
   countRecords,
@@ -22,7 +22,7 @@ import { formatBytes, requestPersistence, storageStatus, type StorageStatus } fr
 import styles from "./treasury.module.css";
 
 function listCounts(counts: Record<BackupStore, number>): string {
-  const parts = BACKUP_STORES.filter((s) => counts[s] > 0).map((s) => `${counts[s]} ${STORE_LABELS[s]}`);
+  const parts = BACKUP_STORES.filter((s) => counts[s] > 0).map((s) => countLabel(s, counts[s]));
   return parts.length ? parts.join(" · ") : "nothing yet";
 }
 
@@ -126,8 +126,8 @@ export function TreasuryPanel() {
     );
   }
 
-  const hasReadings = (counts?.heraldLayers ?? 0) > 0;
-  const due = backupDue(lastBackup, hasReadings);
+  const hasData = (counts?.participants ?? 0) > 0;
+  const due = backupDue(lastBackup, hasData);
   const planAdded = pending ? BACKUP_STORES.reduce((n, s) => n + pending.plan[s].added, 0) : 0;
   const planUpdated = pending ? BACKUP_STORES.reduce((n, s) => n + pending.plan[s].updated, 0) : 0;
 

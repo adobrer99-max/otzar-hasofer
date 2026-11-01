@@ -75,7 +75,7 @@ describe("backup reminder", () => {
   it("stays quiet with nothing to keep", () => {
     expect(backupDue(null, false, now)).toBe(false);
   });
-  it("nudges when there are readings and no backup, or an old one", () => {
+  it("nudges when there is a Treasury and no backup, or an old one", () => {
     expect(backupDue(null, true, now)).toBe(true);
     expect(backupDue("2026-09-01T00:00:00Z", true, now)).toBe(true);
     expect(backupDue("2026-10-20T00:00:00Z", true, now)).toBe(false);

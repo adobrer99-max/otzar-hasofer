@@ -24,6 +24,22 @@ export const BACKUP_STORES = [
 ] as const;
 export type BackupStore = (typeof BACKUP_STORES)[number];
 
+/** Singular labels, for a count of one. */
+const STORE_LABEL_ONE: Record<BackupStore, string> = {
+  participants: "participant",
+  heraldLayers: "reading",
+  lifeCycleEvents: "life-cycle event",
+  commentaries: "commentary",
+  unions: "union",
+  contentDrafts: "Scriptorium draft",
+  ascents: "saved ascent",
+};
+
+/** "1 reading", "3 readings". */
+export function countLabel(store: BackupStore, n: number): string {
+  return `${n} ${n === 1 ? STORE_LABEL_ONE[store] : STORE_LABELS[store]}`;
+}
+
 export const STORE_LABELS: Record<BackupStore, string> = {
   participants: "participants",
   heraldLayers: "readings",
@@ -224,8 +240,8 @@ export function recordBackup(now: Date = new Date()): void {
 }
 
 /** Whether to nudge: there is something worth keeping and no recent backup (pure). */
-export function backupDue(lastBackup: string | null, hasReadings: boolean, now: Date = new Date()): boolean {
-  if (!hasReadings) return false;
+export function backupDue(lastBackup: string | null, hasData: boolean, now: Date = new Date()): boolean {
+  if (!hasData) return false;
   if (!lastBackup) return true;
   const age = now.getTime() - new Date(lastBackup).getTime();
   return Number.isNaN(age) || age > BACKUP_REMINDER_DAYS * 24 * 60 * 60 * 1000;

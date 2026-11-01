@@ -14,13 +14,13 @@ function dismissedThisSession(): boolean {
 }
 
 /**
- * A quiet nudge on the Herald when this device holds readings and hasn't
+ * A quiet nudge on the Herald when this device holds a Treasury and hasn't
  * been backed up in a month — once a session, and dismissible. The Treasury
  * may exist nowhere else.
  */
-export function BackupReminder({ hasReadings }: { hasReadings: boolean }) {
+export function BackupReminder({ hasData }: { hasData: boolean }) {
   const [dismissed, setDismissed] = useState(dismissedThisSession);
-  if (dismissed || !backupDue(readLastBackup(), hasReadings)) return null;
+  if (dismissed || !backupDue(readLastBackup(), hasData)) return null;
   return (
     <div role="note">
       <Callout>

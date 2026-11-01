@@ -196,7 +196,7 @@ export function HeraldPage() {
         join in a shared <Link to="/covenant">Covenantal Herald</Link>.
       </p>
 
-      <BackupReminder hasReadings={layers.length > 0} />
+      <BackupReminder hasData={participants.length > 0} />
 
       <ParticipantPicker
         participants={participants}
