@@ -19,7 +19,7 @@
 }
 
 .hebrew {
-  color: var(--accent);
+  color: var(--accent-bright);
   font-size: 1rem;
 }
 

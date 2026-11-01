@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { PageHeader, EmptyState } from "../../components/ui";
+import { PageHeader, EmptyState, Button } from "../../components/ui";
 import { isCloudConfigured } from "../../cloud/config";
 import { HeraldCanvas } from "../render/HeraldCanvas";
 import type { SharedHeraldPayload } from "./sharePayload";
@@ -10,14 +10,16 @@ type PageState =
   | { kind: "unconfigured" }
   | { kind: "loading" }
   | { kind: "missing" }
+  | { kind: "error" }
   | { kind: "found"; payload: SharedHeraldPayload };
 
 /**
  * The participant-facing shared Herald — a public, read-only page reached
  * only by its tokenized URL (no nav link). Renders the published snapshot:
  * the derived, veil-free Herald with name, status, and epithet. Invalid,
- * revoked, and garbage tokens all collapse into one indistinguishable
- * "no longer lit" state.
+ * revoked, expired and garbage tokens all collapse into one
+ * indistinguishable "no longer lit" state; only failing to reach the cloud at
+ * all (offline, a server fault) reads differently, with a retry.
  */
 export function SharedHeraldPage() {
   const { token } = useParams<{ token: string }>();
@@ -25,24 +27,44 @@ export function SharedHeraldPage() {
     isCloudConfigured() ? { kind: "loading" } : { kind: "unconfigured" },
   );
 
+  const [attempt, setAttempt] = useState(0);
+
   useEffect(() => {
-    if (!isCloudConfigured() || !token) return;
+    if (!isCloudConfigured()) return;
+    if (!token) {
+      setState({ kind: "missing" });
+      return;
+    }
     let cancelled = false;
     void (async () => {
-      const { fetchSharedHerald } = await import("../../cloud/shares");
-      const payload = await fetchSharedHerald(token);
-      if (cancelled) return;
-      // A minimal shape guard — anything malformed reads as missing.
-      if (payload?.heraldForm?.charges?.length === 3 && payload.displayName) {
-        setState({ kind: "found", payload });
-      } else {
-        setState({ kind: "missing" });
+      let next: PageState;
+      try {
+        const { fetchSharedHerald } = await import("../../cloud/shares");
+        const result = await fetchSharedHerald(token);
+        const payload = result.kind === "found" ? result.payload : null;
+        if (result.kind === "error") {
+          next = { kind: "error" };
+        } else if (payload?.heraldForm?.charges?.length === 3 && payload.displayName) {
+          // A minimal shape guard — anything malformed reads as missing.
+          next = { kind: "found", payload };
+        } else {
+          next = { kind: "missing" };
+        }
+      } catch {
+        // The share module itself failed to load — offline on a cold cache.
+        next = { kind: "error" };
       }
+      if (!cancelled) setState(next);
     })();
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, attempt]);
+
+  function retry() {
+    setState({ kind: "loading" });
+    setAttempt((n) => n + 1);
+  }
 
   if (state.kind === "unconfigured") {
     return (
@@ -65,13 +87,32 @@ export function SharedHeraldPage() {
     );
   }
 
+  if (state.kind === "error") {
+    return (
+      <div className="page">
+        <PageHeader kicker="A shared Herald" title="The Herald" />
+        <div role="alert">
+          <EmptyState
+            title="Couldn't reach the Treasury"
+            description="Check your connection and try again — the link itself may be fine."
+            action={
+              <Button variant="primary" onClick={retry}>
+                Try again
+              </Button>
+            }
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (state.kind === "missing") {
     return (
       <div className="page">
         <PageHeader kicker="A shared Herald" title="The Herald" />
         <EmptyState
           title="This link is no longer lit"
-          description="The Herald it pointed to has been withdrawn, or the link is not one the Treasury knows."
+          description="The Herald it pointed to has been withdrawn or has expired, or the link is not one the Treasury knows."
         />
       </div>
     );

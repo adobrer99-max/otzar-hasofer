@@ -4,6 +4,8 @@ import { ThemeToggle } from "./ui/ThemeToggle";
 import { AlephMark } from "./ui";
 import { guideLinks, practiceLinks, libraryLinks, accountLink, type SiteLink } from "./siteMap";
 import { openPalette } from "../search/paletteStore";
+import { isCloudConfigured } from "../cloud/config";
+import { useOnline } from "./useOnline";
 import styles from "./Nav.module.css";
 
 function linkClass({ isActive }: { isActive: boolean }) {
@@ -13,6 +15,24 @@ function linkClass({ isActive }: { isActive: boolean }) {
 /** The gold aleph-shield brand mark (the favicon motif, inline). */
 function BrandMark() {
   return <AlephMark className={styles.mark} />;
+}
+
+/**
+ * A quiet "Offline" mark, only where a cloud is configured (an unconfigured
+ * deployment is wholly local, so the network never matters). The status
+ * region stays mounted so the change is announced, not just drawn.
+ */
+function OfflineMark() {
+  const online = useOnline();
+  return (
+    <span role="status" className={styles.offlineRegion}>
+      {!online && (
+        <span className={styles.offlinePill} title="Offline — your work saves on this device and syncs when you reconnect">
+          Offline
+        </span>
+      )}
+    </span>
+  );
 }
 
 /** A labelled disclosure menu of nav links, keyboard- and outside-click-dismissible. */
@@ -155,6 +175,7 @@ export function Nav() {
         </nav>
 
         <div className={styles.actions}>
+          {isCloudConfigured() && <OfflineMark />}
           <button type="button" className={styles.searchButton} aria-label="Search" onClick={() => openPalette()}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
               <circle cx="11" cy="11" r="7" />

@@ -215,3 +215,49 @@ as $$
 $$;
 revoke execute on function public.get_shared_herald(uuid) from public;
 grant execute on function public.get_shared_herald(uuid) to anon, authenticated;
+
+-- ————— shared_heralds: expiry & views —————
+-- Share links may expire (enforced here, server-side — an expired link reads
+-- exactly like a revoked one), and the Scribe sees when a link was last
+-- opened and how often. The owner's own visits are not counted. Viewing
+-- bumps only the view columns, so updated_at keeps meaning "last published".
+-- Idempotent; existing deployments: run just this block.
+alter table public.shared_heralds
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists expires_at timestamptz,
+  add column if not exists last_viewed_at timestamptz,
+  add column if not exists view_count integer not null default 0;
+
+drop trigger if exists shared_heralds_updated_at on public.shared_heralds;
+create trigger shared_heralds_updated_at
+  before update on public.shared_heralds
+  for each row
+  when (old.data is distinct from new.data)
+  execute function public.set_updated_at();
+
+create or replace function public.get_shared_herald(share_token uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+volatile
+as $$
+declare
+  live public.shared_heralds%rowtype;
+begin
+  select * into live from public.shared_heralds
+    where token = share_token
+      and (expires_at is null or expires_at > now());
+  if not found then
+    return null;
+  end if;
+  if auth.uid() is distinct from live.owner_id then
+    update public.shared_heralds
+      set last_viewed_at = now(), view_count = view_count + 1
+      where token = share_token;
+  end if;
+  return live.data;
+end;
+$$;
+revoke execute on function public.get_shared_herald(uuid) from public;
+grant execute on function public.get_shared_herald(uuid) to anon, authenticated;

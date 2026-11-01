@@ -1,8 +1,10 @@
-import { lazy, type ComponentType } from "react";
+import { lazy, Suspense, type ComponentType } from "react";
 import { createHashRouter } from "react-router-dom";
 import App from "./App";
 import { Home } from "./guide/pages/Home";
 import { NotFound } from "./guide/pages/NotFound";
+import { RouteErrorElement } from "./components/ErrorBoundary";
+import { RouteFallback } from "./components/ui";
 
 // The Home landing and the 404 stay eager so the first paint and unknown paths
 // are instant. Every other route is code-split, so heavy modules — above all the
@@ -30,6 +32,8 @@ const HeraldPage = lazyPage(() => import("./herald/HeraldPage"), "HeraldPage");
 const CovenantPage = lazyPage(() => import("./herald/covenant/CovenantPage"), "CovenantPage");
 const GamePage = lazyPage(() => import("./game/GamePage"), "GamePage");
 const GameShell = lazyPage(() => import("./game/GameShell"), "GameShell");
+// A participant's printable record — outside the frame, like the game, so it prints clean.
+const DossierPage = lazyPage(() => import("./herald/dossier/DossierPage"), "DossierPage");
 const MizbeachToolPage = lazyPage(() => import("./mizbeach/MizbeachToolPage"), "MizbeachToolPage");
 const CommentariesPage = lazyPage(() => import("./commentaries/CommentariesPage"), "CommentariesPage");
 const LibraryPage = lazyPage(() => import("./library/LibraryPage"), "LibraryPage");
@@ -44,6 +48,7 @@ export const router = createHashRouter([
   {
     path: "/",
     element: <App />,
+    errorElement: <RouteErrorElement />,
     children: [
       { index: true, element: <Home /> },
       { path: "guide/foundations", element: <Foundations /> },
@@ -70,6 +75,15 @@ export const router = createHashRouter([
       { path: "*", element: <NotFound /> },
     ],
   },
+  {
+    path: "/dossier/:participantId",
+    element: (
+      <Suspense fallback={<RouteFallback />}>
+        <DossierPage />
+      </Suspense>
+    ),
+    errorElement: <RouteErrorElement />,
+  },
   // **Ma'alot stands outside the frame.** Every other route is a document, laid
   // in `App`'s nav / panel / footer; this one is a game and takes the window.
   // See `game/GameShell.tsx` for why. The path is unchanged, so the nav link
@@ -77,6 +91,7 @@ export const router = createHashRouter([
   {
     path: "/game",
     element: <GameShell />,
+    errorElement: <RouteErrorElement />,
     children: [{ index: true, element: <GamePage /> }],
   },
 ]);

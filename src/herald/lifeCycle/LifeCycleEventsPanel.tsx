@@ -2,7 +2,14 @@ import { useState } from "react";
 import type { ParticipantRecord } from "../../types/herald";
 import type { LifeCycleEvent, LifeCycleEventType } from "../../types/lifeCycle";
 import { LIFE_CYCLE_EVENT_LABELS } from "../../types/lifeCycle";
-import { hebrewDateFromGregorian, formatHebrewDateEnglish } from "../../data/hebrewCalendar";
+import {
+  hebrewDateFromGregorian,
+  formatHebrewDateEnglish,
+  parseDateInput,
+} from "../../data/hebrewCalendar";
+import { toast } from "../../components/ui/toast";
+import { downloadText } from "../export/blazon";
+import { birthdayEvents, buildIcs, CALENDAR_YEARS } from "./birthdayCalendar";
 import { setHebrewBirthDate, setHebrewName } from "../../storage/participantsRepo";
 import { ConfirmButton } from "../../components/ui";
 import {
@@ -14,6 +21,10 @@ import styles from "./lifeCycle.module.css";
 
 export interface LifeCycleEventsPanelProps {
   participant: ParticipantRecord;
+  /** Every participant, for the "all birthdays" calendar export. */
+  allParticipants: ParticipantRecord[];
+  /** The current Hebrew year — the calendar export starts here. */
+  currentHebrewYear: number;
   onParticipantChange: (updated: ParticipantRecord) => void;
   events: LifeCycleEvent[];
   onEventsChange: (events: LifeCycleEvent[]) => void;
@@ -27,13 +38,21 @@ function eventSummary(event: LifeCycleEvent): string {
   return label;
 }
 
+function calendarSlug(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "participant";
+}
+
 export function LifeCycleEventsPanel({
   participant,
+  allParticipants,
+  currentHebrewYear,
   onParticipantChange,
   events,
   onEventsChange,
 }: LifeCycleEventsPanelProps) {
   const [birthDateInput, setBirthDateInput] = useState("");
+  const [afterSundown, setAfterSundown] = useState(false);
+  const [editingBirthday, setEditingBirthday] = useState(false);
   const [eventType, setEventType] = useState<LifeCycleEventType>("yahrzeit");
   const [relation, setRelation] = useState("");
   const [personName, setPersonName] = useState("");
@@ -46,11 +65,27 @@ export function LifeCycleEventsPanel({
 
   async function handleSetBirthDate() {
     if (!birthDateInput) return;
-    const hebrewDate = hebrewDateFromGregorian(new Date(birthDateInput));
-    const updated = await setHebrewBirthDate(participant.id, hebrewDate);
+    const civil = parseDateInput(birthDateInput);
+    // The Hebrew day begins at nightfall: a birth after sundown belongs to
+    // the next Hebrew date.
+    if (afterSundown) civil.setDate(civil.getDate() + 1);
+    const updated = await setHebrewBirthDate(participant.id, hebrewDateFromGregorian(civil));
     onParticipantChange(updated);
     setBirthDateInput("");
+    setAfterSundown(false);
+    setEditingBirthday(false);
   }
+
+  function exportCalendar(people: ParticipantRecord[], filename: string, name: string) {
+    const events = people.flatMap((p) => birthdayEvents(p, currentHebrewYear));
+    downloadText(buildIcs(events, name), filename, "text/calendar;charset=utf-8");
+    toast(
+      `Calendar saved — ${people.length === 1 ? "" : `${people.length} birthdays, `}the next ${CALENDAR_YEARS} years. Open the file to add it to your calendar.`,
+      { tone: "success" },
+    );
+  }
+
+  const withBirthdays = allParticipants.filter((p) => p.hebrewBirthDate);
 
   const isYahrzeit = eventType === "yahrzeit";
   const isConversion = eventType === "conversion";
@@ -88,25 +123,61 @@ export function LifeCycleEventsPanel({
   }
 
   const isAdarAnchor = eventDate
-    ? hebrewDateFromGregorian(new Date(eventDate)).month === "Adar"
+    ? hebrewDateFromGregorian(parseDateInput(eventDate)).month === "Adar"
     : false;
 
   return (
     <div className={styles.panel}>
       <h3>Hebrew Birthday</h3>
-      {participant.hebrewBirthDate ? (
-        <p>{formatHebrewDateEnglish(participant.hebrewBirthDate)}</p>
+      {participant.hebrewBirthDate && !editingBirthday ? (
+        <>
+          <p>{formatHebrewDateEnglish(participant.hebrewBirthDate)}</p>
+          <div className={styles.row}>
+            <button
+              type="button"
+              onClick={() =>
+                exportCalendar(
+                  [participant],
+                  `${calendarSlug(participant.displayName)}-hebrew-birthday.ics`,
+                  `${participant.displayName} — Hebrew Birthday`,
+                )
+              }
+            >
+              Add to calendar (.ics)
+            </button>
+            {withBirthdays.length > 1 && (
+              <button
+                type="button"
+                onClick={() => exportCalendar(withBirthdays, "hebrew-birthdays.ics", "Hebrew Birthdays — Otzar HaSofer")}
+              >
+                All {withBirthdays.length} birthdays (.ics)
+              </button>
+            )}
+            <button type="button" onClick={() => setEditingBirthday(true)}>
+              Change
+            </button>
+          </div>
+        </>
       ) : (
         <div className={styles.row}>
           <input
             type="date"
-            aria-label="Hebrew birthday date"
+            aria-label="Civil date of birth"
             value={birthDateInput}
             onChange={(e) => setBirthDateInput(e.target.value)}
           />
-          <button type="button" onClick={handleSetBirthDate}>
+          <label className={styles.inlineCheck}>
+            <input type="checkbox" checked={afterSundown} onChange={(e) => setAfterSundown(e.target.checked)} />
+            Born after sundown
+          </label>
+          <button type="button" onClick={handleSetBirthDate} disabled={!birthDateInput}>
             Set Hebrew Birthday
           </button>
+          {editingBirthday && (
+            <button type="button" onClick={() => setEditingBirthday(false)}>
+              Cancel
+            </button>
+          )}
         </div>
       )}
 

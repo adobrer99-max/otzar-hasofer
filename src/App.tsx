@@ -4,6 +4,7 @@ import { Nav } from "./components/Nav";
 import { Footer } from "./components/Footer";
 import { RouteFallback, Toaster } from "./components/ui";
 import { CommandPalette } from "./search/CommandPalette";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 function App() {
   // Keyed on pathname (not search/hash) so each real navigation replays the
@@ -20,11 +21,13 @@ function App() {
         {/* The illuminated plate — every routed surface is framed as one lit,
             gold-filletted document on the softly lit ground. */}
         <div className="otz-panel">
-          <Suspense fallback={<RouteFallback />}>
-            <div key={pathname} className="route-enter">
-              <Outlet />
-            </div>
-          </Suspense>
+          <ErrorBoundary resetKey={pathname}>
+            <Suspense fallback={<RouteFallback />}>
+              <div key={pathname} className="route-enter">
+                <Outlet />
+              </div>
+            </Suspense>
+          </ErrorBoundary>
         </div>
       </main>
       <Footer />

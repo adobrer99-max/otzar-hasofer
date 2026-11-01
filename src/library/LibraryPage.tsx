@@ -8,13 +8,18 @@ function seferHref(sefer: SeferMeta): string {
   return sefer.kind === "external-link" && sefer.target ? sefer.target : `/sefarim/${sefer.id}`;
 }
 
+/** The canon blue is a dark binding; it takes parchment lettering, not charcoal. */
+function spineInk(spineColor: string): string | undefined {
+  return spineColor === "var(--color-blue)" ? "var(--color-parchment)" : undefined;
+}
+
 function Spine({ sefer }: { sefer: SeferMeta }) {
   const forthcoming = sefer.kind === "forthcoming";
   return (
     <Link
       to={seferHref(sefer)}
       className={`${styles.spine} ${forthcoming ? styles.forthcoming : ""}`}
-      style={{ background: sefer.spineColor }}
+      style={{ background: sefer.spineColor, color: spineInk(sefer.spineColor) }}
       title={`${sefer.title} — ${sefer.subtitle}`}
     >
       <span className={styles.spineHebrew}>{sefer.hebrewName}</span>

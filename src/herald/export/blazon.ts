@@ -302,9 +302,10 @@ export async function copyText(text: string): Promise<boolean> {
   }
 }
 
-/** Download an image prompt as a .txt (fallback when the clipboard is unavailable). */
-export function downloadText(text: string, filename: string): void {
-  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+/** Download text as a file — an image prompt as .txt by default (the
+ *  clipboard fallback), or any text format given its media type. */
+export function downloadText(text: string, filename: string, type = "text/plain;charset=utf-8"): void {
+  const blob = new Blob([text], { type });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

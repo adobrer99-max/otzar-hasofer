@@ -67,7 +67,7 @@
 
 .startHeb {
   font-size: clamp(1.4rem, 4vw, 2rem);
-  color: var(--accent);
+  color: var(--accent-bright);
   margin: 0;
 }
 
@@ -110,6 +110,10 @@
   font-size: 0.85rem;
   color: var(--color-copper, var(--accent));
   font-style: italic;
+}
+/* Copper is too light to read on vellum; deepen it there. */
+:global([data-theme="light"]) .startRule {
+  color: color-mix(in srgb, var(--color-copper) 60%, #000);
 }
 
 /* Past the seventh seal, the seven become seven things to choose between. */

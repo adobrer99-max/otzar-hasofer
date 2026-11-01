@@ -26,6 +26,15 @@ export async function syncNow(): Promise<SyncSummary | undefined> {
     await adapter.setState("lastSyncAt", new Date().toISOString());
     window.dispatchEvent(new CustomEvent("otzar:sync-done"));
     return summary;
+  } catch (err) {
+    // Background callers swallow the rejection (the outbox keeps the changes),
+    // so announce the failure for the Account page's sync status to show.
+    window.dispatchEvent(
+      new CustomEvent("otzar:sync-failed", {
+        detail: err instanceof Error ? err.message : String(err),
+      }),
+    );
+    throw err;
   } finally {
     syncing = false;
   }

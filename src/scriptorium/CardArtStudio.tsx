@@ -4,6 +4,7 @@ import { toast } from "../components/ui/toast";
 import { letters } from "../data/letters";
 import { dorotHouses, dorotCards } from "../data/dorot";
 import { isCloudConfigured } from "../cloud/config";
+import { useOnline } from "../components/useOnline";
 import { fetchCardArtRows, uploadCardArt, removeCardArt, type CardArtRow } from "../cloud/cardArt";
 import { applyCardArt, clearCardArt, writeCardArtCache } from "../cloud/applyCardArt";
 import styles from "./scriptorium.module.css";
@@ -59,6 +60,9 @@ export function CardArtStudio() {
   const [rows, setRows] = useState<Map<string, CardArtRow>>(new Map());
   const [signedIn, setSignedIn] = useState(false);
   const [checked, setChecked] = useState(false);
+  const [registry, setRegistry] = useState<"loading" | "ready" | "failed">("loading");
+  const [registryAttempt, setRegistryAttempt] = useState(0);
+  const online = useOnline();
   const [selectedId, setSelectedId] = useState<string>(groups[0].entries[0].id);
   const [alt, setAlt] = useState("");
   const [credit, setCredit] = useState("");
@@ -97,13 +101,34 @@ export function CardArtStudio() {
       }
       setChecked(true);
     })();
-    void fetchCardArtRows()
-      .then((fetched) => setRows(new Map(fetched.map((r) => [r.id, r]))))
-      .catch(() => {
-        // offline — the registry list just shows no thumbnails
-      });
     return () => unsub?.();
   }, [configured]);
+
+  // The registry loads independently of auth (and retries on demand), so an
+  // unreachable cloud reads as exactly that — not as "no art uploaded".
+  useEffect(() => {
+    if (!configured) return;
+    let cancelled = false;
+    void fetchCardArtRows()
+      .then((fetched) => {
+        if (cancelled) return;
+        setRows(new Map(fetched.map((r) => [r.id, r])));
+        setRegistry("ready");
+      })
+      .catch(() => {
+        if (!cancelled) setRegistry("failed");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [configured, registryAttempt]);
+
+  function retryRegistry() {
+    setRegistry("loading");
+    setRegistryAttempt((n) => n + 1);
+  }
+
+  const canEdit = signedIn && online && !busy;
 
   // Hydrate the editor fields when the selection (or loaded registry) changes.
   useEffect(() => {
@@ -173,6 +198,27 @@ export function CardArtStudio() {
         in the public bucket and the registry row goes live; no redeploy.
       </p>
 
+      {!online ? (
+        <div role="status">
+          <Callout>
+            You're offline. Uploads and removals need the Scribes' Cloud — they'll
+            be available again when you reconnect.
+          </Callout>
+        </div>
+      ) : (
+        registry === "failed" && (
+          <div role="alert">
+            <Callout>
+              Couldn't reach the card-art registry, so the art already published
+              isn't listed below.{" "}
+              <Button variant="subtle" onClick={retryRegistry}>
+                Try again
+              </Button>
+            </Callout>
+          </div>
+        )
+      )}
+
       {checked && !signedIn && (
         <Callout>
           Uploading requires a signed-in Scribe.{" "}
@@ -230,7 +276,7 @@ export function CardArtStudio() {
                 type="file"
                 accept="image/*"
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                disabled={!signedIn || busy}
+                disabled={!canEdit}
               />
 
               <label htmlFor="card-art-alt">Alt text (required — read to assistive tech)</label>
@@ -239,7 +285,7 @@ export function CardArtStudio() {
                 type="text"
                 value={alt}
                 onChange={(e) => setAlt(e.target.value)}
-                disabled={!signedIn || busy}
+                disabled={!canEdit}
               />
 
               <label htmlFor="card-art-credit">Credit (optional — the illustrator's name)</label>
@@ -249,15 +295,15 @@ export function CardArtStudio() {
                 value={credit}
                 onChange={(e) => setCredit(e.target.value)}
                 placeholder="Illustrated by …"
-                disabled={!signedIn || busy}
+                disabled={!canEdit}
               />
 
               <div className={styles.artActions}>
-                <Button variant="primary" onClick={handleUpload} disabled={!signedIn || busy || !file || !alt.trim()}>
+                <Button variant="primary" onClick={handleUpload} disabled={!canEdit || !file || !alt.trim()}>
                   {currentRow ? "Replace the art" : "Upload & publish"}
                 </Button>
                 {currentRow && (
-                  <ConfirmButton onConfirm={handleRemove} ariaLabel="Remove this card's art">
+                  <ConfirmButton onConfirm={handleRemove} ariaLabel="Remove this card's art" disabled={!canEdit}>
                     Remove
                   </ConfirmButton>
                 )}

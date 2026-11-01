@@ -148,6 +148,20 @@
   letter-spacing: 0.03em;
   color: var(--text-muted);
 }
+.offlineRegion {
+  display: inline-flex;
+  align-items: center;
+}
+.offlinePill {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border: 1px solid var(--border-hairline);
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
 .accountLink {
   color: var(--text-muted);
   text-decoration: none;

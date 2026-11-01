@@ -34,6 +34,12 @@ describe("todaysObservances", () => {
     expect(result[0].monthDay).toEqual({ year: 5750, month: "Nisan", day: 10 });
   });
 
+  it("finds an Adar I birthday in a common year's Adar", () => {
+    const p = participant({ hebrewBirthDate: { year: 5784, month: "AdarI", day: 10 } });
+    const result = todaysObservances({ year: 5786, month: "Adar", day: 10 }, p, []);
+    expect(result.map((o) => o.key)).toEqual(["birthday"]);
+  });
+
   it("returns a Yahrzeit with its ordinal count when it falls today", () => {
     const result = todaysObservances(today, participant(), [yahrzeit({ year: 5783, month: "Nisan", day: 10 })]);
     expect(result).toHaveLength(1);

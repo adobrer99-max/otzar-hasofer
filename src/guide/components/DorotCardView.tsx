@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import type { DorotCard } from "../../types/dorot";
 import { RichText } from "../../components/ui";
+import { CardArtImage } from "../../components/cardArt/CardArtImage";
+import { useCardArt } from "../../components/cardArt/useCardArt";
 import styles from "../pages/Dorot.module.css";
 
 /**
@@ -10,21 +12,13 @@ import styles from "../pages/Dorot.module.css";
  * `children` is an optional slot (the House page hangs commentaries here).
  */
 export function DorotCardView({ card, children }: { card: DorotCard; children?: ReactNode }) {
+  const { art, onError } = useCardArt(card.art);
   return (
     <div className={styles.card}>
       <h3>
         {card.index}. {card.title}
       </h3>
-      {card.art && (
-        <figure style={{ margin: "0.5rem 0", maxWidth: 280 }}>
-          <img src={card.art.src} alt={card.art.alt} style={{ maxWidth: "100%", height: "auto" }} />
-          {card.art.credit && (
-            <figcaption style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>
-              {card.art.credit}
-            </figcaption>
-          )}
-        </figure>
-      )}
+      {art && <CardArtImage art={art} variant="figure" onError={onError} maxWidth={280} />}
       {card.title !== card.episode && (
         <div className={styles.cardMeta}>The Episode: {card.episode}</div>
       )}

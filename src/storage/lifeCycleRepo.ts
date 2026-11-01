@@ -1,7 +1,7 @@
 import { getDb } from "./db";
 import { enqueueSync } from "./syncQueue";
 import type { LifeCycleEvent, LifeCycleEventType } from "../types/lifeCycle";
-import { hebrewDateFromGregorian } from "../data/hebrewCalendar";
+import { hebrewDateFromGregorian, parseDateInput } from "../data/hebrewCalendar";
 
 function uuid(): string {
   return crypto.randomUUID();
@@ -29,7 +29,7 @@ export async function addLifeCycleEvent(
   input: LifeCycleEventInput,
 ): Promise<LifeCycleEvent> {
   const db = await getDb();
-  const hebrewDate = hebrewDateFromGregorian(new Date(input.gregorianDateOfEvent));
+  const hebrewDate = hebrewDateFromGregorian(parseDateInput(input.gregorianDateOfEvent));
   const event: LifeCycleEvent = {
     id: uuid(),
     participantId,

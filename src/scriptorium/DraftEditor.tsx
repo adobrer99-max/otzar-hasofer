@@ -38,9 +38,16 @@ export function DraftEditor({
         const value = values[field.key] ?? "";
         return (
           <div className={styles.field} key={field.key}>
-            <label htmlFor={id}>{field.label}</label>
+            <label htmlFor={id} id={`${id}-label`}>
+              {field.label}
+            </label>
             {field.kind === "rich" ? (
-              <RichTextField id={id} value={value} onChange={(html) => onFieldChange(field.key, html)} />
+              <RichTextField
+                id={id}
+                labelledBy={`${id}-label`}
+                value={value}
+                onChange={(html) => onFieldChange(field.key, html)}
+              />
             ) : field.kind === "multiline" ? (
               <textarea
                 id={id}

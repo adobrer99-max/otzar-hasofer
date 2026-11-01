@@ -122,6 +122,43 @@
   color: color-mix(in srgb, var(--color-silver) 75%, transparent);
 }
 
+/* An open card with uploaded art: the artwork fills the face under a scrim,
+   and the glyph / name / keyword settle to the foot of the card over it. */
+.frontArt {
+  justify-content: flex-end;
+  padding-bottom: 0.4rem;
+  overflow: hidden;
+}
+.frontArt .glyph {
+  font-size: clamp(1.2rem, 3.6vw, 1.9rem);
+}
+.frontArt .glyph,
+.frontArt .name,
+.frontArt .keyword,
+.frontArt .orient {
+  position: relative;
+  z-index: 2;
+}
+.artLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.artReversed {
+  transform: rotate(180deg);
+}
+.scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, #100f0d 92%, transparent) 0%,
+    color-mix(in srgb, #100f0d 55%, transparent) 38%,
+    transparent 64%
+  );
+}
+
 /* The Word of the Reading — a closing flourish once the letters have turned. */
 .word {
   font-family: var(--font-latin);

@@ -7,6 +7,8 @@ import {
   ensureAudio,
   scheduleDealFeedback,
 } from "./dealFeedback";
+import { RevealCardFace } from "./RevealCardFace";
+import { preloadImages } from "../../components/cardArt/preloadImages";
 import styles from "./dealReveal.module.css";
 
 /** The Word of the Reading, when the open letters resolve to a root/name. */
@@ -80,14 +82,26 @@ export function DealReveal({
       onDone();
       return;
     }
-    setVisible(true);
-    cancelFeedbackRef.current =
-      soundOn ? scheduleDealFeedback(cards.length, STAGGER_MS, FLIP_MS) : undefined;
-    const timer = setTimeout(() => {
-      setVisible(false);
-      onDone();
-    }, totalMs);
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // Open cards' art is fetched and decoded first, so it is on the face as
+    // it turns — briefly; the deal never waits past ART_WAIT_MS.
+    const artSrcs = cards
+      .filter((c) => !c.sealed)
+      .map((c) => lettersById[c.draw.letterId]?.art?.src)
+      .filter((src): src is string => Boolean(src));
+    void preloadImages(artSrcs, ART_WAIT_MS).then(() => {
+      if (cancelled) return;
+      setVisible(true);
+      cancelFeedbackRef.current =
+        soundOn ? scheduleDealFeedback(cards.length, STAGGER_MS, FLIP_MS) : undefined;
+      timer = setTimeout(() => {
+        setVisible(false);
+        onDone();
+      }, totalMs);
+    });
     return () => {
+      cancelled = true;
       clearTimeout(timer);
       cancelFeedbackRef.current?.();
       cancelFeedbackRef.current = undefined;
@@ -152,26 +166,7 @@ export function DealReveal({
               >
                 <div className={styles.inner} style={{ animationDelay: `${i * STAGGER_MS}ms` }}>
                   <div className={styles.back}>✦</div>
-                  <div className={`${styles.front} ${card.sealed ? styles.sealedFront : ""}`}>
-                    <span
-                      className={styles.glyph}
-                      style={card.draw.orientation === "reversed" ? reversedStyle : undefined}
-                    >
-                      {letter?.glyph ?? "?"}
-                    </span>
-                    <span className={styles.name}>
-                      {card.sealed ? "The Sod — sealed" : (letter?.name ?? "")}
-                    </span>
-                    {!card.sealed && letter && (
-                      <>
-                        <span className={styles.keyword}>{letter.keyword}</span>
-                        <span className={styles.orient}>
-                          {card.draw.orientation === "reversed" ? "Reversed — inward" : "Upright"}
-                        </span>
-                      </>
-                    )}
-                    {card.sealed && <span className={styles.veil} aria-hidden="true" />}
-                  </div>
+                  <RevealCardFace card={card} letter={letter} />
                 </div>
               </div>
             );
@@ -199,5 +194,4 @@ const FLIP_MS = 560;
 const HOLD_MS = 750;
 const FADE_MS = 420;
 const WORD_HOLD_MS = 1500;
-
-const reversedStyle = { transform: "rotate(180deg)", display: "inline-block" } as const;
+const ART_WAIT_MS = 600;
