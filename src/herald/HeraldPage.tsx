@@ -22,6 +22,7 @@ import { HeraldCanvas } from "./render/HeraldCanvas";
 import { deriveHeraldForm } from "./synthesis/deriveHeraldForm";
 import { synthesisStatusText } from "./share/sharePayload";
 import { SharePanel } from "./share/SharePanel";
+import { BackupReminder } from "../treasury/BackupReminder";
 import { isCloudConfigured } from "../cloud/config";
 import { resolveShoresh } from "./shoresh/resolveShoresh";
 import { ParticipantPicker } from "./history/ParticipantPicker";
@@ -194,6 +195,8 @@ export function HeraldPage() {
         biography of how the Herald came to be. At marriage, two Heralds
         join in a shared <Link to="/covenant">Covenantal Herald</Link>.
       </p>
+
+      <BackupReminder hasReadings={layers.length > 0} />
 
       <ParticipantPicker
         participants={participants}

@@ -1,0 +1,91 @@
+.panel {
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--bg-raised);
+  margin-top: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.subtitle {
+  margin: var(--space-2) 0 0;
+  font-size: 1rem;
+}
+
+.line {
+  margin: 0;
+}
+
+.muted {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+/* Overdue backup: a quiet rule, not an alarm. */
+.due {
+  margin: 0;
+  border-inline-start: 2px solid var(--accent);
+  padding-inline-start: var(--space-2);
+}
+
+.error {
+  margin: 0;
+  color: var(--text);
+  border-inline-start: 2px solid var(--color-copper);
+  padding-inline-start: var(--space-2);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+/* The file picker as a button: the input stays in the tab order (visually
+   hidden, not display:none) and the label shows its focus. */
+.fileLabel {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.fileLabel:hover {
+  border-color: var(--accent);
+}
+
+.fileLabel:focus-within {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.preview {
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
