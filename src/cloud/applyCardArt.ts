@@ -14,6 +14,7 @@
 import { lettersById } from "../data/letters";
 import { dorotCardsById } from "../data/dorot";
 import { bumpCardArt } from "../data/cardArtVersion";
+import { shippedArtById, shippedArtRows } from "../data/shippedArt";
 import { isCloudConfigured } from "./config";
 import type { CardArtRow } from "./cardArt";
 
@@ -34,8 +35,16 @@ export function applyCardArt(rows: CardArtRow[]): void {
   if (rows.length > 0) bumpCardArt();
 }
 
-/** Remove an entry's art from the live records (after a studio delete). */
+/**
+ * Remove an entry's uploaded art from the live records (after a studio
+ * delete). Art shipped with the site for that card, if any, shows again.
+ */
 export function clearCardArt(id: string): void {
+  const shipped = shippedArtById.get(id);
+  if (shipped) {
+    applyCardArt([shipped]);
+    return;
+  }
   if (id.startsWith("letter:")) {
     const letter = lettersById[id.slice("letter:".length)];
     if (letter) delete letter.art;
@@ -69,6 +78,8 @@ export function writeCardArtCache(rows: CardArtRow[]): void {
  * keeps art offline), then a background refresh from the registry.
  */
 export function initCardArt(): void {
+  // Art shipped with the site applies in every deployment; uploads layer over it.
+  if (shippedArtRows.length) applyCardArt(shippedArtRows);
   if (!isCloudConfigured()) return;
   applyCardArt(readCardArtCache());
   void (async () => {

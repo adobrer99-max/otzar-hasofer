@@ -4,6 +4,7 @@ import { toast } from "../components/ui/toast";
 import { letters } from "../data/letters";
 import { dorotHouses, dorotCards } from "../data/dorot";
 import { isCloudConfigured } from "../cloud/config";
+import { shippedArtRows } from "../data/shippedArt";
 import { useOnline } from "../components/useOnline";
 import { fetchCardArtRows, uploadCardArt, removeCardArt, type CardArtRow } from "../cloud/cardArt";
 import { applyCardArt, clearCardArt, writeCardArtCache } from "../cloud/applyCardArt";
@@ -183,9 +184,12 @@ export function CardArtStudio() {
   if (!configured) {
     return (
       <Callout>
-        Card art publishes through the Scribes' Cloud, and this deployment has
-        none configured. Set up the Supabase project (see <code>DEPLOY.md</code>)
-        to enable uploads — the shipped app renders without art until then.
+        This deployment has no cloud, so card art ships <strong>with the site</strong>:
+        add the designer's images to <code>public/art/letters/</code> and{" "}
+        <code>public/art/dorot/</code>, named by card id, and deploy — see{" "}
+        <code>CARD-ART.md</code>. {shippedArtRows.length} of {groups.flatMap((g) => g.entries).length}{" "}
+        cards have shipped art in this build. (With a Supabase project — <code>DEPLOY.md</code> —
+        art can instead be uploaded here and goes live at once.)
       </Callout>
     );
   }

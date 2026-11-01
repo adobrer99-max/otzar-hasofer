@@ -57,6 +57,17 @@ export default defineConfig({
               expiration: { maxEntries: 220, maxAgeSeconds: 60 * 60 * 24 * 90 },
             },
           },
+          // Card art shipped with the site (public/art/) — kept out of the
+          // precache (it can run to megabytes) and cached on first view
+          // instead. URLs carry a content hash, so CacheFirst never goes stale.
+          {
+            urlPattern: /\/art\/(?:letters|dorot)\/[^/?]+\.(?:jpe?g|png|webp|avif)(?:\?.*)?$/,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "card-art-shipped",
+              expiration: { maxEntries: 220, maxAgeSeconds: 60 * 60 * 24 * 365 },
+            },
+          },
         ],
       },
     }),
