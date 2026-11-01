@@ -14,6 +14,12 @@ describe("anniversaryInYear", () => {
     expect(anniversaryInYear({ year: 5751, month: "Adar", day: 14 }, 5787).month).toBe("AdarII");
   });
 
+  it("keeps a common-year Adar date in Adar I when that is the chosen custom", () => {
+    expect(anniversaryInYear({ year: 5751, month: "Adar", day: 14 }, 5787, "adarI").month).toBe("AdarI");
+    // The choice only matters in a leap year.
+    expect(anniversaryInYear({ year: 5751, month: "Adar", day: 14 }, 5786, "adarI").month).toBe("Adar");
+  });
+
   it("keeps Adar I and Adar II birthdays in their own month in a leap year", () => {
     expect(anniversaryInYear({ year: 5784, month: "AdarI", day: 10 }, 5787).month).toBe("AdarI");
     expect(anniversaryInYear({ year: 5784, month: "AdarII", day: 10 }, 5787).month).toBe("AdarII");
