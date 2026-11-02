@@ -146,7 +146,7 @@ export function formatHebrewDateEnglish(hd: HebrewDate): string {
     month: getIndexByJewishMonth(hd.month),
     monthName: hd.month,
     day: hd.day,
-  });
+  }).replace(/\bAdar(I{1,2})\b/, "Adar $1"); // the library writes "AdarI"
 }
 
 /** e.g. "ג' תמוז תשפ"ו" (day/month/year in Hebrew gematria). */

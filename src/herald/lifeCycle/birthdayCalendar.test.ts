@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ParticipantRecord } from "../../types/herald";
-import { birthdayEvents, buildIcs, escapeText, foldLine } from "./birthdayCalendar";
+import type { LifeCycleEvent } from "../../types/lifeCycle";
+import { birthdayEvents, buildIcs, escapeText, foldLine, lifeCycleCalendarEvents } from "./birthdayCalendar";
 
 const miriam: ParticipantRecord = {
   id: "p-1",
@@ -60,5 +61,36 @@ describe("iCalendar text", () => {
     expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(1);
     // No bare LF anywhere.
     expect(ics.replace(/\r\n/g, "")).not.toContain("\n");
+  });
+});
+
+describe("lifeCycleCalendarEvents", () => {
+  const yahrzeit: LifeCycleEvent = {
+    id: "e1",
+    participantId: "p-1",
+    type: "yahrzeit",
+    relation: "grandmother",
+    personName: "Sarah",
+    hebrewDate: { year: 5785, month: "Adar", day: 7 },
+    gregorianDateOfEvent: "2025-03-07",
+    adarRule: "adarI",
+    beitDin: "PRIVATE",
+    createdAt: "2025-03-08T00:00:00Z",
+  };
+
+  it("writes each Yahrzeit year in the Adar its event chose", () => {
+    const events = lifeCycleCalendarEvents(miriam, [yahrzeit], 5786, 2);
+    expect(events.map((e) => e.uid)).toEqual(["e1-5786@otzar-hasofer", "e1-5787@otzar-hasofer"]);
+    expect(events[0].summary).toBe("Yahrzeit of Sarah");
+    expect(events[0].description).toContain("1st Yahrzeit of Sarah");
+    expect(events[0].description).toContain("7 Adar 5786");
+    // 5787 is a leap year and the event chose Adar I.
+    expect(events[1].description).toContain("7 Adar I 5787");
+  });
+
+  it("keeps private notes out of the calendar and skips other participants' events", () => {
+    const json = JSON.stringify(lifeCycleCalendarEvents(miriam, [yahrzeit], 5786, 3));
+    expect(json).not.toContain("PRIVATE");
+    expect(lifeCycleCalendarEvents({ ...miriam, id: "someone-else" }, [yahrzeit], 5786)).toEqual([]);
   });
 });

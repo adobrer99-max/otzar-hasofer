@@ -13,10 +13,6 @@ export interface Observance {
   monthDay: HebrewMonthDay;
 }
 
-function sameMonthDay(a: HebrewDate, b: HebrewDate): boolean {
-  return a.month === b.month && a.day === b.day;
-}
-
 function ordinalSuffix(n: number): string {
   const j = n % 10;
   const k = n % 100;
@@ -51,7 +47,7 @@ export function todaysObservances(
   }
 
   for (const event of events) {
-    if (!sameMonthDay(today, event.hebrewDate)) continue;
+    if (!isAnniversary(event.hebrewDate, today, event.adarRule ?? "adarII")) continue;
     const years = today.year - event.hebrewDate.year;
     const nth = years > 0 ? `${years}${ordinalSuffix(years)} ` : "";
     const since = years > 0 ? `${years} year${years === 1 ? "" : "s"}` : "the day";

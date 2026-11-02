@@ -13,6 +13,12 @@ export async function listLifeCycleEvents(participantId: string): Promise<LifeCy
   return events.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
+/** Every participant's life-cycle events (for the all-participants calendar). */
+export async function listAllLifeCycleEvents(): Promise<LifeCycleEvent[]> {
+  const db = await getDb();
+  return (await db.getAll("lifeCycleEvents")).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
 export interface LifeCycleEventInput {
   type: LifeCycleEventType;
   relation?: string;
@@ -22,6 +28,8 @@ export interface LifeCycleEventInput {
   adarRule?: "adarI" | "adarII";
   sponsoringCommunity?: string;
   beitDin?: string;
+  /** The event happened after nightfall — it belongs to the next Hebrew date. */
+  afterSundown?: boolean;
 }
 
 export async function addLifeCycleEvent(
@@ -29,7 +37,9 @@ export async function addLifeCycleEvent(
   input: LifeCycleEventInput,
 ): Promise<LifeCycleEvent> {
   const db = await getDb();
-  const hebrewDate = hebrewDateFromGregorian(parseDateInput(input.gregorianDateOfEvent));
+  const civil = parseDateInput(input.gregorianDateOfEvent);
+  if (input.afterSundown) civil.setDate(civil.getDate() + 1);
+  const hebrewDate = hebrewDateFromGregorian(civil);
   const event: LifeCycleEvent = {
     id: uuid(),
     participantId,

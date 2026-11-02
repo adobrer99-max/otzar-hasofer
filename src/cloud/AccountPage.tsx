@@ -11,6 +11,7 @@ import {
   isAlreadyRegistered,
   MIN_PASSWORD_LENGTH,
 } from "./authHelpers";
+import { TreasuryPanel } from "../treasury/TreasuryPanel";
 import styles from "./account.module.css";
 
 interface SessionInfo {
@@ -482,6 +483,9 @@ export function AccountPage() {
           {error && <p className={styles.error} role="alert">{error}</p>}
         </div>
       )}
+
+      {/* Every deployment: with no cloud, this is how a Treasury is kept and moved. */}
+      <TreasuryPanel />
     </div>
   );
 }

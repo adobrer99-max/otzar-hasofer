@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/build-card-art.mjs",
     "build": "tsc -b && vite build",
+    "build:art": "node scripts/build-card-art.mjs",
     "lint": "oxlint",
     "preview": "vite preview",
     "preview:wrangler": "npm run build && wrangler dev",

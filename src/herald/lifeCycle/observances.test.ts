@@ -40,6 +40,14 @@ describe("todaysObservances", () => {
     expect(result.map((o) => o.key)).toEqual(["birthday"]);
   });
 
+  it("honours a Yahrzeit's chosen Adar in a leap year", () => {
+    const adar = { ...yahrzeit({ year: 5785, month: "Adar", day: 7 }), adarRule: "adarI" as const };
+    expect(todaysObservances({ year: 5787, month: "AdarI", day: 7 }, participant(), [adar])).toHaveLength(1);
+    expect(todaysObservances({ year: 5787, month: "AdarII", day: 7 }, participant(), [adar])).toHaveLength(0);
+    const defaulted = yahrzeit({ year: 5785, month: "Adar", day: 7 });
+    expect(todaysObservances({ year: 5787, month: "AdarII", day: 7 }, participant(), [defaulted])).toHaveLength(1);
+  });
+
   it("returns a Yahrzeit with its ordinal count when it falls today", () => {
     const result = todaysObservances(today, participant(), [yahrzeit({ year: 5783, month: "Nisan", day: 10 })]);
     expect(result).toHaveLength(1);

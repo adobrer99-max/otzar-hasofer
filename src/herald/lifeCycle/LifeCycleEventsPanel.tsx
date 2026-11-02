@@ -9,12 +9,13 @@ import {
 } from "../../data/hebrewCalendar";
 import { toast } from "../../components/ui/toast";
 import { downloadText } from "../export/blazon";
-import { birthdayEvents, buildIcs, CALENDAR_YEARS } from "./birthdayCalendar";
+import { birthdayEvents, buildIcs, CALENDAR_YEARS, lifeCycleCalendarEvents } from "./birthdayCalendar";
 import { setHebrewBirthDate, setHebrewName } from "../../storage/participantsRepo";
 import { ConfirmButton } from "../../components/ui";
 import {
   addLifeCycleEvent,
   deleteLifeCycleEvent,
+  listAllLifeCycleEvents,
   listLifeCycleEvents,
 } from "../../storage/lifeCycleRepo";
 import styles from "./lifeCycle.module.css";
@@ -58,6 +59,7 @@ export function LifeCycleEventsPanel({
   const [personName, setPersonName] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [notes, setNotes] = useState("");
+  const [eventAfterSundown, setEventAfterSundown] = useState(false);
   const [adarRule, setAdarRule] = useState<"adarI" | "adarII" | undefined>(undefined);
   const [sponsoringCommunity, setSponsoringCommunity] = useState("");
   const [beitDin, setBeitDin] = useState("");
@@ -76,16 +78,26 @@ export function LifeCycleEventsPanel({
     setEditingBirthday(false);
   }
 
-  function exportCalendar(people: ParticipantRecord[], filename: string, name: string) {
-    const events = people.flatMap((p) => birthdayEvents(p, currentHebrewYear));
-    downloadText(buildIcs(events, name), filename, "text/calendar;charset=utf-8");
-    toast(
-      `Calendar saved — ${people.length === 1 ? "" : `${people.length} birthdays, `}the next ${CALENDAR_YEARS} years. Open the file to add it to your calendar.`,
-      { tone: "success" },
-    );
+  async function exportCalendar(scope: "one" | "all") {
+    const people = scope === "one" ? [participant] : allParticipants;
+    const lifeCycle = scope === "one" ? events : await listAllLifeCycleEvents();
+    const entries = people.flatMap((p) => [
+      ...birthdayEvents(p, currentHebrewYear),
+      ...lifeCycleCalendarEvents(p, lifeCycle, currentHebrewYear),
+    ]);
+    if (entries.length === 0) {
+      toast("No Hebrew birthdays or anniversaries to add yet");
+      return;
+    }
+    const name = scope === "one" ? `${participant.displayName} — Hebrew dates` : "Hebrew dates — Otzar HaSofer";
+    const filename = scope === "one" ? `${calendarSlug(participant.displayName)}-hebrew-dates.ics` : "hebrew-dates.ics";
+    downloadText(buildIcs(entries, name), filename, "text/calendar;charset=utf-8");
+    toast(`Calendar saved — the next ${CALENDAR_YEARS} years. Open the file to add it to your calendar.`, {
+      tone: "success",
+    });
   }
 
-  const withBirthdays = allParticipants.filter((p) => p.hebrewBirthDate);
+  const hasDates = Boolean(participant.hebrewBirthDate) || events.length > 0;
 
   const isYahrzeit = eventType === "yahrzeit";
   const isConversion = eventType === "conversion";
@@ -102,6 +114,7 @@ export function LifeCycleEventsPanel({
       adarRule,
       sponsoringCommunity: isConversion ? sponsoringCommunity || undefined : undefined,
       beitDin: isConversion ? beitDin || undefined : undefined,
+      afterSundown: eventAfterSundown,
     });
     if (isConversion && hebrewNameReceived && !participant.hebrewName) {
       onParticipantChange(await setHebrewName(participant.id, hebrewNameReceived));
@@ -111,6 +124,7 @@ export function LifeCycleEventsPanel({
     setPersonName("");
     setEventDate("");
     setNotes("");
+    setEventAfterSundown(false);
     setAdarRule(undefined);
     setSponsoringCommunity("");
     setBeitDin("");
@@ -133,26 +147,6 @@ export function LifeCycleEventsPanel({
         <>
           <p>{formatHebrewDateEnglish(participant.hebrewBirthDate)}</p>
           <div className={styles.row}>
-            <button
-              type="button"
-              onClick={() =>
-                exportCalendar(
-                  [participant],
-                  `${calendarSlug(participant.displayName)}-hebrew-birthday.ics`,
-                  `${participant.displayName} — Hebrew Birthday`,
-                )
-              }
-            >
-              Add to calendar (.ics)
-            </button>
-            {withBirthdays.length > 1 && (
-              <button
-                type="button"
-                onClick={() => exportCalendar(withBirthdays, "hebrew-birthdays.ics", "Hebrew Birthdays — Otzar HaSofer")}
-              >
-                All {withBirthdays.length} birthdays (.ics)
-              </button>
-            )}
             <button type="button" onClick={() => setEditingBirthday(true)}>
               Change
             </button>
@@ -214,6 +208,14 @@ export function LifeCycleEventsPanel({
           ))}
         </select>
         <input type="date" aria-label="Event date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
+        <label className={styles.inlineCheck}>
+          <input
+            type="checkbox"
+            checked={eventAfterSundown}
+            onChange={(e) => setEventAfterSundown(e.target.checked)}
+          />
+          After sundown
+        </label>
       </div>
       {isYahrzeit && (
         <div className={styles.row}>
@@ -314,6 +316,26 @@ export function LifeCycleEventsPanel({
           Add {LIFE_CYCLE_EVENT_LABELS[eventType]}
         </button>
       </div>
+
+      {hasDates && (
+        <>
+          <h3>Calendar</h3>
+          <p className={styles.note}>
+            The Hebrew birthday and every anniversary above — Yahrzeits included — for the next{" "}
+            {CALENDAR_YEARS} years, as a file your calendar app opens. Each reminds you the evening before.
+          </p>
+          <div className={styles.row}>
+            <button type="button" onClick={() => void exportCalendar("one")}>
+              Add to calendar (.ics)
+            </button>
+            {allParticipants.length > 1 && (
+              <button type="button" onClick={() => void exportCalendar("all")}>
+                All {allParticipants.length} participants (.ics)
+              </button>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -1,10 +1,11 @@
 import type { ParticipantRecord } from "../../types/herald";
+import type { LifeCycleEvent } from "../../types/lifeCycle";
 import { formatHebrewDateEnglish } from "../../data/hebrewCalendar";
 import { anniversaryGregorian, anniversaryInYear } from "./hebrewAnniversary";
 
 /**
- * Hebrew birthdays as an iCalendar (.ics) file for Apple / Google / Outlook
- * calendars. A Hebrew birthday has no fixed civil date, so no RRULE can carry
+ * Hebrew birthdays, Yahrzeits and life-cycle anniversaries as an iCalendar
+ * (.ics) file for Apple / Google / Outlook calendars. A Hebrew birthday has no fixed civil date, so no RRULE can carry
  * it — each year's anniversary is written out as its own all-day event, with
  * a stable UID per participant and Hebrew year so a re-import updates rather
  * than duplicates. Each event reminds the evening before, when the Hebrew day
@@ -55,6 +56,50 @@ export function birthdayEvents(
     });
   }
   return events;
+}
+
+/**
+ * A participant's life-cycle anniversaries — Yahrzeits, wedding, bris and the
+ * rest — for `years` years from `fromHebrewYear`, each kept in the Adar its
+ * event chose. Private notes (beit din, community) never enter the calendar.
+ */
+export function lifeCycleCalendarEvents(
+  participant: ParticipantRecord,
+  lifeCycle: LifeCycleEvent[],
+  fromHebrewYear: number,
+  years: number = CALENDAR_YEARS,
+): CalendarEvent[] {
+  const name = participant.displayName;
+  const out: CalendarEvent[] = [];
+  for (const event of lifeCycle) {
+    if (event.participantId !== participant.id) continue;
+    const leapAdar = event.adarRule ?? "adarII";
+    const start = Math.max(fromHebrewYear, event.hebrewDate.year + 1);
+    for (let year = start; year < fromHebrewYear + years; year++) {
+      const n = year - event.hebrewDate.year;
+      const due = formatHebrewDateEnglish(anniversaryInYear(event.hebrewDate, year, leapAdar));
+      const evening = "The Hebrew day begins at sundown the evening before.";
+      const texts: Record<LifeCycleEvent["type"], [string, string]> = {
+        yahrzeit: [
+          `Yahrzeit of ${event.personName ?? "a loved one"}`,
+          `The ${ordinal(n)} Yahrzeit of ${event.personName ?? "a loved one"}${event.relation ? ` (${name}'s ${event.relation})` : ""}, ${due}. The memorial candle is lit at sundown the evening before.`,
+        ],
+        "wedding-anniversary": [`${name}'s Hebrew wedding anniversary`, `${ordinal(n)} Hebrew wedding anniversary, ${due}. ${evening}`],
+        "bar-bat-mitzvah": [`${name}'s Bar/Bat Mitzvah anniversary`, `${n} years since ${name}'s Bar/Bat Mitzvah, ${due}. ${evening}`],
+        bris: [`${name}'s Bris anniversary`, `The ${ordinal(n)} anniversary of ${name}'s Bris, ${due}. ${evening}`],
+        conversion: [`${name}'s conversion anniversary`, `${n} years since ${name} entered the covenant, ${due}. ${evening}`],
+        aliyah: [`${name}'s Aliyah anniversary`, `${n} years since ${name}'s Aliyah, ${due}. ${evening}`],
+      };
+      const [summary, description] = texts[event.type];
+      out.push({
+        uid: `${event.id}-${year}@otzar-hasofer`,
+        date: anniversaryGregorian(event.hebrewDate, year, leapAdar),
+        summary,
+        description,
+      });
+    }
+  }
+  return out;
 }
 
 /** Escape a TEXT value (RFC 5545 §3.3.11). */
