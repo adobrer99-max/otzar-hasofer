@@ -19,6 +19,7 @@ import {
   type MergeCounts,
 } from "../storage/backup";
 import { formatBytes, requestPersistence, storageStatus, type StorageStatus } from "../storage/persistence";
+import { decryptBackup, encryptBackup, isEncryptedBackup, MIN_PASSPHRASE_LENGTH } from "../storage/backupCrypto";
 import styles from "./treasury.module.css";
 
 function listCounts(counts: Record<BackupStore, number>): string {
@@ -49,9 +50,19 @@ export function TreasuryPanel() {
   const [pending, setPending] = useState<Pending>();
   const [restoreError, setRestoreError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const [protect, setProtect] = useState(false);
+  const [passphrase, setPassphrase] = useState("");
+  const [passphrase2, setPassphrase2] = useState("");
+  const [backupError, setBackupError] = useState<string>();
+  /** A protected backup picked for restore, waiting for its passphrase. */
+  const [locked, setLocked] = useState<string>();
+  const [unlockPassphrase, setUnlockPassphrase] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const headingId = useId();
   const fileId = useId();
+  const passId = useId();
+  const pass2Id = useId();
+  const unlockId = useId();
 
   async function refresh() {
     const [current, storage] = await Promise.all([exportTreasury(), storageStatus()]);
@@ -64,13 +75,36 @@ export function TreasuryPanel() {
   }, []);
 
   async function handleBackup() {
+    setBackupError(undefined);
+    if (protect) {
+      if (passphrase.length < MIN_PASSPHRASE_LENGTH) {
+        setBackupError(`Choose a passphrase of at least ${MIN_PASSPHRASE_LENGTH} characters.`);
+        return;
+      }
+      if (passphrase !== passphrase2) {
+        setBackupError("The two passphrases don't match.");
+        return;
+      }
+    }
     setBusy(true);
     try {
-      const backup = await exportTreasury();
-      downloadText(JSON.stringify(backup, null, 2), backupFilename(), "application/json;charset=utf-8");
+      const json = JSON.stringify(await exportTreasury(), null, 2);
+      if (protect) {
+        const sealed = await encryptBackup(json, passphrase);
+        downloadText(sealed, backupFilename().replace(/\.json$/, ".locked.json"), "application/json;charset=utf-8");
+        setPassphrase("");
+        setPassphrase2("");
+      } else {
+        downloadText(json, backupFilename(), "application/json;charset=utf-8");
+      }
       recordBackup();
       setLastBackup(readLastBackup());
-      toast("Backup saved — keep the file somewhere private", { tone: "success" });
+      toast(
+        protect
+          ? "Protected backup saved — it opens only with the passphrase"
+          : "Backup saved — keep the file somewhere private",
+        { tone: "success" },
+      );
     } catch (err) {
       toast(err instanceof Error ? err.message : "The backup couldn't be made", { tone: "error" });
     } finally {
@@ -81,8 +115,18 @@ export function TreasuryPanel() {
   async function handleFile(file: File | undefined) {
     setRestoreError(undefined);
     setPending(undefined);
+    setLocked(undefined);
     if (!file) return;
-    const parsed = parseBackup(await file.text());
+    const text = await file.text();
+    if (isEncryptedBackup(text)) {
+      setLocked(text);
+      return;
+    }
+    await preview(text);
+  }
+
+  async function preview(text: string) {
+    const parsed = parseBackup(text);
     if (!parsed.ok) {
       setRestoreError(parsed.error);
       return;
@@ -90,8 +134,28 @@ export function TreasuryPanel() {
     setPending({ backup: parsed.backup, skipped: parsed.skipped, plan: await previewRestore(parsed.backup) });
   }
 
+  async function handleUnlock() {
+    if (!locked) return;
+    setRestoreError(undefined);
+    setBusy(true);
+    try {
+      const opened = await decryptBackup(locked, unlockPassphrase);
+      if (!opened.ok) {
+        setRestoreError(opened.error);
+        return;
+      }
+      setLocked(undefined);
+      setUnlockPassphrase("");
+      await preview(opened.json);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function cancelRestore() {
     setPending(undefined);
+    setLocked(undefined);
+    setUnlockPassphrase("");
     if (fileRef.current) fileRef.current.value = "";
   }
 
@@ -159,9 +223,42 @@ export function TreasuryPanel() {
         {lastBackup ? `Last backup: ${longDate(lastBackup)}.` : "Never backed up from this device."}
         {due && " A backup file is the only copy of this Treasury outside this browser."}
       </p>
+      <label className={styles.check}>
+        <input type="checkbox" checked={protect} onChange={(e) => setProtect(e.target.checked)} />
+        Protect with a passphrase
+      </label>
+      {protect && (
+        <div className={styles.fields}>
+          <label htmlFor={passId}>Passphrase ({MIN_PASSPHRASE_LENGTH}+ characters)</label>
+          <input
+            id={passId}
+            type="password"
+            autoComplete="new-password"
+            value={passphrase}
+            onChange={(e) => setPassphrase(e.target.value)}
+          />
+          <label htmlFor={pass2Id}>Repeat the passphrase</label>
+          <input
+            id={pass2Id}
+            type="password"
+            autoComplete="new-password"
+            value={passphrase2}
+            onChange={(e) => setPassphrase2(e.target.value)}
+          />
+          <p className={styles.muted}>
+            The file is sealed on this device before it is saved. Nothing keeps the passphrase — if it is
+            forgotten, no one can open the backup, you included.
+          </p>
+        </div>
+      )}
+      {backupError && (
+        <p className={styles.error} role="alert">
+          {backupError}
+        </p>
+      )}
       <div className={styles.actions}>
         <Button variant="primary" onClick={() => void handleBackup()} disabled={busy}>
-          Download a backup
+          {protect ? "Download a protected backup" : "Download a backup"}
         </Button>
         <label htmlFor={fileId} className={styles.fileLabel}>
           Restore from a backup…
@@ -185,6 +282,35 @@ export function TreasuryPanel() {
         <p className={styles.error} role="alert">
           {restoreError}
         </p>
+      )}
+
+      {locked && (
+        <div className={styles.preview} role="region" aria-label="Unlock the backup">
+          <p className={styles.line}>
+            <strong>This backup is protected.</strong> Enter its passphrase to see what it holds.
+          </p>
+          <div className={styles.fields}>
+            <label htmlFor={unlockId}>Passphrase</label>
+            <input
+              id={unlockId}
+              type="password"
+              autoComplete="current-password"
+              value={unlockPassphrase}
+              onChange={(e) => setUnlockPassphrase(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void handleUnlock();
+              }}
+            />
+          </div>
+          <div className={styles.actions}>
+            <Button variant="primary" onClick={() => void handleUnlock()} disabled={busy || !unlockPassphrase}>
+              {busy ? "Unlocking…" : "Unlock"}
+            </Button>
+            <Button variant="ghost" onClick={cancelRestore} disabled={busy}>
+              Cancel
+            </Button>
+          </div>
+        </div>
       )}
 
       {pending && (
