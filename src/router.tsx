@@ -34,6 +34,8 @@ const GamePage = lazyPage(() => import("./game/GamePage"), "GamePage");
 const GameShell = lazyPage(() => import("./game/GameShell"), "GameShell");
 // A participant's printable record — outside the frame, like the game, so it prints clean.
 const DossierPage = lazyPage(() => import("./herald/dossier/DossierPage"), "DossierPage");
+// The participant's keepsake — outside the frame for the same reason.
+const KeepsakePage = lazyPage(() => import("./herald/keepsake/KeepsakePage"), "KeepsakePage");
 const MizbeachToolPage = lazyPage(() => import("./mizbeach/MizbeachToolPage"), "MizbeachToolPage");
 const CommentariesPage = lazyPage(() => import("./commentaries/CommentariesPage"), "CommentariesPage");
 const LibraryPage = lazyPage(() => import("./library/LibraryPage"), "LibraryPage");
@@ -74,6 +76,15 @@ export const router = createHashRouter([
       { path: "shared/:token", element: <SharedHeraldPage /> },
       { path: "*", element: <NotFound /> },
     ],
+  },
+  {
+    path: "/keepsake/:participantId",
+    element: (
+      <Suspense fallback={<RouteFallback />}>
+        <KeepsakePage />
+      </Suspense>
+    ),
+    errorElement: <RouteErrorElement />,
   },
   {
     path: "/dossier/:participantId",

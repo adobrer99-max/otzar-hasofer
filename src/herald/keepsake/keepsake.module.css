@@ -1,0 +1,129 @@
+/* The keepsake — one white sheet in either theme. The sheet re-points the
+   page's text tokens at ink colours, so the shared Herald caption (which
+   reads --text / --text-muted / --accent-bright) stays legible on paper. */
+
+.shell {
+  min-height: 100vh;
+  padding: var(--space-4) var(--space-3) var(--space-6);
+  background: var(--bg-sunken);
+  color: var(--text);
+}
+
+.status {
+  max-width: 40rem;
+  margin: var(--space-5) auto;
+}
+
+.toolbar {
+  max-width: 40rem;
+  margin: 0 auto var(--space-2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toolbar a {
+  color: var(--accent-bright);
+}
+
+.actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.primary,
+.secondary {
+  font: inherit;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.primary {
+  font-weight: 600;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--color-charcoal);
+}
+
+.secondary {
+  border: 1px solid var(--border-hairline);
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+.hint {
+  max-width: 40rem;
+  margin: 0 auto var(--space-3);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.sheet {
+  --text: #1d1a14;
+  --text-muted: #5e5640;
+  --accent-bright: #6a5010;
+  color-scheme: light;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: clamp(1.25rem, 5vw, 3rem);
+  background: #ffffff;
+  color: var(--text);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  font-family: var(--font-latin);
+  text-align: center;
+}
+
+.kicker {
+  margin: 0 0 var(--space-3);
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #6a5010;
+}
+
+.note {
+  margin: var(--space-3) auto 0;
+  max-width: 30rem;
+  font-size: 0.9rem;
+  color: #5e5640;
+  font-style: italic;
+}
+
+@page {
+  margin: 14mm;
+}
+
+@media print {
+  :global(html),
+  :global(body) {
+    color-scheme: light !important;
+    background: #ffffff !important;
+  }
+  .shell {
+    padding: 0;
+    background: none;
+  }
+  .toolbar,
+  .hint {
+    display: none;
+  }
+  .sheet {
+    max-width: none;
+    padding: 0;
+    box-shadow: none;
+    border-radius: 0;
+    break-inside: avoid;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  /* One page: the Herald is sized to leave room for its caption. */
+  .sheet :global(svg) {
+    max-height: 17cm;
+  }
+}
