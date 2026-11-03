@@ -336,6 +336,13 @@ export function HeraldPage() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => selectedParticipant && navigate(`/keepsake/${selectedParticipant.id}`)}
+                    title="The Herald alone — name, status, epithet — to print or send to the participant; never the readings"
+                  >
+                    Keepsake for {selectedParticipant?.displayName ?? "the participant"}
+                  </button>
+                  <button
+                    type="button"
                     onClick={() =>
                       svgRef.current &&
                       exportHeraldSvg(svgRef.current, `${selectedParticipant?.displayName ?? "herald"}.svg`)

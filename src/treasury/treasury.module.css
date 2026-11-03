@@ -81,6 +81,32 @@
   overflow: hidden;
 }
 
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.fields {
+  display: grid;
+  gap: 4px;
+  max-width: 24rem;
+}
+
+.fields label {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+.fields input {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+}
+
 .preview {
   border: 1px dashed var(--accent);
   border-radius: var(--radius-md);

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { PageHeader, EmptyState, Button } from "../../components/ui";
 import { isCloudConfigured } from "../../cloud/config";
-import { HeraldCanvas } from "../render/HeraldCanvas";
+import { SharedHeraldView } from "./SharedHeraldView";
 import type { SharedHeraldPayload } from "./sharePayload";
 import styles from "./share.module.css";
 
@@ -122,38 +122,7 @@ export function SharedHeraldPage() {
   return (
     <div className="page">
       <PageHeader kicker="A shared Herald" title={payload.displayName} />
-      <div className={styles.sharedCanvas}>
-        <HeraldCanvas
-          form={payload.heraldForm}
-          displayName={payload.displayName}
-          hebrewName={payload.hebrewName}
-          path={payload.path}
-          status={payload.status}
-          epithet={payload.epithet}
-          style={payload.style}
-        />
-      </div>
-      <div className={styles.sharedCaption}>
-        <p>
-          <strong>{payload.displayName}</strong>
-          {payload.hebrewName && (
-            <>
-              {" · "}
-              <span lang="he">{payload.hebrewName}</span>
-            </>
-          )}
-        </p>
-        <p>{payload.status}</p>
-        {payload.epithet && <p className={styles.sharedEpithet}>“{payload.epithet}”</p>}
-        <p>
-          Published{" "}
-          {new Date(payload.publishedAt).toLocaleDateString(undefined, {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
-        </p>
-      </div>
+      <SharedHeraldView payload={payload} />
     </div>
   );
 }
