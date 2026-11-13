@@ -60,6 +60,7 @@ import {
 import { HUSK_CHARS, HUSKS, kindForRole, LAMPS, type HuskKind } from "../combat";
 import { VEIL_COST } from "../encounter";
 import { festivalKnob } from "../festivalRules";
+import { destinationOf } from "../rungRules";
 import type { FestivalId } from "../../types/festival";
 import { drawKeli, keliFor, poolFor, type Keli } from "../items";
 import { guardianOf } from "../guardians";
@@ -1783,6 +1784,12 @@ export function buildPath(
   relicsFound: readonly string[] = [],
   /** The record's frozen festival ids — see `gateRoomFor`. */
   festivalIds: readonly FestivalId[] = [],
+  /**
+   * The end the Scribe is walking **from**, so the rung's rule is the rule of
+   * the place they are going to. Read after paint and by nothing the
+   * generator draws from: which way a road is walked moves no tile.
+   */
+  from?: SefirahId,
 ): World {
   const region = regionOfPath(path, held, klipot);
   // Seeded by the path rather than the region, so walking Malchut→Hod is not
@@ -1824,7 +1831,7 @@ export function buildPath(
   );
   // The rung's destination, for its rule — set after paint so the generator's
   // draws cannot see it: a rule may never move a tile. See `World.toward`.
-  world.toward = path.ends[1];
+  world.toward = destinationOf(path, from);
   return world;
 }
 

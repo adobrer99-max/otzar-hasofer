@@ -1382,8 +1382,13 @@ export function GamePage() {
         // midnight keeps the room its gates promised. Records from before the
         // field read as ordinary days, which is what they were measured as.
         ascent.festivalIds ?? [],
+        // Which end this is walked from — the rule is the destination's.
+        ascent.at,
       );
       const carried = powersFrom(ascent.items ?? [], boons, keeps);
+      // What a whole hand is for this Scribe, before any warp trims it — Hod's
+      // shrines relight to this. See `World.lampsFull`.
+      next.lampsFull = Math.max(1, next.player.lamps + carried.lamps);
       next.player.lamps = (warpLamps.current ?? next.player.lamps) + carried.lamps;
       next.orPerMote = Math.max(1, Math.round(next.orPerMote * carried.light));
       // The path's own two ends, not the rung's capped index — see `layEncounter`.

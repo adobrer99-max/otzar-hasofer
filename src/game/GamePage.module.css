@@ -1674,6 +1674,17 @@
   font-size: 1.15rem;
 }
 
+/* The rung's own law, on a line of its own beneath where the way goes and
+   what it pays — `order` puts it last whatever the markup's sequence. */
+.wayRule {
+  order: 3;
+  flex-basis: 100%;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-style: italic;
+  line-height: 1.4;
+}
+
 .overworldActions {
   display: flex;
   flex-wrap: wrap;

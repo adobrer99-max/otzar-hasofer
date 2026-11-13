@@ -163,3 +163,46 @@ describe("mastery, folded across sealed climbs", () => {
     expect(versedIn([])).toEqual({});
   });
 });
+
+describe("the first use is named, and not talked over", () => {
+  /**
+   * `spendVerb` says the first-use line. Called before the verb's own `say`
+   * it was overwritten on the same tick, so a stone, a hook, an opened eye and
+   * a set mark never said theirs — only the barrier chain, which counted
+   * last, did.
+   */
+  it("names the first stone, and leaves the second its ordinary line", () => {
+    const world = room();
+    const ctx: StepContext = { verbs: ["block"], graces: [] };
+    step(world, press({ act: true }), ctx);
+    expect(world.message?.text).toBe(LETTER_ECHOES.block.answered);
+    for (let t = 0; t < 4; t += 1) step(world, NO_INPUT, ctx);
+    step(world, press({ act: true }), ctx);
+    for (let t = 0; t < 4; t += 1) step(world, NO_INPUT, ctx);
+    step(world, press({ act: true }), ctx);
+    expect(world.message?.text).toBe("A stone stands where you set it.");
+  });
+
+  it("names the Eye's first opening", () => {
+    const world = room();
+    const ctx: StepContext = { verbs: ["reveal"], graces: [] };
+    step(world, press({ act: true }), ctx);
+    expect(world.revealed).toBe(true);
+    expect(world.message?.text).toBe(LETTER_ECHOES.reveal.answered);
+  });
+
+  it("says the ordinary line to a hand already practiced", () => {
+    const world = room();
+    const ctx: StepContext = { verbs: ["reveal"], graces: [], practiced: ["reveal"] };
+    step(world, press({ act: true }), ctx);
+    expect(world.message?.text).toBe("Or HaGanuz — the hidden stone stands revealed.");
+  });
+
+  it("does not set a stone beside feet that are outside the world", () => {
+    const world = room();
+    const ctx: StepContext = { verbs: ["block"], graces: [] };
+    world.player.y = -world.player.h * 3;
+    expect(() => step(world, press({ act: true }), ctx)).not.toThrow();
+    expect(world.placed).toHaveLength(0);
+  });
+});

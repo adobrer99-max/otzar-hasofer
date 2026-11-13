@@ -53,6 +53,12 @@ export interface Entity {
   /** Marks light when the Scribe sets them. */
   active?: boolean;
   /**
+   * The Scribe is standing at it — so a line a shrine says on arrival is said
+   * once, not on every tick of standing there, where it would sit on top of
+   * anything else the world tried to say.
+   */
+  met?: boolean;
+  /**
    * The shell this mote came out of, when it came out of one — set by
    * `strikeHusk`, read by the renderer alone. Inert on purpose: the light a
    * break frees is worth the same and gathers the same as any other, and the
@@ -254,6 +260,14 @@ export interface World {
    * cannot serve — see `regionOfPath`'s two-end notes.
    */
   toward?: SefirahId;
+  /**
+   * How many lamps this Scribe carries when whole — the vessels' and relics'
+   * say included. Set by the page as the rung is entered; a world built
+   * without a page reads as the plain three. Hod's relighting shrines fill to
+   * *this*, not to the constant: a two-lamp hand is not raised to three and a
+   * five-lamp hand is not capped at it.
+   */
+  lampsFull?: number;
   /** Column-major-free: `tiles[y * width + x]`. */
   tiles: Uint8Array;
   width: number;

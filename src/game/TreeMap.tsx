@@ -21,6 +21,7 @@ import { describeEffect } from "./items";
 import { guardianOf } from "./guardians";
 import type { SealKind } from "./sealing";
 import { HUSKS } from "./combat";
+import { ruleOfWay } from "./rungRules";
 import styles from "./GamePage.module.css";
 
 /**
@@ -321,6 +322,7 @@ export function TreeMap({
               const held = gathered.includes(path.letter);
               const keli = keliOnPath(path, ascent.seed, ascent.items ?? []);
               const overTheAbyss = crossesAbyss(path);
+              const rule = ruleOfWay(path, at);
               return (
                 <li key={path.id}>
                   <button type="button" className={styles.wayButton} onClick={() => onWalk(path)}>
@@ -333,6 +335,12 @@ export function TreeMap({
                         to know standing here, not to discover halfway across. */}
                     {overTheAbyss && <span className={styles.wayAbyss}>over the Abyss</span>}
                   </span>
+                    {/* **The road's law, read before the road.** It used to be
+                        said only on the arrival plate — after the ground it
+                        governs had already been walked. Asked of `ruleOfWay`,
+                        the same question the world asks, so what is promised
+                        here is what binds there. */}
+                    {rule && <span className={styles.wayRule}>{rule.says}</span>}
                     <span className={styles.wayPays}>
                       {/* **What is on the pedestal, before you walk.** The letter
                           a path pays is fixed by the arrangement; the vessel is

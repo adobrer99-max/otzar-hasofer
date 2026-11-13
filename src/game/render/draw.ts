@@ -1,5 +1,5 @@
 import { lettersById } from "../../data/letters";
-import { rungRule } from "../rungRules";
+import { ruleOf } from "../rungRules";
 import { tileAt } from "../world/build";
 import { Tile, TILE_SIZE } from "../world/tiles";
 import type { Entity, World } from "../world/types";
@@ -578,7 +578,7 @@ function drawMaskit(
    * the tile, its solidity and its spring are exactly what they are
    * everywhere else until the Eye is open.
    */
-  const bare = Boolean(world.toward && rungRule(world.toward)?.liesLaidBare);
+  const bare = Boolean(ruleOf(world)?.liesLaidBare);
   ctx.fillStyle = palette.stone;
   ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
 

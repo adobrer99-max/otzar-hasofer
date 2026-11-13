@@ -51,7 +51,17 @@ export interface RungRule {
    * own hand is counted — a klipah's throw goes through its own case in
    * `stepHusks` and never touches the counter.
    */
-  marksRationed?: { count: number; spent: string };
+  marksRationed?: {
+    count: number;
+    spent: string;
+    /**
+     * What a room says when it lets a spent hand go. A door that waits on a
+     * shell the Scribe may no longer throw at is a door only a fall opens,
+     * so once the ration is gone no room closes and the one already closed
+     * opens and stays open — restraint is asked for, not a trap sprung.
+     */
+    released: string;
+  };
   /**
    * **Yesod's knob — a set stone is founded, and founding is one-way.**
    * On ground bound here Bet lays `Tile.Ledge` rather than `Tile.Placed`:
@@ -209,6 +219,7 @@ export const RUNG_RULES: Record<SefirahId, RungRule | null> = {
     marksRationed: {
       count: 60,
       spent: "The ration is spent. What is left standing stays standing.",
+      released: "Nothing more can be asked of an empty hand. The way opens.",
     },
   },
   /**
@@ -274,9 +285,40 @@ export const RUNG_RULES: Record<SefirahId, RungRule | null> = {
 
 /**
  * The one seam a rung's rule reaches the game through. Keyed to the
- * **destination** on the Tree — `regionOfPath` carries the upper end's
- * question, and the rule follows the question.
+ * **destination** on the Tree — the place the Scribe is walking *to*, which
+ * is the lower end on a road walked downward (`destinationOf`).
  */
 export function rungRule(sefirah: SefirahId): RungRule | null {
   return RUNG_RULES[sefirah];
+}
+
+/**
+ * Where a path walked **from** `from` comes out. With no `from` it is the
+ * upper end, which is what every world built before the Tree knew which way
+ * it was being walked meant by "destination".
+ */
+export function destinationOf(
+  path: { ends: readonly [SefirahId, SefirahId] },
+  from?: SefirahId,
+): SefirahId {
+  return from === path.ends[1] ? path.ends[0] : path.ends[1];
+}
+
+/**
+ * The rule of a way, by the place it actually leads to. The world, the map's
+ * way button and the arrival plate all ask this one function, so the rule
+ * read before a road, the rule walked on it and the rule named at its end
+ * cannot be three different rules — which, for a road walked downward, they
+ * were.
+ */
+export function ruleOfWay(
+  path: { ends: readonly [SefirahId, SefirahId] },
+  from?: SefirahId,
+): RungRule | null {
+  return rungRule(destinationOf(path, from));
+}
+
+/** The rule of the ground underfoot — null off the Tree and in every arena. */
+export function ruleOf(world: { toward?: SefirahId }): RungRule | null {
+  return world.toward ? rungRule(world.toward) : null;
 }

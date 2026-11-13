@@ -4,7 +4,7 @@ import { setTile, tileAt } from "./build";
 import { CHUNK_H } from "./chunks";
 import { powersFrom, type Effect } from "../items";
 import type { Keeping } from "../relics";
-import { rungRule } from "../rungRules";
+import { ruleOf } from "../rungRules";
 import {
   isClimbable,
   isHazard,
@@ -473,17 +473,6 @@ function applyVerbs(world: World, input: Input, ctx: StepContext): void {
 
   if (!input.act) return;
 
-  // The Hook — cast to the nearest anchor within reach, preferring one ahead.
-  if (has(ctx, "grapple") && !p.grappleTo && p.grappleCooldown === 0) {
-    const anchor = nearestAnchor(world, p);
-    if (anchor) {
-      p.grappleTo = anchor;
-      spendVerb(world, ctx, "grapple");
-      say(world, "The hook holds.");
-      return;
-    }
-  }
-
   /**
    * **Chesed's rule — a sealed door opens to a gift** (P15-R5). Kneeling
    * (crouch + act) beside a seal on chesed-bound ground pours out the
@@ -498,12 +487,12 @@ function applyVerbs(world: World, input: Input, ctx: StepContext): void {
    * and the bands measure exactly what they measured before.
    *
    * No `spendVerb`: a gift is not a verb use — and it needs no letter, only
-   * light, which is the point of the rung. Placed above the barrier chain
-   * and the stone so a kneeling Scribe at a seal always gives, whatever the
-   * hand holds; a seal is a tile no verb in the chain answers, so nothing
+   * light, which is the point of the rung. Placed above the Hook, the
+   * barrier chain and the stone so a kneeling Scribe at a seal always gives,
+   * whatever the hand holds and whatever anchor hangs in reach; a seal is a tile no verb in the chain answers, so nothing
    * is shadowed on any other road.
    */
-  const gift = world.toward ? rungRule(world.toward)?.sealOpensTo : undefined;
+  const gift = ruleOf(world)?.sealOpensTo;
   const giftRoom = gift ? world.rooms[world.roomIndex] : undefined;
   if (gift && giftRoom && p.crouching && nearestTile(world, p, Tile.Seal, TILE_SIZE * 2.2)) {
     if (world.or >= gift.price) {
@@ -515,6 +504,19 @@ function applyVerbs(world: World, input: Input, ctx: StepContext): void {
       say(world, gift.wanting);
     }
     return;
+  }
+
+  // The Hook — cast to the nearest anchor within reach, preferring one ahead.
+  if (has(ctx, "grapple") && !p.grappleTo && p.grappleCooldown === 0) {
+    const anchor = nearestAnchor(world, p);
+    if (anchor) {
+      p.grappleTo = anchor;
+      // The verb's own line first, then the count: `spendVerb` says the
+      // first-use line, and said first it was overwritten on the same tick.
+      say(world, "The hook holds.");
+      spendVerb(world, ctx, "grapple");
+      return;
+    }
   }
 
   // The Edge, the Flame, the Door — each clears the barrier it answers.
@@ -535,11 +537,19 @@ function applyVerbs(world: World, input: Input, ctx: StepContext): void {
   // The Eye — the hidden light was never absent, only unseen.
   if (has(ctx, "reveal") && !world.revealed) {
     world.revealed = true;
-    spendVerb(world, ctx, "reveal");
     // On ground bound for Binah the Eye's opening says the rung's own rule
     // (P15-R6): from this press on, the floor's lies bear weight.
-    const bare = world.toward ? rungRule(world.toward)?.liesLaidBare : undefined;
-    say(world, bare?.revealed ?? "Or HaGanuz — the hidden stone stands revealed.");
+    const bare = ruleOf(world)?.liesLaidBare;
+    // A first use is named over the verb's ordinary line (`spendVerb` says
+    // it, so it goes second) — but never over a rung's own rule, which is
+    // the one thing said here that the Scribe must not miss.
+    if (bare) {
+      spendVerb(world, ctx, "reveal");
+      say(world, bare.revealed);
+    } else {
+      say(world, "Or HaGanuz — the hidden stone stands revealed.");
+      spendVerb(world, ctx, "reveal");
+    }
     return;
   }
 
@@ -608,6 +618,8 @@ function toggleStone(world: World, ctx: StepContext): void {
   // a tile buried in the ground they are already standing on.
   const tx = Math.floor((p.x + p.w / 2) / TILE_SIZE) + p.facing;
   const ty = Math.floor((p.y + p.h - 1) / TILE_SIZE);
+  // A body above or below the world has no tile beside its feet to set.
+  if (ty < 0 || ty >= world.height) return;
 
   /**
    * **Yesod's rule is asked before the hand moves** (P15-R3). On ground
@@ -618,7 +630,7 @@ function toggleStone(world: World, ctx: StepContext): void {
    * `world.toward` exactly as the cold shrines and the ration are, so an
    * arena keeps the ordinary stone, as does any world off the Tree.
    */
-  const founded = world.toward ? rungRule(world.toward)?.stonesFounded : undefined;
+  const founded = ruleOf(world)?.stonesFounded;
 
   const existing = world.placed.findIndex((s) => s.x === tx && s.y === ty);
   if (existing !== -1) {
@@ -634,8 +646,19 @@ function toggleStone(world: World, ctx: StepContext): void {
 
   if (tileAt(world, tx, ty) !== Tile.Empty) return;
   if (founded) {
+    // **Never in a doorway.** `seal` writes only on empty tiles, so a founded
+    // ledge standing where a door closes — it cannot be taken back — would be
+    // a hole in every seal that room ever writes.
+    const inDoorway = world.rooms.some((r) =>
+      r.doors.some((d) => d.tiles.some((t) => t.x === tx && t.y === ty)),
+    );
+    if (inDoorway) {
+      say(world, "A threshold is not a foundation. The stone will not be laid here.");
+      return;
+    }
     world.placed.push({ x: tx, y: ty });
     setTile(world, tx, ty, Tile.Ledge);
+    // The rule's line outranks the first-use echo — see the Eye, above.
     spendVerb(world, ctx, "block");
     say(world, founded.set);
     return;
@@ -643,12 +666,16 @@ function toggleStone(world: World, ctx: StepContext): void {
   const limit = ctx.graces.includes("second-stone") ? 2 : 1;
   if (world.placed.length >= limit) {
     const oldest = world.placed.shift();
-    if (oldest) setTile(world, oldest.x, oldest.y, Tile.Empty);
+    // Only if it is still the stone that was set: a tile something else has
+    // since rewritten is not this hand's to clear.
+    if (oldest && tileAt(world, oldest.x, oldest.y) === Tile.Placed) {
+      setTile(world, oldest.x, oldest.y, Tile.Empty);
+    }
   }
   world.placed.push({ x: tx, y: ty });
   setTile(world, tx, ty, Tile.Placed);
-  spendVerb(world, ctx, "block");
   say(world, "A stone stands where you set it.");
+  spendVerb(world, ctx, "block");
 }
 
 // ---------------------------------------------------------------------------
@@ -829,7 +856,7 @@ function breakMaskit(world: World): void {
    * `world.toward` like every rung rule, so `binah-keter` (bound for the
    * crown), the arenas, and every other road keep their lies.
    */
-  if (world.revealed && world.toward && rungRule(world.toward)?.liesLaidBare) return;
+  if (world.revealed && ruleOf(world)?.liesLaidBare) return;
   const row = Math.floor((p.y + p.h + 1) / TILE_SIZE);
   const x0 = Math.floor(p.x / TILE_SIZE);
   const x1 = Math.floor((p.x + p.w - 1) / TILE_SIZE);
@@ -970,8 +997,16 @@ function stepRooms(world: World): void {
   // Not in the kingdom. Malchut is where the walk, the leap and the mark are
   // taught, and a room that closes on a Scribe who has not yet been told which
   // key writes is a locked door with the lesson on the other side of it.
+  //
+  // **And not for a hand with nothing left to throw.** On gevurah-bound
+  // ground the marks are rationed, and a door that waits on a shell the
+  // Scribe can no longer reach is a door only a fall opens — which ends the
+  // rung. So a spent ration closes no room, and lets go of the one it is in.
+  const ration = ruleOf(world)?.marksRationed;
+  const emptyHanded = Boolean(ration && world.marksThrown >= ration.count);
   const closes =
     standing &&
+    !emptyHanded &&
     // ...except in an arena, where the kingdom's exemption does not apply: a
     // Scribe who has walked into a guardian's room has already been taught
     // everything the porch teaches, and the room is the whole of the thing.
@@ -1014,6 +1049,12 @@ function stepRooms(world: World): void {
       room.cleared = true;
       if (unseal(world, room)) say(world, "The room is quiet. The way opens.");
     }
+    return;
+  }
+
+  if (emptyHanded && ration && !room.cleared) {
+    room.cleared = true;
+    if (unseal(world, room)) say(world, ration.released);
     return;
   }
 
@@ -1174,7 +1215,10 @@ function touchEntities(world: World, ctx: StepContext): void {
       continue;
     }
 
-    if (!near) continue;
+    if (!near) {
+      if (e.met) e.met = false;
+      continue;
+    }
 
     switch (e.kind) {
       case "mote":
@@ -1210,13 +1254,15 @@ function touchEntities(world: World, ctx: StepContext): void {
         // `world.toward`, the walked path's destination, so an arena (which
         // never sets it) keeps its shrines warm, as does any world that is
         // not a rung of the Tree.
-        const cold = world.toward ? rungRule(world.toward)?.shrinesCold : undefined;
+        const cold = ruleOf(world)?.shrinesCold;
+        // Said on arriving, not on every tick of standing here.
+        const arriving = !e.met;
+        e.met = true;
         if (!e.active && cold !== undefined) {
-          say(world, cold);
+          if (arriving) say(world, cold);
         } else if (!e.active && has(ctx, "mark")) {
           e.active = true;
           world.marksSet += 1;
-          spendVerb(world, ctx, "mark");
           world.respawn = { x: e.x, y: e.y - 6 };
           /**
            * **Hod's rule rides the answer** (P15-R4): on ground bound for
@@ -1225,14 +1271,17 @@ function touchEntities(world: World, ctx: StepContext): void {
            * when something was actually taken: a full hand hears the
            * ordinary line, because what was not taken cannot be given back.
            */
-          const relight = world.toward ? rungRule(world.toward)?.shrinesRelight : undefined;
-          if (relight !== undefined && p.lamps < LAMPS) {
-            p.lamps = LAMPS;
+          const relight = ruleOf(world)?.shrinesRelight;
+          const full = world.lampsFull ?? LAMPS;
+          if (relight !== undefined && p.lamps < full) {
+            p.lamps = full;
+            spendVerb(world, ctx, "mark");
             say(world, relight);
           } else {
             say(world, "Your mark is set here.");
+            spendVerb(world, ctx, "mark");
           }
-        } else if (!e.active) {
+        } else if (!e.active && arriving) {
           say(world, "A shrine, and nothing to set on it. The Mark is not yet yours.");
         }
         break;
@@ -1362,7 +1411,7 @@ function throwMark(world: World, input: Input, ctx: StepContext): void {
    * `world.toward` exactly as the cold shrines are, so an arena is never
    * rationed and neither is any world that is not a rung of the Tree.
    */
-  const ration = world.toward ? rungRule(world.toward)?.marksRationed : undefined;
+  const ration = ruleOf(world)?.marksRationed;
   if (ration && world.marksThrown >= ration.count) {
     say(world, ration.spent);
     return;

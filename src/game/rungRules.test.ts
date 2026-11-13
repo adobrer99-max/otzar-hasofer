@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { HUSKS } from "./combat";
 import { VEIL_COST } from "./encounter";
 import { lettersOnEntering, regions } from "./regions";
-import { RUNG_RULES, rungRule } from "./rungRules";
+import { RUNG_RULES, ruleOfWay, rungRule } from "./rungRules";
 import { TREE_PATHS } from "./tree";
 import { buildArena, buildPath, buildRegion, regionOfPath, setTile, tileAt } from "./world/build";
 import { step, type StepContext } from "./world/step";
@@ -130,6 +130,31 @@ describe("the rule is keyed to the destination — `World.toward`", () => {
     }
     expect(buildArena("netzach").toward).toBeUndefined();
   });
+
+  /**
+   * **Where the Scribe is going, not which end is higher.** A road walked
+   * downward used to run under the law of the place being left, and the
+   * arrival plate then named a different one. And which way a road is walked
+   * may not move a tile — the direction is read after paint.
+   */
+  it("follows the way the road is walked, and moves no tile for it", () => {
+    const build = (path: (typeof TREE_PATHS)[number], from?: (typeof path.ends)[number]) =>
+      buildPath(
+        path, 7, lettersOnEntering(regionOfPath(path).index),
+        1, false, false, 1, [], 0, [], [], from,
+      );
+    for (const path of TREE_PATHS) {
+      const up = build(path, path.ends[0]);
+      const down = build(path, path.ends[1]);
+      expect(up.toward).toBe(path.ends[1]);
+      expect(down.toward, `${path.id} walked down is still bound upward`).toBe(path.ends[0]);
+      expect(Array.from(down.tiles), `${path.id} is different ground walked down`).toEqual(
+        Array.from(up.tiles),
+      );
+      expect(ruleOfWay(path, path.ends[1])).toBe(rungRule(path.ends[0]));
+      expect(ruleOfWay(path, path.ends[0])).toBe(rungRule(path.ends[1]));
+    }
+  });
 });
 
 describe("P15-R1 — Netzach: the shrines are cold", () => {
@@ -160,6 +185,17 @@ describe("P15-R1 — Netzach: the shrines are cold", () => {
     expect(world.marksSet).toBe(0);
     expect(world.verbUses.mark, "a refusal spent the verb").toBeUndefined();
     expect(world.message?.text).toBe(RUNG_RULES.netzach?.shrinesCold);
+  });
+
+  it("says so on arriving, and not on every tick of standing there", () => {
+    const { world } = shrineRoom("netzach");
+    step(world, NO_INPUT, ctx);
+    expect(world.message?.text).toBe(RUNG_RULES.netzach?.shrinesCold);
+    // Something else speaks while the Scribe is still standing at the shrine:
+    // the cold line must not climb back on top of it.
+    world.message = { text: "something else", until: world.tick + 600 };
+    for (let t = 0; t < 5; t += 1) step(world, NO_INPUT, ctx);
+    expect(world.message?.text).toBe("something else");
   });
 
   it("answers on any other road — the rule, not the field, is what is cold", () => {
@@ -239,6 +275,63 @@ describe("P15-R2 — Gevurah: the throws are rationed", () => {
   });
 });
 
+describe("P15-R2 — Gevurah: a spent hand is not shut in", () => {
+  const ration = RUNG_RULES.gevurah!.marksRationed!;
+  const ctx: StepContext = { verbs: [], graces: [] };
+
+  /** The Chesed fixture's room: a live door-holder, a landed body, one door. */
+  function heldRoom(toward: "gevurah" | "hod") {
+    const world = buildRegion(2, 5);
+    world.entities = [];
+    world.toward = toward;
+    const p = world.player;
+    const room = world.rooms[world.roomIndex];
+    room.entrance = false;
+    const spec = HUSKS.esav;
+    world.husks = [{
+      id: "h-holder", kind: "esav" as const,
+      x: p.x + TILE_SIZE * 40, y: p.y,
+      w: spec.size.w, h: spec.size.h, vx: 0, vy: 0, facing: -1 as const,
+      home: { x: p.x + TILE_SIZE * 40, y: p.y },
+      shells: spec.shells, cooldown: 0, charging: 0, struck: 0,
+    }];
+    room.husks.push("h-holder");
+    for (let t = 0; t < 240 && !p.onGround; t += 1) step(world, NO_INPUT, ctx);
+    const tx = Math.floor((p.x + p.w / 2) / TILE_SIZE) + p.facing * 3;
+    const ty = Math.floor((p.y + p.h - 1) / TILE_SIZE);
+    room.doors.push({ side: "right", tiles: [{ x: tx, y: ty }] });
+    setTile(world, tx, ty, Tile.Empty);
+    return { world, room, tx, ty };
+  }
+
+  it("closes on a hand that can still throw — the fixture is honest", () => {
+    const { world, tx, ty } = heldRoom("gevurah");
+    step(world, NO_INPUT, ctx);
+    expect(tileAt(world, tx, ty)).toBe(Tile.Seal);
+  });
+
+  it("opens, says why, and stays open once the ration is spent", () => {
+    const { world, room, tx, ty } = heldRoom("gevurah");
+    step(world, NO_INPUT, ctx);
+    expect(tileAt(world, tx, ty)).toBe(Tile.Seal);
+    world.marksThrown = ration.count;
+    step(world, NO_INPUT, ctx);
+    expect(tileAt(world, tx, ty), "a spent hand is still shut in").toBe(Tile.Empty);
+    expect(room.cleared).toBe(true);
+    expect(world.message?.text).toBe(ration.released);
+    expect(world.husks[0].broken, "the release broke what held the door").toBeFalsy();
+    for (let t = 0; t < 6; t += 1) step(world, NO_INPUT, ctx);
+    expect(tileAt(world, tx, ty)).toBe(Tile.Empty);
+  });
+
+  it("releases nobody on any other road, however many marks have flown", () => {
+    const { world, tx, ty } = heldRoom("hod");
+    world.marksThrown = ration.count * 2;
+    for (let t = 0; t < 3; t += 1) step(world, NO_INPUT, ctx);
+    expect(tileAt(world, tx, ty)).toBe(Tile.Seal);
+  });
+});
+
 describe("P15-R6 — Binah: the lies are laid bare", () => {
   const bare = RUNG_RULES.binah!.liesLaidBare!;
   const ctx: StepContext = { verbs: [], graces: [] };
@@ -311,7 +404,7 @@ describe("P15-R6 — Binah: the lies are laid bare", () => {
     world.entities = [];
     world.husks = [];
     world.toward = "hod";
-    const eye: StepContext = { verbs: ["reveal"], graces: [] };
+    const eye: StepContext = { verbs: ["reveal"], graces: [], practiced: ["reveal"] };
     for (let t = 0; t < 240 && !world.player.onGround; t += 1) step(world, NO_INPUT, eye);
     step(world, { ...NO_INPUT, act: true }, eye);
     expect(world.revealed).toBe(true);
@@ -452,7 +545,9 @@ describe("P15-R4 — Hod: the shrines give back", () => {
     return { world, shrine };
   }
   const relight = RUNG_RULES.hod!.shrinesRelight!;
-  const ctx: StepContext = { verbs: ["mark"], graces: [] };
+  // A practiced hand, so the ordinary line is the ordinary line: a first use
+  // is named over it (`spendVerb`), though never over the rung's own.
+  const ctx: StepContext = { verbs: ["mark"], graces: [], practiced: ["mark"] };
 
   it("relights the lamps when the mark is set with some gone out", () => {
     const { world, shrine } = altarRoom("hod", 1);
@@ -462,6 +557,18 @@ describe("P15-R4 — Hod: the shrines give back", () => {
     expect(world.respawn.x).toBe(shrine?.x);
     expect(world.player.lamps).toBe(3);
     expect(world.message?.text).toBe(relight);
+  });
+
+  it("relights to what this Scribe carries whole — not to the plain three", () => {
+    const many = altarRoom("hod", 2);
+    many.world.lampsFull = 5;
+    step(many.world, NO_INPUT, ctx);
+    expect(many.world.player.lamps, "a five-lamp hand was capped").toBe(5);
+
+    const few = altarRoom("hod", 1);
+    few.world.lampsFull = 2;
+    step(few.world, NO_INPUT, ctx);
+    expect(few.world.player.lamps, "a two-lamp hand was raised past whole").toBe(2);
   });
 
   it("says the ordinary line to a hand whose lamps are all burning", () => {
@@ -514,6 +621,16 @@ describe("P15-R3 — Yesod: a set stone is founded", () => {
     expect(world.placed).toHaveLength(1);
     expect(world.verbUses.block).toBe(1);
     expect(world.message?.text).toBe(founded.set);
+  });
+
+  it("will not found a stone in a doorway — a seal must be able to close", () => {
+    const world = masonRoom("yesod");
+    const { tx, ty } = besides(world);
+    world.rooms[world.roomIndex].doors.push({ side: "right", tiles: [{ x: tx, y: ty }] });
+    step(world, act, ctx);
+    expect(tileAt(world, tx, ty)).toBe(Tile.Empty);
+    expect(world.placed).toHaveLength(0);
+    expect(world.verbUses.block, "a refusal spent the verb").toBeUndefined();
   });
 
   it("refuses the recall — nothing founded returns to the hand", () => {
