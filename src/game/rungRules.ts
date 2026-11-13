@@ -11,8 +11,8 @@ import type { SefirahId } from "../types/letter";
  * forgotten; one resolver, so a rule reaches the game through a single seam
  * and never as a scattered `if`.
  *
- * **Six are filled — Yesod, Hod, Netzach, Gevurah, Chesed, Binah — and four
- * are `null`, two of them load-bearing nulls.** Malchut's
+ * **Seven are filled — Yesod, Hod, Netzach, Tiferet, Gevurah, Chesed, Binah —
+ * and three are `null`, two of them load-bearing nulls.** Malchut's
  * rule is the taught opening — the kingdom asks you to receive, and its
  * standing exemptions (rooms that never seal, a figured-stone budget of zero)
  * are precedent that null is a decision, not an absence. Keter's rule is
@@ -106,6 +106,14 @@ export interface RungRule {
    */
   sealOpensTo?: { price: number; given: string; wanting: string };
   /**
+   * **Tiferet's knob — a sealed room asks for half.** On ground bound here
+   * a room opens when the shells holding it are as many broken as standing
+   * (`opened` is what it says), and a shell broken in a room already in
+   * balance spills no light and says `past` instead of its own release.
+   * State lives on the room (`held`, `balanced`), never on a creature.
+   */
+  roomsBalance?: { opened: string; past: string };
+  /**
    * **Binah's knob — the lies are laid bare, in two tiers.** The knob's
    * presence is tier one: every figured stone on ground bound here is
    * *drawn* with its seam and hatch at full legibility, both palettes, no
@@ -194,7 +202,38 @@ export const RUNG_RULES: Record<SefirahId, RungRule | null> = {
     says: "The shrines on this road are cold. What you carry, you carry the whole way.",
     shrinesCold: "The shrine is cold. This road keeps no mark but the walking of it.",
   },
-  tiferet: null,
+  /**
+   * **P15-R7 — Beauty.** The question is "What will you hold in balance,
+   * when kindness and restraint both pull?", and the rule answers it at the
+   * sealed room — the same place Gevurah's and Chesed's rules meet the
+   * Scribe, because Tiferet is the line drawn between those two. A room on a
+   * tiferet-bound road is satisfied by half: the door opens when as many of
+   * the shells holding it are broken as are left standing. That is the
+   * kindness. The restraint is that the measure is a measure — once a room
+   * has found its balance, anything further broken in it gives no light.
+   *
+   * So a room held by two asks for one, by three or four for two; a room
+   * held by one is the room it is on any road. Which to break and which to
+   * leave is the Scribe's, and there is a reason on each side of the scale.
+   * Eight roads are bound here, three walked up (from Yesod, Hod, Netzach)
+   * and five down.
+   *
+   * Measured on landing: `fight`, `curve`, `economy` and `climb` over all
+   * three seed pools with the rule live, and **no band moved**. Part of the
+   * reason is worth knowing rather than discovering: a room held by two or
+   * more is uncommon on these roads — a sweep found one on-path in roughly
+   * one seed in eight on hod-tiferet and fewer elsewhere — so the rule is an
+   * occasion on a road rather than its whole character. Raising how often
+   * it is met would mean touching the klipot draw, which is a recalibration
+   * and not this slice.
+   */
+  tiferet: {
+    says: "A room on this road asks for half. Break as many as you leave standing and the way opens; what you break past that gives no light.",
+    roomsBalance: {
+      opened: "The room is in balance. The way opens, and what stands may stand.",
+      past: "The shell breaks past the measure, and nothing comes out of it.",
+    },
+  },
   /**
    * **P15-R2 — Severity.** The question is "What will you leave untaken,
    * though it stands within reach?", and the rule answers it in the writing

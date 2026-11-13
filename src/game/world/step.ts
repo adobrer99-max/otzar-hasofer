@@ -988,6 +988,28 @@ function stepRooms(world: World): void {
   );
   const standing = holding.length > 0;
 
+  /**
+   * **Tiferet's rule — a room asks for half** (P15-R7). On ground bound for
+   * Beauty a room is satisfied when as many of the shells holding it are
+   * broken as are left standing. A broken shell leaves `world.husks`, so the
+   * count broken cannot be re-derived: how many held the room is written
+   * down the first time the Scribe stands in it. Latched with `cleared`,
+   * which is in `closes` below, so `seal` never writes the door back.
+   */
+  if (room.held === undefined) room.held = holding.length;
+  const balance = ruleOf(world)?.roomsBalance;
+  if (
+    balance &&
+    standing &&
+    !room.balanced &&
+    room.held > 1 &&
+    room.held - holding.length >= holding.length
+  ) {
+    room.balanced = true;
+    room.cleared = true;
+    if (unseal(world, room)) say(world, balance.opened);
+  }
+
   // **Whether this room has closed behind the Scribe**, worked out once and
   // used twice: to write the seal, and — by `strikeHusk`, which asks the world
   // rather than re-deriving it — to know whether a shell is breaking inside
@@ -1802,11 +1824,18 @@ export function strikeHusk(
   husk.broken = true;
   world.husksBroken += 1;
   const spec = HUSKS[husk.kind];
+  // Tiferet's other pull (P15-R7): in a room that has already found its
+  // balance, what is broken past the measure gives nothing. The break that
+  // *reaches* balance is paid in full — `stepRooms` marks the room after it.
+  const room = world.rooms[world.roomIndex];
+  const past =
+    room?.balanced && room.husks.includes(husk.id) ? ruleOf(world)?.roomsBalance?.past : undefined;
   // What was held in the shell — more of it on a Day whose creatures hold more,
   // and more again if the room had closed behind the Scribe when it broke.
-  const held = Math.round(
-    spec.light * world.huskLight * (world.inSealedRoom ? world.sealedLight : 1),
-  );
+  const held =
+    past !== undefined
+      ? 0
+      : Math.round(spec.light * world.huskLight * (world.inSealedRoom ? world.sealedLight : 1));
   for (let i = 0; i < held; i += 1) {
     world.entities.push({
       id: `e-husk-${world.tick}-${i}`,
@@ -1821,7 +1850,7 @@ export function strikeHusk(
   // Named, because the naming is the point: a klipah is a husk *around*
   // something, and the something has a name in the sources — and now each
   // shell breaks with its own sentence, naming the kind of light it held.
-  say(world, spec.release);
+  say(world, past ?? spec.release);
 }
 
 /**

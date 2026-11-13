@@ -233,6 +233,15 @@ export interface Room {
   /** Whether the way to the exit runs through here. Only the way seals. */
   onPath: boolean;
   cleared: boolean;
+  /**
+   * How many shells held this room's door when the Scribe first stood in it —
+   * written by `stepRooms`, never by the builder. A broken shell leaves
+   * `world.husks`, so without this "how many have been broken here" has no
+   * answer. Read by Tiferet's rule alone.
+   */
+  held?: number;
+  /** The room has opened at balance (Tiferet's rule) — see `stepRooms`. */
+  balanced?: boolean;
   doors: Door[];
   /** Ids of the klipot standing in this room when it was built. */
   husks: string[];

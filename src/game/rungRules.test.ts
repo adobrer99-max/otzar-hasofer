@@ -46,15 +46,15 @@ describe("the rungs' own rules — filled one slice at a time", () => {
    * Ruled so far: **netzach** (P15-R1 — the shrines are cold), **gevurah**
    * (P15-R2 — the throws are rationed), **yesod** (P15-R3 — a set stone is
    * founded), **hod** (P15-R4 — the shrines give back), **chesed**
-   * (P15-R5 — a sealed door opens to a gift), and **binah** (P15-R6 — the
-   * lies are laid bare).
+   * (P15-R5 — a sealed door opens to a gift), **binah** (P15-R6 — the
+   * lies are laid bare), and **tiferet** (P15-R7 — a room asks for half).
    */
   it("holds every rung at null until a slice fills it on purpose", () => {
     const ruled = Object.entries(RUNG_RULES)
       .filter(([, rule]) => rule !== null)
       .map(([sefirah]) => sefirah)
       .sort();
-    expect(ruled).toEqual(["binah", "chesed", "gevurah", "hod", "netzach", "yesod"]);
+    expect(ruled).toEqual(["binah", "chesed", "gevurah", "hod", "netzach", "tiferet", "yesod"]);
     const filled = new Set(ruled);
     for (const region of regions) {
       if (filled.has(region.sefirah)) continue;
@@ -329,6 +329,115 @@ describe("P15-R2 — Gevurah: a spent hand is not shut in", () => {
     world.marksThrown = ration.count * 2;
     for (let t = 0; t < 3; t += 1) step(world, NO_INPUT, ctx);
     expect(tileAt(world, tx, ty)).toBe(Tile.Seal);
+  });
+});
+
+describe("P15-R7 — Tiferet: a room asks for half", () => {
+  const balance = RUNG_RULES.tiferet!.roomsBalance!;
+  const ctx: StepContext = { verbs: [], graces: [] };
+
+  /**
+   * The Gevurah fixture's room with `count` live door-holders registered to
+   * it — far off, since `holding` reads the registry and never positions.
+   */
+  function heldBy(count: number, toward?: "tiferet" | "hod") {
+    const world = buildRegion(2, 5);
+    world.entities = [];
+    world.toward = toward;
+    const p = world.player;
+    const room = world.rooms[world.roomIndex];
+    room.entrance = false;
+    const spec = HUSKS.esav;
+    world.husks = Array.from({ length: count }, (_, i) => ({
+      id: `h-holder-${i}`, kind: "esav" as const,
+      x: p.x + TILE_SIZE * (40 + i * 3), y: p.y,
+      w: spec.size.w, h: spec.size.h, vx: 0, vy: 0, facing: -1 as const,
+      home: { x: p.x + TILE_SIZE * (40 + i * 3), y: p.y },
+      shells: spec.shells, cooldown: 0, charging: 0, struck: 0,
+    }));
+    for (const h of world.husks) room.husks.push(h.id);
+    for (let t = 0; t < 240 && !p.onGround; t += 1) step(world, NO_INPUT, ctx);
+    const tx = Math.floor((p.x + p.w / 2) / TILE_SIZE) + p.facing * 3;
+    const ty = Math.floor((p.y + p.h - 1) / TILE_SIZE);
+    room.doors.push({ side: "right", tiles: [{ x: tx, y: ty }] });
+    setTile(world, tx, ty, Tile.Empty);
+    step(world, NO_INPUT, ctx);
+    return { world, room, tx, ty };
+  }
+  /** A shell broken the way the world breaks one: struck by the Scribe's own mark. */
+  function breakOne(world: ReturnType<typeof heldBy>["world"]) {
+    const husk = world.husks.find((h) => !h.broken)!;
+    husk.shells = 1;
+    const motesBefore = world.entities.filter((e) => e.kind === "mote").length;
+    world.marks.push({
+      id: `m-test-${world.tick}`, mine: true,
+      x: husk.x, y: husk.y, w: 8, h: 8, vx: 0, vy: 0,
+      life: 30, pierces: false, bite: 9, draws: false, hunts: 0, turns: 0, glyph: "א",
+    } as (typeof world.marks)[number]);
+    for (let t = 0; t < 4 && !husk.broken; t += 1) step(world, NO_INPUT, ctx);
+    expect(husk.broken, "the fixture's mark never broke the shell").toBe(true);
+    const said = world.message?.text;
+    step(world, NO_INPUT, ctx);
+    return {
+      spilled: world.entities.filter((e) => e.kind === "mote").length - motesBefore,
+      said,
+    };
+  }
+
+  it("closes on a room with every holder standing — the fixture is honest", () => {
+    const { world, tx, ty } = heldBy(2, "tiferet");
+    expect(tileAt(world, tx, ty)).toBe(Tile.Seal);
+  });
+
+  it("opens at one of two, says so, and stays open with the other standing", () => {
+    const { world, room, tx, ty } = heldBy(2, "tiferet");
+    const first = breakOne(world);
+    expect(first.spilled, "the balancing break must pay in full").toBeGreaterThan(0);
+    expect(tileAt(world, tx, ty)).toBe(Tile.Empty);
+    expect(room.balanced).toBe(true);
+    expect(world.message?.text).toBe(balance.opened);
+    expect(world.husks.filter((h) => !h.broken)).toHaveLength(1);
+    for (let t = 0; t < 6; t += 1) step(world, NO_INPUT, ctx);
+    expect(tileAt(world, tx, ty), "the seal came back over a room in balance").toBe(Tile.Empty);
+  });
+
+  it("asks two of three — one is not half", () => {
+    const { world, tx, ty } = heldBy(3, "tiferet");
+    breakOne(world);
+    expect(tileAt(world, tx, ty)).toBe(Tile.Seal);
+    breakOne(world);
+    expect(tileAt(world, tx, ty)).toBe(Tile.Empty);
+  });
+
+  it("gives no light for what is broken past the measure, and says why", () => {
+    const { world } = heldBy(2, "tiferet");
+    breakOne(world);
+    const second = breakOne(world);
+    expect(second.spilled).toBe(0);
+    expect(second.said).toBe(balance.past);
+  });
+
+  it("leaves a room held by one exactly as it is on any road", () => {
+    const { world, room, tx, ty } = heldBy(1, "tiferet");
+    expect(tileAt(world, tx, ty)).toBe(Tile.Seal);
+    const only = breakOne(world);
+    expect(only.spilled).toBeGreaterThan(0);
+    expect(room.balanced).toBeFalsy();
+    expect(tileAt(world, tx, ty)).toBe(Tile.Empty);
+  });
+
+  it("asks for all of them on any other road, and pays for all of them", () => {
+    const { world, room, tx, ty } = heldBy(2, "hod");
+    breakOne(world);
+    expect(tileAt(world, tx, ty), "half opened a door off Tiferet's road").toBe(Tile.Seal);
+    expect(room.balanced).toBeFalsy();
+    const second = breakOne(world);
+    expect(second.spilled).toBeGreaterThan(0);
+    expect(tileAt(world, tx, ty)).toBe(Tile.Empty);
+  });
+
+  it("is not in an arena — a guardian's room is not a road", () => {
+    expect(buildArena("tiferet").toward).toBeUndefined();
   });
 });
 

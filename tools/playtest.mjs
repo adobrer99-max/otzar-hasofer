@@ -906,6 +906,40 @@ const SCRIPTS = [
     },
   },
   {
+    name: "rung-rule-tiferet",
+    about: "P15-R7 — a room on the road to Tiferet opens at half, with the rest left standing.",
+    /**
+     * The seventh rung rule, and the hardest to stand this driver in front
+     * of. A room held by two or more *on the storey the Scribe starts on* is
+     * what it needs — it climbs nothing — and a node sweep found none at all
+     * on the three roads walked up to Tiferet (150 seeds each) and two in
+     * eighty on the five walked down: both on tiferet-chesed, from Chesed.
+     * Seed 13 is the one that holds: its second room, at tile 32, is held by
+     * two Amalek, and the door opens with one of them still standing. Seed 16
+     * was tried and the driver walks its room without closing it.
+     */
+    warp: { rung: 7, letters: "all", lamps: 3, seed: 13, day: "2026-08-18" },
+    toward: "Tiferet",
+    until: (p) => (p.message ?? "").includes("The room is in balance"),
+    seconds: 240,
+    watch: async (page, p, _look, { seen, report }) => {
+      if ((p.message ?? "").includes("The room is in balance") && !seen.opened) {
+        seen.opened = true;
+        seen.standing = p.husks?.standing ?? 0;
+        report.moments.push({ what: "the room in balance", tick: p.tick, ...p.husks });
+        await page.screenshot({ path: join(outDir, "rung-rule-tiferet-balance.png") });
+      }
+    },
+    check: (p, seen) => {
+      if (!seen.opened) {
+        throw new Error(`no room ever opened at balance — ${p.husks?.broken ?? "?"} broken when the clock ran out`);
+      }
+      if (!(seen.standing > 0)) {
+        throw new Error("the room opened with nothing left standing — that is the ordinary door");
+      }
+    },
+  },
+  {
     name: "rung-rule-yesod",
     about: "P15-R3 — stones founded on the road to Yesod: more than one hand could ever hold, none taken back.",
     /**
