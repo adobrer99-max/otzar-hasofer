@@ -282,6 +282,8 @@ export interface World {
    * five-lamp hand is not capped at it.
    */
   lampsFull?: number;
+  /** Chochmah's line has been said on this rung — see `touchEntities`. */
+  toldReceived?: boolean;
   /** Column-major-free: `tiles[y * width + x]`. */
   tiles: Uint8Array;
   width: number;

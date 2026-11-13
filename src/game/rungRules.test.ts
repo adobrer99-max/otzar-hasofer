@@ -47,14 +47,17 @@ describe("the rungs' own rules — filled one slice at a time", () => {
    * (P15-R2 — the throws are rationed), **yesod** (P15-R3 — a set stone is
    * founded), **hod** (P15-R4 — the shrines give back), **chesed**
    * (P15-R5 — a sealed door opens to a gift), **binah** (P15-R6 — the
-   * lies are laid bare), and **tiferet** (P15-R7 — a room asks for half).
+   * lies are laid bare), **tiferet** (P15-R7 — a room asks for half), and
+   * **chochmah** (P15-R8 — go low, and the light comes).
    */
   it("holds every rung at null until a slice fills it on purpose", () => {
     const ruled = Object.entries(RUNG_RULES)
       .filter(([, rule]) => rule !== null)
       .map(([sefirah]) => sefirah)
       .sort();
-    expect(ruled).toEqual(["binah", "chesed", "gevurah", "hod", "netzach", "tiferet", "yesod"]);
+    expect(ruled).toEqual([
+      "binah", "chesed", "chochmah", "gevurah", "hod", "netzach", "tiferet", "yesod",
+    ]);
     const filled = new Set(ruled);
     for (const region of regions) {
       if (filled.has(region.sefirah)) continue;
@@ -793,6 +796,62 @@ describe("P15-R3 — Yesod: a set stone is founded", () => {
     step(world, act, ctx);
     expect(world.toward).toBeUndefined();
     expect(tileAt(world, spot.tx, spot.ty)).toBe(Tile.Placed);
+  });
+});
+
+describe("P15-R8 — Chochmah: go low, and the light comes", () => {
+  const rule = RUNG_RULES.chochmah!.lightReceived!;
+  const kneel = { ...NO_INPUT, down: true };
+
+  /** A landed body in an emptied room, and one mote `tiles` ahead at chest height. */
+  function withMote(tiles: number, toward?: "chochmah" | "hod") {
+    const world = buildRegion(2, 5);
+    world.entities = [];
+    world.husks = [];
+    world.toward = toward;
+    const ctx: StepContext = { verbs: [], graces: [] };
+    const p = world.player;
+    for (let t = 0; t < 240 && !p.onGround; t += 1) step(world, NO_INPUT, ctx);
+    expect(p.onGround).toBe(true);
+    world.entities.push({
+      id: "e-mote", kind: "mote",
+      x: p.x + tiles * TILE_SIZE, y: p.y + p.h / 2,
+    });
+    return { world, ctx, mote: world.entities[0] };
+  }
+
+  it("leaves a standing body exactly as it is on any road — no instrument may feel this rule", () => {
+    const { world, ctx, mote } = withMote(0, "chochmah");
+    step(world, NO_INPUT, ctx);
+    expect(mote.taken).toBe(true);
+    expect(world.or).toBe(world.orPerMote);
+    expect(world.message?.text, "a standing take is not the rule's moment").not.toBe(rule.came);
+  });
+
+  it("comes to a Scribe who has gone low, from the rule's own reach", () => {
+    const { world, ctx, mote } = withMote(rule.reach - 0.5, "chochmah");
+    step(world, NO_INPUT, ctx);
+    expect(mote.taken).toBeFalsy();
+    // `crouching` reads the previous tick's ground contact — two ticks down.
+    for (let t = 0; t < 3; t += 1) step(world, kneel, ctx);
+    expect(mote.taken).toBe(true);
+    expect(world.or).toBe(world.orPerMote);
+    expect(world.message?.text).toBe(rule.came);
+  });
+
+  it("does not come from beyond that reach", () => {
+    const { world, ctx, mote } = withMote(rule.reach + 2, "chochmah");
+    for (let t = 0; t < 6; t += 1) step(world, kneel, ctx);
+    expect(mote.taken).toBeFalsy();
+  });
+
+  it("is taken on touch on any other road, and kneeling draws nothing there", () => {
+    const touch = withMote(0, "hod");
+    step(touch.world, NO_INPUT, touch.ctx);
+    expect(touch.mote.taken).toBe(true);
+    const far = withMote(rule.reach - 0.5, "hod");
+    for (let t = 0; t < 3; t += 1) step(far.world, kneel, far.ctx);
+    expect(far.mote.taken, "kneeling drew light off Chochmah's road").toBeFalsy();
   });
 });
 

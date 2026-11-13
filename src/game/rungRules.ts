@@ -11,8 +11,8 @@ import type { SefirahId } from "../types/letter";
  * forgotten; one resolver, so a rule reaches the game through a single seam
  * and never as a scattered `if`.
  *
- * **Seven are filled — Yesod, Hod, Netzach, Tiferet, Gevurah, Chesed, Binah —
- * and three are `null`, two of them load-bearing nulls.** Malchut's
+ * **Eight are filled — every rung but the kingdom and the crown — and those
+ * two are load-bearing nulls.** Malchut's
  * rule is the taught opening — the kingdom asks you to receive, and its
  * standing exemptions (rooms that never seal, a figured-stone budget of zero)
  * are precedent that null is a decision, not an absence. Keter's rule is
@@ -105,6 +105,12 @@ export interface RungRule {
    * also the right image: you kneel to give.
    */
   sealOpensTo?: { price: number; given: string; wanting: string };
+  /**
+   * **Chochmah's knob — light is received.** On ground bound here a Scribe
+   * who has gone low (crouching or crawling) gathers motes from `reach`
+   * tiles away. `came` is said once a rung, the first time that happens.
+   */
+  lightReceived?: { reach: number; came: string };
   /**
    * **Tiferet's knob — a sealed room asks for half.** On ground bound here
    * a room opens when the shells holding it are as many broken as standing
@@ -318,7 +324,42 @@ export const RUNG_RULES: Record<SefirahId, RungRule | null> = {
         "Or HaGanuz — and understanding holds it: the lies in the floor are laid bare, and what is seen will bear you.",
     },
   },
-  chochmah: null,
+  /**
+   * **P15-R8 — Wisdom.** The question is "What can you receive that cannot
+   * be taken?", and the rung's own teaching already says how: *nothing here
+   * can be taken; it can only be received, and it is found by going low.*
+   * So the rule is that, in the feet rather than at a door or a shrine: go
+   * low on a chochmah-bound road — crouch, or crawl, which is this rung's
+   * letter — and the light comes to you from three tiles. Fight, then kneel
+   * and let what was freed come; kneeling while something still stands is an
+   * exposure the Scribe chooses. Four roads are bound here — from Chesed and
+   * Tiferet walked up, from Binah across, from Keter down.
+   *
+   * **It is a gift with no penalty, and that is a measured retreat, not the
+   * design.** Two harder drafts were built and run over the three seed pools:
+   *
+   * - *Strict* — a standing body gathers nothing. No instrument ever kneels,
+   *   so the ninth rung read as paying zero: `curve`'s "pays more the higher
+   *   it goes" came to 23.5 against a needed 26.1 on pool 1.
+   * - *Half* — every other mote grabbed standing is lost. Pool 1 recovered,
+   *   and `climb`'s tour broke on pool 2: no seed of three reached the
+   *   consummation (lit 9, 7 and 7 of ten; two stalled at Binah unkindled
+   *   with 25 and 17 light in hand).
+   *
+   * Any price on light taken standing is a price every instrument pays in
+   * full, because none of them can go low on purpose — the same fact
+   * Chesed's kneel relies on. So a cost here needs either an instrument
+   * taught to kneel or the supernal economy re-measured around it; both are
+   * their own slice. What ships changes nothing for a body that never
+   * kneels, which is why no band can see it.
+   */
+  chochmah: {
+    says: "Go low on this road, and the light comes to you.",
+    lightReceived: {
+      reach: 3,
+      came: "You went low, and the light came. Nothing here is taken; it is received.",
+    },
+  },
   // The crown's rule is the presentation itself. Likely permanent null.
   keter: null,
 };
@@ -412,6 +453,7 @@ export function ruleStatus(world: RuledGround): string | null {
   if (rule.liesLaidBare) {
     return world.revealed ? "The Eye is open — the floor bears you" : "The floor's lies are shown";
   }
+  if (rule.lightReceived) return "Go low to receive the light";
   if (rule.shrinesCold !== undefined) return "The shrines are cold";
   if (rule.shrinesRelight !== undefined) return "A shrine here relights the lamps";
   return null;

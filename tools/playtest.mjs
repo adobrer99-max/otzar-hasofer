@@ -1197,6 +1197,41 @@ const SCRIPTS = [
     },
   },
   {
+    name: "rung-rule-chochmah",
+    about: "P15-R8 — on the road to Chochmah a Scribe goes low, and the light comes.",
+    /**
+     * The eighth rung rule: kneeling draws light from three tiles on a
+     * chochmah-bound road. From Binah across to Chochmah, which is the one
+     * such road that is not an Abyss crossing. The driver walks; the watch
+     * kneels on a beat, which is all the rule asks, and the script ends when
+     * the world says the light came. The purse must have risen with it.
+     */
+    warp: { rung: 8, letters: "all", lamps: 3, seed: 26, lit: 1, day: "2026-08-18" },
+    toward: "Chochmah",
+    until: (p, seen) => Boolean(seen.came),
+    seconds: 180,
+    watch: async (page, p, _look, { seen, report }) => {
+      if ((p.message ?? "").includes("the light came") && !seen.came) {
+        seen.came = true;
+        seen.gained = p.or - (seen.purse ?? 0);
+        report.moments.push({ what: "the light came", tick: p.tick, or: p.or, rule: p.rule });
+        await page.screenshot({ path: join(outDir, "rung-rule-chochmah-came.png") });
+        return;
+      }
+      if (typeof p.or === "number") seen.purse = p.or;
+      if (p.rule) seen.line = p.rule;
+      if (p.onGround) {
+        await page.keyboard.down(KEYS.down);
+        await page.waitForTimeout(140);
+        await page.keyboard.up(KEYS.down);
+      }
+    },
+    check: (p, seen) => {
+      if (!seen.came) throw new Error(`the light never came — ${p.or ?? "?"} in hand at the end`);
+      if (!/low/.test(seen.line ?? "")) throw new Error("the HUD never said how light is received here");
+    },
+  },
+  {
     name: "crown-presented",
     about: "The other ending — a crown nothing is holding, and a Tree still mostly dark.",
     /**

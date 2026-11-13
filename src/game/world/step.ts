@@ -1140,6 +1140,17 @@ function unseal(world: World, room: World["rooms"][number] | undefined): boolean
 function touchEntities(world: World, ctx: StepContext): void {
   const p = world.player;
   const pull = ctx.graces.includes("draw-motes") ? TILE_SIZE * 3 : 0;
+  /**
+   * **Chochmah's rule — light is received, not taken** (P15-R8). On ground
+   * bound for Wisdom a Scribe who has gone low — crouched, or crawling — is
+   * one the light comes to, from `reach` tiles; a grace that already draws
+   * it further is not narrowed. A standing body gathers exactly as it does
+   * on any road — see the rule's own comment for why there is no penalty.
+   */
+  const received = ruleOf(world)?.lightReceived;
+  const low = p.crouching || p.crawling;
+  const moteNear = (e: Entity): boolean =>
+    overlaps(p, e, received && low ? Math.max(pull, received.reach * TILE_SIZE) : pull);
 
   for (const e of world.entities) {
     if (e.taken) continue;
@@ -1158,7 +1169,9 @@ function touchEntities(world: World, ctx: StepContext): void {
           // passed under an exit two storeys up. It crossed twenty-six of
           // forty-two regions that way before the floors were even climbable.
           storeyOf(p.y + p.h - 1) === storeyOf(e.y)
-        : overlaps(p, e, e.kind === "mote" ? pull : 0);
+        : e.kind === "mote"
+          ? moteNear(e)
+          : overlaps(p, e, 0);
 
     /**
      * **The floor of the chamber that was never one.**
@@ -1246,6 +1259,11 @@ function touchEntities(world: World, ctx: StepContext): void {
     switch (e.kind) {
       case "mote":
         e.taken = true;
+        // Said once a rung, the first time light *comes* rather than is met.
+        if (received && low && !world.toldReceived) {
+          world.toldReceived = true;
+          say(world, received.came);
+        }
         world.or += world.orPerMote;
         world.orGathered += world.orPerMote;
         break;
