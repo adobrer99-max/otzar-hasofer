@@ -11,8 +11,7 @@ import type { SefirahId } from "../types/letter";
  * forgotten; one resolver, so a rule reaches the game through a single seam
  * and never as a scattered `if`.
  *
- * **Eight are filled — every rung but the kingdom and the crown — and those
- * two are load-bearing nulls.** Malchut's
+ * **Nine are filled — every rung but the kingdom, whose null is load-bearing.** Malchut's
  * rule is the taught opening — the kingdom asks you to receive, and its
  * standing exemptions (rooms that never seal, a figured-stone budget of zero)
  * are precedent that null is a decision, not an absence. Keter's rule is
@@ -105,6 +104,13 @@ export interface RungRule {
    * also the right image: you kneel to give.
    */
   sealOpensTo?: { price: number; given: string; wanting: string };
+  /**
+   * **Keter's knob — what is carried can be spent to keep you.** On ground
+   * bound here a kneeling Scribe who gives (crouch + act) spends `price`
+   * light and relights one lamp, up to a whole hand. `relit` is what the
+   * world says; `wanting` what it says to a purse that cannot pay.
+   */
+  lightKeeps?: { price: number; relit: string; wanting: string };
   /**
    * **Chochmah's knob — light is received, not taken.** On ground bound here
    * a Scribe who has gone low (crouching or crawling) gathers motes from
@@ -362,8 +368,41 @@ export const RUNG_RULES: Record<SefirahId, RungRule | null> = {
       untaken: "The light does not come to a hand that reaches. Go low, and receive it.",
     },
   },
-  // The crown's rule is the presentation itself. Likely permanent null.
-  keter: null,
+  /**
+   * **P15-R9 — the Crown.** The question is "What is left of you to
+   * present, when everything carried has been spent?" The three roads bound
+   * here are all Abyss crossings — no shrine, no House, nothing on them
+   * restores a lamp — and the crown itself is kindled with light. So the
+   * question already has teeth; the rule puts the choice in the hand: kneel
+   * and give (crouch and act, the gesture Chesed's road teaches) and a price
+   * of light relights one lamp, anywhere on the road, up to a whole hand.
+   * What is spent to keep the Scribe is not there to kindle the crown with.
+   * Which of the two arrives is theirs to decide.
+   *
+   * This entry read "the crown's rule is the presentation itself — likely
+   * permanent null" until the owner asked for it. It takes nothing from a
+   * Scribe who ignores it.
+   *
+   * **Ten light, by measurement.** Sixteen fighting walks on each road carried
+   * out a median of 16 (tiferet-keter), 23 (chochmah-keter) and 23
+   * (binah-keter), arriving with 2.1, 1.1 and 1.3 lamps of three. Ten is
+   * about half a walk — one lamp, perhaps two, and then the crown is
+   * unkindled — above Chesed's door (8) and five veilings.
+   *
+   * **No instrument can feel it**: the gesture is crouch *and* act on the
+   * ground, which no probe presses — the fighter holds `down` only airborne
+   * or, on Chochmah's roads, alone. That is Chesed's argument, and
+   * `rungRules.test.ts` pins it with the fighter itself rather than trusting
+   * the paragraph.
+   */
+  keter: {
+    says: "On this road what you carry can be spent to keep you. Kneel and give light, and a lamp is relit.",
+    lightKeeps: {
+      price: 10,
+      relit: "The light is given, and a lamp is relit. Less is carried to the crown, and more of you.",
+      wanting: "There is not light enough in hand to relight a lamp.",
+    },
+  },
 };
 
 /**
@@ -415,7 +454,12 @@ export interface RuledGround {
   revealed: boolean;
   roomIndex: number;
   rooms: readonly { held?: number; standing?: number; balanced?: boolean }[];
+  player: { lamps: number };
+  lampsFull?: number;
 }
+
+/** A whole hand where the page has not said otherwise — `LAMPS` in `combat.ts`. */
+const PLAIN_HAND = 3;
 
 /**
  * **Where the rule stands, right now, in one short line** — for the HUD.
@@ -454,6 +498,11 @@ export function ruleStatus(world: RuledGround): string | null {
   }
   if (rule.liesLaidBare) {
     return world.revealed ? "The Eye is open — the floor bears you" : "The floor's lies are shown";
+  }
+  if (rule.lightKeeps) {
+    return world.player.lamps < (world.lampsFull ?? PLAIN_HAND)
+      ? `Kneel and give ${rule.lightKeeps.price} light to relight a lamp`
+      : null;
   }
   if (rule.lightReceived) return "Go low to receive the light";
   if (rule.shrinesCold !== undefined) return "The shrines are cold";

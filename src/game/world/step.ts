@@ -460,6 +460,9 @@ function grappleTick(p: Player): void {
   p.vy = (dy / distance) * GRAPPLE_PULL;
 }
 
+/** How long Keter's gift waits before a held key may give again. */
+const KEEP_WAIT_TICKS = 30;
+
 /** The verbs bound to the act key, resolved in the order they can apply. */
 function applyVerbs(world: World, input: Input, ctx: StepContext): void {
   const p = world.player;
@@ -492,6 +495,28 @@ function applyVerbs(world: World, input: Input, ctx: StepContext): void {
    * whatever the hand holds and whatever anchor hangs in reach; a seal is a tile no verb in the chain answers, so nothing
    * is shadowed on any other road.
    */
+  /**
+   * **Keter's rule — what is carried can be spent to keep you** (P15-R9).
+   * The same kneeling gift, on the road to the crown, and it opens no door:
+   * it relights a lamp. With a whole hand it does nothing and falls through,
+   * so crouch and act still reach the ordinary verbs. The short wait is what
+   * makes a held key one lamp a press rather than one a tick. No
+   * `spendVerb`, for Chesed's reason: a gift is not a letter's use.
+   */
+  const keeps = ruleOf(world)?.lightKeeps;
+  if (keeps && p.crouching && p.lamps < (world.lampsFull ?? LAMPS)) {
+    if (world.keptAt !== undefined && world.tick - world.keptAt < KEEP_WAIT_TICKS) return;
+    if (world.or >= keeps.price) {
+      world.or -= keeps.price;
+      p.lamps += 1;
+      world.keptAt = world.tick;
+      say(world, keeps.relit);
+    } else {
+      say(world, keeps.wanting);
+    }
+    return;
+  }
+
   const gift = ruleOf(world)?.sealOpensTo;
   const giftRoom = gift ? world.rooms[world.roomIndex] : undefined;
   if (gift && giftRoom && p.crouching && nearestTile(world, p, Tile.Seal, TILE_SIZE * 2.2)) {

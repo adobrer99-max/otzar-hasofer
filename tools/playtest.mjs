@@ -1232,6 +1232,61 @@ const SCRIPTS = [
     },
   },
   {
+    name: "rung-rule-keter",
+    about: "P15-R9 — on the road to the crown, light given on the knee relights a lamp.",
+    /**
+     * The ninth rung rule. From Binah over the Abyss toward Keter with two
+     * lamps of three: the driver walks and gathers, and the moment the purse
+     * holds the price the watch kneels and gives. The lamp count must rise
+     * by one and the purse fall by what the HUD's own line said it would
+     * cost. `lit: 1` so a going-out wakes one click from the road again.
+     */
+    warp: { rung: 8, letters: "all", lamps: 2, seed: 26, lit: 1, day: "2026-08-18" },
+    toward: "Keter",
+    until: (p, seen) => Boolean(seen.relit),
+    seconds: 240,
+    watch: async (page, p, _look, { seen, report }) => {
+      if (p.onMap) {
+        const way = page.locator("[class*=wayButton]", { hasText: "Keter" }).first();
+        if (await way.count()) {
+          report.moments.push({ what: "re-entered toward Keter", tick: p.tick });
+          await way.click();
+          await page.waitForTimeout(900);
+        }
+        return;
+      }
+      const price = Number((p.rule ?? "").match(/give (\d+) light/)?.[1]);
+      if (price) seen.price = price;
+      if ((p.message ?? "").includes("a lamp is relit") && !seen.relit) {
+        seen.relit = true;
+        seen.lampsAfter = p.lamps;
+        seen.paid = (seen.purse ?? 0) - p.or;
+        report.moments.push({ what: "a lamp relit", tick: p.tick, lamps: p.lamps, or: p.or });
+        await page.screenshot({ path: join(outDir, "rung-rule-keter-relit.png") });
+        return;
+      }
+      if (typeof p.or === "number") seen.purse = p.or;
+      if (typeof p.lamps === "number") seen.lampsBefore = p.lamps;
+      if (seen.price && p.or >= seen.price && p.onGround) {
+        await page.keyboard.down(KEYS.down);
+        await page.waitForTimeout(80);
+        await page.keyboard.press(KEYS.act);
+        await page.waitForTimeout(80);
+        await page.keyboard.up(KEYS.down);
+      }
+    },
+    check: (p, seen) => {
+      if (!seen.price) throw new Error("the HUD never offered the gift to a hand short of whole");
+      if (!seen.relit) throw new Error(`no lamp was ever relit — ${p.or ?? "?"} light in hand at the end`);
+      if (!(seen.lampsAfter > seen.lampsBefore)) {
+        throw new Error(`the world said a lamp was relit and none was — ${seen.lampsBefore} before, ${seen.lampsAfter} after`);
+      }
+      if (!(seen.paid >= seen.price - 3)) {
+        throw new Error(`the lamp cost ${seen.paid}, not the ${seen.price} the HUD named`);
+      }
+    },
+  },
+  {
     name: "crown-presented",
     about: "The other ending — a crown nothing is holding, and a Tree still mostly dark.",
     /**

@@ -282,6 +282,8 @@ export interface World {
    * five-lamp hand is not capped at it.
    */
   lampsFull?: number;
+  /** The tick Keter's gift last relit a lamp — one lamp a press, not a tick. */
+  keptAt?: number;
   /** Chochmah's two lines, each said once a rung — see `touchEntities`. */
   toldReceived?: boolean;
   toldUntaken?: boolean;

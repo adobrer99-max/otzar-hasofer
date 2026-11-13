@@ -49,15 +49,16 @@ describe("the rungs' own rules — filled one slice at a time", () => {
    * founded), **hod** (P15-R4 — the shrines give back), **chesed**
    * (P15-R5 — a sealed door opens to a gift), **binah** (P15-R6 — the
    * lies are laid bare), **tiferet** (P15-R7 — a room asks for half), and
-   * **chochmah** (P15-R8 — go low, and the light comes).
+   * **chochmah** (P15-R8 — light is received, not taken), and **keter**
+   * (P15-R9 — what is carried can be spent to keep you). Only Malchut is null.
    */
   it("holds every rung at null until a slice fills it on purpose", () => {
     const ruled = Object.entries(RUNG_RULES)
       .filter(([, rule]) => rule !== null)
       .map(([sefirah]) => sefirah)
       .sort();
-    expect(ruled).toEqual([
-      "binah", "chesed", "chochmah", "gevurah", "hod", "netzach", "tiferet", "yesod",
+expect(ruled).toEqual([
+      "binah", "chesed", "chochmah", "gevurah", "hod", "keter", "netzach", "tiferet", "yesod",
     ]);
     const filled = new Set(ruled);
     for (const region of regions) {
@@ -890,6 +891,107 @@ describe("the instrument plays Chochmah's rule — the fighting probe kneels", (
   });
 });
 
+describe("P15-R9 — Keter: what is carried can be spent to keep you", () => {
+  const keeps = RUNG_RULES.keter!.lightKeeps!;
+  const give = { ...NO_INPUT, down: true, act: true };
+  const ctx: StepContext = { verbs: [], graces: [] };
+
+  /** A landed body on emptied ground, with `lamps` burning and `or` in hand. */
+  function road(lamps: number, or: number, toward: "keter" | "hod" | null = "keter") {
+    const world = buildRegion(2, 5);
+    world.entities = [];
+    world.husks = [];
+    world.toward = toward ?? undefined;
+    const p = world.player;
+    for (let t = 0; t < 240 && !p.onGround; t += 1) step(world, NO_INPUT, ctx);
+    expect(p.onGround).toBe(true);
+    // One tick down first: `crouching` reads the previous tick's ground.
+    step(world, { ...NO_INPUT, down: true }, ctx);
+    p.lamps = lamps;
+    world.or = or;
+    return world;
+  }
+
+  it("spends exactly the price and relights exactly one lamp", () => {
+    const world = road(1, 25);
+    step(world, give, ctx);
+    expect(world.player.lamps).toBe(2);
+    expect(world.or).toBe(25 - keeps.price);
+    expect(world.message?.text).toBe(keeps.relit);
+  });
+
+  it("gives one lamp a press — a held key does not drain the purse", () => {
+    const world = road(1, 100);
+    for (let t = 0; t < 10; t += 1) step(world, give, ctx);
+    expect(world.player.lamps).toBe(2);
+    expect(world.or).toBe(100 - keeps.price);
+    // ...and gives again once the wait has passed.
+    for (let t = 0; t < 40; t += 1) step(world, give, ctx);
+    expect(world.player.lamps).toBe(3);
+  });
+
+  it("never relights past a whole hand, the page's own measure of one", () => {
+    const whole = road(3, 100);
+    step(whole, give, ctx);
+    expect(whole.or, "a whole hand was charged").toBe(100);
+    const five = road(4, 100);
+    five.lampsFull = 5;
+    step(five, give, ctx);
+    expect(five.player.lamps).toBe(5);
+    for (let t = 0; t < 80; t += 1) step(five, give, ctx);
+    expect(five.player.lamps).toBe(5);
+    expect(five.or).toBe(100 - keeps.price);
+  });
+
+  it("spends nothing from a purse that cannot pay, and says so", () => {
+    const world = road(1, keeps.price - 1);
+    step(world, give, ctx);
+    expect(world.player.lamps).toBe(1);
+    expect(world.or).toBe(keeps.price - 1);
+    expect(world.message?.text).toBe(keeps.wanting);
+  });
+
+  it("asks for the kneel — a standing act gives nothing", () => {
+    const world = road(1, 50);
+    step(world, NO_INPUT, ctx);
+    step(world, { ...NO_INPUT, act: true }, ctx);
+    expect(world.player.lamps).toBe(1);
+    expect(world.or).toBe(50);
+  });
+
+  it("is the crown's road only", () => {
+    for (const toward of ["hod", null] as const) {
+      const world = road(1, 50, toward);
+      step(world, give, ctx);
+      expect(world.player.lamps).toBe(1);
+      expect(world.or).toBe(50);
+    }
+    expect(buildArena("keter").toward).toBeUndefined();
+  });
+
+  it("prices a lamp above Chesed's door and well above a veiling", () => {
+    expect(keeps.price).toBeGreaterThan(RUNG_RULES.chesed!.sealOpensTo!.price);
+    expect(keeps.price).toBeGreaterThan(VEIL_COST * 3);
+  });
+
+  /**
+   * The claim the rule's comment makes, held by the instrument itself: the
+   * fighting probe walks a crown-bound road identically with the rule and
+   * without it, because it never kneels and gives.
+   */
+  it("cannot be felt by the fighting probe", () => {
+    const path = TREE_PATHS.find((p) => p.id === "binah-keter")!;
+    const all = regions.flatMap((r) => r.letters);
+    const walk = (ruled: boolean) => {
+      const world = buildPath(path, 7919, all, 1, false, false, 1, [], 0, [], [], "binah");
+      expect(world.toward).toBe("keter");
+      if (!ruled) world.toward = undefined;
+      return fighter(world, { verbs: verbsOf(all), graces: [] }, 4000);
+    };
+    expect(walk(true)).toEqual(walk(false));
+  });
+});
+
 describe("the rule kept in sight — `ruleStatus`", () => {
   const ground = (toward?: Parameters<typeof rungRule>[0]) => {
     const world = buildRegion(2, 5);
@@ -900,7 +1002,7 @@ describe("the rule kept in sight — `ruleStatus`", () => {
   it("says nothing where there is no rule — off the Tree, in an arena, on an unruled road", () => {
     expect(ruleStatus(ground(undefined))).toBeNull();
     expect(ruleStatus(buildArena("gevurah"))).toBeNull();
-    expect(ruleStatus(ground("keter"))).toBeNull();
+    expect(ruleStatus(ground("malchut"))).toBeNull();
   });
 
   it("counts Gevurah's ration down off the rule's own number", () => {
@@ -953,6 +1055,15 @@ describe("the rule kept in sight — `ruleStatus`", () => {
     expect(ruleStatus(ground("hod"))).toMatch(/relight/);
   });
 
+  it("offers Keter's gift only to a hand that is short", () => {
+    const world = ground("keter");
+    expect(ruleStatus(world), "a whole hand has nothing to be kept from").toBeNull();
+    world.player.lamps = 1;
+    expect(ruleStatus(world)).toContain(String(RUNG_RULES.keter!.lightKeeps!.price));
+    world.lampsFull = 1;
+    expect(ruleStatus(world)).toBeNull();
+  });
+
   it("has a line for every filled rule in at least one state", () => {
     // A rule added to the table and forgotten here would be said twice and
     // then never seen again — which is the fault this function exists for.
@@ -964,6 +1075,7 @@ describe("the rule kept in sight — `ruleStatus`", () => {
       const room = world.rooms[world.roomIndex];
       room.held = 2;
       room.standing = 2;
+      world.player.lamps = 1;
       expect(ruleStatus(world), `${sefirah}'s rule has no HUD line`).not.toBeNull();
     }
   });
