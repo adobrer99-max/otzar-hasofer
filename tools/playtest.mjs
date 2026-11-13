@@ -1331,6 +1331,41 @@ const SCRIPTS = [
     },
   },
   {
+    name: "seal-not-yet",
+    about: "Escape on the seal plate puts it down — it never seals the climb.",
+    // The seal is the one irreversible act in the game, and Escape on its plate
+    // used to perform it. The record is the witness: nothing may carry
+    // `sealedAt` after the plate has been escaped.
+    warp: { rung: 10, letters: "all", lamps: 3, witnesses: 0, seed: 5, freed: 1, lit: 1 },
+    enter: async (page) => {
+      await sealFromTheMap(page);
+      await page.waitForTimeout(500);
+      if (!(await page.getByRole("button", { name: "Not yet" }).count())) {
+        throw new Error("the seal plate did not rise, or offers no way back");
+      }
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(500);
+      const sealed = await page.evaluate(async () => {
+        const req = indexedDB.open("otzar-hasofer");
+        const db = await new Promise((res, rej) => {
+          req.onsuccess = () => res(req.result);
+          req.onerror = () => rej(req.error);
+        });
+        return await new Promise((res) => {
+          const r = db.transaction("ascents", "readonly").objectStore("ascents").getAll();
+          r.onsuccess = () => res(r.result.filter((a) => a.sealedAt).length);
+        });
+      });
+      if (sealed) throw new Error("Escape on the seal plate sealed the climb");
+      if (await page.getByRole("button", { name: "Not yet" }).count()) {
+        throw new Error("Escape did not put the seal plate down");
+      }
+      await sealFromTheMap(page);
+    },
+    until: (p) => p.plate === "sealed",
+    seconds: 60,
+  },
+  {
     name: "abyss",
     about: "The Abyss plate answers to the keyboard — and Enter crosses, never climbs.",
     warp: {},

@@ -46,6 +46,7 @@ import { GameCanvas, type HudSample } from "./GameCanvas";
 import { SceneCanvas } from "./SceneCanvas";
 import { PLACE_SCENES, PROLOGUE_SCENES } from "./render/scenes";
 import { regionAt, regionOfSefirah, regions, TOTAL_REGIONS } from "./regions";
+import { PLATE_NAMES, plateKeyAction } from "./plateKeys";
 import { rungRule } from "./rungRules";
 import { LETTER_ECHOES } from "./tutorial";
 import {
@@ -273,6 +274,24 @@ export function GamePage() {
   >(null);
   /** A guest refused on this rung, reported once at the exit beside the vow. */
   const [refused, setRefused] = useState<{ figure: string } | null>(null);
+  /**
+   * Which guests have had their answer **on this ground**. A rung can stand
+   * the same Sefirah's figure in a House and again at a gate, and without this
+   * the second meeting charged the price twice and — for a vow — moved the
+   * baseline it is judged from. Keyed to the world object, so new ground
+   * forgets it without anyone having to remember to clear it.
+   */
+  const [answered, setAnswered] = useState<{ world: World | null; guests: SefirahId[] }>({
+    world: null,
+    guests: [],
+  });
+  const noteAnswered = useCallback((ground: World | null, sefirah: SefirahId) => {
+    setAnswered((prev) =>
+      prev.world === ground
+        ? { world: ground, guests: [...prev.guests, sefirah] }
+        : { world: ground, guests: [sefirah] },
+    );
+  }, []);
   /** How many climbs were sealed before this one — which Encounter this is. */
   const [sealedBefore, setSealedBefore] = useState(0);
   /**
@@ -319,7 +338,14 @@ export function GamePage() {
    * Derived from `history` rather than held separately, so it cannot go stale
    * the moment a climb seals — which is exactly when it changes.
    */
-  const freedEver = useMemo(() => timesFreed(history), [history]);
+  // **Every climb but the one being walked.** `history` is loaded from
+  // storage and holds the open record too, and `boons` below adds this
+  // climb's own breaks itself — folded here as well, a guardian broken before
+  // a reload was paid at tier two.
+  const freedEver = useMemo(
+    () => timesFreed(history.filter((a) => a.id !== ascent?.id)),
+    [history, ascent?.id],
+  );
   const [bookOpen, setBookOpen] = useState(false);
 
   // Read inside a setState updater, where reading `time` directly would make
@@ -470,9 +496,8 @@ export function GamePage() {
   );
   const boons = useMemo(
     () => {
-      // What this climb has broken counts too, and counts *now* — its record is
-      // in `history` only after it seals, and a guardian broken an hour ago
-      // should already be paying.
+      // What this climb has broken counts too, and counts *now* — `freedEver`
+      // leaves this climb out precisely so that it is counted here, once.
       const times = { ...freedEver };
       for (const s of new Set(ascent?.guardiansBroken ?? [])) times[s] = (times[s] ?? 0) + 1;
       /**
@@ -683,6 +708,9 @@ export function GamePage() {
       persist(record);
       setWorld(null);
       setWalking(null);
+      // Or a climb begun again from inside an arena carries the old guardian
+      // into its first path, which then ends as a break rather than a walk.
+      setFacing(null);
       // **The prologue, on a first Begin only.** The threshold's own comment
       // has promised since the UI was cut back that the premise is "the first
       // thing the game says once they press the button" — it never was. It is
@@ -889,15 +917,18 @@ export function GamePage() {
     (relicId: string) => {
       const chamber = world?.entities.find((e) => e.kind === "relic" && e.ref === relicId);
       if (chamber) chamber.taken = true;
-      setAscent((prev) =>
-        prev && !(prev.relicsFound ?? []).includes(relicId)
-          ? {
-              ...prev,
-              relicsFound: [...(prev.relicsFound ?? []), relicId],
-              updatedAt: new Date().toISOString(),
-            }
-          : prev,
-      );
+      // Saved at the moment of taking, as `giveBoon` is: a relic held only in
+      // state until the next exit is a relic a reload takes back.
+      setAscent((prev) => {
+        if (!prev || (prev.relicsFound ?? []).includes(relicId)) return prev;
+        const next: AscentRecord = {
+          ...prev,
+          relicsFound: [...(prev.relicsFound ?? []), relicId],
+          updatedAt: new Date().toISOString(),
+        };
+        void saveAscent(next).catch(() => undefined);
+        return next;
+      });
       audio.onVessel();
       setPlate(null);
     },
@@ -922,11 +953,16 @@ export function GamePage() {
       if (keeps.oneVessel && (ascent?.items ?? []).length >= 1) return;
       const pedestal = world?.entities.find((e) => e.kind === "vessel" && e.ref === keliId);
       if (pedestal) pedestal.taken = true;
-      setAscent((prev) =>
-        prev && !(prev.items ?? []).includes(keliId)
-          ? { ...prev, items: [...(prev.items ?? []), keliId], updatedAt: new Date().toISOString() }
-          : prev,
-      );
+      setAscent((prev) => {
+        if (!prev || (prev.items ?? []).includes(keliId)) return prev;
+        const next: AscentRecord = {
+          ...prev,
+          items: [...(prev.items ?? []), keliId],
+          updatedAt: new Date().toISOString(),
+        };
+        void saveAscent(next).catch(() => undefined);
+        return next;
+      });
       audio.onVessel();
       setPlate(null);
     },
@@ -1059,6 +1095,8 @@ export function GamePage() {
   const acceptOffer = useCallback(
     (offer: UshpizinOffer) => {
       if (!world) return;
+      if (answered.world === world && answered.guests.includes(offer.sefirah)) return;
+      noteAnswered(world, offer.sefirah);
       // The Sixth Encounter's Humanity: every guest asks no price, and what
       // they offer is given. Checked here rather than by rewriting the offer,
       // so the plate still says what the bargain *would* be — a gift you can
@@ -1094,7 +1132,7 @@ export function GamePage() {
       });
       setPlate(null);
     },
-    [world, encounter, giveBoon],
+    [world, encounter, giveBoon, answered, noteAnswered],
   );
 
   /**
@@ -1104,6 +1142,7 @@ export function GamePage() {
    * (a refusal that can be retried until accepted is not a refusal).
    */
   const declineOffer = useCallback((offer: UshpizinOffer) => {
+    noteAnswered(worldRef.current, offer.sefirah);
     setAscent((prev) => {
       if (!prev) return prev;
       const next: AscentRecord = {
@@ -1118,7 +1157,7 @@ export function GamePage() {
     // (`offer.parting`) and the plate closes on the Scribe's next word, not
     // on this one. HousePlate owns that second beat.
     setRefused({ figure: offer.figure });
-  }, []);
+  }, [noteAnswered]);
 
   const onHouse = useCallback((cardId: string) => {
     setPlate({ kind: "house", cardId });
@@ -1193,6 +1232,9 @@ export function GamePage() {
           guardiansBroken: [...new Set([...(prev.guardiansBroken ?? []), freed])],
           verbUses: mergeVerbUses(prev.verbUses, world?.verbUses),
           ...(world ? { lampsAtSeal: world.player.lamps } : {}),
+          // The fire of the altar can be spent in an arena too, and this exit
+          // must say so or the once-a-climb mercy comes back after a win.
+          relicsSpent: spentHere(prev, world),
           updatedAt: new Date().toISOString(),
         };
         void saveAscent(next).catch(() => undefined);
@@ -1347,6 +1389,7 @@ export function GamePage() {
       // The path's own two ends, not the rung's capped index — see `layEncounter`.
       layEncounter(next, path.ends);
       setWalking(path);
+      setFacing(null);
       setWorld(next);
       setVow(null);
       setRefused(null);
@@ -1499,6 +1542,11 @@ export function GamePage() {
         // ways out, here and at the exit, or a Scribe who spent it and then
         // went out would wake with it in hand again.
         relicsSpent: spentHere(prev, worldRef.current),
+        // A word given and not carried to the way out is a word not kept. Left
+        // `accepted`, the seal plate read it as a vow still standing forever.
+        ...(vow ? { bargains: judgeBargain(prev.bargains, vow.offer.sefirah, false) } : {}),
+        // And no lamp came out of this rung, which is what a fall is.
+        lampsAtSeal: 0,
         updatedAt: new Date().toISOString(),
       };
       void saveAscent(next).catch(() => undefined);
@@ -1507,8 +1555,9 @@ export function GamePage() {
     setWorld(null);
     setWalking(null);
     setFacing(null);
+    setVow(null);
     setPlate(null);
-  }, [spentHere]);
+  }, [spentHere, vow]);
 
   /**
    * **Arriving on the Tree opens the Tree.** Standing between rungs *is* the
@@ -1567,13 +1616,14 @@ export function GamePage() {
       e.preventDefault();
       // Innermost first: the map closes before the menu opens, so Escape always
       // means "back one" rather than "somewhere else".
-      if (paused) setPaused(false);
+      if (bookOpen) setBookOpen(false);
+      else if (paused) setPaused(false);
       else if (mapOpen && world) setMapOpen(false);
       else setPaused(true);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [plate, paused, mapOpen, world, ascent]);
+  }, [plate, paused, mapOpen, bookOpen, world, ascent]);
 
   /**
    * Turn the prologue's page — or, on Escape, put the rest of it down.
@@ -1608,70 +1658,30 @@ export function GamePage() {
     });
   }, [firstSight]);
 
-  // Dismiss a plate with the keyboard, so a run never needs the mouse.
+  // The keyboard and the plates. What each key does to each kind of plate is
+  // one exhaustive table — `plateKeys.ts` — because this handler has shipped
+  // the same bug twice as a chain of `if`s: a plate whose buttons are an
+  // *answer* left among the plates a keypress merely dismisses.
   useEffect(() => {
     if (!plate) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Enter" && e.key !== "Escape" && e.code !== "Space") return;
-      // The prologue is the one plate where Enter means *more*, not *away*:
-      // it turns the page, and only Escape puts it down.
-      if (plate.kind === "prologue") {
-        e.preventDefault();
-        turnPrologue(e.key === "Escape");
-        return;
-      }
-      // A pedestal is the one plate that asks a *question*, so the keyboard
-      // must not answer it. Swallowed here, Enter would have dismissed the
-      // plate — which now means "leave it" — while the Scribe was looking at a
-      // focused "Take it up". Let the buttons have the keys: Enter and Space
-      // press whichever is focused, and Escape is handled below as declining.
-      //
-      // **The Abyss plate asks a question too**, and it was not in this list —
-      // so Enter fell through the enumeration below to the linear road, which
-      // at region ten raised the sealed plate: a climb sealed without kindling
-      // anything, and the Seven Encounters advanced by a keystroke. The road is
-      // gone now, but the shape of the mistake is not: any plate whose buttons
-      // are an *answer* belongs in this branch, not the one below.
-      if (plate.kind === "vessel" || plate.kind === "relic" || plate.kind === "abyss") {
-        if (e.key !== "Escape") return;
-        e.preventDefault();
-        setPlate(null);
-        return;
-      }
+      const key = e.key === "Enter" ? "Enter" : e.key === "Escape" ? "Escape" : e.code === "Space" ? "Space" : null;
+      if (!key) return;
+      const action = plateKeyAction(plate.kind, key);
+      // `none` is a plate asking a question: the key belongs to whichever
+      // button is focused, and swallowing it here is the bug itself.
+      if (action === "none") return;
       e.preventDefault();
-      if (
-        plate.kind === "letter" ||
-        plate.kind === "house" ||
-        plate.kind === "fragment" ||
-        plate.kind === "scroll-whole" ||
-        plate.kind === "word-gate" ||
-        plate.kind === "word-result"
-      ) {
-        setPlate(null);
-      }
-      // **This must never become a way of getting on for free.** Enter once
-      // fell through to the linear road, which carried a Scribe whose last lamp
-      // had just gone out up to the next rung with three fresh ones — caught by
-      // a harness run that went out in Netzach and finished in Tiferet. Both
-      // the road and that bug are gone; the rule they taught is not.
-      // Not in the dismiss list above: "Go on" from a first sight leads to the
-      // arrival ledger rather than to nothing, and a plate dismissed to `null`
-      // would eat it.
-      else if (plate.kind === "first-sight") passFirstSight(plate);
-      else if (plate.kind === "sealed") sealAscent();
-      else if (plate.kind === "out") fall();
-      // The end of a path goes back to the map, never on to a next rung — there
-      // is no next rung on the Tree until the Scribe chooses one.
-      else if (plate.kind === "path-done" || plate.kind === "guardian-done") backToTree();
-      // The linear road's own plate, and **only** that one. This used to be the
-      // `else`, which is how the Abyss bug happened: a catch-all that climbs is
-      // a trap for every plate added after it. The road is gone; a plate this
-      // handler does not name is dismissed, which is the worst it can suffer.
+      if (action === "turn") turnPrologue(false);
+      else if (action === "skip") turnPrologue(true);
+      else if (action === "pass-first-sight" && plate.kind === "first-sight") passFirstSight(plate);
+      else if (action === "fall") fall();
+      else if (action === "tree") backToTree();
       else setPlate(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [plate, sealAscent, fall, backToTree, turnPrologue, passFirstSight]);
+  }, [plate, fall, backToTree, turnPrologue, passFirstSight]);
 
   // Persist letters as they are found, without writing on every frame.
   const lastSaved = useRef("");
@@ -1788,7 +1798,7 @@ export function GamePage() {
               )}
             </div>
             {/* What the Scribe is, beside what he is carrying. */}
-            <div className={styles.lamps} aria-label={`${hud.lamps} of ${LAMPS} lamps still lit`}>
+            <div className={styles.lamps} role="img" aria-label={`${hud.lamps} of ${LAMPS} lamps still lit`}>
               {Array.from({ length: LAMPS }, (_, i) => (
                 <span
                   key={i}
@@ -1817,7 +1827,7 @@ export function GamePage() {
             markGlyph={lettersById[ascent.ascendantLetterId ?? "aleph"]?.glyph ?? "א"}
             items={ascent.items ?? []}
             boons={boons}
-            paused={plate !== null}
+            paused={plate !== null || paused || bookOpen || mapOpen}
             onLetter={onLetter}
             onFragment={onFragment}
             onWordGate={onWordGate}
@@ -1862,6 +1872,7 @@ export function GamePage() {
           world={world}
           verbs={verbs}
           sukkotNight={sukkotNight}
+          answeredHere={answered.world === world ? answered.guests : NO_GUESTS}
           encounter={encounter}
           onWalk={walkPath}
           onSeal={sealAscent}
@@ -2728,6 +2739,8 @@ function Keys({ held, regionIndex }: { held: readonly string[]; regionIndex: num
 // plates
 // ---------------------------------------------------------------------------
 
+const NO_GUESTS: readonly SefirahId[] = [];
+
 function PlateOverlay({
   plate,
   ascent,
@@ -2748,9 +2761,12 @@ function PlateOverlay({
   onTakeRelic,
   onFirstSight,
   keeps,
+  answeredHere,
   onClose,
 }: {
   plate: Plate;
+  /** Guests already answered on this ground — see `answered` in `GamePage`. */
+  answeredHere: readonly SefirahId[];
   ascent: AscentRecord | null;
   world: World | null;
   /** What this body can do — the House plate says when a boon would sleep. */
@@ -2794,7 +2810,12 @@ function PlateOverlay({
   }, [plate]);
 
   return (
-    <div className={styles.plateScrim} role="dialog" aria-modal="true">
+    <div
+      className={styles.plateScrim}
+      role="dialog"
+      aria-modal="true"
+      aria-label={PLATE_NAMES[plate.kind]}
+    >
       <div className={styles.plate} ref={body}>
         {plate.kind === "prologue" && <ProloguePlate page={plate.page} onTurn={onTurn} />}
         {plate.kind === "path-done" && ascent && (
@@ -2837,6 +2858,8 @@ function PlateOverlay({
             onAccept={onAccept}
             onDecline={onDecline}
             onClose={onClose}
+            answeredHere={answeredHere}
+            boons={ascent.boons ?? []}
           />
         )}
         {plate.kind === "word-gate" && world?.wordGate && ascent && (
@@ -2860,7 +2883,7 @@ function PlateOverlay({
           <OutPlate ascent={ascent} gathered={world?.or ?? 0} keeps={keeps} onWake={onFall} />
         )}
         {plate.kind === "sealed" && ascent && (
-          <SealedPlate ascent={ascent} encounter={encounter} onSeal={onSeal} />
+          <SealedPlate ascent={ascent} encounter={encounter} onSeal={onSeal} onClose={onClose} />
         )}
       </div>
     </div>
@@ -3337,7 +3360,9 @@ function WordGatePlate({
         >
           Inscribe
         </Button>
-        <Button onClick={onClose}>Step back</Button>
+        <Button onClick={onClose} autoFocus>
+          Step back
+        </Button>
       </div>
 
       {urim && (
@@ -3459,8 +3484,12 @@ function HousePlate({
   onAccept,
   onDecline,
   onClose,
+  answeredHere,
+  boons,
 }: {
   cardId: string;
+  answeredHere: readonly SefirahId[];
+  boons: readonly Grace[];
   or: number;
   /** What this body can do — so a boon it could not use yet says so. */
   verbs: readonly Verb[];
@@ -3475,6 +3504,15 @@ function HousePlate({
   // plate to the guest's parting rather than closing it — a refusal answered
   // in character, then closed on the Scribe's own next word.
   const [parted, setParted] = useState(false);
+  // Read once, as the plate opens: the answer given *on* this plate must not
+  // turn it into "already answered" under the Scribe's hand.
+  const [settled] = useState<"answered" | "held" | null>(() => {
+    const s = sefirahOfCard(cardId);
+    const o = s ? offerFor(s) : undefined;
+    if (!s || !o) return null;
+    if (answeredHere.includes(s)) return "answered";
+    return boons.includes(o.grants) ? "held" : null;
+  });
   const card = dorotCardsById[cardId];
   const house = card ? dorotHousesById[card.houseId] : undefined;
   // **The card says which rung this is**, and it is the only thing here that
@@ -3541,7 +3579,24 @@ function HousePlate({
         </div>
       )}
 
-      {offer && (
+      {offer && settled && (
+        <div className={styles.offer}>
+          <DecoratedRule />
+          <p className={styles.offerGuest}>
+            {offer.figure} — {offer.middah}
+          </p>
+          <p className={styles.offerShort}>
+            {settled === "held"
+              ? `What ${offer.figure} gives you already carry. There is nothing to bargain for here.`
+              : `${offer.figure} has had your answer on this rung, and does not ask twice.`}
+          </p>
+          <Button variant="primary" onClick={onClose} autoFocus>
+            Walk on
+          </Button>
+        </div>
+      )}
+
+      {offer && !settled && (
         <div className={styles.offer}>
           <DecoratedRule />
           <p className={styles.offerGuest}>
@@ -3603,6 +3658,7 @@ function HousePlate({
               {offer.terms}
             </Button>
             <Button
+              autoFocus
               onClick={() => {
                 onDecline(offer);
                 setParted(true);
@@ -3877,10 +3933,13 @@ function SealedPlate({
   ascent,
   encounter,
   onSeal,
+  onClose,
 }: {
   ascent: AscentRecord;
   encounter: ReturnType<typeof encounterFor>;
   onSeal: () => void;
+  /** "Not yet" — the seal cannot be undone, so the plate must be leavable. */
+  onClose: () => void;
 }) {
   const found = ascent.lettersHeld.length;
   const all = found === 22;
@@ -4053,8 +4112,8 @@ function SealedPlate({
           ledger existing. */}
       {(ascent.bargains ?? []).length > 0 && (
         <div>
-          {guestsRemembered(ascent.bargains).map((line) => (
-            <p key={line} className={styles.plateDerivation}>
+          {guestsRemembered(ascent.bargains).map((line, i) => (
+            <p key={`${i}-${line}`} className={styles.plateDerivation}>
               {line}
             </p>
           ))}
@@ -4064,9 +4123,12 @@ function SealedPlate({
         {ascent.or} light carried · {witnesses.length} of {WITNESSES_POSSIBLE} Houses{" "}
         {plea.kind === "mute" ? "met on the way" : "stood for you"} · seeded by {ascent.seedLabel}.
       </p>
-      <Button variant="primary" onClick={onSeal} autoFocus>
-        Seal the ascent
-      </Button>
+      <div className={styles.plateActions}>
+        <Button variant="primary" onClick={onSeal} autoFocus>
+          Seal the ascent
+        </Button>
+        <Button onClick={onClose}>Not yet</Button>
+      </div>
     </>
   );
 }

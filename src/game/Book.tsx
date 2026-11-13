@@ -223,7 +223,7 @@ export function Book({ ascents, onClose }: { ascents: readonly AscentRecord[]; o
             <ul className={styles.houses}>
               {relics.map((relic) => (
                 <li key={relic.id} className={styles.house}>
-                  <span className={styles.houseName}>
+                  <span className={styles.houseFigure}>
                     {relic.name}{" "}
                     <span className="hebrew" lang="he" aria-hidden="true">
                       {relic.hebrew}

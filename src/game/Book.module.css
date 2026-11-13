@@ -192,6 +192,11 @@
   font-size: 0.78rem;
 }
 
+/* Always the last column, so a row with no "where" still ends on the right. */
+.houseCount {
+  grid-column: 3;
+}
+
 .cards {
   grid-column: 1 / -1;
   margin: var(--space-1) 0 0;

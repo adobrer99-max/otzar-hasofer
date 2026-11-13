@@ -237,8 +237,9 @@ export function vowKept(
  * missing for a whole phase. `GamePage` calls these at the moment of choice
  * and writes the result straight to the record (`AscentRecord.bargains`).
  *
- * `recordBargain` appends; a House can only be met once per rung, so there is
- * nothing to dedupe. `judgeBargain` upgrades the **latest** `accepted` entry
+ * `recordBargain` appends and dedupes nothing: the page refuses a second
+ * answer to the same Sefirah on one rung (a House and a gate can stand the
+ * same guest), so each entry is one meeting. `judgeBargain` upgrades the **latest** `accepted` entry
  * for that Sefirah — the vow just judged is the one most recently taken — and
  * touches nothing else: a declined offer stays declined, an already-judged
  * vow stays judged, and a judgment with no matching acceptance changes

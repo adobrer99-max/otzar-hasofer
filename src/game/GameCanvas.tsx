@@ -204,6 +204,11 @@ export function GameCanvas({
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.repeat) return;
+      // **A paused world takes no keys, and steals none.** Recorded while a
+      // plate was up, the Space that dismissed it was replayed as a jump on
+      // the first tick back; and cancelled here, Space never reached the
+      // focused button it was meant for.
+      if (pausedRef.current) return;
       if (setKey(e.code, true)) e.preventDefault();
     };
     const up = (e: KeyboardEvent) => {
@@ -418,7 +423,12 @@ export function GameCanvas({
 
   return (
     <div className={styles.stage}>
-      <canvas ref={canvasRef} className={styles.canvas} aria-label="The Ascent of the Tree" />
+      <canvas
+        ref={canvasRef}
+        className={styles.canvas}
+        role="img"
+        aria-label="The Ascent of the Tree"
+      />
       {/* Every control gets a button — see `PAD_LAYOUT`. The pad is generated
           rather than written out, which is what keeps a thumb able to reach
           everything a keyboard can. */}
