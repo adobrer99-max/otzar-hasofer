@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { TOTAL_REGIONS } from "../regions";
 import { buildRegion, rowsFor } from "./build";
-import { doorsOf, roomAtPoint, ROOM_H, ROOM_W } from "./rooms";
+import { GATE_ROOMS } from "./chunks";
+import { doorsOf, KIND_OF, roomAtPoint, ROOM_H, ROOM_W } from "./rooms";
 import { Tile, TILE_SIZE } from "./tiles";
 
 /**
@@ -116,6 +117,20 @@ describe("the floor", () => {
           ).toContain(husk.id);
         }
       }
+    }
+  });
+});
+
+/**
+ * A gate room that is not *named* a gate room is an ordinary room, and an
+ * ordinary room may close behind the Scribe — on creatures standing behind a
+ * barrier they have not answered. `KIND_OF` is a table keyed by string, so a
+ * new room added to `GATE_ROOMS` and forgotten here compiles and ships.
+ */
+describe("every room a gate can open onto is a gate room", () => {
+  it("names each of them", () => {
+    for (const room of GATE_ROOMS) {
+      expect(KIND_OF[room.id], `${room.id} would seal like an ordinary room`).toBe("gate");
     }
   });
 });

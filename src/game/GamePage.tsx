@@ -3060,9 +3060,9 @@ function FirstSightPlate({ sefirah, onGoOn }: { sefirah: SefirahId; onGoOn: () =
           out (`PathDonePlate`), so a rung opens by asking and closes where
           the answer either happened or did not. */}
       <p className={styles.plateQuestion}>{place.question}</p>
-      {/* A rung with its own law says so on arrival — the RUNG_RULES seam,
-          filled one P15-R slice at a time. Netzach speaks first (the cold
-          shrines); a Sefirah still at null renders nothing here. */}
+      {/* A rung with its own law says so on arrival — the RUNG_RULES seam.
+          The map's way button says the same line before the road is chosen
+          (`ruleOfWay`); a Sefirah still at null renders nothing in either. */}
       {rungRule(sefirah)?.says && (
         <p className={styles.plateUse}>{rungRule(sefirah)?.says}</p>
       )}

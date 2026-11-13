@@ -296,7 +296,10 @@ export interface World {
    * veiled — because that is the moment the letters they carry are known.
    */
   wakeAt?: Vec;
-  /** Tile coordinates the Eye has opened, so a reveal persists. */
+  /**
+   * Whether the Eye is open. One press opens it for the whole rung — every
+   * veiled stone at once — and it stays open; nothing is tracked per tile.
+   */
   revealed: boolean;
   /**
    * Floor that has given way and will close again — see `Tile.Maskit`.

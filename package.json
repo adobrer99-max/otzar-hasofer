@@ -11,6 +11,7 @@
     "preview:wrangler": "npm run build && wrangler dev",
     "deploy": "npm run build && wrangler deploy",
     "test": "vitest run",
+    "check": "tsc -b && oxlint && vitest run",
     "data:shorashim": "node scripts/build-shorashim.mjs",
     "build:letterpaths": "node scripts/build-letterpaths.mjs",
     "build:icons": "node scripts/build-icons.mjs",

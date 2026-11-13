@@ -61,7 +61,7 @@ export interface Floor {
 }
 
 /** Which room kind a screen makes the room it lands in. */
-const KIND_OF: Record<string, RoomKind> = {
+export const KIND_OF: Record<string, RoomKind> = {
   "letter-alcove": "letter",
   "genizah-niche": "niche",
   "word-gate": "gate",

@@ -234,7 +234,8 @@ export interface AscentRecord {
    */
   verbUses?: Partial<Record<Verb, number>>;
   /**
-   * Set at Begin when this climb is the first ascent — the short form, to
+   * **Reserved for P15-6 and not yet written by anything.** The design:
+   * set at Begin when this climb is the first ascent — the short form, to
    * the Foundation and back out in peace. Frozen on the record exactly as
    * `ruleNumber` and `reliquary` are, and for their reason: a threshold
    * choice held only in React state is the abandon-and-resume exploit
@@ -421,11 +422,6 @@ export async function saveAscent(record: AscentRecord): Promise<void> {
   await db.put("ascents", record);
 }
 
-export async function loadAscent(id: string): Promise<AscentRecord | undefined> {
-  const db = await getDb();
-  return db.get("ascents", id);
-}
-
 export async function listAscents(): Promise<AscentRecord[]> {
   const db = await getDb();
   const all = await db.getAll("ascents");
@@ -439,9 +435,4 @@ export async function listAscents(): Promise<AscentRecord[]> {
 export async function currentAscent(): Promise<AscentRecord | undefined> {
   const all = await listAscents();
   return all.find((a) => !a.sealedAt && !a.abandonedAt);
-}
-
-export async function deleteAscent(id: string): Promise<void> {
-  const db = await getDb();
-  await db.delete("ascents", id);
 }

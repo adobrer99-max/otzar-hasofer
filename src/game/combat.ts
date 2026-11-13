@@ -147,9 +147,10 @@ export type HuskRole = "pacer" | "floater" | "thrower" | "charger";
  * Two conditions exist and both are great ones, where the opening is something
  * a **letter arranges in the world** rather than a permission the letter grants
  * — which is the difference between a puzzle and a check, and it is why the
- * Hook still moves Leviathan on a blow that takes no shell off it. Eighteen
- * kinds are `"always"`, which is to say open at every moment of their lives,
- * and closing some of them is what the rest of this phase is.
+ * Hook still moves Leviathan on a blow that takes no shell off it. Eleven
+ * kinds are `"always"`, which is to say open at every moment of their lives;
+ * it was eighteen when this was first written, and closing the other seven
+ * is what the rest of that phase was.
  *
  * Stated as a **union rather than a flag on each creature** so that the rule
  * has one home: `opened()` switches on this and not on `kind`, so two creatures
@@ -157,7 +158,7 @@ export type HuskRole = "pacer" | "floater" | "thrower" | "charger";
  * is a compile error at the one place that has to answer for it.
  */
 export type Opening =
-  /** Open at every moment. Eighteen of the twenty, which is the thing to change. */
+  /** Open at every moment. Eleven of the twenty — it was eighteen. */
   | "always"
   /** Out of the water, and only out of it — Leviathan's, and Vav is what puts it there. */
   | "landed"
@@ -184,6 +185,12 @@ export type Opening =
    * both set it and neither ever clears it — so `"spent"` on either would shut
    * the creature for the rest of its life at the first blow, which is the
    * Korach fault exactly. Checked before it was written, not after.
+   *
+   * *(That warning describes the table as it stood. Seven kinds are `"spent"`
+   * now — the Calf, Esav, Izevel, the Re'em, the Saraf, Og and the Nefilim —
+   * the two it names among them, each given a window that really shuts
+   * before it was moved. The rule it states still holds for any new member:
+   * read `charging` for that creature before writing `"spent"` on it.)*
    */
   | "spent";
 

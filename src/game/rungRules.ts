@@ -1,7 +1,7 @@
 import type { SefirahId } from "../types/letter";
 
 /**
- * **The rungs' own rules — the spine, laid empty.**
+ * **The rungs' own rules — the spine, and what has been hung on it.**
  *
  * P15-3 authored each rung a question (`Region.question`); the P15-R slices
  * give each an *answer in the hands* — one bespoke rule per Sefirah, designed
@@ -11,7 +11,8 @@ import type { SefirahId } from "../types/letter";
  * forgotten; one resolver, so a rule reaches the game through a single seam
  * and never as a scattered `if`.
  *
- * **Most are `null` still, and two are load-bearing nulls.** Malchut's
+ * **Six are filled — Yesod, Hod, Netzach, Gevurah, Chesed, Binah — and four
+ * are `null`, two of them load-bearing nulls.** Malchut's
  * rule is the taught opening — the kingdom asks you to receive, and its
  * standing exemptions (rooms that never seal, a figured-stone budget of zero)
  * are precedent that null is a decision, not an absence. Keter's rule is

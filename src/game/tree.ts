@@ -43,7 +43,7 @@ import { regions } from "./regions";
  *
  * **The most visible consequence, stated so it is not discovered:** the three
  * Mother letters do *not* fall on the three horizontals here. Aleph runs down
- * from Malchut, Mem lies on a diagonal, Shin on a pillar; the horizontals take
+ * from Malchut, Mem lies on a diagonal and Shin on another; the horizontals take
  * Heh, Bet and Dalet. Anyone who knows the Tree will see that at once, and it
  * is the price of keeping the Breath one step from the kingdom. The 3/7/12
  * division still governs the *geometry* — three horizontals, seven verticals,

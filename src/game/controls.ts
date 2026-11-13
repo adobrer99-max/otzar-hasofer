@@ -157,7 +157,7 @@ export function abilitiesFor(control: ControlId): LetterAbility[] {
  * every verb `TILE_KEY` names must be described here, and nothing may be
  * described that answers no tile.
  */
-export const BARRIER_OF: Record<Verb | "crawl", string> = {
+export const BARRIER_OF: Partial<Record<Verb | "crawl", string>> = {
   cut: "a thornbrake",
   flame: "overgrowth",
   open: "a sealed door",
@@ -165,4 +165,4 @@ export const BARRIER_OF: Record<Verb | "crawl", string> = {
   grapple: "an anchor ring",
   climb: "a hanging vine",
   crawl: "a low passage",
-} as Record<Verb | "crawl", string>;
+};
