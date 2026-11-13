@@ -282,8 +282,9 @@ export interface World {
    * five-lamp hand is not capped at it.
    */
   lampsFull?: number;
-  /** Chochmah's line has been said on this rung — see `touchEntities`. */
+  /** Chochmah's two lines, each said once a rung — see `touchEntities`. */
   toldReceived?: boolean;
+  toldUntaken?: boolean;
   /** Column-major-free: `tiles[y * width + x]`. */
   tiles: Uint8Array;
   width: number;

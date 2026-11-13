@@ -106,11 +106,12 @@ export interface RungRule {
    */
   sealOpensTo?: { price: number; given: string; wanting: string };
   /**
-   * **Chochmah's knob — light is received.** On ground bound here a Scribe
-   * who has gone low (crouching or crawling) gathers motes from `reach`
-   * tiles away. `came` is said once a rung, the first time that happens.
+   * **Chochmah's knob — light is received, not taken.** On ground bound here
+   * a Scribe who has gone low (crouching or crawling) gathers motes from
+   * `reach` tiles away and a standing body gathers none. `came` and
+   * `untaken` are each said once a rung, the first time each happens.
    */
-  lightReceived?: { reach: number; came: string };
+  lightReceived?: { reach: number; came: string; untaken: string };
   /**
    * **Tiferet's knob — a sealed room asks for half.** On ground bound here
    * a room opens when the shells holding it are as many broken as standing
@@ -330,34 +331,35 @@ export const RUNG_RULES: Record<SefirahId, RungRule | null> = {
    * can be taken; it can only be received, and it is found by going low.*
    * So the rule is that, in the feet rather than at a door or a shrine: go
    * low on a chochmah-bound road — crouch, or crawl, which is this rung's
-   * letter — and the light comes to you from three tiles. Fight, then kneel
+   * letter — and the light comes to you from four tiles. Fight, then kneel
    * and let what was freed come; kneeling while something still stands is an
    * exposure the Scribe chooses. Four roads are bound here — from Chesed and
    * Tiferet walked up, from Binah across, from Keter down.
    *
-   * **It is a gift with no penalty, and that is a measured retreat, not the
-   * design.** Two harder drafts were built and run over the three seed pools:
+   * And a standing body gathers none of it: nothing on this road is taken.
    *
-   * - *Strict* — a standing body gathers nothing. No instrument ever kneels,
-   *   so the ninth rung read as paying zero: `curve`'s "pays more the higher
-   *   it goes" came to 23.5 against a needed 26.1 on pool 1.
-   * - *Half* — every other mote grabbed standing is lost. Pool 1 recovered,
-   *   and `climb`'s tour broke on pool 2: no seed of three reached the
-   *   consummation (lit 9, 7 and 7 of ten; two stalled at Binah unkindled
-   *   with 25 and 17 light in hand).
+   * **The rule is strict because the instrument learned to kneel.** The
+   * first time this was built no probe could go low on purpose, so the
+   * ninth rung measured as paying nothing — `curve`'s "pays more the higher
+   * it goes" read 23.5 against a needed 26.1 on pool 1 — and a softer draft
+   * (every other mote lost) broke `climb`'s tour on pool 2 instead. Rather
+   * than widen a band or ship a rule with no cost, the fighting probe was
+   * taught the one thing any player would do on reading the rule: on a road
+   * that carries it, and nowhere else, it kneels for light within reach when
+   * nothing is coming. See `fighter` in `world/probes.ts`.
    *
-   * Any price on light taken standing is a price every instrument pays in
-   * full, because none of them can go low on purpose — the same fact
-   * Chesed's kneel relies on. So a cost here needs either an instrument
-   * taught to kneel or the supernal economy re-measured around it; both are
-   * their own slice. What ships changes nothing for a body that never
-   * kneels, which is why no band can see it.
+   * **Four tiles, by measurement.** At three the kneeling probe carried out
+   * 79–96% of what the same ground pays a touching hand, and `curve` missed
+   * its band on pool 1 by three hundredths; at four it carries 108–138%.
+   * That is the shape the rule wants in any case — going low reaches light
+   * a hand cannot — so the reach is four and the bands were run again.
    */
   chochmah: {
-    says: "Go low on this road, and the light comes to you.",
+    says: "Nothing on this road is taken. Go low, and the light comes to you.",
     lightReceived: {
-      reach: 3,
+      reach: 4,
       came: "You went low, and the light came. Nothing here is taken; it is received.",
+      untaken: "The light does not come to a hand that reaches. Go low, and receive it.",
     },
   },
   // The crown's rule is the presentation itself. Likely permanent null.

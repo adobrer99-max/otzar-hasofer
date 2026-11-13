@@ -1200,7 +1200,7 @@ const SCRIPTS = [
     name: "rung-rule-chochmah",
     about: "P15-R8 — on the road to Chochmah a Scribe goes low, and the light comes.",
     /**
-     * The eighth rung rule: kneeling draws light from three tiles on a
+     * The eighth rung rule: kneeling draws light to the Scribe on a
      * chochmah-bound road. From Binah across to Chochmah, which is the one
      * such road that is not an Abyss crossing. The driver walks; the watch
      * kneels on a beat, which is all the rule asks, and the script ends when

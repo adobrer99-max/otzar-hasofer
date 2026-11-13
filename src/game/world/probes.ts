@@ -2,6 +2,7 @@ import type { Verb } from "../abilities";
 import { routeTo, storeysOf } from "./route";
 import { tileAt } from "./build";
 import { answerable, step, type StepContext } from "./step";
+import { ruleOf } from "../rungRules";
 import { CHUNK_H, CHUNKS, END_CHUNK, START_CHUNK } from "./chunks";
 import { isSolid, Tile, TILE_SIZE } from "./tiles";
 import { NO_INPUT, type Chunk, type Input, type World } from "./types";
@@ -763,6 +764,30 @@ export function fighter(
   const standingShells = () => world.husks.reduce((a, h) => a + Math.max(0, h.shells), 0);
   let shellsTaken = 0;
   let shellsStanding = standingShells();
+  /**
+   * **The one thing this probe does because a rung's rule asks it.**
+   *
+   * On a road bound for Chochmah light is received, not taken: a standing
+   * body gathers none of it, and a Scribe who goes low has it come from
+   * `reach` tiles. A probe that could not kneel measured that road as paying
+   * nothing, which is a fact about the probe — any player reads the rule on
+   * the map and kneels. So it kneels, and only there:
+   *
+   * - **gated on the rule itself**, so on every other road this is dead code
+   *   and every number the probe has ever produced is bit-identical;
+   * - **`down` and nothing else** — never `act`, so the argument Chesed's
+   *   gift rests on (no instrument kneels *and* gives beside a seal) is
+   *   untouched, and would be even on a road that carried both rules;
+   * - only on solid ground (`down` on a ledge is a drop, not a kneel), only
+   *   with nothing coming inside five tiles, and only when a mote is really
+   *   within the rule's reach;
+   * - for six ticks at most and then not again for forty, so light it cannot
+   *   reach for some reason it has not thought of costs a fraction of a
+   *   second rather than the walk.
+   */
+  const received = ruleOf(world)?.lightReceived;
+  let kneltFor = 0;
+  let kneelRest = 0;
 
   for (; i < ticks && !world.finished && !world.out; i += 1) {
     const p = world.player;
@@ -897,7 +922,35 @@ export function fighter(
     if (wantJump) holdJump = 20;
     else if (holdJump > 0) holdJump -= 1;
 
-    const input: Input = {
+    let kneeling = false;
+    if (received) {
+      if (kneelRest > 0) kneelRest -= 1;
+      const slack = received.reach * TILE_SIZE;
+      const floor = tileAt(world, ownX, footRow);
+      kneeling =
+        kneelRest === 0 &&
+        !backingOff &&
+        p.onGround &&
+        floor !== Tile.Ledge &&
+        floor !== Tile.Empty &&
+        (nearest === undefined || nearest > TILE_SIZE * 5) &&
+        world.entities.some(
+          (e) =>
+            e.kind === "mote" &&
+            !e.taken &&
+            p.x < e.x + TILE_SIZE + slack &&
+            p.x + p.w > e.x - slack &&
+            p.y < e.y + TILE_SIZE + slack &&
+            p.y + p.h > e.y - slack,
+        );
+      kneltFor = kneeling ? kneltFor + 1 : 0;
+      if (kneltFor >= 6) {
+        kneltFor = 0;
+        kneelRest = 40;
+      }
+    }
+
+    const input: Input = kneeling ? { ...NO_INPUT, down: true } : {
       ...NO_INPUT,
       // Give ground, hold ground, or walk on — in that order.
       right: backingOff ? towards < 0 : towards > 0,

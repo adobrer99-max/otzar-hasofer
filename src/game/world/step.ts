@@ -1144,13 +1144,20 @@ function touchEntities(world: World, ctx: StepContext): void {
    * **Chochmah's rule — light is received, not taken** (P15-R8). On ground
    * bound for Wisdom a Scribe who has gone low — crouched, or crawling — is
    * one the light comes to, from `reach` tiles; a grace that already draws
-   * it further is not narrowed. A standing body gathers exactly as it does
-   * on any road — see the rule's own comment for why there is no penalty.
+   * it further is not narrowed. A standing body gathers none of it, and is
+   * told why once a rung, the first time it actually touches a mote.
    */
   const received = ruleOf(world)?.lightReceived;
   const low = p.crouching || p.crawling;
-  const moteNear = (e: Entity): boolean =>
-    overlaps(p, e, received && low ? Math.max(pull, received.reach * TILE_SIZE) : pull);
+  const moteNear = (e: Entity): boolean => {
+    if (!received) return overlaps(p, e, pull);
+    if (low) return overlaps(p, e, Math.max(pull, received.reach * TILE_SIZE));
+    if (!world.toldUntaken && overlaps(p, e, 0)) {
+      world.toldUntaken = true;
+      say(world, received.untaken);
+    }
+    return false;
+  };
 
   for (const e of world.entities) {
     if (e.taken) continue;

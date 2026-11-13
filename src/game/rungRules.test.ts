@@ -4,7 +4,8 @@ import { VEIL_COST } from "./encounter";
 import { lettersOnEntering, regions } from "./regions";
 import { RUNG_RULES, ruleOfWay, ruleStatus, rungRule } from "./rungRules";
 import { TREE_PATHS } from "./tree";
-import { buildArena, buildPath, buildRegion, regionOfPath, setTile, tileAt } from "./world/build";
+import { buildArena, buildPath, buildRegion, regionOfPath, setTile, tileAt, verbsOf } from "./world/build";
+import { fighter } from "./world/probes";
 import { step, type StepContext } from "./world/step";
 import { Tile, TILE_SIZE } from "./world/tiles";
 import { NO_INPUT } from "./world/types";
@@ -799,7 +800,7 @@ describe("P15-R3 — Yesod: a set stone is founded", () => {
   });
 });
 
-describe("P15-R8 — Chochmah: go low, and the light comes", () => {
+describe("P15-R8 — Chochmah: light is received, not taken", () => {
   const rule = RUNG_RULES.chochmah!.lightReceived!;
   const kneel = { ...NO_INPUT, down: true };
 
@@ -820,12 +821,18 @@ describe("P15-R8 — Chochmah: go low, and the light comes", () => {
     return { world, ctx, mote: world.entities[0] };
   }
 
-  it("leaves a standing body exactly as it is on any road — no instrument may feel this rule", () => {
+  it("is not gathered by a body standing in it, and says why exactly once", () => {
     const { world, ctx, mote } = withMote(0, "chochmah");
     step(world, NO_INPUT, ctx);
+    expect(mote.taken, "a standing body took the light").toBeFalsy();
+    expect(world.or).toBe(0);
+    expect(world.message?.text).toBe(rule.untaken);
+    world.message = { text: "something else", until: world.tick + 600 };
+    for (let t = 0; t < 5; t += 1) step(world, NO_INPUT, ctx);
+    expect(world.message?.text, "the refusal repeated itself").toBe("something else");
+    // And it is still there for a Scribe who then goes low.
+    for (let t = 0; t < 3; t += 1) step(world, kneel, ctx);
     expect(mote.taken).toBe(true);
-    expect(world.or).toBe(world.orPerMote);
-    expect(world.message?.text, "a standing take is not the rule's moment").not.toBe(rule.came);
   });
 
   it("comes to a Scribe who has gone low, from the rule's own reach", () => {
@@ -852,6 +859,34 @@ describe("P15-R8 — Chochmah: go low, and the light comes", () => {
     const far = withMote(rule.reach - 0.5, "hod");
     for (let t = 0; t < 3; t += 1) step(far.world, kneel, far.ctx);
     expect(far.mote.taken, "kneeling drew light off Chochmah's road").toBeFalsy();
+  });
+});
+
+describe("the instrument plays Chochmah's rule — the fighting probe kneels", () => {
+  /**
+   * The bands measure this road with `fighter`. If it could not go low it
+   * would carry nothing out, and the ninth rung would read as paying zero —
+   * which is what happened, and why it was taught to. Pinned here so the
+   * kneel cannot be removed without something saying so.
+   */
+  const road = TREE_PATHS.find((p) => p.id === "chochmah-binah")!;
+  const all = regions.flatMap((r) => r.letters);
+  const walk = (ruled: boolean, seed: number) => {
+    const world = buildPath(road, seed, all, 1, false, false, 1, [], 0, [], [], "binah");
+    expect(world.toward).toBe("chochmah");
+    if (!ruled) world.toward = undefined;
+    return fighter(world, { verbs: verbsOf(all), graces: [] }, 4000);
+  };
+
+  it("carries light out of a road where a standing body gathers none", () => {
+    const carried = [7919, 15838, 23757].map((seed) => walk(true, seed).or);
+    expect(Math.max(...carried), `the probe never knelt: ${carried.join(", ")}`).toBeGreaterThan(0);
+  });
+
+  it("is the same walker off that road — the kneel is gated on the rule", () => {
+    const a = walk(false, 7919);
+    const b = walk(false, 7919);
+    expect(a).toEqual(b);
   });
 });
 
