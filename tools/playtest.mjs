@@ -126,6 +126,19 @@ const tellItAgain = async (page) => {
   await page.waitForTimeout(700);
 };
 
+/**
+ * **A check for a script whose `until` has an honest way out and a dishonest
+ * one.** `p.finished` is in most of them so a run that walks off the end of
+ * the rung stops rather than idling — and it then reported "the script's own
+ * condition", having met nothing it was written to meet. A plate the run was
+ * *for* must be in the record.
+ */
+const mustRaise = (kind, why) => (_p, _seen, report) => {
+  if (!report.plates.some((plate) => plate.kind === kind)) {
+    throw new Error(`${why} — ended with "${report.ended}" and no ${kind} plate`);
+  }
+};
+
 const sealFromTheMap = async (page) => {
   // Either ending's button — they are deliberately different words for
   // deliberately different acts, and this walks whichever the map is offering.
@@ -506,6 +519,11 @@ const SCRIPTS = [
     warp: { rung: 1, letters: "as-of-rung", lamps: 3, porch: 1, seed: 7 },
     until: (p) => p.progress > 0.35 || p.finished,
     seconds: 70,
+    check: (p, _seen, report) => {
+      if (report.ended === "the clock ran out") {
+        throw new Error(`the porch was never crossed — ${Math.round((p.progress ?? 0) * 100)}% when the clock ran out`);
+      }
+    },
   },
   {
     name: "husk",
@@ -521,10 +539,14 @@ const SCRIPTS = [
      * `strikeHusk` actually says `spec.release` into a world a player is in.
      */
     watch: async (_page, p, _look, { seen }) => {
-      if (p.message && /breaks|breaks away/.test(p.message)) seen.release = p.message;
+      if (p.message && /breaks/.test(p.message)) seen.release = p.message;
+      // Kept across ticks: the last probe of a run that ends on the map, or on
+      // a plate, says nothing about shells at all.
+      seen.broken = Math.max(seen.broken ?? 0, p.husks?.broken ?? 0);
     },
-    check: (p, seen) => {
-      if (p.husks.broken >= 1 && !seen.release) {
+    check: (_p, seen) => {
+      if (!seen.broken) throw new Error("no shell was ever broken — the script proved nothing");
+      if (!seen.release) {
         throw new Error("a shell broke and no release was ever said");
       }
       if (seen.release && /the light in it is yours/.test(seen.release)) {
@@ -763,7 +785,7 @@ const SCRIPTS = [
     },
   },
   {
-    name: "rung-rule",
+    name: "rung-rule-netzach",
     about: "P15-R1 — a shrine on netzach-bound ground stands cold, and says why.",
     /**
      * The first rung rule in play. Standing at Yesod and walking toward
@@ -798,7 +820,7 @@ const SCRIPTS = [
     warp: { rung: 2, letters: "all", lamps: 3, seed: 52 },
     toward: "Netzach",
     driver: { seekShrine: true },
-    until: (p) => (p.message ?? "").includes("The shrine is cold") || false,
+    until: (p) => (p.message ?? "").includes("The shrine is cold"),
     seconds: 300,
     watch: async (page, p, _look, { seen, report }) => {
       if (p.shrine && !seen.sighted) {
@@ -939,7 +961,7 @@ const SCRIPTS = [
      * onto the hoard, its shrine stands at x 2472 on the walking line, and
      * three klipot hold the road before it.
      */
-    warp: { rung: 4, letters: "all", lamps: 3, seed: 7 },
+    warp: { rung: 4, letters: "all", lamps: 3, seed: 7, day: "2026-08-18" },
     toward: "Hod",
     /**
      * `intoGates` because the road is walled without it: the node fighter
@@ -960,8 +982,12 @@ const SCRIPTS = [
         seen.sighted = true;
         report.moments.push({ what: "shrine sighted", tick: p.tick, ...p.shrine });
       }
+      if (typeof p.lamps === "number" && !seen.relit) {
+        seen.fewest = Math.min(seen.fewest ?? p.lamps, p.lamps);
+      }
       if ((p.message ?? "").includes("The lamps are relit") && !seen.relit) {
         seen.relit = true;
+        seen.after = p.lamps;
         report.moments.push({ what: "the lamps relit", tick: p.tick, lamps: p.lamps });
         await page.screenshot({ path: join(outDir, "rung-rule-hod-relit.png") });
       }
@@ -981,6 +1007,10 @@ const SCRIPTS = [
       if (!seen.sighted) throw new Error("no shrine was ever seen on the road to Hod");
       if (!seen.relit) {
         throw new Error(`the lamps were never relit — ${p.lamps} burning when the clock ran out`);
+      }
+      // The line is not the rule. The count has to have gone up.
+      if (!(seen.after > seen.fewest)) {
+        throw new Error(`the shrine said the lamps were relit and none were — ${seen.fewest} before, ${seen.after} after`);
       }
     },
   },
@@ -1007,7 +1037,7 @@ const SCRIPTS = [
      * This one answers with seventeen — double the margin of any other —
      * and its gate is the house, not the P13g-4 trapdoor.
      */
-    warp: { rung: 5, letters: "as-of-rung", lamps: 3, seed: 60 },
+    warp: { rung: 5, letters: "as-of-rung", lamps: 3, seed: 60, day: "2026-08-18" },
     toward: "Chesed",
     driver: { intoGates: true },
     onPlate: async (page, plate) => {
@@ -1023,6 +1053,8 @@ const SCRIPTS = [
       }
       if ((p.message ?? "").includes("The light is given") && !seen.given) {
         seen.given = true;
+        // The line is not the rule: the purse has to have paid for the door.
+        seen.paid = (seen.purse ?? p.or) - p.or;
         report.moments.push({ what: "the door given open", tick: p.tick, or: p.or });
         await page.screenshot({ path: join(outDir, "rung-rule-chesed-given.png") });
       }
@@ -1031,6 +1063,7 @@ const SCRIPTS = [
       // moment; by the time it held twenty-eight, no kneel ever coincided
       // with a live seal again. Keyed to the purse, every door that closes
       // from here on is a chance, and a kneel beside no seal costs nothing.
+      if (!seen.given && typeof p.or === "number") seen.purse = p.or;
       if (!seen.given && p.or >= 8) {
         await page.keyboard.down(KEYS.down);
         for (let i = 0; i < 3; i += 1) {
@@ -1041,9 +1074,16 @@ const SCRIPTS = [
       }
     },
     check: (p, seen) => {
-      if (!seen.sealed) throw new Error("no room ever closed on the road to Chesed");
+      // Not `seen.sealed`: the kneel is keyed to the purse, so the gift lands
+      // within a tick or two of the door closing and the closing line is
+      // usually spoken over before a probe can read it — three runs in four
+      // failed on a sighting, with the door given open every time. The step
+      // says "given" only beside a written seal, and the purse proves it.
       if (!seen.given) {
-        throw new Error(`a room closed and was never given open — ${p.or} light in hand at the end`);
+        throw new Error(`no door was ever given open — ${p.or} light in hand at the end`);
+      }
+      if (!(seen.paid > 0)) {
+        throw new Error("the door said it was given open and the purse paid nothing for it");
       }
     },
   },
@@ -1063,7 +1103,7 @@ const SCRIPTS = [
      * may hold what the Tree gates, and the rule's second tier is exactly
      * for the Scribe who has been to the crown's road and come back.
      */
-    warp: { rung: 9, letters: "all", lamps: 3, seed: 26, lit: 1 },
+    warp: { rung: 9, letters: "all", lamps: 3, seed: 26, lit: 1, day: "2026-08-18" },
     toward: "Binah",
     driver: { ontoMaskit: true, intoGates: true },
     onPlate: async (page, plate) => {
@@ -1240,7 +1280,7 @@ const SCRIPTS = [
           regionIndex: 5,
           at: "tiferet",
           pathsWalked: [
-            "malchut-yesod", "yesod-hod", "gevurah-hod", "gevurah-tiferet",
+            "malchut-yesod", "yesod-hod", "hod-gevurah", "tiferet-gevurah",
             "netzach-tiferet", "malchut-netzach", "yesod-tiferet",
           ],
           lettersHeld: ["aleph", "bet", "gimel", "dalet", "heh", "vav", "zayin"],
@@ -1248,6 +1288,11 @@ const SCRIPTS = [
           regionsCleared: [1, 2, 3, 4, 5],
           housesMet: [],
           sefirotLit: ["malchut", "yesod", "hod", "netzach"],
+          // A Sefirah is kindled only once its guardian is broken. Without
+          // this the map offers "Face …" instead, and this script — which had
+          // no check — pressed nothing and kindled nothing from the day the
+          // guardians arrived.
+          guardiansBroken: ["malchut", "yesod", "hod", "netzach", "tiferet"],
         });
         await new Promise((res) => { tx.oncomplete = res; });
       });
@@ -1258,10 +1303,21 @@ const SCRIPTS = [
       const kindle = page.getByRole("button", { name: /^Kindle/ });
       if (await kindle.count()) await kindle.first().click();
       await page.waitForTimeout(300);
-      await page.getByRole("button", { name: /Keter/ }).first().click();
+      // Down to Yesod, not over to Keter: the crossing has no shrine and this
+      // driver does not survive it, so the script used to run out its clock
+      // on an Abyss it could never finish and report nothing wrong.
+      await page.locator("[class*=wayButton]", { hasText: "Yesod" }).first().click();
     },
-    until: (p) => p.plate === "path-done",
-    seconds: 150,
+    until: (p) => p.progress > 0.05,
+    seconds: 60,
+    watch: async (_page, p, _look, { seen }) => {
+      // The probe carries a count; the seeded record holds four.
+      if (p.sefirotLit >= 5) seen.kindled = true;
+    },
+    check: (_p, seen, report) => {
+      if (!seen.kindled) throw new Error("Kindle was pressed with light in hand and Tiferet is not lit");
+      if (report.ended === "the clock ran out") throw new Error("no road was walked from the kindled map");
+    },
   },
   {
     name: "heard",
@@ -1290,7 +1346,13 @@ const SCRIPTS = [
     // gate machinery is what this proves; that the Abyss crossings can be
     // walked *and* answered end to end is proved in `world/climb.test.ts`,
     // where the driver is the fighting probe and has no clock.
-    warp: { rung: 6, letters: "all", lamps: 3, seed: 5, freed: 1 },
+    // The road `rung-rule-hod` answers a gate on, day pinned: which room a
+    // gate draws depends on the day, and the unpinned warp this used to carry
+    // (rung 6, seed 5) walked Hod–Gevurah *downward* — a road whose rule
+    // changed when rules began following the direction walked, after which
+    // the driver strolled past the gate three runs in three.
+    warp: { rung: 4, letters: "all", lamps: 3, seed: 7, day: "2026-08-18" },
+    toward: "Hod",
     until: (p) => p.plate === "word-result" || p.finished,
     seconds: 180,
     driver: { intoGates: true },
@@ -1298,6 +1360,7 @@ const SCRIPTS = [
       if (plate !== "word-gate") return false;
       return await answerGate(page);
     },
+    check: mustRaise("word-result", "the gate was never answered"),
   },
   {
     name: "hint",
@@ -1308,7 +1371,13 @@ const SCRIPTS = [
     // touches nothing but what a person sees — it presses "Ask for a hint"
     // until the plate hands over the word, and inscribes what it was given.
     // If this passes, the gate has no reading requirement left in it.
-    warp: { rung: 6, letters: "all", lamps: 3, seed: 5, freed: 1 },
+    // The road `rung-rule-hod` answers a gate on, day pinned: which room a
+    // gate draws depends on the day, and the unpinned warp this used to carry
+    // (rung 6, seed 5) walked Hod–Gevurah *downward* — a road whose rule
+    // changed when rules began following the direction walked, after which
+    // the driver strolled past the gate three runs in three.
+    warp: { rung: 4, letters: "all", lamps: 3, seed: 7, day: "2026-08-18" },
+    toward: "Hod",
     until: (p) => p.plate === "word-result" || p.finished,
     seconds: 180,
     driver: { intoGates: true },
@@ -1329,6 +1398,7 @@ const SCRIPTS = [
       await page.waitForTimeout(400);
       return true;
     },
+    check: mustRaise("word-result", "the ladder never reached the word"),
   },
   {
     name: "seal-not-yet",
@@ -1391,7 +1461,7 @@ const SCRIPTS = [
           updatedAt: now,
           regionIndex: 5,
           at: "tiferet",
-          pathsWalked: ["malchut-yesod", "yesod-hod", "gevurah-hod", "gevurah-tiferet"],
+          pathsWalked: ["malchut-yesod", "yesod-hod", "hod-gevurah", "tiferet-gevurah"],
           lettersHeld: ["aleph", "bet", "gimel", "dalet", "heh", "vav", "zayin"],
           or: 60,
           regionsCleared: [1, 2, 3, 4, 5],
@@ -1437,6 +1507,11 @@ const SCRIPTS = [
     // this table — so finishing is not asked for.
     until: (p) => p.progress > 0.05,
     seconds: 60,
+    check: (_p, _seen, report) => {
+      if (report.ended === "the clock ran out") {
+        throw new Error("Enter on the Abyss plate loaded no crossing to walk");
+      }
+    },
   },
   {
     name: "beyond",
@@ -1573,7 +1648,7 @@ const SCRIPTS = [
           createdAt: "2026-03-01T00:00:00.000Z", updatedAt: "2026-03-01T00:00:00.000Z",
           sealedAt: "2026-03-01T00:00:00.000Z", regionIndex: 10, at: "keter",
           pathsWalked: [
-            "malchut-yesod", "yesod-hod", "gevurah-hod", "gevurah-tiferet",
+            "malchut-yesod", "yesod-hod", "hod-gevurah", "tiferet-gevurah",
             "netzach-tiferet", "malchut-netzach", "yesod-tiferet", "tiferet-keter",
             "binah-keter", "chochmah-keter", "binah-chesed", "chesed-chochmah",
           ],
@@ -1830,9 +1905,21 @@ const SCRIPTS = [
     seconds: 260,
     driver: { seekVessel: true },
     onPlate: async (page, plate) => {
-      if (plate !== "vessel") return;
+      if (plate !== "vessel") return false;
       const take = page.getByRole("button", { name: /Take it up/i });
       if (await take.count()) await take.first().click();
+      return true;
+    },
+    watch: async (_page, p, _look, { seen }) => {
+      if (p.items?.length) seen.taken = true;
+    },
+    check: (p, seen, report) => {
+      if (!report.plates.some((plate) => plate.kind === "vessel")) {
+        throw new Error("no pedestal ever offered — the plate never rose");
+      }
+      if (!seen.taken && !p.items?.length) {
+        throw new Error("the pedestal offered and nothing was taken");
+      }
     },
   },
   {
@@ -1879,9 +1966,15 @@ const SCRIPTS = [
       if (await take.count()) await take.first().click();
       return true;
     },
-    check: (p) => {
-      if (!p.revealed) throw new Error("the Eye was never opened — there was never a staircase");
-      if (!p.relics.length) throw new Error("the chamber was reached and nothing was taken");
+    // Remembered rather than read off the last probe, which is empty once the
+    // run has come out onto the map.
+    watch: async (_page, p, _look, { seen }) => {
+      if (p.revealed) seen.eye = true;
+      if (p.relics?.length) seen.taken = true;
+    },
+    check: (_p, seen) => {
+      if (!seen.eye) throw new Error("the Eye was never opened — there was never a staircase");
+      if (!seen.taken) throw new Error("the chamber was reached and nothing was taken");
     },
   },
   {
