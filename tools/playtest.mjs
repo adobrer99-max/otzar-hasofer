@@ -889,6 +889,8 @@ const SCRIPTS = [
         await page.waitForTimeout(35);
       }
       if (p.thrown > 60) seen.over = p.thrown;
+      // The HUD's own line for the rule, as the probe carries it.
+      if (p.rule) (seen.lines ??= new Set()).add(p.rule);
       if ((p.message ?? "").includes("The ration is spent") && !seen.spent) {
         seen.spent = true;
         report.moments.push({ what: "the ration spent", tick: p.tick, thrown: p.thrown });
@@ -897,6 +899,9 @@ const SCRIPTS = [
     },
     check: (p, seen) => {
       if (seen.over) throw new Error(`the ration did not hold — ${seen.over} marks flew`);
+      if (!seen.lines || seen.lines.size < 3 || !seen.lines.has("The ration is spent")) {
+        throw new Error("the HUD's rule line never counted the ration down to spent");
+      }
       if (!seen.spent) {
         throw new Error(`the ration was never spent — ${p.thrown} thrown when the clock ran out`);
       }

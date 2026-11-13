@@ -1,4 +1,5 @@
 import type { AscentRecord } from "../../storage/ascentRepo";
+import { ruleStatus } from "../rungRules";
 import { Tile, TILE_SIZE } from "../world/tiles";
 import type { World } from "../world/types";
 import { DEV_MARKER } from "./warp";
@@ -108,6 +109,8 @@ export interface Probe {
   /** Which plate is up, if any — the only way to know a story beat landed. */
   plate?: string;
   message?: string;
+  /** Where the rung's own rule stands — the HUD's line, see `ruleStatus`. */
+  rule?: string;
   finished: boolean;
   out: boolean;
   /**
@@ -244,6 +247,7 @@ export function probeOf(
     fragments: ascent?.scrollFragments?.length ?? 0,
     plate,
     message: world.message?.text,
+    rule: ruleStatus(world) ?? undefined,
     finished: world.finished,
     out: Boolean(world.out),
     onMap: false,

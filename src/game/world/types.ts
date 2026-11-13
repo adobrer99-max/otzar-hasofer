@@ -240,6 +240,11 @@ export interface Room {
    * answer. Read by Tiferet's rule alone.
    */
   held?: number;
+  /**
+   * How many of them still stand, as of the last tick the Scribe was in the
+   * room. Written for the HUD's rule line alone; nothing in the step reads it.
+   */
+  standing?: number;
   /** The room has opened at balance (Tiferet's rule) — see `stepRooms`. */
   balanced?: boolean;
   doors: Door[];

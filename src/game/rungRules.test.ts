@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { HUSKS } from "./combat";
 import { VEIL_COST } from "./encounter";
 import { lettersOnEntering, regions } from "./regions";
-import { RUNG_RULES, ruleOfWay, rungRule } from "./rungRules";
+import { RUNG_RULES, ruleOfWay, ruleStatus, rungRule } from "./rungRules";
 import { TREE_PATHS } from "./tree";
 import { buildArena, buildPath, buildRegion, regionOfPath, setTile, tileAt } from "./world/build";
 import { step, type StepContext } from "./world/step";
@@ -793,5 +793,84 @@ describe("P15-R3 — Yesod: a set stone is founded", () => {
     step(world, act, ctx);
     expect(world.toward).toBeUndefined();
     expect(tileAt(world, spot.tx, spot.ty)).toBe(Tile.Placed);
+  });
+});
+
+describe("the rule kept in sight — `ruleStatus`", () => {
+  const ground = (toward?: Parameters<typeof rungRule>[0]) => {
+    const world = buildRegion(2, 5);
+    world.toward = toward;
+    return world;
+  };
+
+  it("says nothing where there is no rule — off the Tree, in an arena, on an unruled road", () => {
+    expect(ruleStatus(ground(undefined))).toBeNull();
+    expect(ruleStatus(buildArena("gevurah"))).toBeNull();
+    expect(ruleStatus(ground("keter"))).toBeNull();
+  });
+
+  it("counts Gevurah's ration down off the rule's own number", () => {
+    const world = ground("gevurah");
+    const count = RUNG_RULES.gevurah!.marksRationed!.count;
+    expect(ruleStatus(world)).toBe(`${count} marks left`);
+    world.marksThrown = count - 1;
+    expect(ruleStatus(world)).toBe("1 mark left");
+    world.marksThrown = count;
+    expect(ruleStatus(world)).toBe("The ration is spent");
+  });
+
+  it("counts Yesod's founded stones, and is silent before the first", () => {
+    const world = ground("yesod");
+    expect(ruleStatus(world)).toBeNull();
+    world.placed.push({ x: 1, y: 1 });
+    expect(ruleStatus(world)).toBe("1 stone founded");
+    world.placed.push({ x: 2, y: 1 });
+    expect(ruleStatus(world)).toBe("2 stones founded");
+  });
+
+  it("says what a room on Tiferet's road still asks", () => {
+    const world = ground("tiferet");
+    const room = world.rooms[world.roomIndex];
+    room.held = 1;
+    room.standing = 1;
+    expect(ruleStatus(world), "a room held by one is an ordinary room").toBeNull();
+    room.held = 3;
+    room.standing = 3;
+    expect(ruleStatus(world)).toBe("This room asks for 2 more");
+    room.standing = 2;
+    expect(ruleStatus(world)).toBe("This room asks for 1 more");
+    room.balanced = true;
+    expect(ruleStatus(world)).toBe("This room is in balance");
+  });
+
+  it("names Chesed's price only while a door is shut, and from the rule", () => {
+    const world = ground("chesed");
+    expect(ruleStatus(world)).toBeNull();
+    world.inSealedRoom = true;
+    expect(ruleStatus(world)).toContain(String(RUNG_RULES.chesed!.sealOpensTo!.price));
+  });
+
+  it("follows the Eye on Binah's road, and names the shrines on Netzach's and Hod's", () => {
+    const binah = ground("binah");
+    const shut = ruleStatus(binah);
+    binah.revealed = true;
+    expect(ruleStatus(binah)).not.toBe(shut);
+    expect(ruleStatus(ground("netzach"))).toMatch(/cold/);
+    expect(ruleStatus(ground("hod"))).toMatch(/relight/);
+  });
+
+  it("has a line for every filled rule in at least one state", () => {
+    // A rule added to the table and forgotten here would be said twice and
+    // then never seen again — which is the fault this function exists for.
+    for (const [sefirah, rule] of Object.entries(RUNG_RULES)) {
+      if (!rule) continue;
+      const world = ground(sefirah as Parameters<typeof rungRule>[0]);
+      world.inSealedRoom = true;
+      world.placed.push({ x: 1, y: 1 });
+      const room = world.rooms[world.roomIndex];
+      room.held = 2;
+      room.standing = 2;
+      expect(ruleStatus(world), `${sefirah}'s rule has no HUD line`).not.toBeNull();
+    }
   });
 });

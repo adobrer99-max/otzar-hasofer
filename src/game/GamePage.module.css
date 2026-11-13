@@ -1676,6 +1676,13 @@
 
 /* The rung's own law, on a line of its own beneath where the way goes and
    what it pays — `order` puts it last whatever the markup's sequence. */
+.hudRule {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-style: italic;
+  white-space: nowrap;
+}
+
 .wayRule {
   order: 3;
   flex-basis: 100%;

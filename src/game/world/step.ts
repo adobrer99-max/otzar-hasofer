@@ -997,6 +997,7 @@ function stepRooms(world: World): void {
    * which is in `closes` below, so `seal` never writes the door back.
    */
   if (room.held === undefined) room.held = holding.length;
+  room.standing = holding.length;
   const balance = ruleOf(world)?.roomsBalance;
   if (
     balance &&

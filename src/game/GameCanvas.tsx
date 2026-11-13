@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { ruleStatus } from "./rungRules";
 import type { Grace, Verb } from "./abilities";
 import type { Effect } from "./items";
 import type { Keeping } from "./relics";
@@ -59,6 +60,8 @@ export interface HudSample {
   orGathered: number;
   veilings: number;
   marksSet: number;
+  /** Where the rung's own rule stands, in a line — see `ruleStatus`. */
+  rule?: string;
 }
 
 /**
@@ -350,6 +353,7 @@ export function GameCanvas({
           orGathered: world.orGathered,
           veilings: world.veilings,
           marksSet: world.marksSet,
+          rule: ruleStatus(world) ?? undefined,
         });
         used.current.clear();
       }

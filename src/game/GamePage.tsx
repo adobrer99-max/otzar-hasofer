@@ -1822,6 +1822,10 @@ export function GamePage() {
             <VesselBelt held={ascent.items ?? []} />
             {/* A word given, and whether it is still good. */}
             {vow && <VowMark offer={vow.offer} at={vow.at} now={hud} />}
+            {/* The rung's own rule, kept in sight for the length of the road.
+                Not a live region: on Gevurah's road it changes with every
+                throw, and would talk over what the world itself says. */}
+            {hud.rule && <span className={styles.hudRule}>{hud.rule}</span>}
           </div>
 
           <GameCanvas

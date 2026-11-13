@@ -383,6 +383,7 @@ function drawTile(
       break;
     case Tile.Ledge:
       drawLedge(ctx, tx, ty, x, y, palette);
+      if (foundedAt(world, tx, ty)) drawFounding(ctx, x, y, palette);
       break;
     case Tile.Water:
       drawWater(ctx, world, tx, ty, x, y, palette);
@@ -641,6 +642,43 @@ function drawMaskit(
   void world;
   void tx;
   void ty;
+}
+
+/**
+ * **A founded stone says it was founded.** On Yesod's road Bet lays a ledge
+ * that cannot be taken back, and it used to be drawn exactly as a bough the
+ * ground grew — so a Scribe could not tell their own work from the terrain,
+ * nor which ledges a second press would refuse. The ordinary ledge is drawn
+ * first and this is set into it: the placed stone's own letter, small, and a
+ * brighter standing edge.
+ *
+ * `world.placed` has no limit on that road, so the lookup is a set, rebuilt
+ * only when the list's length changes — a founded stone never leaves it.
+ */
+const foundedSets = new WeakMap<World, { size: number; at: Set<number> }>();
+function foundedAt(world: World, tx: number, ty: number): boolean {
+  if (world.placed.length === 0) return false;
+  let cache = foundedSets.get(world);
+  if (!cache || cache.size !== world.placed.length) {
+    cache = {
+      size: world.placed.length,
+      at: new Set(world.placed.map((s) => s.y * world.width + s.x)),
+    };
+    foundedSets.set(world, cache);
+  }
+  return cache.at.has(ty * world.width + tx);
+}
+
+function drawFounding(ctx: CanvasRenderingContext2D, x: number, y: number, palette: Palette): void {
+  stamp(ctx, `founded|${paletteKey(palette)}`, x, y, (c) => {
+    c.strokeStyle = palette.goldBright;
+    c.lineWidth = 2;
+    c.beginPath();
+    c.moveTo(0, 3);
+    c.lineTo(TILE_SIZE, 3);
+    c.stroke();
+    glyph(c, "ב", TILE_SIZE / 2, 13, 9, palette.goldBright);
+  });
 }
 
 function drawPlacedStone(ctx: CanvasRenderingContext2D, x: number, y: number, palette: Palette): void {

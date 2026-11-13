@@ -362,3 +362,57 @@ export function ruleOfWay(
 export function ruleOf(world: { toward?: SefirahId }): RungRule | null {
   return world.toward ? rungRule(world.toward) : null;
 }
+
+/** What `ruleStatus` reads — the world's own fields, named structurally. */
+export interface RuledGround {
+  toward?: SefirahId;
+  placed: readonly unknown[];
+  marksThrown: number;
+  inSealedRoom: boolean;
+  revealed: boolean;
+  roomIndex: number;
+  rooms: readonly { held?: number; standing?: number; balanced?: boolean }[];
+}
+
+/**
+ * **Where the rule stands, right now, in one short line** — for the HUD.
+ *
+ * A rule is said on the map and again on arriving, and then for the length of
+ * a whole road nothing kept it in sight: how many marks were left, what a room
+ * still asked, how many stones had been founded. A rule the Scribe cannot see
+ * is one they cannot keep on purpose (the vow mark's lesson, exactly).
+ *
+ * Every number comes off the rule's own knob or the world's own count — none
+ * is repeated here as a literal. `null` where there is nothing worth a line.
+ */
+export function ruleStatus(world: RuledGround): string | null {
+  const rule = ruleOf(world);
+  if (!rule) return null;
+  if (rule.marksRationed) {
+    const left = rule.marksRationed.count - world.marksThrown;
+    return left > 0 ? `${left} ${left === 1 ? "mark" : "marks"} left` : "The ration is spent";
+  }
+  if (rule.stonesFounded) {
+    const n = world.placed.length;
+    return n > 0 ? `${n} ${n === 1 ? "stone" : "stones"} founded` : null;
+  }
+  if (rule.roomsBalance) {
+    const room = world.rooms[world.roomIndex];
+    if (!room || (room.held ?? 0) < 2) return null;
+    if (room.balanced) return "This room is in balance";
+    const held = room.held ?? 0;
+    const more = Math.ceil(held / 2) - (held - (room.standing ?? held));
+    return more > 0 ? `This room asks for ${more} more` : null;
+  }
+  if (rule.sealOpensTo) {
+    return world.inSealedRoom
+      ? `Kneel and give ${rule.sealOpensTo.price} light to open the way`
+      : null;
+  }
+  if (rule.liesLaidBare) {
+    return world.revealed ? "The Eye is open — the floor bears you" : "The floor's lies are shown";
+  }
+  if (rule.shrinesCold !== undefined) return "The shrines are cold";
+  if (rule.shrinesRelight !== undefined) return "A shrine here relights the lamps";
+  return null;
+}

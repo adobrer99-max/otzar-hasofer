@@ -170,3 +170,30 @@ describe("freed light remembers its shell", () => {
     expect(mote()).toBe(mote());
   });
 });
+
+/**
+ * **A founded stone is told apart from the ground** (Yesod's road). The tile
+ * is the same `Tile.Ledge` either way; the only difference is whether this
+ * hand laid it, which is `world.placed`.
+ */
+describe("a founded ledge", () => {
+  const scene = (founded: boolean, palette: Palette) => {
+    const world = buildRegion(2, 5);
+    world.entities = [];
+    world.husks = [];
+    const px = Math.floor((world.player.x + world.player.w / 2) / TILE_SIZE);
+    const py = Math.floor((world.player.y + world.player.h - 1) / TILE_SIZE) - 2;
+    setTile(world, px + 2, py, Tile.Ledge);
+    if (founded) world.placed.push({ x: px + 2, y: py });
+    const { ctx, log } = recorder();
+    drawWorld(ctx, world, { x: world.player.x - 200, y: 0 }, palette, 800, 450, []);
+    return log();
+  };
+
+  it("is drawn as its own picture on both grounds", () => {
+    for (const palette of [DARK, VELLUM]) {
+      expect(scene(true, palette)).not.toBe(scene(false, palette));
+      expect(scene(false, palette), "a terrain ledge must not vary").toBe(scene(false, palette));
+    }
+  });
+});
