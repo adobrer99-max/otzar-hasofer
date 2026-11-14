@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { regions, TOTAL_REGIONS } from "./regions";
-import { CROWN, sealKindOf, sealOffered } from "./sealing";
+import { CROWN, FOUNDATION, sealKindOf, sealOffered } from "./sealing";
 import type { SefirahId } from "../types/letter";
 
 const ALL = regions.map((r) => r.sefirah);
@@ -74,5 +74,53 @@ describe("which ending a sealed record holds", () => {
       const offered = sealOffered({ at: CROWN, sefirotLit: lit, guardiansBroken: [CROWN] });
       expect(sealKindOf({ sefirotLit: lit })).toBe(offered);
     }
+  });
+});
+
+/**
+ * **The third ending — a first ascent, out in peace** (P15-6). Offered only
+ * to a climb frozen as a first ascent, only standing on the Foundation, only
+ * once the Foundation is lit; and never instead of an ending already earned.
+ */
+describe("the first ascent goes out in peace", () => {
+  const first = (over: Partial<Parameters<typeof sealOffered>[0]> = {}) => ({
+    at: FOUNDATION,
+    sefirotLit: ["malchut", FOUNDATION] as SefirahId[],
+    guardiansBroken: [FOUNDATION] as SefirahId[],
+    firstAscent: true,
+    ...over,
+  });
+
+  it("is offered at a lit Foundation, to a first ascent", () => {
+    expect(sealOffered(first())).toBe("peace");
+  });
+
+  it("is not offered to any other climb standing in the same place", () => {
+    expect(sealOffered(first({ firstAscent: false }))).toBeUndefined();
+    expect(sealOffered(first({ firstAscent: undefined }))).toBeUndefined();
+  });
+
+  it("waits for the Foundation to be lit, and is offered nowhere else", () => {
+    expect(sealOffered(first({ sefirotLit: ["malchut"] }))).toBeUndefined();
+    expect(sealOffered(first({ at: "malchut" }))).toBeUndefined();
+    expect(sealOffered(first({ at: "hod" }))).toBeUndefined();
+  });
+
+  it("gives way to the endings above it — a first ascent may be carried on", () => {
+    expect(sealOffered(first({ sefirotLit: ALL }))).toBe("kindled");
+    expect(sealOffered(first({ at: CROWN, guardiansBroken: [CROWN] }))).toBe("crown");
+  });
+
+  it("is not refused by the tablets, which are about the crown", () => {
+    expect(sealOffered(first(), { kindledOnly: true })).toBe("peace");
+  });
+
+  it("is read back off the record, and old records read as they always did", () => {
+    expect(sealKindOf({ firstAscent: true, at: FOUNDATION, sefirotLit: [FOUNDATION] })).toBe("peace");
+    expect(sealKindOf({ firstAscent: true, at: CROWN, sefirotLit: [] })).toBe("crown");
+    expect(sealKindOf({ firstAscent: true, at: FOUNDATION, sefirotLit: ALL })).toBe("kindled");
+    // No flag: sealed before the third ending existed, wherever it stood.
+    expect(sealKindOf({ at: FOUNDATION, sefirotLit: [FOUNDATION] })).toBe("crown");
+    expect(sealKindOf({ sefirotLit: [] })).toBe("crown");
   });
 });

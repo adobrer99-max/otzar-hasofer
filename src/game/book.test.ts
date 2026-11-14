@@ -63,6 +63,22 @@ describe("the pages", () => {
     expect(lastSealed(pages.map((p) => climb({ id: p.id, sealedAt: p.sealedAt })))?.id).toBe("new");
   });
 
+  it("writes a first ascent gone out in peace as its own page, with no plea", () => {
+    const sealedAt = "2026-01-01T00:00:00.000Z";
+    const peace = climb({
+      sealedAt, firstAscent: true, at: "yesod", sefirotLit: ["yesod"],
+      // Carrying the Mouth and a House met: a crown would have heard a plea.
+      lettersHeld: ["peh"], housesMet: ["anything"],
+    });
+    const [page] = pagesOf([peace]);
+    expect(page.ending).toBe("peace");
+    expect(page.plea).toBeUndefined();
+    expect(page.witnesses).toEqual([]);
+    expect(timesStood([peace])).toEqual({});
+    expect(tally([peace]).sealed).toBe(1);
+    expect(tally([peace]).kindled).toBe(0);
+  });
+
   it("tells the two endings apart by the one thing that distinguishes them", () => {
     const crown = pagesOf([climb({ sealedAt: "2026-01-01T00:00:00.000Z" })])[0];
     const lit = pagesOf([

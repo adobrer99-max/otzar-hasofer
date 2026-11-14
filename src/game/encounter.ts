@@ -32,7 +32,18 @@ import type { Grace } from "./abilities";
  * finishing.
  */
 export function sealedCount(ascents: readonly AscentRecord[]): number {
-  return ascents.filter((a) => a.sealedAt).length;
+  // **Nor is a first ascent** (P15-6), whatever ending it reached: it was
+  // played under no Encounter, so counting it would skip the First.
+  return ascents.filter((a) => a.sealedAt && !a.firstAscent).length;
+}
+
+/**
+ * Whether the next climb begun is a **first ascent**: no climb has ever been
+ * sealed. A climb put down or gone out of leaves the next one a first ascent
+ * still; any seal at all — including a first ascent's own — ends it.
+ */
+export function isFirstAscent(ascents: readonly AscentRecord[]): boolean {
+  return !ascents.some((a) => a.sealedAt);
 }
 
 /**

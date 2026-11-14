@@ -57,6 +57,7 @@ import {
   illuminedBy,
   ruleByNumber,
   ruleOf,
+  isFirstAscent,
   sealedCount,
 } from "./encounter";
 import { getEncounterForReadingIndex } from "../data/encounters";
@@ -146,6 +147,7 @@ function endingOffered(ascent: AscentRecord, keeps: Keeping = {}): SealKind | un
       at: standingAt(ascent),
       sefirotLit: ascent.sefirotLit ?? [],
       guardiansBroken: ascent.guardiansBroken ?? [],
+      firstAscent: ascent.firstAscent,
     },
     keeps,
   );
@@ -412,9 +414,22 @@ export function GamePage() {
 
   // Which of the Seven Encounters this climb is. Past the seventh there is
   // none, and the ascent is simply beyond the unfolding order.
+  //
+  // **A first ascent is none of them** (P15-6). Its `encounterNumber` is
+  // undefined on purpose, and the fallback below would otherwise read that as
+  // "the First" and play a beginner's climb under the First Encounter's rule.
+  // `nextIsFirst` is the same question asked of the climb not yet begun, for
+  // the Threshold.
+  const open = ascent && !ascent.sealedAt ? ascent : undefined;
+  const nextIsFirst = !open && isFirstAscent(history);
   const encounter = useMemo(
-    () => encounterFor(ascent?.encounterNumber !== undefined ? ascent.encounterNumber - 1 : sealedBefore),
-    [ascent?.encounterNumber, sealedBefore],
+    () =>
+      open?.firstAscent || nextIsFirst
+        ? undefined
+        : encounterFor(
+            open?.encounterNumber !== undefined ? open.encounterNumber - 1 : sealedBefore,
+          ),
+    [open?.firstAscent, open?.encounterNumber, nextIsFirst, sealedBefore],
   );
   encounterRef.current = encounter;
 
@@ -637,7 +652,7 @@ export function GamePage() {
    * has its own instrument in `world/curve.test.ts`.
    */
   const newRecord = useCallback(
-    (variant = 0): AscentRecord => {
+    (variant = 0, first = false): AscentRecord => {
       const now = new Date().toISOString();
       // The variant re-reads the calendar rather than reusing the memoed
       // `time`, because the seed is `hash(label#variant)` and only this call
@@ -665,10 +680,14 @@ export function GamePage() {
         regionsCleared: [],
         housesMet: [],
         ascendantLetterId: time.ascendantLetterId,
-        encounterNumber: encounterFor(sealedBefore)?.number,
+        // **A first ascent is frozen as one here**, and is played under no
+        // Encounter — see `SealKind`'s `"peace"`. Decided by the caller from
+        // the list it has just read off storage, never from page state.
+        ...(first ? { firstAscent: true as const } : {}),
+        encounterNumber: first ? undefined : encounterFor(sealedBefore)?.number,
         // Only past the seven, and only if one was picked — inside them the
         // unfolding order is not a choice, and `ruleOf` would ignore it anyway.
-        ruleNumber: beyondTheSeven(sealedBefore) ? chosenRule : undefined,
+        ruleNumber: !first && beyondTheSeven(sealedBefore) ? chosenRule : undefined,
         // Filtered rather than trusted: `carried` drops anything not actually
         // found, anything the table no longer names, and anything past the
         // third. What is written down is what will be carried.
@@ -704,7 +723,7 @@ export function GamePage() {
         await saveAscent(closed).catch(() => undefined);
       }
       const todays = all.filter((a) => a.seedLabel === time.seedLabel);
-      const record = newRecord(todays.length);
+      const record = newRecord(todays.length, isFirstAscent(all));
       persist(record);
       setWorld(null);
       setWalking(null);
@@ -1504,15 +1523,22 @@ export function GamePage() {
       // the record keeping what was shown.
       const next: AscentRecord = {
         ...prev,
-        ...endingOf(prev.lettersHeld, prev.housesMet),
+        // No plea is frozen on a first ascent gone out in peace: the plea is
+        // the crown's, and nobody stood there to make it.
+        ...(sealKindOf(prev) === "peace" ? {} : endingOf(prev.lettersHeld, prev.housesMet)),
         sealedAt: new Date().toISOString(),
       };
       // Written, then read back — so the Book has the climb that just ended in
       // it, rather than everything up to but not including the one the Scribe
-      // is standing in the middle of.
+      // is standing in the middle of. And the count of sealed climbs with it:
+      // left as it was at load, the Threshold went on naming the Encounter
+      // that had just ended, and the next Begin was written under it.
       void saveAscent(next)
         .then(listAscents)
-        .then(setHistory)
+        .then((all) => {
+          setHistory(all);
+          setSealedBefore(sealedCount(all));
+        })
         .catch(() => undefined);
       return next;
     });
@@ -1733,6 +1759,7 @@ export function GamePage() {
           last={lastSealed(history)}
           time={time}
           encounter={encounter}
+          firstAscent={nextIsFirst}
           taught={allLearned(taught)}
           audio={audio}
           hasBook={history.length > 0}
@@ -2054,6 +2081,7 @@ function Threshold({
   last,
   time,
   encounter,
+  firstAscent,
   taught,
   audio,
   hasBook,
@@ -2069,6 +2097,8 @@ function Threshold({
   last: ReturnType<typeof lastSealed>;
   time: ReturnType<typeof readAscentTime>;
   encounter: ReturnType<typeof encounterFor>;
+  /** The climb about to begin is a first ascent — no climb has been sealed. */
+  firstAscent: boolean;
   /** Whether this Scribe has been through the opening lessons before. */
   taught: boolean;
   /** So the score can be offered once, to whoever has never answered. */
@@ -2126,8 +2156,9 @@ function Threshold({
             from before any of that existed still has one, derived. */}
         {last && (
           <p className={styles.startLast}>
-            Last time: {last.ending === "kindled" ? "the Tree stood lit" : "you reached the crown"},
-            and {PLEA_NAMED[last.plea].short}.
+            {last.ending === "peace" || !last.plea
+              ? "Last time: you went up to the Foundation, lit it, and came out in peace."
+              : `Last time: ${last.ending === "kindled" ? "the Tree stood lit" : "you reached the crown"}, and ${PLEA_NAMED[last.plea].short}.`}
           </p>
         )}
 
@@ -2147,12 +2178,26 @@ function Threshold({
         )}
 
         <p className={styles.startDay}>
-          {time.seedLabel} · {encounter ? encounterTitle(encounter) : "Beyond the seven"}
+          {time.seedLabel} ·{" "}
+          {firstAscent
+            ? "The first ascent"
+            : encounter
+              ? encounterTitle(encounter)
+              : "Beyond the seven"}
         </p>
+        {/* **A first ascent is told what it may be** — short, and under no
+            Encounter. Said here because it is a fact about the climb about to
+            begin; the map says it again once the Scribe is standing on it. */}
+        {firstAscent && (
+          <p className={styles.startLast}>
+            To the Foundation, and out in peace: kindle Yesod and this climb may end there. Go
+            further if you wish — the Seven Encounters begin with the climb after it.
+          </p>
+        )}
         {/* Inside the seven the rule is stated; past them it is chosen, and
             the chooser states it. */}
-        {encounter && <TheRule rule={ruleOf({ encounterNumber: encounter.number })} />}
-        {!encounter && <TheDay chosen={chosenRule} onChoose={onChooseRule} />}
+        {!firstAscent && encounter && <TheRule rule={ruleOf({ encounterNumber: encounter.number })} />}
+        {!firstAscent && !encounter && <TheDay chosen={chosenRule} onChoose={onChooseRule} />}
         {/* Offered only once there is something to choose between. A Scribe who
             has never opened a chamber is shown nothing, for the same reason the
             Book is not offered until something is written in it. */}
@@ -3969,21 +4014,28 @@ function SealedPlate({
    * cannot buy that — so the two remain genuinely different climbs, and the
    * plate says which one this was.
    */
-  const byKindling = sealKindOf(ascent) === "kindled";
+  const kind = sealKindOf(ascent);
+  const byKindling = kind === "kindled";
+  // **The third ending** (P15-6): a first ascent, out in peace from a lit
+  // Foundation. No Encounter stood over it and no plea is made — the plea is
+  // the crown's — so those two blocks below are simply not there.
+  const inPeace = kind === "peace";
   const walked = (ascent.pathsWalked ?? []).length;
   return (
     <>
       <p className={styles.plateKicker}>
-        {byKindling ? "The Tree stands lit" : "You present yourself"}
+        {inPeace ? "You go out in peace" : byKindling ? "The Tree stands lit" : "You present yourself"}
       </p>
       <h2 className={styles.plateTitle}>
-        {byKindling ? "All ten are kindled" : "The crown is reached"}
+        {inPeace ? "The Foundation is lit" : byKindling ? "All ten are kindled" : "The crown is reached"}
       </h2>
       <p className={`${styles.plateHeb} hebrew`} lang="he">
-        {byKindling ? "עֵץ הַחַיִּים" : "כתר"}
+        {inPeace ? "יסוד" : byKindling ? "עֵץ הַחַיִּים" : "כתר"}
       </p>
       <p className={styles.plateUse}>
-        {byKindling
+        {inPeace
+          ? `You came up out of the kingdom, broke what held the Foundation, and lit it — carrying ${found} of the twenty-two letters. A first ascent may end here: entered in peace, and left in peace. The Tree above is where it was, and the Seven Encounters begin with the climb after this one. Or go on — "Not yet" leaves everything as it stands.`
+          : byKindling
           ? `Every Sefirah on the Tree is burning, and you paid for all of it out of what you gathered walking ${walked} paths. ${
               all
                 ? "All twenty-two letters are in your hand as well."
@@ -4089,7 +4141,7 @@ function SealedPlate({
         )}
       </dl>
 
-      {encounter && (
+      {encounter && !inPeace && (
         <>
           <DecoratedRule />
           <p className={styles.plateKicker}>{encounterTitle(encounter)}</p>
@@ -4099,16 +4151,20 @@ function SealedPlate({
         </>
       )}
 
-      <DecoratedRule />
-      {/* What the whole climb was for. The Mouth is required and its absence is
-          the one thing a climb that arrived can still get wrong — the ascent
-          seals either way, the case simply is not made. */}
-      <p className={styles.plateKicker}>{plea.kicker}</p>
-      {plea.lines.map((line) => (
-        <p key={line.slice(0, 24)} className={plea.kind === "mute" ? styles.pleaMute : styles.plea}>
-          {line}
-        </p>
-      ))}
+      {!inPeace && (
+        <>
+          <DecoratedRule />
+          {/* What the whole climb was for. The Mouth is required and its absence
+              is the one thing a climb that arrived can still get wrong — the
+              ascent seals either way, the case simply is not made. */}
+          <p className={styles.plateKicker}>{plea.kicker}</p>
+          {plea.lines.map((line) => (
+            <p key={line.slice(0, 24)} className={plea.kind === "mute" ? styles.pleaMute : styles.plea}>
+              {line}
+            </p>
+          ))}
+        </>
+      )}
 
       {/* "Stood for you" is a claim about testimony, and a Scribe who arrives
           without a mouth got none — the Houses were met and then could not be
@@ -4129,12 +4185,15 @@ function SealedPlate({
         </div>
       )}
       <p className={styles.plateDerivation}>
-        {ascent.or} light carried · {witnesses.length} of {WITNESSES_POSSIBLE} Houses{" "}
-        {plea.kind === "mute" ? "met on the way" : "stood for you"} · seeded by {ascent.seedLabel}.
+        {ascent.or} light carried ·{" "}
+        {inPeace
+          ? `${witnesses.length} of ${WITNESSES_POSSIBLE} Houses met on the way`
+          : `${witnesses.length} of ${WITNESSES_POSSIBLE} Houses ${plea.kind === "mute" ? "met on the way" : "stood for you"}`}{" "}
+        · seeded by {ascent.seedLabel}.
       </p>
       <div className={styles.plateActions}>
         <Button variant="primary" onClick={onSeal} autoFocus>
-          Seal the ascent
+          {inPeace ? "Go out in peace" : "Seal the ascent"}
         </Button>
         <Button onClick={onClose}>Not yet</Button>
       </div>

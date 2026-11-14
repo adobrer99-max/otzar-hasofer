@@ -29,18 +29,43 @@ import type { SefirahId } from "../types/letter";
  * lever — advancing only on a kindled seal — needs no schema change if it is
  * ever wanted, since which ending a record holds is derivable from
  * `sefirotLit` and nothing else.
+ *
+ * **There is a third ending now, and it is the exception**: a first ascent
+ * may go out in peace from a lit Foundation, and a first ascent never
+ * advances the Seven by any ending. See `"peace"` below.
  */
 export type SealKind =
   /** Every Sefirah on the Tree is burning. The consummation. */
   | "kindled"
   /** Standing on a crown nothing is holding, with a case to make. */
-  | "crown";
+  | "crown"
+  /**
+   * **A first ascent, gone out in peace from a lit Foundation** (P15-6).
+   *
+   * The two endings above are a first session's whole arc at the least, and
+   * until this one they were also the only way a first climb could end — so a
+   * Scribe still learning which key writes was spending the First Encounter
+   * to do it. A climb begun with no sealed climb behind it is a *first
+   * ascent*: it is played under no Encounter, and once Yesod is kindled it
+   * may be sealed there. It is offered, never forced — the Tree above stays
+   * open, and a first ascent carried on to the crown seals as the crown.
+   *
+   * **It does not advance the Seven**, whichever ending it reaches: it was
+   * played under none of them, and counting it would skip the First. That
+   * rule lives in `sealedCount` (`encounter.ts`).
+   */
+  | "peace";
+
+/** Where a first ascent may go out in peace. */
+export const FOUNDATION: SefirahId = "yesod";
 
 export interface Standing {
   /** Where the Scribe is on the Tree. */
   at: SefirahId;
   sefirotLit: readonly SefirahId[];
   guardiansBroken: readonly SefirahId[];
+  /** This climb is a first ascent — see `SealKind`'s `"peace"`. */
+  firstAscent?: boolean;
 }
 
 /** The crown itself — the one Sefirah the second ending is offered at. */
@@ -70,6 +95,15 @@ export function sealOffered(
   keeps: { kindledOnly?: boolean } = {},
 ): SealKind | undefined {
   if (new Set(standing.sefirotLit).size >= TOTAL_REGIONS) return "kindled";
+  // Before the tablets' refusal, which is about the crown: a first ascent
+  // carries no reliquary, and its way out is not a shortcut to anything.
+  if (
+    standing.firstAscent &&
+    standing.at === FOUNDATION &&
+    standing.sefirotLit.includes(FOUNDATION)
+  ) {
+    return "peace";
+  }
   if (keeps.kindledOnly) return undefined;
   if (standing.at === CROWN && standing.guardiansBroken.includes(CROWN)) return "crown";
   return undefined;
@@ -78,9 +112,18 @@ export function sealOffered(
 /**
  * Which ending a *sealed* record holds — the same question asked backwards, of
  * history rather than of a standing Scribe. Every record ever written can be
- * read this way, including the ones sealed before the crown ending existed,
- * because it reads nothing but `sefirotLit`.
+ * read this way, including the ones sealed before the crown ending existed:
+ * it reads `sefirotLit`, and for the third ending the two fields that say a
+ * first ascent was sealed off the crown.
  */
-export function sealKindOf(record: { sefirotLit?: readonly SefirahId[] }): SealKind {
-  return new Set(record.sefirotLit ?? []).size >= TOTAL_REGIONS ? "kindled" : "crown";
+export function sealKindOf(record: {
+  sefirotLit?: readonly SefirahId[];
+  firstAscent?: boolean;
+  at?: SefirahId;
+}): SealKind {
+  if (new Set(record.sefirotLit ?? []).size >= TOTAL_REGIONS) return "kindled";
+  // Still derived, never stored: the crown ending can only be sealed standing
+  // on the crown, so a first ascent sealed anywhere else went out in peace.
+  // A record from before the flag existed has none and reads as it always did.
+  return record.firstAscent && record.at !== CROWN ? "peace" : "crown";
 }

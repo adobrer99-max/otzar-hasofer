@@ -47,7 +47,8 @@ export interface BookPage {
   sealedAt: string;
   /** Which ending: a lit Tree, or a crown taken out of what held it. */
   ending: SealKind;
-  plea: PleaKind;
+  /** Absent on a first ascent gone out in peace — no plea was made. */
+  plea?: PleaKind;
   /** Which Houses stood — one per Sefirah, however many of its cards were met. */
   witnesses: SefirahId[];
   /** The route, in the order it was walked. Drawable on a small Tree. */
@@ -89,10 +90,17 @@ export function pagesOf(ascents: readonly AscentRecord[]): BookPage[] {
     .map((a) => {
       // Frozen if the record has it, derived if it is old enough not to — the
       // same function `sealAscent` freezes from, so the two cannot disagree.
+      const ending = sealKindOf(a);
+      // **A first ascent gone out in peace made no plea** — the plea is the
+      // crown's, and it was not stood at. Deriving one here would hand a
+      // beginner who happened to carry the Mouth the "whole" mark for a case
+      // nobody heard.
       const frozen =
-        a.endingPlea && a.witnessSefirot
-          ? { plea: a.endingPlea, witnessSefirot: a.witnessSefirot }
-          : endingOf(a.lettersHeld, a.housesMet);
+        ending === "peace"
+          ? { plea: undefined, witnessSefirot: [] }
+          : a.endingPlea && a.witnessSefirot
+            ? { plea: a.endingPlea, witnessSefirot: a.witnessSefirot }
+            : endingOf(a.lettersHeld, a.housesMet);
       return {
         id: a.id,
         seedLabel: a.seedLabel,
@@ -100,7 +108,7 @@ export function pagesOf(ascents: readonly AscentRecord[]): BookPage[] {
           .map((id) => festivalsById[id]?.name)
           .filter((name): name is string => Boolean(name)),
         sealedAt: a.sealedAt,
-        ending: sealKindOf(a),
+        ending,
         plea: frozen.plea,
         witnesses: [...frozen.witnessSefirot],
         route: [...(a.pathsWalked ?? [])],
@@ -251,7 +259,7 @@ export function timesStood(ascents: readonly AscentRecord[]): Record<string, num
      * whole collection to a Scribe who never once carried Peh, which is the
      * exact opposite of what standing is supposed to mean.
      */
-    if (page.plea === "mute") continue;
+    if (page.plea === undefined || page.plea === "mute") continue;
     for (const sefirah of page.witnesses) stood[sefirah] = (stood[sefirah] ?? 0) + 1;
   }
   return stood;

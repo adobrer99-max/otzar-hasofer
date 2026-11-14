@@ -617,6 +617,59 @@ describe("the dash — the shortest honest route to a freed Keter", () => {
   }, 900000);
 });
 
+describe("the first ascent — to the Foundation, and out in peace", () => {
+  /**
+   * The number the third ending stands on (P15-6): from a fresh kingdom and
+   * an empty hand, walk up to Yesod, break what holds it, and be carrying the
+   * light Yesod asks to be kindled. That is the whole of a first ascent, and
+   * the ending is only worth offering if a beginner's hands can get there.
+   *
+   * Asserted as a share of the pool, as the dash is and for its reason — the
+   * probe stalls on ground a person crosses — with a walk cap far below the
+   * dash's, because this is meant to be a first sitting and not an evening.
+   *
+   * **Measured over the three pools of four: twelve of twelve.** Eight lit
+   * the Foundation on the first walk with no fall, arriving with 22–35 light
+   * against the sixteen Yesod asks; the worst took six walks and one fall.
+   * The bar is "all but one", a seed clear of what was measured.
+   */
+  const FIRST_CAP = 16;
+
+  it("lights the Foundation from an empty hand, in a first sitting", () => {
+    const stood: string[] = [];
+    const lost: string[] = [];
+    const price = kindleCost(regionOfSefirah("yesod").index);
+    for (const seed of SEEDS) {
+      const ledger = fresh();
+      let stopped: string | undefined;
+      if (!reach(ledger, "yesod", seed, FIRST_CAP)) stopped = "Yesod was never reached";
+      if (!stopped) {
+        let freed = fightHere(ledger, seed);
+        for (let retry = 0; retry < 3 && !freed && ledger.walks < FIRST_CAP; retry += 1) {
+          if (!reach(ledger, "yesod", seed, FIRST_CAP)) break;
+          freed = fightHere(ledger, seed);
+        }
+        if (!freed) stopped = `the Foundation's guardian was not broken (${ledger.falls} falls)`;
+      }
+      // Short of the price: walk for it and come back, as a player would.
+      while (!stopped && ledger.or < price && ledger.walks < FIRST_CAP) {
+        gather(ledger, seed);
+        if (!reach(ledger, "yesod", seed, FIRST_CAP)) stopped = "the way back to Yesod was lost";
+      }
+      if (!stopped && ledger.or < price) stopped = `only ${ledger.or} light of the ${price} Yesod asks`;
+      const told =
+        `seed ${seed}: ${ledger.walks} walks, ${ledger.falls} falls, ` +
+        `${ledger.ticks} ticks, ${ledger.or} light`;
+      (stopped ? lost : stood).push(stopped ? `${told} — stopped: ${stopped}` : told);
+    }
+    const report = [...stood, ...lost].join("\n  ");
+    expect(
+      stood.length,
+      `only ${stood.length} of ${SEEDS.length} first ascents lit the Foundation:\n  ${report}`,
+    ).toBeGreaterThanOrEqual(SEEDS.length - 1);
+  }, 900000);
+});
+
 describe("the tour — all ten freed and kindled, the consummation", () => {
   /**
    * The 300-light ending, played rather than priced. Policy is the measured

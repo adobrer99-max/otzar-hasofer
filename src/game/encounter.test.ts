@@ -11,6 +11,7 @@ import {
   ruleOf,
   rulesFor,
   beyondTheSeven,
+  isFirstAscent,
   sealedCount,
   VEIL_COST,
   type EncounterRule,
@@ -206,6 +207,30 @@ describe("which Encounter a climb belongs to", () => {
     const crowned = { falls: 4, sealedAt: "2026-01-01" } as never;
     expect(sealedCount([fell, fell, fell])).toBe(0);
     expect(sealedCount([fell, crowned, fell])).toBe(1);
+  });
+
+  /**
+   * **Nor is a first ascent** (P15-6), whichever ending it reached: it was
+   * played under no Encounter, so the climb after it is the First.
+   */
+  it("is not advanced by a first ascent, in peace or carried on to the crown", () => {
+    const peace = { firstAscent: true, sealedAt: "2026-01-01", at: "yesod" } as never;
+    const carriedOn = { firstAscent: true, sealedAt: "2026-01-01", at: "keter" } as never;
+    const crowned = { sealedAt: "2026-02-01" } as never;
+    expect(sealedCount([peace])).toBe(0);
+    expect(sealedCount([carriedOn])).toBe(0);
+    expect(encounterFor(sealedCount([peace]))?.number).toBe(1);
+    expect(sealedCount([peace, crowned])).toBe(1);
+  });
+
+  it("calls a climb a first ascent until any climb at all has been sealed", () => {
+    const open = {} as never;
+    const putDown = { abandonedAt: "2026-01-01" } as never;
+    const fell = { falls: 3 } as never;
+    expect(isFirstAscent([])).toBe(true);
+    expect(isFirstAscent([open, putDown, fell])).toBe(true);
+    expect(isFirstAscent([{ firstAscent: true, sealedAt: "2026-01-01" } as never])).toBe(false);
+    expect(isFirstAscent([{ sealedAt: "2026-01-01" } as never])).toBe(false);
   });
 
   it("names each Encounter by its Day", () => {

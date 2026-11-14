@@ -60,8 +60,8 @@ export function Book({ ascents, onClose }: { ascents: readonly AscentRecord[]; o
 
         {pages.length === 0 && totals.abandoned === 0 ? (
           <p className={styles.empty}>
-            Nothing is written here yet. Carry a climb to its ending — the crown, or all ten
-            kindled — and it will be.
+            Nothing is written here yet. Carry a climb to its ending — out in peace from the
+            Foundation on a first ascent, the crown, or all ten kindled — and it will be.
           </p>
         ) : (
           <p className={styles.tally}>
@@ -272,7 +272,7 @@ export function Book({ ascents, onClose }: { ascents: readonly AscentRecord[]; o
 
 /** One sealed climb: how it ended, what it was carrying, and the way it went. */
 function Page({ page }: { page: BookPage }) {
-  const plea = PLEA_NAMED[page.plea];
+  const plea = page.plea ? PLEA_NAMED[page.plea] : undefined;
   const encounter = page.encounterNumber
     ? getEncounterForReadingIndex(page.encounterNumber - 1)
     : undefined;
@@ -289,9 +289,13 @@ function Page({ page }: { page: BookPage }) {
           {encounter && ` · ${encounterTitle(encounter)}`}
         </p>
         <p className={styles.pageEnding}>
-          {page.ending === "kindled" ? "All ten kindled" : "The crown reached"} — {plea.title}
+          {page.ending === "peace"
+            ? "Out in peace — the first ascent"
+            : `${page.ending === "kindled" ? "All ten kindled" : "The crown reached"} — ${plea?.title ?? ""}`}
         </p>
-        <p className={styles.pageShort}>{plea.short}</p>
+        <p className={styles.pageShort}>
+          {plea ? plea.short : "To the Foundation and out again, with nothing pleaded and nothing owed."}
+        </p>
         <p className={styles.pageFacts}>
           {page.lettersHeld.length} of 22 letters · {many(page.route.length, "path")} ·{" "}
           {page.sefirotLit.length} kindled · {many(page.guardiansBroken.length, "guardian")} broken

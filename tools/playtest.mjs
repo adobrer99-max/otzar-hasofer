@@ -1530,6 +1530,91 @@ const SCRIPTS = [
     check: mustRaise("word-result", "the ladder never reached the word"),
   },
   {
+    name: "first-ascent",
+    about: "P15-6 — a first ascent at a lit Foundation goes out in peace, and the next climb is the First Encounter.",
+    /**
+     * Seeded rather than played: the record is a first ascent standing on a
+     * kindled Yesod, which is the whole precondition. What is walked is the
+     * ending itself — the map offers it, Escape on the plate does not take
+     * it, taking it writes `sealedAt` and no plea, and the Threshold it
+     * returns to names the First Encounter rather than a second first ascent.
+     */
+    warp: {},
+    enter: async (page) => {
+      const records = () =>
+        page.evaluate(async () => {
+          const req = indexedDB.open("otzar-hasofer");
+          const db = await new Promise((res, rej) => {
+            req.onsuccess = () => res(req.result);
+            req.onerror = () => rej(req.error);
+          });
+          return await new Promise((res) => {
+            const r = db.transaction("ascents", "readonly").objectStore("ascents").getAll();
+            r.onsuccess = () => res(r.result);
+          });
+        });
+      await page.evaluate(async () => {
+        const req = indexedDB.open("otzar-hasofer");
+        const db = await new Promise((res, rej) => {
+          req.onsuccess = () => res(req.result);
+          req.onerror = () => rej(req.error);
+        });
+        const now = new Date().toISOString();
+        const tx = db.transaction("ascents", "readwrite");
+        const store = tx.objectStore("ascents");
+        store.clear();
+        store.put({
+          id: "playtest-first-ascent",
+          seed: 7,
+          seedLabel: "playtest",
+          createdAt: now,
+          updatedAt: now,
+          regionIndex: 2,
+          at: "yesod",
+          firstAscent: true,
+          pathsWalked: ["malchut-yesod"],
+          lettersHeld: ["aleph", "tav"],
+          or: 9,
+          regionsCleared: [1],
+          housesMet: [],
+          sefirotLit: ["yesod"],
+          guardiansBroken: ["yesod"],
+        });
+        await new Promise((res) => { tx.oncomplete = res; });
+      });
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(900);
+      const offer = page.getByRole("button", { name: /Go out in peace — the Foundation is lit/ });
+      if (!(await offer.count())) throw new Error("the map did not offer a first ascent its way out");
+      await offer.first().click();
+      await page.waitForTimeout(400);
+      if (!(await page.getByText("You go out in peace").count())) {
+        throw new Error("the plate that rose was not the third ending's");
+      }
+      await page.screenshot({ path: join(outDir, "first-ascent-plate.png") });
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(400);
+      if ((await records()).some((a) => a.sealedAt)) throw new Error("Escape sealed the first ascent");
+      await offer.first().click();
+      await page.waitForTimeout(400);
+      await page.getByRole("button", { name: "Go out in peace", exact: true }).click();
+      await page.waitForTimeout(900);
+      const [sealed] = (await records()).filter((a) => a.id === "playtest-first-ascent");
+      if (!sealed?.sealedAt) throw new Error("the first ascent was not sealed");
+      if (sealed.endingPlea) throw new Error("a plea was written for an ending nobody pleaded at");
+      const threshold = await page.locator("body").innerText();
+      if (!/First Encounter/.test(threshold)) {
+        throw new Error("the Threshold after a first ascent does not name the First Encounter");
+      }
+      if (/The first ascent/.test(threshold)) {
+        throw new Error("the Threshold offers a second first ascent");
+      }
+      await page.screenshot({ path: join(outDir, "first-ascent-threshold.png") });
+    },
+    until: () => true,
+    seconds: 20,
+  },
+  {
     name: "seal-not-yet",
     about: "Escape on the seal plate puts it down — it never seals the climb.",
     // The seal is the one irreversible act in the game, and Escape on its plate

@@ -403,13 +403,24 @@ export function TreeMap({
             )}
             {onSeal && (
               <button type="button" className={styles.sealButton} onClick={onSeal}>
-                {sealKind === "crown"
+                {sealKind === "peace"
+                  ? "Go out in peace — the Foundation is lit"
+                  : sealKind === "crown"
                   ? "Present yourself at the crown"
                   : "Seal the ascent — all ten are kindled"}
               </button>
             )}
           </div>
           </>
+        )}
+
+        {/* **A first ascent is told where it may end**, on the map it will be
+            ended from — until the Foundation is lit, after which the button
+            itself says so. */}
+        {ascent.firstAscent && !lit.includes("yesod") && (
+          <p className={styles.overworldHeld}>
+            A first ascent may end at the Foundation, once Yesod is kindled.
+          </p>
         )}
 
         {!freed && (
