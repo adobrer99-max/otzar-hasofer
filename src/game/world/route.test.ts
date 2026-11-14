@@ -14,6 +14,8 @@ import type { SefirahId } from "../../types/letter";
 import { buildPath, buildRegion, FLOOR_ROWS, verbsOf } from "./build";
 import { routeTo } from "./route";
 import { openWordGate } from "./step";
+import { layDown } from "../descent";
+import { letterIds, pathById } from "../tree";
 import { Tile, TILE_SIZE } from "./tiles";
 
 /**
@@ -333,4 +335,185 @@ describe("the way out, on the days that are not ordinary", () => {
     }
     expect(lost, lost.join(", ")).toEqual([]);
   });
+});
+
+/**
+ * **The way out, for a hand that only shrinks** — Chapter II's descent
+ * (`docs/chapter-ii.md`, `game/descent.ts`).
+ *
+ * Everything above this is taken for a Scribe whose alphabet grows: "holding
+ * only what the route there paid". The descent is the other population of
+ * worlds. It begins at the crown with a hand a sealed climb carried there and
+ * every road walked downward takes its own letter back, so the roads near the
+ * kingdom are built for hands no climb ever walked them with — late letters
+ * held, early ones gone.
+ *
+ * The builder should make this safe by construction: it lays only screens the
+ * hand can answer and only gates the hand can spell. That is exactly the kind
+ * of claim this file exists to measure rather than believe, and it is asked
+ * here **before any surface of the descent is built**, so that a no is an
+ * answer about a design and not about a shipped chapter.
+ *
+ * **Measured, and the answer is yes.** Ten starting hands (all twenty-two,
+ * the three-letter hand of the shortest crown, eight sampled climbs) by
+ * fourteen seeded descents each: 780 roads, 630 of them walked downward, on
+ * hands down to a single letter — none without a way out. 180 crossings, 162
+ * of them gated, every gate spellable by the hand that met it. 990 last
+ * roads into the kingdom on hands of nothing, one and two late letters —
+ * none lost. The bars below sit under those counts, not on them.
+ */
+describe("the way out, walked down with a shrinking hand", () => {
+  interface Leg {
+    path: TreePath;
+    from: SefirahId;
+    held: string[];
+  }
+
+  /** A road for this hand, walked from this end, with its gate left shut. */
+  const laid = (leg: Leg, seed: number) =>
+    buildPath(leg.path, seed, leg.held, 1, false, false, 1, [], 0, [], [], leg.from);
+
+  /**
+   * From the crown, any road out of wherever the Scribe stands — leaning
+   * downward three to one, but free to climb back or cross, since the design
+   * lets a descent do both — laying down as it goes, to the kingdom or a cap.
+   */
+  function descend(seed: number, hand: readonly string[], cap = 30): Leg[] {
+    const rng = makeRng(seed >>> 0);
+    let at: SefirahId = "keter";
+    let held = [...hand];
+    const legs: Leg[] = [];
+    for (let i = 0; i < cap && at !== "malchut"; i += 1) {
+      const out = pathsFrom(at);
+      const weighted = out.flatMap((p) =>
+        nodeOf[otherEnd(p, at)].row < nodeOf[at].row ? [p, p, p] : [p],
+      );
+      const path = weighted[randomInt(rng, weighted.length)];
+      legs.push({ path, from: at, held: [...held] });
+      held = layDown(held, path, at);
+      at = otherEnd(path, at);
+    }
+    return legs;
+  }
+
+  /** A hand a real climb could have carried to the crown: a seeded way up. */
+  function climbedHand(seed: number): string[] {
+    const rng = makeRng(seed >>> 0);
+    let at: SefirahId = "malchut";
+    const walked: string[] = [];
+    for (let i = 0; i < 60 && at !== "keter"; i += 1) {
+      const out = pathsFrom(at);
+      const path = out[randomInt(rng, out.length)];
+      walked.push(path.id);
+      at = otherEnd(path, at);
+    }
+    return lettersFrom(walked);
+  }
+
+  /** The hands descents are begun with: the richest, the poorest, and a spread. */
+  const SHORTEST = lettersFrom(["malchut-yesod", "yesod-tiferet", "tiferet-keter"]);
+  const HANDS: { name: string; hand: readonly string[] }[] = [
+    { name: "all twenty-two", hand: letterIds },
+    { name: "the shortest crown", hand: SHORTEST },
+    ...[11, 23, 37, 41, 53, 67, 79, 83].map((seed) => ({
+      name: `a climb (${seed})`,
+      hand: climbedHand(seed * 7919),
+    })),
+  ];
+
+  const sample = () =>
+    HANDS.flatMap(({ name, hand }) =>
+      Array.from({ length: 14 }, (_, i) => i + 1).flatMap((seed) =>
+        descend(seed * 104729, hand).map((leg) => ({ ...leg, seed, name })),
+      ),
+    );
+
+  it("starts from hands worth asking about", () => {
+    const sizes = HANDS.map((h) => h.hand.length);
+    expect(Math.max(...sizes)).toBe(22);
+    expect(Math.min(...sizes)).toBe(3);
+    // The sampled climbs are not all the same hand.
+    expect(new Set(HANDS.slice(2).map((h) => [...h.hand].sort().join(","))).size).toBeGreaterThan(4);
+  });
+
+  it("exists on every road, holding only what the descent has left", () => {
+    const lost: string[] = [];
+    const legs = sample();
+    const down = legs.filter((l) => nodeOf[otherEnd(l.path, l.from)].row < nodeOf[l.from].row);
+    for (const leg of legs) {
+      const world = laid(leg, leg.seed);
+      if (crossesAbyss(leg.path)) openWordGate(world, "The gate opens.");
+      if (!routeTo(world, verbsOf(leg.held)).usable) {
+        lost.push(
+          `${leg.path.id} from ${leg.from}, seed ${leg.seed}, ${leg.name}, holding ${leg.held.length}: [${leg.held.join(",")}]`,
+        );
+      }
+    }
+    expect(legs.length, "the descents walked nowhere").toBeGreaterThan(600);
+    expect(down.length, "the descents hardly went down").toBeGreaterThan(300);
+    expect(
+      lost.slice(0, 8),
+      `no way across ${lost.length} of ${legs.length} roads walked on the way down`,
+    ).toEqual([]);
+  }, 300000);
+
+  /**
+   * **A crossing can still be answered.** A road over the Abyss ends behind a
+   * Word-Gate, and the proof above opens it by hand, as the ascent's does. On
+   * the way up `chooseTarget` is only ever handed a growing alphabet. Handed a
+   * shrinking one it must still either ask for a root the hand can spell or
+   * lay no gate — a gate asking for a letter already laid down would end the
+   * descent on a road with no shrine.
+   */
+  it("never lays a gate on a crossing that the hand cannot spell", () => {
+    const unanswerable: string[] = [];
+    let crossings = 0;
+    let gated = 0;
+    for (const leg of sample()) {
+      if (!crossesAbyss(leg.path)) continue;
+      crossings += 1;
+      const target = laid(leg, leg.seed).wordGate;
+      if (!target) continue;
+      gated += 1;
+      const missing = target.letterIds.filter((id) => !leg.held.includes(id));
+      if (missing.length > 0) {
+        unanswerable.push(
+          `${leg.path.id} from ${leg.from}, seed ${leg.seed}, ${leg.name}: asks ${target.letterIds.join("+")}, missing ${missing.join("+")}`,
+        );
+      }
+    }
+    expect(crossings, "no crossing was sampled").toBeGreaterThan(60);
+    expect(gated, "no crossing sampled had a gate to answer").toBeGreaterThan(0);
+    expect(
+      unanswerable.slice(0, 8),
+      `${unanswerable.length} of ${gated} gates on the way down cannot be spelled`,
+    ).toEqual([]);
+  }, 300000);
+
+  /**
+   * **The last roads, for a hand with almost nothing in it.** The three roads
+   * into the kingdom are where a descent is poorest, and a long one arrives
+   * holding letters no climb would hold there. Zero, one and two letters,
+   * drawn from the *late* alphabet on purpose.
+   */
+  it("carries a nearly bare hand down the three roads into the kingdom", () => {
+    const lost: string[] = [];
+    const late = [...letterIds].slice(-6);
+    const hands: string[][] = [[], ...late.map((l) => [l]), ...late.slice(1).map((l, i) => [late[i], l])];
+    const into = ["malchut-yesod", "malchut-hod", "malchut-netzach"].map((id) => pathById[id]);
+    let walked = 0;
+    for (const path of into) {
+      for (const held of hands) {
+        for (let seed = 1; seed <= 30; seed += 1) {
+          walked += 1;
+          const world = laid({ path, from: path.ends[1], held }, seed);
+          if (!routeTo(world, verbsOf(held)).usable) {
+            lost.push(`${path.id} seed ${seed} holding [${held.join(",") || "nothing"}]`);
+          }
+        }
+      }
+    }
+    expect(walked).toBeGreaterThan(900);
+    expect(lost.slice(0, 8), `no way down ${lost.length} of ${walked} last roads`).toEqual([]);
+  }, 300000);
 });
