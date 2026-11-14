@@ -18,7 +18,8 @@ Commit only when all of it is green.
 
 Four test files measure the game rather than assert it: `src/game/world/fight.test.ts`,
 `src/game/world/curve.test.ts`, `src/game/world/climb.test.ts` and
-`src/game/economy.test.ts`. They draw their seeds from a pool chosen by
+`src/game/economy.test.ts`. A fifth, `src/game/world/descent.test.ts`, measures
+Chapter II's descent the same way and runs over the same pools. They draw their seeds from a pool chosen by
 `OTZAR_POOL` (unset, `1` or `2`). After a change to `src/game/world/step.ts`,
 the chunk library or anything the generator reads, run them over all three:
 

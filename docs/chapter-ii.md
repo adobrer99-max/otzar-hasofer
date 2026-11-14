@@ -353,15 +353,50 @@ describe a scrolling stage:
 7. *The stealth stage is crossed by hiding and by nothing else.* A probe that
    goes low and waits crosses it unseen; a probe that walks upright is found.
 
+### 6.1 What has been measured so far
+
+**C2-1 — no soft-lock (proved).** 780 roads over seeded descents from ten
+starting hands, 630 of them walked downward, on hands down to one letter: a
+way out on every one. 180 Abyss crossings, 162 gated: every gate spellable.
+990 last roads into the kingdom on nearly bare hands: none lost.
+(`src/game/world/route.test.ts`.)
+
+**C2-2 — it can be finished (measured, twelve seeds a cell).**
+(`src/game/world/descent.test.ts`.)
+
+| Route | Starting hand | Reached Malchut | Walks | Falls, all 12 |
+|---|---|---|---|---|
+| Short (3 roads) | all 22 | 11 of 12 | 3–7 | 8 |
+| Short | a climb's 16 | 12 of 12 | 3–6 | 3 |
+| Short | the shortest crown's 3 | 8 of 12 | 3–11 | 18 |
+| Long (all ten) | all 22 | 9 of 12 | 6–14 | 19 |
+| Long | a climb's 16 | 12 of 12 | 6–13 | 12 |
+| Long | the shortest crown's 3 | 5 of 12 | 6–21 | 37 |
+
+Three things this says, each a decision for the owner before C2-3:
+
+1. **The wall is at the top.** 39% of roads walked out of the crown put the
+   probe out; 3% of roads into the kingdom did. A descent opens on its hardest
+   road and ends on a walk. That is §3.3 working as written. If a descent
+   should get *harder* as the hand empties, the lever is where a road's
+   creatures come from when it is walked down.
+2. **A three-letter hand gets down about half the time.** A dash to the crown
+   makes a descent that often cannot be finished by the probe. Either that is
+   the price of dashing, or a descent should need a fuller page.
+3. **The price of drawing light down.** The long road gathers 94–318 light. At
+   Chapter I's kindling price that brings down 2–8 of the ten lights; at half
+   of it, 2–9. Neither price ever brought down all ten, so "the whole Tree is
+   brought down" (§3.6) is out of the probe's reach at both.
+
 ## 7. The roadmap
 
 Each slice ends green and is a place to stop. Part One ships on its own.
 
 | Slice | What it is | Risk |
 |---|---|---|
-| **C2-0** | The descent record: `chapter`, begun from a Book page at Keter with that page's letters. Pure rules and tests. | low |
-| **C2-1** | Laying down: walking a path downward removes its letter. The no-soft-lock proof over descending routes. | **Part One's main risk** |
-| **C2-2** | The descent probe, short road and long. First numbers. | **may send Part One back** |
+| **C2-0** ✅ | The descent record: `chapter`, begun from a Book page at Keter with that page's letters. Pure rules and tests. | low |
+| **C2-1** ✅ | Laying down: walking a path downward removes its letter. The no-soft-lock proof over descending routes. | **Part One's main risk** |
+| **C2-2** ✅ | The descent probe, short road and long. First numbers. | **may send Part One back** |
 | **C2-3** | Part One's surfaces: Threshold offer, map wording, "draw down", HUD. First playable descent. | low |
 | **C2-4** | Part One's ending: the plate, the Book's facing page, the floor of the kingdom opening onto a stage that is not there yet. | low |
 | **G-0** | **The engine spike.** A Galus world mode: held fire, eight-way aim, a spawner, a forward camera, a checkpoint — on one flat test stage with existing klipot. Answers whether the engine carries the genre. | **Part Two's main risk** |

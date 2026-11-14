@@ -5,6 +5,7 @@ import {
   descentEnding,
   directionOf,
   layDown,
+  wakeOfDescent,
   wouldLayDown,
 } from "./descent";
 import { sealedCount } from "./encounter";
@@ -128,5 +129,17 @@ describe("a descent and the rest of the Book", () => {
     expect(descentEnding(7)).toBe("lit");
     expect(descentEnding(9)).toBe("lit");
     expect(descentEnding(10)).toBe("whole");
+  });
+});
+
+describe("where a descent wakes after going out", () => {
+  it("is the crown until a light has been drawn down", () => {
+    expect(wakeOfDescent([])).toBe("keter");
+  });
+
+  it("is the highest place the light was taken from, in whatever order", () => {
+    expect(wakeOfDescent(["yesod", "tiferet", "hod"])).toBe("tiferet");
+    expect(wakeOfDescent(["tiferet", "keter"])).toBe("keter");
+    expect(wakeOfDescent(["malchut"])).toBe("malchut");
   });
 });

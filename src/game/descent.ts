@@ -108,6 +108,28 @@ export function beginDescentFrom(
   };
 }
 
+/**
+ * **Where a Scribe who goes out on the way down wakes**: at the highest
+ * Sefirah whose light has been drawn down, or at the crown if none has. The
+ * shape of `wakeAt` in `fall.ts`, read off the other list — on the way up a
+ * fall sets you down at the highest place you lit, and on the way down at
+ * the highest place you have taken the light from.
+ *
+ * Letters already laid down stay laid down. A fall can never return one, so
+ * a descent always ends; it only ends poorer.
+ */
+export function wakeOfDescent(lightsDown: readonly SefirahId[]): SefirahId {
+  let wake: SefirahId = CROWN;
+  let best = -1;
+  for (const sefirah of lightsDown) {
+    if (nodeOf[sefirah].row > best) {
+      best = nodeOf[sefirah].row;
+      wake = sefirah;
+    }
+  }
+  return wake;
+}
+
 /** How a descent is named at the kingdom, by how many lights were brought down. */
 export type DescentEnding = "empty" | "some" | "lit" | "whole";
 
