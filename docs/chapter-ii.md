@@ -2,36 +2,55 @@
 
 **Status: a design for approval. Nothing here is built.**
 
-Decisions already made by the owner (14 November):
+Decisions made by the owner (14 November):
 
-1. The descent begins on the **same Tree, walked down**, and ends at a door to
-   **new ground below Malchut**, which is built later.
-2. On the way down the Scribe **lays the letters down**.
-3. Chapter II opens after **any sealed crown or kindled Tree**. A first ascent
-   gone out in peace does not open it.
-4. This document comes first; code follows its approval.
+1. The chapter has two parts. **Part One** is the descent of the same Tree,
+   walked down, laying the letters down — as designed in §2–§3 below, kept.
+2. **Part Two** is the ground below Malchut, Galus, and it is a different kind
+   of game: a **run-and-gun, traditional platformer**.
+3. The Scribe is a **fallen archangel**. Part Two is his punishment: he is made
+   to live through the **future catastrophes of the Jewish people**. He still
+   does not know what he did.
+4. **The player finds out at the end**: he is the archangel who let the
+   adversary into the Garden of Eden.
+5. Chapter II opens after any sealed crown or kindled Tree. A first ascent gone
+   out in peace does not open it.
+6. Design comes before code.
 
-Everything below those four lines is proposal.
+Everything else is proposal.
 
 ---
 
 ## 1. The premise
 
-Chapter I opens on its one unanswered sentence: *you were the scribe of the
-crown, and you were cast down to the kingdom without being told what for.* The
-whole climb is the walk back up to ask, and it ends at the crown with a plea —
-mute, alone, heard, or whole.
+Chapter I opens on one unanswered sentence: *you were the scribe of the crown,
+and you were cast down to the kingdom without being told what for.* The climb
+is the walk back up to ask, and it ends at the crown with a plea.
 
-Chapter II is the answer, and the answer is not an acquittal. It is a
-commission: *you were not cast down. You were sent, and you went before you
-were told.* The descent is the same road taken on purpose. The tradition's
-name for it is *yeridah tzorech aliyah* — a going-down that is for the sake of
-a going-up — and the place it goes is **Galus**, exile: the world below the
-kingdom, where the light has not reached.
+Chapter II is what the plea gets. Not an answer — a sentence. He is sent down
+again, further than before: back through the Tree, giving up the alphabet road
+by road, and out through the floor of the kingdom into **Galus**, exile, where
+he is made to stand inside what is going to happen to the people whose world
+he was set over. One catastrophe after another, in order, none of which he can
+stop. He is not told why this is his to witness.
 
-So the two chapters are one sentence read in both directions. In the first the
-Scribe gathers the alphabet to make a case. In the second the Scribe gives the
-alphabet away to make a road.
+The last place he is taken is the first: a garden, and a gate he was set to
+keep. The chapter ends when he — and the player — sees who opened it.
+
+So the two chapters are one question asked twice. Chapter I asks *what for?*
+and is refused. Chapter II shows him everything that followed from it before
+it shows him the thing itself.
+
+**A note on the source, so it is not mistaken for one.** The Torah posts
+cherubim at Eden only *after* the expulsion. Pirkei de-Rabbi Eliezer has
+Samael come down and ride the serpent, with no keeper at the gate. A story in
+which the garden's own guardians let the adversary in is told in Islamic
+tradition, of the serpent and the peacock. An *archangel* who allowed it is
+this game's own midrash, and the document should not pretend otherwise. The
+owner's spelling, *Sheytan*, is kept; whether the adversary is named Samael,
+the Satan, or left unnamed is open question 6.
+
+# Part One — the descent of the Tree
 
 ## 2. The loop, in one paragraph
 
@@ -42,7 +61,7 @@ on that road. At each Sefirah the Scribe may **draw down its light** to carry
 into Galus. The ground is built, as always, from what is in the hand, so each
 letter laid down makes the next road smaller, barer, and harder to cross with
 what is left. The descent ends at **Malchut**, where what was carried down is
-counted and the door below the kingdom opens.
+counted and the floor of the kingdom opens.
 
 ## 3. The rules
 
@@ -129,100 +148,218 @@ and names the ending by the first, as the plea is named by its witnesses:
 | none | *You came down empty* — the road is made and nothing was sent along it |
 | one to six | *Some of it reached the kingdom* |
 | seven to nine | *The kingdom is lit from above* |
-| all ten | *The whole Tree is brought down* — and the door below opens fully |
+| all ten | *The whole Tree is brought down* |
 
-The Book gets a second kind of page, facing the climb it descended from.
+Whatever the count, the floor opens: the sentence is not escaped by doing the
+descent well. What the count changes is **what he has with him in Galus**
+(§4.3). The Book gets a second kind of page, facing the climb it descended
+from.
 
-## 4. What the door below is (outline only)
 
-The second half of the chapter is new ground under Malchut, and it is **not
-designed here**. Enough is fixed to keep the first half honest about where it
-is going:
+# Part Two — Galus
 
-- It is reached only from a finished descent, and what the Scribe may do there
-  depends on what was brought down: lights carried are what is spent, letters
-  kept are the body.
-- Its natural shape is the **four exiles** — Babylon, Persia and Media, Greece,
-  Rome (Daniel's four kingdoms, the reading the tradition gives the fourth
-  verse of Genesis) — as four regions, each with its own ground, creatures and
-  law, the way each Sefirah has its own now.
-- It is where new chunks, new klipot and new measured bands would be needed.
-  That is a second design round and a much larger build, and it should not
-  start until the descent has been played.
+## 4. What it is
 
-Until it exists, the door is drawn, named, and shut, and the ending plate says
-what would have gone through it.
+A **run-and-gun**: stages that scroll one way, enemies that come in waves, a
+weapon held down rather than aimed and placed, a great thing at the end of each
+stage. It is deliberately a different game from the Tree. The Tree is routes,
+letters as keys, rooms that seal and rules that ask for restraint. Galus has no
+map and no choices of road. He is not navigating. He is being taken through.
+
+### 4.1 The stages
+
+Each stage is one catastrophe, in the order they happened, and the last is the
+first. This list is a **proposal for the owner to cut, reorder or replace** —
+it is the most consequential content decision in the chapter (open question 1).
+
+| # | Stage | What it is |
+|---|---|---|
+| 1 | **Mitzrayim** | The bondage in Egypt and the decree against the sons |
+| 2 | **Bavel** | The First Temple burned, the ninth of Av, the road to Babylon |
+| 3 | **Edom** | The Second Temple burned, the ninth of Av, Jerusalem ploughed |
+| 4 | **Betar** | The last fortress falls, the ninth of Av |
+| 5 | **Ashkenaz, 4856** | The Rhineland communities, the First Crusade |
+| 6 | **Sefarad, 5252** | The expulsion from Spain, the ships |
+| 7 | **Tach v'Tat** | The massacres of 1648–49 |
+| 8 | **The Shoah** | See §4.5 — proposed as a stage in which the weapon does not fire |
+| 9 | **Gan Eden** | The gate. No enemies. The reveal. |
+
+The ninth of Av recurs because it does: the tradition itself reads these as one
+day arriving again. That is the chapter's structure handed to it.
+
+### 4.2 Who is fought, and what cannot be changed
+
+Two rules, proposed as the ones that keep this from being either a revenge
+fantasy or a trivialisation. Both are open to the owner (open question 2).
+
+- **What he shoots are klipot, never people.** The game already has a language
+  for this and Chapter I spent a whole phase on it: the husks that hold light
+  captive. In Galus they are what feeds on each catastrophe. The human beings
+  in a stage — those who suffer and those who do it — are part of the ground:
+  seen, never targets, never scored.
+- **Nothing he does prevents it.** Every stage ends with the event happening.
+  The Temple burns whether or not the stage was played well. That is what makes
+  it a punishment rather than a mission: he is made to be there, armed, and it
+  is not enough.
+
+So what is the playing *for*? Something small and true, which the tradition
+supplies: when Rabbi Chanina ben Teradion was burned wrapped in a Torah scroll,
+he said *the parchment is burning, and the letters are flying up* (Avodah Zarah
+18a). **In every stage, letters fly up out of what burns, and he can catch
+them.** He cannot save the scroll. He can bring the letters out.
+
+### 4.3 The letters come back as the weapon
+
+This is what joins the two parts. In Part One he lays the alphabet down. In
+Part Two it returns to his hand, out of the fire, one stage at a time — and in
+a run-and-gun a letter is not a key to a door, it is **a way the mark flies**.
+
+Chapter I already built this table and barely used it: Zayin carries the mark
+through the first husk into the second, Shin makes it worth two, Vav draws
+instead of pushing, and the vessels add homing, splitting, arcing, lingering,
+returning (`markPowers` in `src/game/combat.ts`). In Galus those are the
+weapon pickups of the genre: a letter caught is a firing mode gained, held
+until a lamp is lost.
+
+What Part One sends down with him:
+
+- **Letters still in hand at Malchut** are what he starts Galus firing with.
+  A descent that kept Shin starts with the flame.
+- **Lights drawn down** are his lamps beyond the three — the genre's lives.
+  A descent that brought nothing down enters Galus on three lamps and a bare
+  mark, which is a hard game and an honest one.
+
+### 4.4 How it plays, against what exists
+
+| The genre needs | Today | The work |
+|---|---|---|
+| Fire held down, fast | One mark per press, a fifteen-tick cooldown | A Galus firing rate; `strike` held |
+| Aiming on the run | Flat, or tilted by holding up or down | Eight directions, and firing while moving and airborne |
+| Waves that arrive | Klipot placed at build time, standing in rooms | Spawners: creatures that enter from the edges on a script |
+| A stage that scrolls | Rooms on a grid, sealed and unsealed | One long flat room per stage, no seals, a camera that only goes forward |
+| A great thing at the end | Ten guardian arenas, already built and measured | One per stage, in the same arena machinery |
+| Weapon pickups | Letters found in alcoves, on plates | Letters in the air, taken by touch, no plate |
+| Lives | Three lamps; a fall wakes you elsewhere | Lamps as lives; a lamp lost restarts from a checkpoint in the stage |
+| Authored stages | Ground assembled per seed from a chunk library | Stages laid from **authored** chunk sequences per era, the same chunk format, not drawn by seed |
+
+Nothing in that table needs a new engine. It needs a second *mode* of the one
+there is — a Galus world that the step treats differently in about six named
+places, the way an arena is treated differently now — and it needs new ground,
+new creatures and new measured bands, which is where the real cost is.
+
+### 4.5 The Shoah
+
+This needs its own decision and should not be settled by default (open
+question 3). The proposal:
+
+**It is a stage, and in it the mark does not fire.** He walks through. The
+strike key does nothing; the one voice the game has always had — the world's
+line of text at the foot of the screen — is silent. There are no klipot to
+break, no letters in the air, no great thing at the end. It is short. It is
+the only stage with no score. The run-and-gun stops being one, on purpose, at
+the one place where playing it as one would be obscene.
+
+The alternatives are to leave it out, which the list's own logic makes a loud
+omission, or to end the catastrophes at stage 7 and go from there to Eden. Any
+of the three is defensible. Building it as an ordinary stage is the one option
+this document recommends against.
+
+### 4.6 Gan Eden — the reveal
+
+The last stage has no enemies. It is a garden, walked left to right, and at
+the end of it a gate.
+
+The proposal for how the player finds out, without a paragraph telling them:
+**the gate has his mark on it.** The same Tav he has been setting on shrines
+since the second rung of Chapter I — *where you wake* — is on the inside of
+the gate of Eden, set there before the first page of the game. The shrine's
+own line, which the player has read a hundred times, is said once more:
+*Your mark is set here.* Then the telling, in the paced plates the prologue
+uses, says the rest: he was set to keep the gate; something asked to come in;
+he opened it.
+
+Whether anything is *done* after the reveal — an act of return, a gate shut
+too late, a choice — or whether the chapter ends on the knowing, is open
+question 4. The Book's last page should say what Chapter I's plea was really
+asking, now that it can be read.
 
 ## 5. What is reused, and what is new
 
-**Reused unchanged:** the Tree and its twenty-two paths; `buildPath` and the
-whole chunk library; every rung rule; every creature; the step, the lamps, the
-fall; the Word-Gates; the map; the HUD and its rule line; the Book.
+**Part One reuses everything**: the Tree, `buildPath`, the chunk library,
+every rung rule, every creature, the map, the HUD, the Book. Its new parts are
+small (a `chapter` on the record, "lay down" and "draw down" on the map, an
+ending plate, a Book page) and its cost is proof, not building (§6).
 
-**New, and small:**
+**Part Two reuses the engine and little of the content**: the step, the body,
+the lamps, the mark and its powers, the arena machinery, the renderer, the
+audio. Its new parts are large:
 
-- a `chapter` on the record, and the page of the Book a descent came from;
-- the Threshold's offer, once a qualifying climb is sealed;
-- "lay down" where Chapter I has "pays", on the map's way buttons and at the
-  way out of a road;
-- "draw down" where Chapter I has "kindle";
-- the descent's ending plate and its Book page;
-- the shut door.
+- a Galus mode in the step (firing, aiming, spawners, forward camera,
+  checkpoints);
+- eight or nine stages of authored ground, each needing its own chunks;
+- creatures for each era, and a great thing for each stage;
+- the letters-in-the-air pickup;
+- the Eden stage and the telling;
+- **the words.** Every stage names a real event. The text for each should be
+  written or approved by the owner, sourced, and read by someone other than
+  the person who wrote it before it ships.
 
-**New, and not small:** the proof and the measurements in §6.
+## 6. What has to be proved
 
-## 6. What has to be proved before it ships
+**Part One** — unchanged from the first draft, and still first:
 
-Chapter I's guarantees were all taken for a hand that only grows. A hand that
-shrinks is a different population of worlds, and three things that are true
-today have never been asked of it.
+1. *No soft-lock with a shrinking hand.* The mirror of `route.test.ts`: a way
+   out on every path walked downward, holding what any descending route has
+   left.
+2. *It can be finished.* A descent probe from Keter to Malchut, short road and
+   long, as a share of seeds.
+3. *The curve is a curve.* The last roads are not a wall for a bare hand, and a
+   descent pays enough light to draw down more than none.
 
-1. **No soft-lock.** `route.test.ts` proves a way out exists "on every path,
-   holding only what the route there paid". The descent needs the mirror: a
-   way out on every path walked downward, holding what *any* descending route
-   has left. The builder should make this true by construction (it only lays
-   screens the hand can answer), but that is exactly the kind of claim this
-   project measures rather than assumes.
-2. **It can be finished.** A descent probe, like `climb.test.ts`'s tour: from
-   Keter with a full hand, down to Malchut, by the short road and by a road
-   that touches all ten. Asserted as a share of seeds, as the dash is.
-3. **The curve is a curve.** The fight and economy bands were drawn for the
-   ascent. The descent needs its own, smaller set: that the last roads are not
-   a wall for a bare hand (they are Malchut-scale ground, but with the upper
-   Tree's creatures on the first of them), and that the light a road pays is
-   enough, across a descent, to draw down more than none.
+**Part Two** — a new set of instruments, because none of the existing bands
+describe a scrolling stage:
 
-If (1) or (2) fails, the design changes before any surface is built. That is
-why they are the first slices.
+4. *Every stage can be finished on three lamps and a bare mark*, by a probe
+   that holds fire and runs — the worst entry Part One can produce.
+5. *Every stage can be failed.* The naive-probe rule from Chapter I: a stage a
+   body can walk through without firing is not a stage.
+6. *A letter caught changes the number.* Each firing mode measurably shortens
+   or eases the stage it is found in, or it is decoration.
 
 ## 7. The roadmap
 
-Each slice ends green and is a place to stop.
+Each slice ends green and is a place to stop. Part One ships on its own.
 
 | Slice | What it is | Risk |
 |---|---|---|
-| **C2-0** | The descent record: `chapter`, begun from a Book page at Keter with that page's letters. Pure rules and tests; nothing on screen. | low |
-| **C2-1** | Laying down: walking a path downward removes its letter. The no-soft-lock proof over sampled descending routes. | **the design's main risk** |
-| **C2-2** | The descent probe: Keter to Malchut by the short road and the long one, as a share of seeds. First numbers on difficulty and light. | **may send the design back** |
-| **C2-3** | The surfaces: Threshold offer, map wording, "draw down", the HUD. First playable descent. | low |
-| **C2-4** | The ending: the plate, the four names, the Book's facing page, the shut door. | low |
-| **C2-5** | Bands for the descent, and a playtest script for each surface. | medium |
-| **C2-6** | Design round for the ground below Malchut. A document like this one. | — |
+| **C2-0** | The descent record: `chapter`, begun from a Book page at Keter with that page's letters. Pure rules and tests. | low |
+| **C2-1** | Laying down: walking a path downward removes its letter. The no-soft-lock proof over descending routes. | **Part One's main risk** |
+| **C2-2** | The descent probe, short road and long. First numbers. | **may send Part One back** |
+| **C2-3** | Part One's surfaces: Threshold offer, map wording, "draw down", HUD. First playable descent. | low |
+| **C2-4** | Part One's ending: the plate, the Book's facing page, the floor of the kingdom opening onto a stage that is not there yet. | low |
+| **G-0** | **The engine spike.** A Galus world mode: held fire, eight-way aim, a spawner, a forward camera, a checkpoint — on one flat test stage with existing klipot. Answers whether the engine carries the genre. | **Part Two's main risk** |
+| **G-1** | One real stage, end to end — proposed: **Bavel** — with its ground, creatures, great thing, letters in the air, and its three proofs. The vertical slice everything else is costed from. | high |
+| **G-2…** | The remaining stages, one per slice, in order. | per stage |
+| **G-E** | Gan Eden and the telling. | low to build, high to write |
+| **G-Z** | The Shoah stage, in whatever form the owner decides. Last, so it is made by people who have made all the others. | — |
+
+A blunt estimate: Part One is about the size of the rung-rule work. Part Two
+is about the size of Chapter I's creatures and arenas phases together, per two
+or three stages.
 
 ## 8. Open questions for the owner
 
-1. **One descent per page, or as many as wanted?** Proposed: one. It makes a
-   page of the Book a thing that is spent, and a kindled Tree worth more than
-   a dash to the crown.
-2. **Guardians on the way down.** Proposed: none — they were broken on the way
-   up. The alternative is that each Sefirah's guardian stands again and must
-   be passed with the smaller hand, which is a much harder chapter and would
-   need every arena re-measured for descending kits.
-3. **Does a descent touch Chapter I?** Proposed: no, in the first version. A
-   later, tempting idea is that letters laid down on a road are found lying
-   there by the next climb. It couples the two chapters' economies and should
-   wait until both are measured.
-4. **The Seven Encounters.** Proposed: a descent is played under no Encounter
-   and does not advance them, as a first ascent is not.
-5. **The four exiles** as the shape of the ground below — or something else?
-   This only needs deciding at C2-6.
+1. **Which catastrophes, and in what order?** The table in §4.1 is a proposal.
+2. **Klipot only, and nothing prevented** (§4.2) — are these the two rules?
+3. **The Shoah** (§4.5): a stage where the weapon does not fire, left out, or
+   the list ended before it?
+4. **After the reveal** (§4.6): does the chapter end on the knowing, or is
+   there an act?
+5. **Part One, still open from the first draft**: one descent per Book page;
+   no guardians on the way down; a descent does not touch later climbs; it
+   does not advance the Seven Encounters.
+6. **The adversary's name**: Sheytan as written, Samael, the Satan, or never
+   named. And is the archangel himself ever named?
+7. **Is a stage's ground fixed or seeded?** Proposed: authored and fixed. The
+   genre is learned by repetition, and a catastrophe that is different every
+   day is a strange thing to imply.
