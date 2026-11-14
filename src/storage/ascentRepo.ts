@@ -243,6 +243,16 @@ export interface AscentRecord {
    * SealKind, and never advances the Seven Encounters.
    */
   firstAscent?: true;
+  /**
+   * **Which chapter this record belongs to.** Absent on every climb — a climb
+   * is Chapter I. `2` is a descent (`game/descent.ts`, `docs/chapter-ii.md`):
+   * begun at the crown from a sealed climb's page, walked down, the letters
+   * laid down road by road. Written by nothing yet; the rules that read it
+   * are in place first so no count can be got wrong when the surfaces arrive.
+   */
+  chapter?: 2;
+  /** The sealed climb a descent was begun from — its page of the Book. */
+  descendedFrom?: string;
   ascendantLetterId?: string;
   /**
    * How many times the last lamp went out on this climb.

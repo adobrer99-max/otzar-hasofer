@@ -34,7 +34,10 @@ import type { Grace } from "./abilities";
 export function sealedCount(ascents: readonly AscentRecord[]): number {
   // **Nor is a first ascent** (P15-6), whatever ending it reached: it was
   // played under no Encounter, so counting it would skip the First.
-  return ascents.filter((a) => a.sealedAt && !a.firstAscent).length;
+  //
+  // **Nor is a descent** (Chapter II): it is the other direction, played
+  // under none of the seven.
+  return ascents.filter((a) => a.sealedAt && !a.firstAscent && a.chapter !== 2).length;
 }
 
 /**

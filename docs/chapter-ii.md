@@ -189,10 +189,10 @@ Four catastrophes in the order they happened, and then the first thing of all.
 | 4 | **Nazi Germany** | Not a run-and-gun. See §4.5 |
 | 5 | **Gan Eden** | The gate. No enemies. The reveal. |
 
-Stage 3 covers centuries and many places. Whether it is one place and one year
-(the Rhineland, 4856, is the natural one) or a stage that moves through several
-is a writing decision for the owner, and it changes how much ground has to be
-authored. This document assumes one.
+Stage 3 is **one place and one year** (decided), although what it stands for
+covers centuries and many places. Which place and which year is a writing
+decision for the owner when that stage is built; the Rhineland in 4856 (1096)
+is this document's proposal.
 
 ### 4.2 Who is fought, and what cannot be changed
 
@@ -396,6 +396,6 @@ the ideas, each with the plain option beside it. None blocks the first slices.
    economy changes.
 4. **The Seven Encounters.** *Plain, and recommended without an alternative:*
    a descent is played under none of them and does not advance them.
-5. **Stage 3**: one place and one year, or several? (§4.1.)
+5. **Stage 3**: which place and which year. (§4.1; needed at slice G-3.)
 6. **Part III.** Not designed. Named here so nothing in Part Two closes a door
    on it.
