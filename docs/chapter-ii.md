@@ -1,6 +1,6 @@
 # Chapter II — Descent into Galus
 
-**Status: a design for approval. Nothing here is built.**
+**Status: a design, with the owner's decisions of 14 November recorded. Nothing here is built.**
 
 Decisions made by the owner (14 November):
 
@@ -16,8 +16,18 @@ Decisions made by the owner (14 November):
 5. Chapter II opens after any sealed crown or kindled Tree. A first ascent gone
    out in peace does not open it.
 6. Design comes before code.
+7. **Four stages, in order**: the Babylonian exile, the Roman expulsion, the
+   medieval pogroms, Nazi Germany. Then the garden.
+8. **What he shoots are klipot, never people; and nothing he does prevents
+   what happens.**
+9. **The Nazi Germany stage is not a run-and-gun.** The weapon does not fire.
+   He hides, and sneaks, and tries not to be caught.
+10. **The chapter ends on the knowing.** What follows is a Part III, to be
+    determined.
+11. **Neither the adversary nor the archangel is named.** It may be implied.
+12. **A stage's ground is fixed**, not seeded.
 
-Everything else is proposal.
+What is still proposal is marked so.
 
 ---
 
@@ -46,9 +56,10 @@ cherubim at Eden only *after* the expulsion. Pirkei de-Rabbi Eliezer has
 Samael come down and ride the serpent, with no keeper at the gate. A story in
 which the garden's own guardians let the adversary in is told in Islamic
 tradition, of the serpent and the peacock. An *archangel* who allowed it is
-this game's own midrash, and the document should not pretend otherwise. The
-owner's spelling, *Sheytan*, is kept; whether the adversary is named Samael,
-the Satan, or left unnamed is open question 6.
+this game's own midrash, and the document should not pretend otherwise. By
+the owner's decision neither he nor the adversary is ever named in the game;
+both may be implied, and the telling should be written so that a reader who
+knows the sources recognises them and one who does not loses nothing.
 
 # Part One — the descent of the Tree
 
@@ -168,29 +179,25 @@ map and no choices of road. He is not navigating. He is being taken through.
 
 ### 4.1 The stages
 
-Each stage is one catastrophe, in the order they happened, and the last is the
-first. This list is a **proposal for the owner to cut, reorder or replace** —
-it is the most consequential content decision in the chapter (open question 1).
+Four catastrophes in the order they happened, and then the first thing of all.
 
 | # | Stage | What it is |
 |---|---|---|
-| 1 | **Mitzrayim** | The bondage in Egypt and the decree against the sons |
-| 2 | **Bavel** | The First Temple burned, the ninth of Av, the road to Babylon |
-| 3 | **Edom** | The Second Temple burned, the ninth of Av, Jerusalem ploughed |
-| 4 | **Betar** | The last fortress falls, the ninth of Av |
-| 5 | **Ashkenaz, 4856** | The Rhineland communities, the First Crusade |
-| 6 | **Sefarad, 5252** | The expulsion from Spain, the ships |
-| 7 | **Tach v'Tat** | The massacres of 1648–49 |
-| 8 | **The Shoah** | See §4.5 — proposed as a stage in which the weapon does not fire |
-| 9 | **Gan Eden** | The gate. No enemies. The reveal. |
+| 1 | **Bavel** | The First Temple burned on the ninth of Av; the road into Babylon |
+| 2 | **Edom** | The Second Temple burned on the ninth of Av; Jerusalem emptied, the people scattered |
+| 3 | **Ashkenaz** | The medieval massacres — the Rhineland communities and what followed them |
+| 4 | **Nazi Germany** | Not a run-and-gun. See §4.5 |
+| 5 | **Gan Eden** | The gate. No enemies. The reveal. |
 
-The ninth of Av recurs because it does: the tradition itself reads these as one
-day arriving again. That is the chapter's structure handed to it.
+Stage 3 covers centuries and many places. Whether it is one place and one year
+(the Rhineland, 4856, is the natural one) or a stage that moves through several
+is a writing decision for the owner, and it changes how much ground has to be
+authored. This document assumes one.
 
 ### 4.2 Who is fought, and what cannot be changed
 
-Two rules, proposed as the ones that keep this from being either a revenge
-fantasy or a trivialisation. Both are open to the owner (open question 2).
+Two rules, decided, and they are what keep this from being either a revenge
+fantasy or a trivialisation.
 
 - **What he shoots are klipot, never people.** The game already has a language
   for this and Chapter I spent a whole phase on it: the husks that hold light
@@ -247,22 +254,37 @@ there is — a Galus world that the step treats differently in about six named
 places, the way an arena is treated differently now — and it needs new ground,
 new creatures and new measured bands, which is where the real cost is.
 
-### 4.5 The Shoah
+### 4.5 Nazi Germany — the stage where the weapon does not fire
 
-This needs its own decision and should not be settled by default (open
-question 3). The proposal:
+Decided: here the game stops being a run-and-gun. The strike key does nothing.
+He hides, and sneaks, and tries not to be caught.
 
-**It is a stage, and in it the mark does not fire.** He walks through. The
-strike key does nothing; the one voice the game has always had — the world's
-line of text at the foot of the screen — is silent. There are no klipot to
-break, no letters in the air, no great thing at the end. It is short. It is
-the only stage with no score. The run-and-gun stops being one, on purpose, at
-the one place where playing it as one would be obscene.
+What that means in the hands, as a proposal:
 
-The alternatives are to leave it out, which the list's own logic makes a loud
-omission, or to end the catastrophes at stage 7 and go from there to Eden. Any
-of the three is defensible. Building it as an ordinary stage is the one option
-this document recommends against.
+- **He is made of light, and light is seen.** The three lamps that have been
+  his life since Chapter I are now what gives him away. Standing, he shines.
+  **Going low dims him** — the crouch, the same act Chochmah's road taught as
+  the way to receive. The whole stage is played closer to the ground than any
+  other.
+- **Being seen, not being struck, is what costs.** Those who search have a line
+  of sight and a reach of attention. Inside it and lit, he is found. Found is
+  a lamp put out and a return to the last hiding place — the same rule as a
+  lamp lost anywhere else, so nothing new is being taught at the worst moment.
+- **Hiding places are part of the ground**: a wall to be behind, a floor to be
+  under, a dark that is darker than he is. Fixed, like the rest of the stage,
+  so it is learned.
+- **Those who search are not klipot and cannot be touched.** The first rule of
+  §4.2 holds with nothing to shoot at all: they are part of the ground, and
+  the only verb he has toward them is not being where they look.
+- **Nothing flies up.** No letters in the air, no light to gather, no great
+  thing at the end, no score, and the world's line of text at the foot of the
+  screen says nothing for the length of the stage. It ends when he reaches the
+  far side of it.
+- It is **short**, and it is the last thing before the garden.
+
+It needs its own measurement, and a different one from every other stage: that
+a body which hides can cross it unseen, and that a body which walks upright
+through it cannot.
 
 ### 4.6 Gan Eden — the reveal
 
@@ -278,10 +300,12 @@ own line, which the player has read a hundred times, is said once more:
 uses, says the rest: he was set to keep the gate; something asked to come in;
 he opened it.
 
-Whether anything is *done* after the reveal — an act of return, a gate shut
-too late, a choice — or whether the chapter ends on the knowing, is open
-question 4. The Book's last page should say what Chapter I's plea was really
-asking, now that it can be read.
+**The chapter ends there, on the knowing.** Nothing is done about it: no act
+of return, no choice, no gate shut too late. What he does with it is Part III,
+which is not designed and should not be anticipated here beyond one thing —
+the Book's last page for Chapter II should leave the plea of Chapter I
+readable in its new light, because that is the thread a third part would pick
+up.
 
 ## 5. What is reused, and what is new
 
@@ -296,7 +320,8 @@ audio. Its new parts are large:
 
 - a Galus mode in the step (firing, aiming, spawners, forward camera,
   checkpoints);
-- eight or nine stages of authored ground, each needing its own chunks;
+- three run-and-gun stages, one stealth stage and the garden, each of authored
+  ground needing its own chunks;
 - creatures for each era, and a great thing for each stage;
 - the letters-in-the-air pickup;
 - the Eden stage and the telling;
@@ -325,6 +350,8 @@ describe a scrolling stage:
    body can walk through without firing is not a stage.
 6. *A letter caught changes the number.* Each firing mode measurably shortens
    or eases the stage it is found in, or it is decoration.
+7. *The stealth stage is crossed by hiding and by nothing else.* A probe that
+   goes low and waits crosses it unseen; a probe that walks upright is found.
 
 ## 7. The roadmap
 
@@ -339,27 +366,36 @@ Each slice ends green and is a place to stop. Part One ships on its own.
 | **C2-4** | Part One's ending: the plate, the Book's facing page, the floor of the kingdom opening onto a stage that is not there yet. | low |
 | **G-0** | **The engine spike.** A Galus world mode: held fire, eight-way aim, a spawner, a forward camera, a checkpoint — on one flat test stage with existing klipot. Answers whether the engine carries the genre. | **Part Two's main risk** |
 | **G-1** | One real stage, end to end — proposed: **Bavel** — with its ground, creatures, great thing, letters in the air, and its three proofs. The vertical slice everything else is costed from. | high |
-| **G-2…** | The remaining stages, one per slice, in order. | per stage |
-| **G-E** | Gan Eden and the telling. | low to build, high to write |
-| **G-Z** | The Shoah stage, in whatever form the owner decides. Last, so it is made by people who have made all the others. | — |
+| **G-2** | **Edom.** | per stage |
+| **G-3** | **Ashkenaz.** | per stage |
+| **G-4** | **The stealth stage.** Its own small mode: light that is seen, going low, lines of sight, hiding places, and its own proof. Built after the three before it, so it is made by hands that have made the others. | high |
+| **G-5** | **Gan Eden** and the telling. | low to build, high to write |
 
 A blunt estimate: Part One is about the size of the rung-rule work. Part Two
-is about the size of Chapter I's creatures and arenas phases together, per two
-or three stages.
+is roughly Chapter I's creatures and arenas phases together, plus the stealth
+stage, which is a second small game inside it.
 
-## 8. Open questions for the owner
+## 8. What is still open
 
-1. **Which catastrophes, and in what order?** The table in §4.1 is a proposal.
-2. **Klipot only, and nothing prevented** (§4.2) — are these the two rules?
-3. **The Shoah** (§4.5): a stage where the weapon does not fire, left out, or
-   the list ended before it?
-4. **After the reveal** (§4.6): does the chapter end on the knowing, or is
-   there an act?
-5. **Part One, still open from the first draft**: one descent per Book page;
-   no guardians on the way down; a descent does not touch later climbs; it
-   does not advance the Seven Encounters.
-6. **The adversary's name**: Sheytan as written, Samael, the Satan, or never
-   named. And is the archangel himself ever named?
-7. **Is a stage's ground fixed or seeded?** Proposed: authored and fixed. The
-   genre is learned by repetition, and a catastrophe that is different every
-   day is a strange thing to imply.
+The owner's answer on Part One's four points was "open to ideas". These are
+the ideas, each with the plain option beside it. None blocks the first slices.
+
+1. **How often a page can be descended.** *Plain:* once, so a page of the Book
+   is something spent and a kindled Tree is worth more than a dash to the
+   crown. *Idea:* once to completion — a descent that goes out before Malchut
+   can be begun again from the same page, since the sentence is not escaped
+   by failing it.
+2. **The guardians on the way down.** *Plain:* absent; they were broken on the
+   way up. *Idea:* they stand at their Sefirot, broken, and are **not fought**
+   — each says one line as he passes down through its place, the creature he
+   beat now watching him fall. It costs ten sentences and no measurement, and
+   it makes the descent populated.
+3. **Whether a descent touches later climbs.** *Plain:* no. *Idea:* only in
+   the Book — each letter laid down is written on the page with the road it
+   was left on, so a later climb can *read* where they lie and nothing in its
+   economy changes.
+4. **The Seven Encounters.** *Plain, and recommended without an alternative:*
+   a descent is played under none of them and does not advance them.
+5. **Stage 3**: one place and one year, or several? (§4.1.)
+6. **Part III.** Not designed. Named here so nothing in Part Two closes a door
+   on it.
